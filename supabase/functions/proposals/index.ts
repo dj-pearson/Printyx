@@ -1145,17 +1145,40 @@ export default async function handler(req: Request) {
         }
         const now = new Date().toISOString();
         const signer = (body.name ?? '').toString().slice(0, 200);
+        /**
+         * AUDIT-037 follow-up: BOTH of these updates used to set
+         * `customer_feedback`, which migration 0002 DROPPED from `proposals`.
+         * So every accept and every decline from the public share page was a
+         * PGRST204 - and the result was never checked, which is what made it
+         * invisible and made it serious: the decline silently did nothing, and
+         * the accept fell straight through to creating a WON DEAL and a
+         * CONTRACT for a proposal whose status never moved. The record and the
+         * pipeline disagreed and neither said why.
+         *
+         * The signer is not lost by dropping the column: the analytics row
+         * below already carries it in `event_details.name`, which is where
+         * AUDIT-037 put the visitor cookie for the same reason.
+         */
         if (action === 'accept') {
-          await db
+          const { error: acceptError } = await db
             .from('proposals')
             .update({
               status: 'accepted',
               accepted_at: now,
-              customer_feedback: signer ? `Accepted by ${signer}` : 'Accepted online',
               updated_at: now,
             })
             .eq('id', proposal.id)
             .eq('tenant_id', tenantId);
+          if (acceptError) {
+            log.error({ requestId, err: acceptError.message }, 'public_accept_failed');
+            // Never fall through to the deal and the contract on a failed
+            // accept: that is how a won deal appears for a proposal still
+            // sitting in 'sent'.
+            return errorResponse(500, 'Could not record the acceptance', req, {
+              code: 'DB_ERROR',
+              requestId,
+            });
+          }
           try {
             const acceptedDealId = await upsertDealForProposal(
               db,
@@ -1169,16 +1192,22 @@ export default async function handler(req: Request) {
             log.warn({ requestId, err: String(syncErr) }, 'public_accept_sync_failed');
           }
         } else {
-          await db
+          const { error: declineError } = await db
             .from('proposals')
             .update({
               status: 'rejected',
               rejected_at: now,
-              customer_feedback: signer ? `Declined by ${signer}` : 'Declined online',
               updated_at: now,
             })
             .eq('id', proposal.id)
             .eq('tenant_id', tenantId);
+          if (declineError) {
+            log.error({ requestId, err: declineError.message }, 'public_decline_failed');
+            return errorResponse(500, 'Could not record the decline', req, {
+              code: 'DB_ERROR',
+              requestId,
+            });
+          }
         }
         await db.from('proposal_analytics').insert({
           tenant_id: tenantId,

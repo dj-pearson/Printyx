@@ -1,484 +1,68 @@
-import {
-  pgTable,
-  varchar,
-  text,
-  decimal,
-  integer,
-  boolean,
-  timestamp,
-  jsonb,
-} from 'drizzle-orm/pg-core';
-import { sql } from 'drizzle-orm';
-import { createInsertSchema } from 'drizzle-zod';
-import { z } from 'zod';
-
-// Quote/Proposal Management System - Phase 1 Priority Implementation
-
-// Proposal Templates for consistent branding and standardization
-export const proposalTemplates = pgTable('proposal_templates', {
-  id: varchar('id')
-    .primaryKey()
-    .default(sql`gen_random_uuid()`),
-  tenantId: varchar('tenant_id').notNull(),
-
-  // Template Details
-  templateName: varchar('template_name').notNull(),
-  templateType: varchar('template_type').notNull(), // equipment_lease, service_contract, maintenance_agreement, etc.
-  description: text('description'),
-
-  // Template Content
-  headerContent: jsonb('header_content').$type<{
-    companyLogo?: string;
-    letterhead?: string;
-    contactInfo?: string;
-  }>(),
-
-  coverPageTemplate: text('cover_page_template'), // HTML template
-  executiveSummaryTemplate: text('executive_summary_template'),
-  proposalBodyTemplate: text('proposal_body_template'),
-  termsAndConditionsTemplate: text('terms_conditions_template'),
-  footerTemplate: text('footer_template'),
-
-  // PROP-001: canonical visual-builder content (sections + global styling).
-  // Supersedes the per-section text columns above (kept for back-compat).
-  templateContent: jsonb('template_content').$type<{
-    sections?: Array<{
-      id: string;
-      type: string;
-      title?: string;
-      content?: string;
-      styling?: Record<string, unknown>;
-      order?: number;
-      isVisible?: boolean;
-    }>;
-    globalStyling?: {
-      primaryColor?: string;
-      secondaryColor?: string;
-      accentColor?: string;
-      fontFamily?: string;
-      headerFont?: string;
-      pageMargins?: string | Record<string, number>;
-      [key: string]: unknown;
-    };
-  }>(),
-
-  // Styling and Branding
-  brandingColors: jsonb('branding_colors').$type<{
-    primary?: string;
-    secondary?: string;
-    accent?: string;
-  }>(),
-  fontSettings: jsonb('font_settings').$type<{
-    headerFont?: string;
-    bodyFont?: string;
-    fontSize?: number;
-  }>(),
-
-  // Template Settings
-  isActive: boolean('is_active').default(true),
-  isDefault: boolean('is_default').default(false),
-  createdBy: varchar('created_by').notNull(),
-
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-});
-
-// Equipment Packages - Pre-configured equipment bundles
-export const equipmentPackages = pgTable('equipment_packages', {
-  id: varchar('id')
-    .primaryKey()
-    .default(sql`gen_random_uuid()`),
-  tenantId: varchar('tenant_id').notNull(),
-
-  // Package Details
-  packageName: varchar('package_name').notNull(),
-  packageCode: varchar('package_code'), // Internal reference
-  category: varchar('category'), // office_solution, production_solution, managed_print, etc.
-  description: text('description'),
-
-  // Package Configuration
-  equipment: jsonb('equipment').$type<
-    Array<{
-      modelId: string;
-      quantity: number;
-      unitPrice: number;
-      description?: string;
-      isOptional?: boolean;
-    }>
-  >(),
-
-  accessories: jsonb('accessories').$type<
-    Array<{
-      accessoryId: string;
-      quantity: number;
-      unitPrice: number;
-      description?: string;
-      isOptional?: boolean;
-    }>
-  >(),
-
-  services: jsonb('services').$type<
-    Array<{
-      serviceId: string;
-      description: string;
-      monthlyPrice?: number;
-      oneTimePrice?: number;
-      duration?: number; // months
-      isOptional?: boolean;
-    }>
-  >(),
-
-  // Pricing
-  basePrice: decimal('base_price', { precision: 10, scale: 2 }),
-  totalRetailPrice: decimal('total_retail_price', { precision: 10, scale: 2 }),
-  recommendedSellingPrice: decimal('recommended_selling_price', { precision: 10, scale: 2 }),
-
-  // Package Settings
-  isActive: boolean('is_active').default(true),
-  allowCustomization: boolean('allow_customization').default(true),
-
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-});
-
-// Proposals - Main proposal/quote entity
-export const proposals = pgTable('proposals', {
-  id: varchar('id')
-    .primaryKey()
-    .default(sql`gen_random_uuid()`),
-  tenantId: varchar('tenant_id').notNull(),
-
-  // Proposal Identification
-  proposalNumber: varchar('proposal_number').notNull().unique(),
-  version: integer('version').default(1),
-  title: varchar('title').notNull(),
-
-  // Customer Information
-  businessRecordId: varchar('business_record_id').notNull(), // Links to leads/customers
-  contactId: varchar('contact_id'), // Primary contact for this proposal
-
-  // Proposal Details
-  templateId: varchar('template_id'), // Reference to proposal template
-  proposalType: varchar('proposal_type').notNull(), // quote, proposal, contract
-  status: varchar('status').notNull().default('draft'), // draft, sent, viewed, accepted, rejected, expired
-
-  // Proposal Content
-  executiveSummary: text('executive_summary'),
-  customerNeeds: text('customer_needs'), // Identified requirements
-  proposedSolution: text('proposed_solution'),
-  implementationPlan: text('implementation_plan'),
-
-  // Equipment and Services
-  equipmentPackageId: varchar('equipment_package_id'), // Pre-configured package
-  customEquipment: jsonb('custom_equipment').$type<
-    Array<{
-      type: 'equipment' | 'accessory' | 'service' | 'supply';
-      itemId: string;
-      description: string;
-      quantity: number;
-      unitPrice: number;
-      totalPrice: number;
-      margin?: number;
-      notes?: string;
-    }>
-  >(),
-
-  // Pricing Summary
-  subtotal: decimal('subtotal', { precision: 10, scale: 2 }),
-  discountAmount: decimal('discount_amount', { precision: 10, scale: 2 }).default('0'),
-  discountPercentage: decimal('discount_percentage', { precision: 5, scale: 2 }).default('0'),
-  // QUOTE-016: required justification whenever any discount (quote-level or
-  // per-line) is set. competitive_match | volume | promotion | manager_approved | other
-  discountReason: varchar('discount_reason'),
-  discountReasonNote: text('discount_reason_note'),
-  taxAmount: decimal('tax_amount', { precision: 10, scale: 2 }).default('0'),
-  totalAmount: decimal('total_amount', { precision: 10, scale: 2 }),
-
-  // Cost & Margin rollup (QUOTE-003) — computed server-side from line items
-  totalDealerCost: decimal('total_dealer_cost', { precision: 10, scale: 2 }).default('0'),
-  totalMarginPercentage: decimal('total_margin_percentage', { precision: 5, scale: 2 }).default(
-    '0',
-  ),
-
-  // Contract Terms
-  paymentTerms: varchar('payment_terms'), // net_30, net_60, upfront, financing
-
-  // WF-C-05: how the deal is paid.
-  //
-  // Acceptance always called createContractFromProposal and never created a
-  // lease, whatever the proposal said, and `payment_terms` - the only nearby
-  // field - was written by nothing and read by nothing. So `leases` sat with
-  // proposal_id, business_record_id and contract_id columns that no code
-  // filled, and a leased fleet was indistinguishable from a cash sale the
-  // moment the customer clicked Accept.
-  //
-  // `payment_terms` is KEPT and is a different fact: net_30 is when an invoice
-  // is due, not whether the customer owns the machine. Nothing reads it yet.
-  //
-  // All nullable. An existing proposal has no acquisition type and must stay
-  // valid; a proposal with no type creates the contract and no lease, which is
-  // what happens today, rather than a guess at the commercial terms.
-  acquisitionType: varchar('acquisition_type', { length: 20 }), // cash | lease | finance
-  fundingPartner: varchar('funding_partner'), // the lessor or lender, when not cash
-  financeTermMonths: integer('finance_term_months'),
-  financeMonthlyPayment: decimal('finance_monthly_payment', { precision: 10, scale: 2 }),
-  firstPaymentDate: timestamp('first_payment_date'),
-
-  deliveryTerms: varchar('delivery_terms'),
-  warrantyTerms: text('warranty_terms'),
-  serviceTerms: text('service_terms'),
-
-  // Proposal Lifecycle
-  validUntil: timestamp('valid_until'), // Expiration date
-  sentAt: timestamp('sent_at'),
-  viewedAt: timestamp('viewed_at'),
-  acceptedAt: timestamp('accepted_at'),
-  rejectedAt: timestamp('rejected_at'),
-
-  // Public share link (PROP-008)
-  shareToken: varchar('share_token'),
-  shareExpiresAt: timestamp('share_expires_at'),
-
-  // E-Signature Integration
-  eSignatureRequired: boolean('e_signature_required').default(false),
-  eSignatureProvider: varchar('e_signature_provider'), // docusign, adobe_sign, etc.
-  eSignatureDocumentId: varchar('e_signature_document_id'),
-  eSignatureStatus: varchar('e_signature_status'), // pending, signed, declined
-
-  // WF-C-04: the deal-desk request that unblocked this quote's pricing, stamped
-  // by the final approve. The send guardrail reads it instead of trusting a
-  // client-supplied `approved` flag. No FK - see migration 0074.
-  pricingApprovalId: varchar('pricing_approval_id'),
-  pricingApprovedAt: timestamp('pricing_approved_at'),
-  // Tracking and Analytics
-  openCount: integer('open_count').default(0), // How many times opened
-  lastOpenedAt: timestamp('last_opened_at'),
-  timeSpentViewing: integer('time_spent_viewing').default(0), // seconds
-
-  // Management
-  createdBy: varchar('created_by').notNull(),
-  assignedTo: varchar('assigned_to'), // Sales rep responsible
-  teamId: varchar('team_id'), // For team visibility
-
-  // Notes and Internal Comments
-  internalNotes: text('internal_notes'),
-  customerFeedback: text('customer_feedback'),
-
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-});
-
-// Proposal Line Items - Detailed breakdown of proposed items
-export const proposalLineItems = pgTable('proposal_line_items', {
-  id: varchar('id')
-    .primaryKey()
-    .default(sql`gen_random_uuid()`),
-  tenantId: varchar('tenant_id').notNull(),
-  proposalId: varchar('proposal_id').notNull(),
-
-  // Line Item Details
-  lineNumber: integer('line_number').notNull(), // Order in proposal
-  itemType: varchar('item_type').notNull(), // equipment, accessory, service, supply, labor
-
-  // Product/Service Reference
-  productId: varchar('product_id'), // Reference to product tables
-  productCode: varchar('product_code'),
-  productName: varchar('product_name').notNull(),
-  description: text('description'),
-
-  // Quantities and Pricing
-  quantity: integer('quantity').notNull().default(1),
-  unitCost: decimal('unit_cost', { precision: 10, scale: 2 }), // Dealer cost
-  unitPrice: decimal('unit_price', { precision: 10, scale: 2 }).notNull(),
-  totalPrice: decimal('total_price', { precision: 10, scale: 2 }).notNull(),
-
-  // Discounts and Margins
-  discount: decimal('discount', { precision: 10, scale: 2 }).default('0'),
-  margin: decimal('margin', { precision: 5, scale: 2 }), // Profit margin percentage
-
-  // Free-form per-line note (QUOTE-003)
-  notes: text('notes'),
-
-  // Service-Specific Fields
-  isRecurring: boolean('is_recurring').default(false),
-  recurringFrequency: varchar('recurring_frequency'), // monthly, quarterly, annually
-  recurringDuration: integer('recurring_duration'), // number of billing cycles
-
-  // Terms and Conditions
-  leadTime: integer('lead_time'), // Days to delivery/implementation
-  warrantyPeriod: integer('warranty_period'), // Months
-  serviceLevel: varchar('service_level'), // standard, premium, basic
-  // COP-B06. Mirrored from shared/schema.ts's declaration of this same table:
-  // one table in the database, two declarations, and a column added to only one
-  // of them reads as phantom (WF-C-04).
-  replacesEquipmentId: varchar('replaces_equipment_id'),
-
-  // Customization Options
-  isOptional: boolean('is_optional').default(false),
-  isCustomizable: boolean('is_customizable').default(false),
-  configurationOptions: jsonb('configuration_options').$type<Record<string, any>>(),
-
-  // Alternative Options
-  alternativeOptions: jsonb('alternative_options').$type<
-    Array<{
-      description: string;
-      unitPrice: number;
-      notes?: string;
-    }>
-  >(),
-
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-});
-
-// Proposal Comments and Collaboration
-export const proposalComments = pgTable('proposal_comments', {
-  id: varchar('id')
-    .primaryKey()
-    .default(sql`gen_random_uuid()`),
-  tenantId: varchar('tenant_id').notNull(),
-  proposalId: varchar('proposal_id').notNull(),
-
-  // Comment Details
-  commentType: varchar('comment_type').notNull(), // internal, customer_feedback, revision_request
-  content: text('content').notNull(),
-
-  // Author Information
-  authorId: varchar('author_id').notNull(),
-  authorName: varchar('author_name').notNull(),
-  authorRole: varchar('author_role'), // sales_rep, manager, customer
-
-  // Thread Management
-  parentCommentId: varchar('parent_comment_id'), // For threaded comments
-  isResolved: boolean('is_resolved').default(false),
-
-  // Attachments
-  attachments: jsonb('attachments').$type<
-    Array<{
-      fileName: string;
-      fileUrl: string;
-      fileSize: number;
-      fileType: string;
-    }>
-  >(),
-
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-});
-
-// Proposal Analytics and Tracking
-export const proposalAnalytics = pgTable('proposal_analytics', {
-  id: varchar('id')
-    .primaryKey()
-    .default(sql`gen_random_uuid()`),
-  tenantId: varchar('tenant_id').notNull(),
-  proposalId: varchar('proposal_id').notNull(),
-
-  // Analytics Event
-  eventType: varchar('event_type').notNull(), // opened, downloaded, shared, section_viewed
-  eventDetails: jsonb('event_details').$type<{
-    sectionViewed?: string;
-    timeSpent?: number;
-    deviceType?: string;
-    ipAddress?: string;
-    userAgent?: string;
-  }>(),
-
-  // Visitor Information
-  visitorId: varchar('visitor_id'), // Anonymous visitor tracking
-  customerUserId: varchar('customer_user_id'), // If logged in customer
-
-  // Timing
-  sessionId: varchar('session_id'),
-  timestamp: timestamp('timestamp').defaultNow(),
-
-  createdAt: timestamp('created_at').defaultNow(),
-});
-
-// Proposal Approval Workflow
-export const proposalApprovals = pgTable('proposal_approvals', {
-  id: varchar('id')
-    .primaryKey()
-    .default(sql`gen_random_uuid()`),
-  tenantId: varchar('tenant_id').notNull(),
-  proposalId: varchar('proposal_id').notNull(),
-
-  // Approval Details
-  approvalLevel: integer('approval_level').notNull(), // 1, 2, 3 for multi-level approvals
-  approvalType: varchar('approval_type').notNull(), // pricing, terms, special_conditions
-  requiredRole: varchar('required_role').notNull(), // manager, director, vp
-
-  // Approval Status
-  status: varchar('status').notNull().default('pending'), // pending, approved, rejected, escalated
-  approverId: varchar('approver_id'),
-  approverName: varchar('approver_name'),
-
-  // Approval Details
-  approvalNotes: text('approval_notes'),
-  conditions: text('conditions'), // Any conditions for approval
-
-  // Timing
-  requestedAt: timestamp('requested_at').defaultNow(),
-  respondedAt: timestamp('responded_at'),
-
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-});
-
-// Type exports
-export type ProposalTemplate = typeof proposalTemplates.$inferSelect;
-export type InsertProposalTemplate = typeof proposalTemplates.$inferInsert;
-export type EquipmentPackage = typeof equipmentPackages.$inferSelect;
-export type InsertEquipmentPackage = typeof equipmentPackages.$inferInsert;
-export type Proposal = typeof proposals.$inferSelect;
-export type InsertProposal = typeof proposals.$inferInsert;
-export type ProposalLineItem = typeof proposalLineItems.$inferSelect;
-export type InsertProposalLineItem = typeof proposalLineItems.$inferInsert;
-export type ProposalComment = typeof proposalComments.$inferSelect;
-export type InsertProposalComment = typeof proposalComments.$inferInsert;
-export type ProposalAnalytics = typeof proposalAnalytics.$inferSelect;
-export type InsertProposalAnalytics = typeof proposalAnalytics.$inferInsert;
-export type ProposalApproval = typeof proposalApprovals.$inferSelect;
-export type InsertProposalApproval = typeof proposalApprovals.$inferInsert;
-
-// Zod schemas for validation
-export const insertProposalTemplateSchema = createInsertSchema(proposalTemplates).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export const insertEquipmentPackageSchema = createInsertSchema(equipmentPackages).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export const insertProposalSchema = createInsertSchema(proposals).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export const insertProposalLineItemSchema = createInsertSchema(proposalLineItems).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export const insertProposalCommentSchema = createInsertSchema(proposalComments).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export const insertProposalAnalyticsSchema = createInsertSchema(proposalAnalytics).omit({
-  id: true,
-  createdAt: true,
-});
-
-export const insertProposalApprovalSchema = createInsertSchema(proposalApprovals).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
+/**
+ * Quote/proposal tables — re-exported. THE DECLARATIONS LIVE IN `shared/schema.ts`.
+ *
+ * This file used to declare all seven itself, and every one of them described a
+ * table that has not existed since migration 0002:
+ *
+ *   proposals            15 columns it does not have, 11 it does, missing
+ *   proposal_line_items   5 phantom, 7 missing
+ *   proposal_templates   10 phantom, 5 missing
+ *   proposal_approvals    7 phantom, 3 missing
+ *   proposal_analytics    3 phantom, 2 missing
+ *   proposal_comments     2 phantom, 1 missing
+ *   equipment_packages    3 phantom, 3 missing
+ *
+ * 0002 reshaped these tables and this file was never updated, so it froze the
+ * world as it looked before that migration. Measured against a real PostgreSQL
+ * with the chain replayed, not read off the files: `schema.ts` matches the
+ * database exactly for all seven.
+ *
+ * WHAT IT COST, STATED PRECISELY, because the obvious answer is wrong.
+ * `check:phantom-cols` has NOT been blind to these since AUDIT-035: it resolves
+ * an ambiguous table against `shared/drizzle-schema.ts`, which already skipped
+ * every one of these by name ("SKIPPED: defined in schema.ts"). So the guard
+ * was checking against `schema.ts` and was right to.
+ *
+ * What this file cost was the next reader: seven exported tables, importable,
+ * compiling, and wrong about every column. Nothing imported them yet, which is
+ * the only reason that was free.
+ *
+ * WF-C-04's rule was "one table in the database; both declarations carry it".
+ * That advice cannot work and this file is the proof: the two had drifted 15
+ * columns apart while the comment saying to keep them in step sat in the middle
+ * of one of them. One declaration, or nobody can tell you which is true.
+ */
+
+export {
+  proposalTemplates,
+  equipmentPackages,
+  proposals,
+  proposalLineItems,
+  proposalComments,
+  proposalAnalytics,
+  proposalApprovals,
+  insertProposalTemplateSchema,
+  insertEquipmentPackageSchema,
+  insertProposalSchema,
+  insertProposalLineItemSchema,
+  insertProposalCommentSchema,
+  insertProposalAnalyticsSchema,
+  insertProposalApprovalSchema,
+} from './schema';
+
+export type {
+  ProposalTemplate,
+  InsertProposalTemplate,
+  EquipmentPackage,
+  InsertEquipmentPackage,
+  Proposal,
+  InsertProposal,
+  ProposalLineItem,
+  InsertProposalLineItem,
+  ProposalComment,
+  InsertProposalComment,
+  ProposalAnalytics,
+  InsertProposalAnalytics,
+  ProposalApproval,
+  InsertProposalApproval,
+} from './schema';
