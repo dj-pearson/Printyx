@@ -3,6 +3,8 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { ROLE_LEVEL, RbacError, requireRoleLevel } from '../_shared/rbac.ts';
+import type { AuthContext } from '../_shared/auth.ts';
 import { toCamel } from '../_shared/case.ts';
 import { generateCompletion } from '../_shared/anthropic.ts';
 import {
@@ -113,6 +115,41 @@ export default async function handler(req: Request) {
 
     const admin = createSupabaseServiceClient();
     const tenantId = await resolveTenantId(req, user, admin);
+
+    /**
+     * SEC-EDGE-001. Placing supply orders and changing the rules that place them spends the
+     * dealer's money.
+     *
+     * The gate is on the WRITE branches, not the function: seeing what the analysis recommends is a rep's or a
+     * technician's own work.
+     * A LEVEL check rather than a permission code (SEC-EDGE-002).
+     */
+    const requireManager = () => {
+      requireRoleLevel(
+        {
+          userId: user.id,
+          tenantId,
+          email: user.email,
+          jwt: jwt ?? '',
+          supabaseUser: user,
+        } as AuthContext,
+        ROLE_LEVEL.MANAGER,
+      );
+    };
+    const denyManager = (err: unknown) => {
+      if (err instanceof RbacError) {
+        return createCorsResponse(
+          {
+            error: 'Changing replenishment rules or triggering an order requires a manager role',
+            code: 'INSUFFICIENT_ROLE',
+            details: err.details,
+          },
+          403,
+          req,
+        );
+      }
+      throw err;
+    };
 
     if (!tenantId) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
@@ -474,6 +511,11 @@ export default async function handler(req: Request) {
 
     // POST /auto-supply-replenishment/rules - Create rule
     if (req.method === 'POST' && endpoint === 'rules') {
+      try {
+        requireManager();
+      } catch (err) {
+        return denyManager(err);
+      }
       const body = await req.json();
 
       // Every field below is a column this table HAS. What was here named
@@ -508,6 +550,11 @@ export default async function handler(req: Request) {
 
     // PUT /auto-supply-replenishment/rules/:id - Update rule
     if (req.method === 'PUT' && endpoint === 'rules' && ruleId) {
+      try {
+        requireManager();
+      } catch (err) {
+        return denyManager(err);
+      }
       const body = await req.json();
 
       // `{ ...body }` sent whatever the caller typed straight at PostgREST, so
@@ -620,6 +667,11 @@ export default async function handler(req: Request) {
 
     // POST /auto-supply-replenishment/trigger - manually trigger a replenishment run
     if (req.method === 'POST' && endpoint === 'trigger') {
+      try {
+        requireManager();
+      } catch (err) {
+        return denyManager(err);
+      }
       // AUDIT-037: this used to create a purchase order per triggered rule and
       // report how many it made. It could not create one, and it could not read
       // a rule either.

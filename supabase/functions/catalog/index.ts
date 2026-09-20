@@ -3,6 +3,8 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { ROLE_LEVEL, RbacError, requireRoleLevel } from '../_shared/rbac.ts';
+import type { AuthContext } from '../_shared/auth.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 
 export default async function handler(req: Request) {
@@ -34,6 +36,40 @@ export default async function handler(req: Request) {
     // caller's users row, which neither the user nor the browser can write.
     const admin = createSupabaseServiceClient();
     const tenantId = await resolveTenantId(req, user, admin);
+
+    /**
+     * SEC-EDGE-001. The product catalogue is where prices live, and enabling a model decides
+     * what a rep can sell and at what.
+     *
+     * The gate is on the WRITE branches, not the function: browsing the catalogue is the whole point of it.
+     * A LEVEL check rather than a permission code (SEC-EDGE-002).
+     */
+    const requireManager = () => {
+      requireRoleLevel(
+        {
+          userId: user.id,
+          tenantId,
+          email: user.email,
+          jwt: jwt ?? '',
+          supabaseUser: user,
+        } as AuthContext,
+        ROLE_LEVEL.MANAGER,
+      );
+    };
+    const denyManager = (err: unknown) => {
+      if (err instanceof RbacError) {
+        return createCorsResponse(
+          {
+            error: 'Changing the product catalogue requires a manager role',
+            code: 'INSUFFICIENT_ROLE',
+            details: err.details,
+          },
+          403,
+          req,
+        );
+      }
+      throw err;
+    };
 
     if (!tenantId) {
       console.error('No tenant ID found for user:', user.id);
@@ -79,6 +115,11 @@ export default async function handler(req: Request) {
 
     // POST /catalog/models/:id/enable - Enable product for customer pricing
     if (req.method === 'POST' && resource === 'models' && resourceId && action === 'enable') {
+      try {
+        requireManager();
+      } catch (err) {
+        return denyManager(err);
+      }
       const body = await req.json();
 
       // Update product model with customer-specific overrides if needed
@@ -109,6 +150,11 @@ export default async function handler(req: Request) {
 
     // POST /catalog/models/bulk-enable - Enable multiple products
     if (req.method === 'POST' && resource === 'models' && resourceId === 'bulk-enable') {
+      try {
+        requireManager();
+      } catch (err) {
+        return denyManager(err);
+      }
       const body = await req.json();
       const { productIds, overrides } = body;
 
@@ -229,6 +275,11 @@ export default async function handler(req: Request) {
 
     // POST /catalog/models - Create new product model
     if (req.method === 'POST' && resource === 'models') {
+      try {
+        requireManager();
+      } catch (err) {
+        return denyManager(err);
+      }
       const body = await req.json();
 
       // product_models carries THREE pricing tiers — new / upgrade / lexmark —
@@ -328,6 +379,11 @@ export default async function handler(req: Request) {
 
     // PATCH /catalog/models/:id - Update product model
     if ((req.method === 'PATCH' || req.method === 'PUT') && resource === 'models' && resourceId) {
+      try {
+        requireManager();
+      } catch (err) {
+        return denyManager(err);
+      }
       const body = await req.json();
 
       const updateData: Record<string, any> = {

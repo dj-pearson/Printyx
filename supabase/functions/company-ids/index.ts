@@ -23,6 +23,8 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { ROLE_LEVEL, RbacError, requireRoleLevel } from '../_shared/rbac.ts';
+import type { AuthContext } from '../_shared/auth.ts';
 
 const NAMED_ROUTES = new Set([
   'lookup',
@@ -99,6 +101,44 @@ export default async function handler(req: Request) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
     }
 
+    /**
+     * SEC-EDGE-001. The company numbering scheme is tenant-wide identity: a backfill rewrites
+     * display ids across every business record at once, and a PUT changes the code, tax id or
+     * external id an account is known by in exports and in the customer's own paperwork.
+     *
+     * The gate is on the three WRITE branches. Lookup, missing-ids, next-code, preview-slug
+     * and validate all stay open - they answer "what would this be", which is what a rep needs
+     * while creating a record. Mirrors the page's own minLevel 4
+     * (navigation-permissions.ts '/company-ids-test'), as a LEVEL check rather than a
+     * permission code (SEC-EDGE-002).
+     */
+    const requireManager = () => {
+      requireRoleLevel(
+        {
+          userId: user.id,
+          tenantId,
+          email: user.email,
+          jwt: jwt ?? '',
+          supabaseUser: user,
+        } as AuthContext,
+        ROLE_LEVEL.MANAGER,
+      );
+    };
+    const denyManager = (err: unknown) => {
+      if (err instanceof RbacError) {
+        return createCorsResponse(
+          {
+            error: 'Changing company identifiers requires a manager role',
+            code: 'INSUFFICIENT_ROLE',
+            details: err.details,
+          },
+          403,
+          req,
+        );
+      }
+      throw err;
+    };
+
     const url = new URL(req.url);
     const { parts } = normalizePath(url.pathname, 'company-ids');
     const first = parts[0];
@@ -163,6 +203,11 @@ export default async function handler(req: Request) {
 
     // POST /company-ids/backfill
     if (req.method === 'POST' && first === 'backfill') {
+      try {
+        requireManager();
+      } catch (err) {
+        return denyManager(err);
+      }
       let body: { limit?: number } = {};
       try {
         body = await req.json();
@@ -210,6 +255,11 @@ export default async function handler(req: Request) {
 
     // POST /company-ids/generate/:recordId   — generate display ID + slug for one record
     if (req.method === 'POST' && first === 'generate' && second) {
+      try {
+        requireManager();
+      } catch (err) {
+        return denyManager(err);
+      }
       const recordId = second;
       const { data: record, error: fetchErr } = await admin
         .from('business_records')
@@ -371,6 +421,11 @@ export default async function handler(req: Request) {
 
     // PUT /company-ids/:id
     if (req.method === 'PUT' && first) {
+      try {
+        requireManager();
+      } catch (err) {
+        return denyManager(err);
+      }
       const body = await req.json();
       const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
       const unpersisted: string[] = [];

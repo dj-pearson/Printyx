@@ -3,6 +3,8 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { ROLE_LEVEL, RbacError, requireRoleLevel } from '../_shared/rbac.ts';
+import type { AuthContext } from '../_shared/auth.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 import { CredentialVaultError, encryptSecret, readSecret } from '../_shared/credential-envelope.ts';
 import {
@@ -273,6 +275,42 @@ export default async function handler(req: Request) {
     const admin = createSupabaseServiceClient();
     const tenantId = await resolveTenantId(req, user, admin);
 
+    /**
+     * SEC-EDGE-001. Storing, verifying and deleting a third-party API CREDENTIAL. Anyone
+     * who can write one can point the tenant's enrichment at an account they
+     * control, and anyone who can delete one can break enrichment for everybody.
+     *
+     * The gate is on the WRITE branches, not the function: searching and reading enrichment results is a rep's
+     * own work.
+     * A LEVEL check rather than a permission code (SEC-EDGE-002).
+     */
+    const requireManager = () => {
+      requireRoleLevel(
+        {
+          userId: user.id,
+          tenantId,
+          email: user.email,
+          jwt: jwt ?? '',
+          supabaseUser: user,
+        } as AuthContext,
+        ROLE_LEVEL.MANAGER,
+      );
+    };
+    const denyManager = (err: unknown) => {
+      if (err instanceof RbacError) {
+        return createCorsResponse(
+          {
+            error: 'Managing Apollo credentials requires a manager role',
+            code: 'INSUFFICIENT_ROLE',
+            details: err.details,
+          },
+          403,
+          req,
+        );
+      }
+      throw err;
+    };
+
     if (!tenantId) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
     }
@@ -315,6 +353,11 @@ export default async function handler(req: Request) {
 
     // POST /apollo/credentials/verify - test a key before or after saving
     if (req.method === 'POST' && endpoint === 'credentials' && resourceId === 'verify') {
+      try {
+        requireManager();
+      } catch (err) {
+        return denyManager(err);
+      }
       const body = await req.json().catch(() => ({}));
       let testKey: string | null =
         typeof body?.apiKey === 'string' && body.apiKey.trim() ? body.apiKey.trim() : null;
@@ -372,6 +415,11 @@ export default async function handler(req: Request) {
 
     // POST /apollo/credentials - save or replace this tenant's key
     if (req.method === 'POST' && endpoint === 'credentials' && !resourceId) {
+      try {
+        requireManager();
+      } catch (err) {
+        return denyManager(err);
+      }
       const body = await req.json().catch(() => ({}));
       const apiKey = typeof body?.apiKey === 'string' ? body.apiKey.trim() : '';
       if (!apiKey) {
@@ -456,6 +504,11 @@ export default async function handler(req: Request) {
 
     // DELETE /apollo/credentials/:id
     if (req.method === 'DELETE' && endpoint === 'credentials' && resourceId) {
+      try {
+        requireManager();
+      } catch (err) {
+        return denyManager(err);
+      }
       const { error } = await admin
         .from('integration_credentials')
         .delete()

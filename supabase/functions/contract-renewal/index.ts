@@ -4,6 +4,8 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { toNumber } from '../_shared/quote-math.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { ROLE_LEVEL, RbacError, requireRoleLevel } from '../_shared/rbac.ts';
+import type { AuthContext } from '../_shared/auth.ts';
 import { toCamel } from '../_shared/case.ts';
 import { generateCompletion } from '../_shared/anthropic.ts';
 import { termEndDate } from '../_shared/date-months.ts';
@@ -39,6 +41,40 @@ export default async function handler(req: Request) {
 
     const admin = createSupabaseServiceClient();
     const tenantId = await resolveTenantId(req, user, admin);
+
+    /**
+     * SEC-EDGE-001. Renewing a contract and marking one churned change the commercial terms a
+     * customer is on and what the renewal book reports.
+     *
+     * The gate is on the WRITE branches, not the function: reading the renewal dashboard is what a rep does with it.
+     * A LEVEL check rather than a permission code (SEC-EDGE-002).
+     */
+    const requireManager = () => {
+      requireRoleLevel(
+        {
+          userId: user.id,
+          tenantId,
+          email: user.email,
+          jwt: jwt ?? '',
+          supabaseUser: user,
+        } as AuthContext,
+        ROLE_LEVEL.MANAGER,
+      );
+    };
+    const denyManager = (err: unknown) => {
+      if (err instanceof RbacError) {
+        return createCorsResponse(
+          {
+            error: 'Renewing or churning a contract requires a manager role',
+            code: 'INSUFFICIENT_ROLE',
+            details: err.details,
+          },
+          403,
+          req,
+        );
+      }
+      throw err;
+    };
 
     if (!tenantId) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
@@ -272,6 +308,11 @@ export default async function handler(req: Request) {
 
     // POST /contract-renewal/:contractId/renew - Process renewal
     if ((req.method === 'POST' && endpoint === 'renew') || (contractId && parts[2] === 'renew')) {
+      try {
+        requireManager();
+      } catch (err) {
+        return denyManager(err);
+      }
       const targetContractId =
         endpoint === 'renew' ? url.searchParams.get('contractId') : contractId;
       const body = await req.json();
@@ -369,6 +410,11 @@ export default async function handler(req: Request) {
 
     // POST /contract-renewal/:contractId/mark-churned - Mark as churned
     if (req.method === 'POST' && contractId && parts[2] === 'mark-churned') {
+      try {
+        requireManager();
+      } catch (err) {
+        return denyManager(err);
+      }
       const body = await req.json();
 
       const { data: contract, error } = await admin

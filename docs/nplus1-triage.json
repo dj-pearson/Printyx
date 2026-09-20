@@ -15,7 +15,7 @@
       "why": "One progress write per workflow STEP, and the steps are the workflow definition, not tenant rows. Each write records which step is running and has to land before that step does, so it is sequential by intent."
     },
     {
-      "loop": "auto-supply-replenishment/index.ts:290",
+      "loop": "auto-supply-replenishment/index.ts:327",
       "table": "supply_usage_history",
       "verdict": "scales-dominated",
       "why": "One usage-history read per monitored supply, and one generateCompletion per supply in the same iteration. The model call is the wall clock; hoisting the read halves the DB hops and changes nothing a user could perceive. Worth doing when the loop stops calling a model, not before."
@@ -51,25 +51,25 @@
       "why": "One classifyIntent model call per keyword. The model is the wall clock."
     },
     {
-      "loop": "company-ids/index.ts:182",
+      "loop": "company-ids/index.ts:227",
       "table": "business_records",
       "verdict": "bounded",
       "why": "Three fields - company code, tax id, external id - checked for uniqueness. A literal tuple list."
     },
     {
-      "loop": "company-ids/index.ts:317",
+      "loop": "company-ids/index.ts:367",
       "table": "business_records",
       "verdict": "bounded",
       "why": "Three fields - company code, tax id, external id - checked for uniqueness. A literal tuple list."
     },
     {
-      "loop": "contract-renewal/index.ts:448",
+      "loop": "contract-renewal/index.ts:494",
       "table": "contract_renewal_tracking",
       "verdict": "scales-dominated",
       "why": "One generateCompletion per expiring contract. The model call is the wall clock."
     },
     {
-      "loop": "email-autopilot/index.ts:578",
+      "loop": "email-autopilot/index.ts:624",
       "table": "business_records",
       "verdict": "scales-dominated",
       "why": "One classifyEmail model call per inbox message. The model is the wall clock and the inbox page is already capped upstream."

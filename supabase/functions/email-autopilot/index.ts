@@ -25,6 +25,8 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { ROLE_LEVEL, RbacError, requireRoleLevel } from '../_shared/rbac.ts';
+import type { AuthContext } from '../_shared/auth.ts';
 import {
   editDistancePct,
   fallbackClassify,
@@ -225,6 +227,40 @@ export default async function handler(req: Request) {
     // caller's users row, which neither the user nor the browser can write.
     const admin = createSupabaseServiceClient();
     const tenantId = await resolveTenantId(req, user, admin);
+
+    /**
+     * SEC-EDGE-001. Connecting a mailbox and changing autopilot settings decide what goes out
+     * under the company's name.
+     *
+     * The gate is on the WRITE branches, not the function: reading the queue and its history is a rep's own work.
+     * A LEVEL check rather than a permission code (SEC-EDGE-002).
+     */
+    const requireManager = () => {
+      requireRoleLevel(
+        {
+          userId: user.id,
+          tenantId,
+          email: user.email,
+          jwt: jwt ?? '',
+          supabaseUser: user,
+        } as AuthContext,
+        ROLE_LEVEL.MANAGER,
+      );
+    };
+    const denyManager = (err: unknown) => {
+      if (err instanceof RbacError) {
+        return createCorsResponse(
+          {
+            error: 'Connecting a mailbox or changing autopilot settings requires a manager role',
+            code: 'INSUFFICIENT_ROLE',
+            details: err.details,
+          },
+          403,
+          req,
+        );
+      }
+      throw err;
+    };
     if (!tenantId) return createCorsResponse({ message: 'Tenant ID is required' }, 400, req);
     const userId = user.id;
 
@@ -275,6 +311,11 @@ export default async function handler(req: Request) {
 
     // ─── POST /connect ───────────────────────────────────────────────
     if (first === 'connect' && req.method === 'POST') {
+      try {
+        requireManager();
+      } catch (err) {
+        return denyManager(err);
+      }
       const body = (await req.json().catch(() => ({}))) as Row;
       const provider = String(body.provider ?? '');
       if (provider !== 'gmail' && provider !== 'outlook') {
@@ -327,6 +368,11 @@ export default async function handler(req: Request) {
 
     // ─── PUT /settings ───────────────────────────────────────────────
     if (first === 'settings' && req.method === 'PUT') {
+      try {
+        requireManager();
+      } catch (err) {
+        return denyManager(err);
+      }
       const body = (await req.json().catch(() => ({}))) as Row;
       if (body.enabled !== undefined && typeof body.enabled !== 'boolean') {
         return createCorsResponse(

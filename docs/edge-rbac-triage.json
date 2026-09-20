@@ -1,19 +1,14 @@
 {
-  "note": "SEC-EDGE-001. A REASON for every entry in docs/edge-rbac-baseline.json, so \"open to all roles\" stops reading the same whether an entry is deliberate or unexamined. Verdicts: public (the handler never authenticates, so role is a category error), internal (pg_cron, not a user), headless (nothing calls it, so gating decides nothing \u2014 AUDIT-024), open-by-design (every tenant member legitimately uses it; row scoping is the real control), needs-gate (a restriction is wanted and is missing \u2014 this is the worklist), unexamined (nobody has looked yet, stated rather than implied). check:edge-rbac requires an entry here for every baselined function.",
+  "note": "SEC-EDGE-001. A REASON for every entry in docs/edge-rbac-baseline.json, so \"open to all roles\" stops reading the same whether an entry is deliberate or unexamined. Verdicts: public (the handler never authenticates, so role is a category error), internal (pg_cron, not a user), headless (nothing calls it, so gating decides nothing — AUDIT-024), open-by-design (every tenant member legitimately uses it; row scoping is the real control), needs-gate (a restriction is wanted and is missing — this is the worklist), unexamined (nobody has looked yet, stated rather than implied). check:edge-rbac requires an entry here for every baselined function.",
   "counts": {
-    "needs-gate": 10,
-    "open-by-design": 19,
-    "headless": 44,
     "unexamined": 53,
+    "headless": 44,
+    "open-by-design": 20,
+    "public": 8,
     "internal": 3,
-    "public": 8
+    "needs-gate": 1
   },
   "triage": [
-    {
-      "fn": "accessories",
-      "verdict": "needs-gate",
-      "reason": "Two writes over catalogue pricing, same reasoning as catalog."
-    },
     {
       "fn": "activities",
       "verdict": "open-by-design",
@@ -21,8 +16,8 @@
     },
     {
       "fn": "address-books",
-      "verdict": "needs-gate",
-      "reason": "Six writes over MFP address books, which are pushed to customer devices. A bad write reaches hardware on a customer site."
+      "verdict": "open-by-design",
+      "reason": "CORRECTED. The earlier verdict said a bad write reaches hardware on a customer site; reading the handlers, nothing here pushes to a device - export converts the book to a vendor format and hands back bytes the technician uploads. The page is minLevel 1 in navigation-permissions.ts ('/service/address-books'), which is the gate this function is supposed to mirror (SEC-EDGE-002), and editing entries for the device in front of you is the technician job the feature exists for. Tenant scoping via bookBelongsToTenant is the real control."
     },
     {
       "fn": "ai-analytics",
@@ -32,7 +27,7 @@
     {
       "fn": "ai-documentation",
       "verdict": "headless",
-      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it — that is AUDIT-024, not this story."
     },
     {
       "fn": "ai-employee",
@@ -47,7 +42,7 @@
     {
       "fn": "ai-gpt5",
       "verdict": "needs-gate",
-      "reason": "Zero writes, but EVERY call costs money at OpenAI and any tenant member can make one. The control wanted here is rate limiting or a spend cap rather than a role, which is why it is not simply gated - but it is not \"open by design\" either."
+      "reason": "Zero writes, but EVERY call costs money at OpenAI and any tenant member can make one. The control wanted here is a rate limit or a spend cap, not a role - a manager can run up the same bill. Left as the single open needs-gate entry deliberately, because gating it by level would look like a fix and change nothing about the exposure."
     },
     {
       "fn": "ai-search",
@@ -60,34 +55,24 @@
       "reason": "Read-only: zero writes. PA-040 already gated its fabricated components behind NotConnectedState; what remains is reads."
     },
     {
-      "fn": "apollo",
-      "verdict": "needs-gate",
-      "reason": "Eleven writes including third-party API CREDENTIALS (ApolloCredentialManager). Storing and rotating an integration credential is a management act."
-    },
-    {
       "fn": "appointments",
       "verdict": "headless",
-      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it — that is AUDIT-024, not this story."
     },
     {
       "fn": "assign-lead",
       "verdict": "headless",
-      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it — that is AUDIT-024, not this story."
     },
     {
       "fn": "auth-me",
       "verdict": "headless",
-      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
-    },
-    {
-      "fn": "auto-supply-replenishment",
-      "verdict": "needs-gate",
-      "reason": "Seven writes and it places supply ORDERS. Spending the dealer money is not a read."
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it — that is AUDIT-024, not this story."
     },
     {
       "fn": "automation",
       "verdict": "headless",
-      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it — that is AUDIT-024, not this story."
     },
     {
       "fn": "blog",
@@ -102,7 +87,7 @@
     {
       "fn": "business-records-search",
       "verdict": "headless",
-      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it — that is AUDIT-024, not this story."
     },
     {
       "fn": "calendar-oauth",
@@ -112,22 +97,12 @@
     {
       "fn": "card-config",
       "verdict": "headless",
-      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
-    },
-    {
-      "fn": "catalog",
-      "verdict": "needs-gate",
-      "reason": "Six writes over the product catalogue, which is where prices live."
-    },
-    {
-      "fn": "chatbot",
-      "verdict": "needs-gate",
-      "reason": "Six writes plus an external model call; it configures what the bot says to customers."
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it — that is AUDIT-024, not this story."
     },
     {
       "fn": "chrome-extension",
       "verdict": "headless",
-      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it — that is AUDIT-024, not this story."
     },
     {
       "fn": "churn-risk",
@@ -135,19 +110,9 @@
       "reason": "One write; the reads are management-shaped but that is a guess until it is read."
     },
     {
-      "fn": "company-ids",
-      "verdict": "needs-gate",
-      "reason": "Three writes over the tenant numbering scheme; its page is minLevel 4."
-    },
-    {
-      "fn": "contract-renewal",
-      "verdict": "needs-gate",
-      "reason": "Six writes against contracts - the commercial terms a customer is on."
-    },
-    {
       "fn": "contract-renewals",
       "verdict": "headless",
-      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it — that is AUDIT-024, not this story."
     },
     {
       "fn": "contract-tiered-rates",
@@ -167,7 +132,7 @@
     {
       "fn": "csrf-token",
       "verdict": "public",
-      "reason": "Deliberately unauthenticated \u2014 the handler never calls auth.getUser. \"Open to all roles\" is a category error for it; its controls are rate limiting and input validation."
+      "reason": "Deliberately unauthenticated — the handler never calls auth.getUser. \"Open to all roles\" is a category error for it; its controls are rate limiting and input validation."
     },
     {
       "fn": "customer-portal",
@@ -177,7 +142,7 @@
     {
       "fn": "customer-segments",
       "verdict": "headless",
-      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it — that is AUDIT-024, not this story."
     },
     {
       "fn": "daily-briefing",
@@ -192,7 +157,7 @@
     {
       "fn": "dashboard-modules",
       "verdict": "headless",
-      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it — that is AUDIT-024, not this story."
     },
     {
       "fn": "dashboard-widgets",
@@ -207,7 +172,7 @@
     {
       "fn": "db-probe",
       "verdict": "headless",
-      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it — that is AUDIT-024, not this story."
     },
     {
       "fn": "deal-desk-copilot",
@@ -228,11 +193,6 @@
       "fn": "documents",
       "verdict": "unexamined",
       "reason": "One write; not yet read."
-    },
-    {
-      "fn": "email-autopilot",
-      "verdict": "needs-gate",
-      "reason": "Nine writes and it sends email on the tenant's behalf. Any member can currently send as the company."
     },
     {
       "fn": "email-marketing",
@@ -257,12 +217,12 @@
     {
       "fn": "expansion-opportunities",
       "verdict": "headless",
-      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it — that is AUDIT-024, not this story."
     },
     {
       "fn": "exports",
       "verdict": "headless",
-      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it — that is AUDIT-024, not this story."
     },
     {
       "fn": "field-service",
@@ -272,22 +232,22 @@
     {
       "fn": "file-storage",
       "verdict": "headless",
-      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it — that is AUDIT-024, not this story."
     },
     {
       "fn": "files",
       "verdict": "headless",
-      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it — that is AUDIT-024, not this story."
     },
     {
       "fn": "fleet",
       "verdict": "headless",
-      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it — that is AUDIT-024, not this story."
     },
     {
       "fn": "geocode-leads",
       "verdict": "headless",
-      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it — that is AUDIT-024, not this story."
     },
     {
       "fn": "handoff-task-templates",
@@ -302,32 +262,32 @@
     {
       "fn": "hello",
       "verdict": "public",
-      "reason": "Deliberately unauthenticated \u2014 the handler never calls auth.getUser. \"Open to all roles\" is a category error for it; its controls are rate limiting and input validation."
+      "reason": "Deliberately unauthenticated — the handler never calls auth.getUser. \"Open to all roles\" is a category error for it; its controls are rate limiting and input validation."
     },
     {
       "fn": "import-export",
       "verdict": "headless",
-      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it — that is AUDIT-024, not this story."
     },
     {
       "fn": "lead-assignment",
       "verdict": "headless",
-      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it — that is AUDIT-024, not this story."
     },
     {
       "fn": "lead-assignment-history",
       "verdict": "headless",
-      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it — that is AUDIT-024, not this story."
     },
     {
       "fn": "lead-assignment-queue",
       "verdict": "headless",
-      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it — that is AUDIT-024, not this story."
     },
     {
       "fn": "lead-assignment-rules",
       "verdict": "headless",
-      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it — that is AUDIT-024, not this story."
     },
     {
       "fn": "maintenance",
@@ -352,7 +312,7 @@
     {
       "fn": "me",
       "verdict": "headless",
-      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it — that is AUDIT-024, not this story."
     },
     {
       "fn": "meeting-transcription",
@@ -367,7 +327,7 @@
     {
       "fn": "mobile-auth",
       "verdict": "public",
-      "reason": "Deliberately unauthenticated \u2014 the handler never calls auth.getUser. \"Open to all roles\" is a category error for it; its controls are rate limiting and input validation."
+      "reason": "Deliberately unauthenticated — the handler never calls auth.getUser. \"Open to all roles\" is a category error for it; its controls are rate limiting and input validation."
     },
     {
       "fn": "mobile-field",
@@ -387,7 +347,7 @@
     {
       "fn": "oauth-proxy",
       "verdict": "public",
-      "reason": "Deliberately unauthenticated \u2014 the handler never calls auth.getUser. \"Open to all roles\" is a category error for it; its controls are rate limiting and input validation."
+      "reason": "Deliberately unauthenticated — the handler never calls auth.getUser. \"Open to all roles\" is a category error for it; its controls are rate limiting and input validation."
     },
     {
       "fn": "oid-mappings",
@@ -407,7 +367,7 @@
     {
       "fn": "parts-inventory",
       "verdict": "headless",
-      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it — that is AUDIT-024, not this story."
     },
     {
       "fn": "parts-orders",
@@ -417,7 +377,7 @@
     {
       "fn": "payment-processing",
       "verdict": "headless",
-      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it — that is AUDIT-024, not this story."
     },
     {
       "fn": "performance",
@@ -457,7 +417,7 @@
     {
       "fn": "pricing-rules",
       "verdict": "headless",
-      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it — that is AUDIT-024, not this story."
     },
     {
       "fn": "printer-monitoring",
@@ -477,22 +437,22 @@
     {
       "fn": "projects-enhanced",
       "verdict": "headless",
-      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it — that is AUDIT-024, not this story."
     },
     {
       "fn": "public-booking",
       "verdict": "public",
-      "reason": "Deliberately unauthenticated \u2014 the handler never calls auth.getUser. \"Open to all roles\" is a category error for it; its controls are rate limiting and input validation."
+      "reason": "Deliberately unauthenticated — the handler never calls auth.getUser. \"Open to all roles\" is a category error for it; its controls are rate limiting and input validation."
     },
     {
       "fn": "public-calculator",
       "verdict": "public",
-      "reason": "Deliberately unauthenticated \u2014 the handler never calls auth.getUser. \"Open to all roles\" is a category error for it; its controls are rate limiting and input validation."
+      "reason": "Deliberately unauthenticated — the handler never calls auth.getUser. \"Open to all roles\" is a category error for it; its controls are rate limiting and input validation."
     },
     {
       "fn": "public-forms",
       "verdict": "public",
-      "reason": "Deliberately unauthenticated \u2014 the handler never calls auth.getUser. \"Open to all roles\" is a category error for it; its controls are rate limiting and input validation."
+      "reason": "Deliberately unauthenticated — the handler never calls auth.getUser. \"Open to all roles\" is a category error for it; its controls are rate limiting and input validation."
     },
     {
       "fn": "quote-line-items",
@@ -502,12 +462,12 @@
     {
       "fn": "remote-monitoring",
       "verdict": "headless",
-      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it — that is AUDIT-024, not this story."
     },
     {
       "fn": "renewal-activities",
       "verdict": "headless",
-      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it — that is AUDIT-024, not this story."
     },
     {
       "fn": "renewal-autoquote",
@@ -517,17 +477,17 @@
     {
       "fn": "renewal-playbooks",
       "verdict": "headless",
-      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it — that is AUDIT-024, not this story."
     },
     {
       "fn": "rep-capacity",
       "verdict": "headless",
-      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it — that is AUDIT-024, not this story."
     },
     {
       "fn": "role-management",
       "verdict": "headless",
-      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it — that is AUDIT-024, not this story."
     },
     {
       "fn": "sales-forecasts",
@@ -552,7 +512,7 @@
     {
       "fn": "sales-reports",
       "verdict": "headless",
-      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it — that is AUDIT-024, not this story."
     },
     {
       "fn": "sales-territories",
@@ -582,7 +542,7 @@
     {
       "fn": "service-contracts",
       "verdict": "headless",
-      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it — that is AUDIT-024, not this story."
     },
     {
       "fn": "service-products",
@@ -597,7 +557,7 @@
     {
       "fn": "signup",
       "verdict": "public",
-      "reason": "Deliberately unauthenticated \u2014 the handler never calls auth.getUser. \"Open to all roles\" is a category error for it; its controls are rate limiting and input validation."
+      "reason": "Deliberately unauthenticated — the handler never calls auth.getUser. \"Open to all roles\" is a category error for it; its controls are rate limiting and input validation."
     },
     {
       "fn": "software-products",
@@ -607,17 +567,17 @@
     {
       "fn": "sso",
       "verdict": "headless",
-      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it — that is AUDIT-024, not this story."
     },
     {
       "fn": "tax-rates",
       "verdict": "headless",
-      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it — that is AUDIT-024, not this story."
     },
     {
       "fn": "teams",
       "verdict": "headless",
-      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it — that is AUDIT-024, not this story."
     },
     {
       "fn": "technician-sessions",
@@ -632,12 +592,12 @@
     {
       "fn": "tenant-settings",
       "verdict": "headless",
-      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it — that is AUDIT-024, not this story."
     },
     {
       "fn": "territories",
       "verdict": "headless",
-      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it — that is AUDIT-024, not this story."
     },
     {
       "fn": "today-dashboard",
@@ -652,7 +612,7 @@
     {
       "fn": "universal-search",
       "verdict": "open-by-design",
-      "reason": "Same as search \u2014 the scoping that matters is on the rows returned."
+      "reason": "Same as search — the scoping that matters is on the rows returned."
     },
     {
       "fn": "user",
@@ -662,7 +622,7 @@
     {
       "fn": "user-assignments",
       "verdict": "headless",
-      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it — that is AUDIT-024, not this story."
     },
     {
       "fn": "users",
@@ -682,7 +642,7 @@
     {
       "fn": "work-orders",
       "verdict": "headless",
-      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it — that is AUDIT-024, not this story."
     },
     {
       "fn": "workflow-automation",
@@ -692,7 +652,7 @@
     {
       "fn": "workflows",
       "verdict": "headless",
-      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it — that is AUDIT-024, not this story."
     }
   ]
 }

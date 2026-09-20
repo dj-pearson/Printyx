@@ -19,6 +19,8 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse, getCorsHeaders } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { ROLE_LEVEL, RbacError, requireRoleLevel } from '../_shared/rbac.ts';
+import type { AuthContext } from '../_shared/auth.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 
 type Row = Record<string, any>;
@@ -76,6 +78,39 @@ export default async function handler(req: Request) {
     const admin = createSupabaseServiceClient();
     const tenantId = await resolveTenantId(req, user, admin);
 
+    /**
+     * SEC-EDGE-001. Accessory pricing is catalogue pricing - same reasoning as catalog.
+     *
+     * The gate is on the WRITE branches, not the function: reading accessories is what the quote builder does.
+     * A LEVEL check rather than a permission code (SEC-EDGE-002).
+     */
+    const requireManager = () => {
+      requireRoleLevel(
+        {
+          userId: user.id,
+          tenantId,
+          email: user.email,
+          jwt: jwt ?? '',
+          supabaseUser: user,
+        } as AuthContext,
+        ROLE_LEVEL.MANAGER,
+      );
+    };
+    const denyManager = (err: unknown) => {
+      if (err instanceof RbacError) {
+        return createCorsResponse(
+          {
+            error: 'Changing accessories requires a manager role',
+            code: 'INSUFFICIENT_ROLE',
+            details: err.details,
+          },
+          403,
+          req,
+        );
+      }
+      throw err;
+    };
+
     if (!tenantId) {
       return createCorsResponse({ error: 'Tenant ID is required' }, 400, req);
     }
@@ -102,6 +137,11 @@ export default async function handler(req: Request) {
     }
 
     if (req.method === 'POST') {
+      try {
+        requireManager();
+      } catch (err) {
+        return denyManager(err);
+      }
       const body = (await req.json()) as Row;
       const values = toColumns(body);
 
@@ -121,6 +161,11 @@ export default async function handler(req: Request) {
     }
 
     if (req.method === 'DELETE') {
+      try {
+        requireManager();
+      } catch (err) {
+        return denyManager(err);
+      }
       if (!modelId) {
         return createCorsResponse({ message: 'Model ID is required' }, 400, req);
       }
