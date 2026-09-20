@@ -50,8 +50,18 @@ Every file is idempotent: each `cron.schedule(...)` call is preceded by a condit
 | `booking-reminders`               | booking-reminders.sql | `15 * * * *`   | HTTP | POST `/booking-pages/reminders/sweep` (COP-B14 AC6)                          |
 | `booking-attempts-prune`          | booking-reminders.sql | `40 3 * * *`   | SQL  | Delete `public_booking_attempts` older than 2 days (COP-B14 AC4)             |
 | `opportunity-radar-scan`          | opportunity-radar.sql | `20 4 * * *`   | HTTP | POST `/opportunity-radar/scan/all` — every tenant's installed base (COP-B04) |
+| `deal-desk-sla-check`             | deal-desk-sla.sql     | `35 * * * *`   | HTTP | POST `/deal-desk/check-sla/all` — approval SLA breaches, hourly              |
 
-**Total: 16 jobs.**
+**Total: 20 jobs.**
+
+<!--
+  That number said 16 while the table listed 19. It is asserted now rather than
+  maintained by hand: `server/tests/unit/deal-desk-sla-schedule.test.ts` checks
+  that the jobs `cron.schedule`d across this directory, the rows in the table
+  above, and this total are all the same set and the same size. A count nobody
+  checks drifts, and this file is the one place that answers "what runs on a
+  schedule here".
+-->
 
 Times are UTC. Retention jobs are clustered in the 02:00–03:00 UTC window because that's the low-traffic quiet period for our customer base.
 
