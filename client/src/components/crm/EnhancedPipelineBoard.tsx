@@ -25,6 +25,7 @@ import {
   type CrmFieldDef,
   type CrmObjectType,
 } from '@/lib/crm-object-registry';
+import { BOARD_PAGE_SIZE, boardTruncation } from '@shared/board-truncation';
 // COP-M04: what a card shows, and what a column totals, both persisted into
 // saved_views.board_config. The helpers are pure so the rules are testable.
 import {
@@ -370,15 +371,19 @@ export function EnhancedPipelineBoard({
 
   // Fetch records
   const {
-    data: records = [],
+    data: board,
     isLoading: recordsLoading,
     isError: recordsError,
     error: recordsErrorObj,
     refetch: refetchRecords,
-  } = useQuery<DealRecord[]>({
+  } = useQuery<{ records: DealRecord[]; total: number | null }>({
     queryKey: [config.apiEndpoint, 'board', { search, ...activeFilters }],
     queryFn: async () => {
-      const params = new URLSearchParams({ limit: '500' });
+      // COP-I01: this asked for 500. Every CRM list endpoint caps at
+      // MAX_CRM_PAGE_SIZE (200), so the board got 200 rows and believed it had
+      // everything - a tenant with 250 deals was missing 50 from the board with
+      // nothing on screen saying so. Ask for what the server will give.
+      const params = new URLSearchParams({ limit: String(BOARD_PAGE_SIZE) });
       if (search) params.set('search', search);
       if (config.recordType) params.set('recordType', config.recordType);
       for (const [key, value] of Object.entries(activeFilters)) {
@@ -387,11 +392,28 @@ export function EnhancedPipelineBoard({
         }
       }
       const result = await apiRequest(`${config.apiEndpoint}?${params}`);
-      return Array.isArray(result) ? result : (result?.records ?? result?.data ?? []);
+      if (Array.isArray(result)) {
+        // A bare array carries no count, so nothing can be said about what is
+        // missing. null, not a guess.
+        return { records: result, total: null };
+      }
+      const rows = result?.records ?? result?.data ?? [];
+      const total = typeof result?.total === 'number' ? result.total : null;
+      return { records: rows, total };
     },
     enabled: isAuthenticated,
     staleTime: 30_000,
   });
+
+  // useMemo, not a bare `?? []`: a fresh array literal every render changes the
+  // identity of every downstream useMemo's dependency, so the stage grouping
+  // and the column totals would recompute on each keystroke in the search box.
+  const records = useMemo(() => board?.records ?? [], [board]);
+  const truncation = boardTruncation(
+    records.length,
+    board?.total,
+    config.labelPlural?.toLowerCase() ?? 'records',
+  );
 
   // Group records by stage
   const stageGroups = useMemo(() => {
@@ -439,7 +461,14 @@ export function EnhancedPipelineBoard({
 
   // Stage change mutation (optimistic)
   const stageChangeMutation = useMutation({
-    mutationFn: async ({ recordId, newStageId }: { recordId: string; newStageId: string }) => {
+    mutationFn: async ({
+      recordId,
+      newStageId,
+    }: {
+      recordId: string;
+      newStageId: string;
+      stageLabel: string;
+    }) => {
       // Try different endpoints based on object type
       if (objectType === 'deals') {
         // CRMX-005: persistent stage move (writes deal.stage_id + history +
@@ -461,12 +490,15 @@ export function EnhancedPipelineBoard({
       ]);
       queryClient.setQueryData(
         [config.apiEndpoint, 'board', { search, ...activeFilters }],
-        (old: DealRecord[] | undefined) =>
-          old?.map((r) =>
-            r.id === recordId
-              ? { ...r, stage: newStageId, stageId: newStageId, status: newStageId }
-              : r,
-          ),
+        (old: { records: DealRecord[]; total: number | null } | undefined) =>
+          old && {
+            ...old,
+            records: old.records.map((r) =>
+              r.id === recordId
+                ? { ...r, stage: newStageId, stageId: newStageId, status: newStageId }
+                : r,
+            ),
+          },
       );
       return { previousData };
     },
@@ -478,6 +510,9 @@ export function EnhancedPipelineBoard({
         );
       }
       toast({ title: 'Failed to update stage', variant: 'destructive' });
+    },
+    onSuccess: (_data, { stageLabel }) => {
+      toast({ title: 'Stage updated', description: `Moved to ${stageLabel}` });
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: [config.apiEndpoint] });
@@ -503,13 +538,18 @@ export function EnhancedPipelineBoard({
       const currentStage = record?.stageId || record?.stage || record?.status;
       if (currentStage === newStageId) return;
 
-      stageChangeMutation.mutate({ recordId, newStageId });
-      toast({
-        title: 'Stage updated',
-        description: `Moved to ${stages.find((s) => s.id === newStageId)?.displayName ?? newStageId}`,
+      // The success toast used to fire HERE, before the mutation resolved, so a
+      // failed move showed "Stage updated" and then "Failed to update stage" -
+      // two contradictory toasts, with the optimistic one read as the outcome.
+      stageChangeMutation.mutate({
+        recordId,
+        newStageId,
+        stageLabel: stages.find((s) => s.id === newStageId)?.displayName ?? newStageId,
       });
     },
-    [records, stages, stageChangeMutation, toast],
+    // `toast` is gone from here: the success message belongs to the mutation's
+    // onSuccess now, so this callback no longer raises one.
+    [records, stages, stageChangeMutation],
   );
 
   // COP-I02: j/k + arrow navigation over the board cards.
@@ -563,6 +603,20 @@ export function EnhancedPipelineBoard({
 
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+      {/* COP-I01: the board is capped at the server's page size, and a board
+          quietly showing a subset of the pipeline is worse than a slow one -
+          the column badges and the column totals both describe only what
+          loaded. Say it, with the real number and what to do about it. */}
+      {truncation && (
+        <div
+          role="status"
+          className="mx-4 mt-3 flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100"
+        >
+          <AlertTriangle className="mt-px h-3.5 w-3.5 shrink-0" />
+          <span>{truncation.message}</span>
+        </div>
+      )}
+
       {/* COP-M04: the board's own configuration. BoardOptionsMenu existed and
           was imported by nothing, so saved_views.board_config - present since
           migration 0003 and fully served by the saved-views edge function - had
