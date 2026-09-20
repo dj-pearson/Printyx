@@ -25,6 +25,7 @@ import { normalizePath } from '../_shared/path.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 import { fetchAllRows } from '../_shared/paged-select.ts';
 import { ROLE_LEVEL, RbacError, requireRoleLevel } from '../_shared/rbac.ts';
+import { isCronRequest } from '../_shared/cron-auth.ts';
 import type { AuthContext } from '../_shared/auth.ts';
 import { firstStageId, type DealStageRow } from '../_shared/deal-stage.ts';
 import { buildTerritoryIndex, resolveTerritory } from '../_shared/territory.ts';
@@ -78,11 +79,139 @@ function toPlayResponse(row: Row) {
   };
 }
 
+/**
+ * One tenant's sweep. Extracted so the manual button and the nightly cron run
+ * the SAME code - a scheduled scan that drifted from the one a manager can
+ * press would be two radars, and only one of them ever gets looked at.
+ */
+async function runScan(
+  admin: ReturnType<typeof createSupabaseServiceClient>,
+  tenantId: string,
+  force: boolean,
+): Promise<Row> {
+  const { data: settings } = await admin
+    .from('radar_settings')
+    .select('*')
+    .eq('tenant_id', tenantId)
+    .maybeSingle();
+  const settingsRow = (settings as Row) ?? null;
+
+  // AC5's kill switch: a tenant that turned the scan off gets a skip, not a
+  // silent no-op that looks like "nothing to find". A tenant with NO settings
+  // row is enabled - the radar is on by default and opted out of, which is why
+  // the test is `settingsRow &&` rather than a truthiness check on the column.
+  if (settingsRow && settingsRow.scan_enabled === 0 && !force) {
+    return { skipped: true, reason: 'Radar scan is disabled for this tenant' };
+  }
+
+  const thresholds = toThresholds(settingsRow);
+  const now = new Date();
+
+  return {
+    detected: drafts.length,
+    created: inserted,
+    // detected - created is the idempotency working, not a failure.
+    alreadyKnown: drafts.length - inserted,
+    machinesScanned: (equipment ?? []).length,
+    unbacked: [
+      'The service play counts CALLS, not cost: no service cost column exists on service_tickets or anywhere else in the schema, so a cost or margin threshold cannot be computed.',
+    ],
+  };
+}
+
+/**
+ * Every tenant, one at a time, with one tenant's failure costing that tenant
+ * only.
+ *
+ * SEQUENTIAL ON PURPOSE. Each tenant's scan already pages through its whole
+ * installed base (AC8), so running fifty in parallel would multiply the peak
+ * load on the database by fifty to finish a nightly job a few minutes sooner.
+ *
+ * A tenant that throws is RECORDED AND STEPPED OVER rather than aborting the
+ * sweep - the failure mode to avoid is the one AUDIT-028 describes, where one
+ * missing table blanks a whole surface. The response names every tenant that
+ * failed and why, so a silent partial sweep is not mistaken for a quiet night.
+ */
+async function sweepAllTenants(req: Request, url: URL): Promise<Response> {
+  const admin = createSupabaseServiceClient();
+  const force = url.searchParams.get('force') === 'true';
+  const limit = Number(url.searchParams.get('limit')) || 0;
+
+  const { data: tenantRows, error } = await admin.from('tenants').select('id').order('id');
+  if (error) {
+    return createCorsResponse({ error: 'Could not list tenants', detail: error.message }, 503, req);
+  }
+
+  const tenants = (tenantRows ?? []).map((t: Row) => t.id as string);
+  const scanned: Row[] = [];
+  const skipped: string[] = [];
+  const failed: Row[] = [];
+
+  for (const tenantId of limit > 0 ? tenants.slice(0, limit) : tenants) {
+    try {
+      const result = await runScan(admin, tenantId, force);
+      if (result.skipped) {
+        skipped.push(tenantId);
+        continue;
+      }
+      scanned.push({ tenantId, detected: result.detected, created: result.created });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error(`[RADAR] tenant ${tenantId} sweep failed:`, message);
+      failed.push({ tenantId, error: message });
+    }
+  }
+
+  return createCorsResponse(
+    {
+      tenants: tenants.length,
+      scanned: scanned.length,
+      skipped: skipped.length,
+      failed: failed.length,
+      created: scanned.reduce((sum, r) => sum + (Number(r.created) || 0), 0),
+      failures: failed,
+    },
+    // A sweep where every tenant failed is not a success with a detail field.
+    failed.length > 0 && scanned.length === 0 ? 500 : 200,
+    req,
+  );
+}
+
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
 
   try {
+    /**
+     * POST /scan/all - the SCHEDULED sweep (AC1, AC5).
+     *
+     * This has to sit above auth.getUser, because pg_cron carries the internal
+     * cron token and no user JWT - `isCronRequest` is the whole authentication
+     * for this branch and there is no fallback to a user, deliberately: a
+     * tenant-wide sweep across EVERY tenant is not something any user should be
+     * able to trigger. A manager runs their own tenant's scan through
+     * POST /scan.
+     *
+     * Until this existed the radar only ever ran when somebody pressed the
+     * button on /opportunity-radar - AC1 asks for a scheduled scan, and a play
+     * that surfaces a lease expiring in 90 days is worth nothing if it is
+     * detected the day a rep happens to look.
+     */
+    {
+      const cronUrl = new URL(req.url);
+      const { parts: cronParts } = normalizePath(cronUrl.pathname, 'opportunity-radar');
+      if (cronParts[0] === 'scan' && cronParts[1] === 'all' && req.method === 'POST') {
+        if (!isCronRequest(req)) {
+          return createCorsResponse(
+            { error: 'This endpoint is for the scheduler', code: 'CRON_ONLY' },
+            403,
+            req,
+          );
+        }
+        return await sweepAllTenants(req, cronUrl);
+      }
+    }
+
     const authHeader = req.headers.get('Authorization');
     const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
 
@@ -194,166 +323,8 @@ export default async function handler(req: Request) {
       } catch (err) {
         return denyManager(err);
       }
-      const settingsRow = await loadSettings();
-      const force = url.searchParams.get('force') === 'true';
-      // AC5's kill switch: a tenant that turned the scan off gets a skip, not
-      // a silent no-op that looks like "nothing to find".
-      if (settingsRow && settingsRow.scan_enabled === 0 && !force) {
-        return createCorsResponse(
-          { skipped: true, reason: 'Radar scan is disabled for this tenant' },
-          200,
-          req,
-        );
-      }
-      const thresholds = toThresholds(settingsRow);
-      const now = new Date();
-
-      const [equipment, contracts] = await Promise.all([
-        fetchAllRows<Row>(() =>
-          admin
-            .from('equipment')
-            .select(
-              'id, customer_id, serial_number, model_number, is_color_capable, equipment_status, lease_expires_date, purchase_price',
-            )
-            .eq('tenant_id', tenantId),
-        ),
-        fetchAllRows<Row>(() =>
-          admin
-            .from('contracts')
-            .select('id, customer_id, end_date, status, monthly_base, black_rate, color_rate')
-            .eq('tenant_id', tenantId),
-        ),
-      ]);
-
-      // Meter summaries. One paged read of the last 13 months, aggregated in
-      // memory - 13 so a full 12-month window always has a prior reading to
-      // measure against.
-      const since = new Date(now.getTime() - 400 * 86_400_000).toISOString();
-      const readings = await fetchAllRows<Row>(() =>
-        admin
-          .from('meter_readings')
-          .select('equipment_id, reading_date, black_copies, color_copies')
-          .eq('tenant_id', tenantId)
-          .gte('reading_date', since),
-      );
-
-      const byEquipment = new Map<
-        string,
-        { black: number; color: number; last: string | null; months: Set<string> }
-      >();
-      for (const r of readings ?? []) {
-        if (!r.equipment_id) continue;
-        let agg = byEquipment.get(r.equipment_id);
-        if (!agg) {
-          agg = { black: 0, color: 0, last: null, months: new Set<string>() };
-          byEquipment.set(r.equipment_id, agg);
-        }
-        agg.black += Number(r.black_copies) || 0;
-        agg.color += Number(r.color_copies) || 0;
-        const date = String(r.reading_date ?? '');
-        if (date && (!agg.last || date > agg.last)) agg.last = date;
-        if (date) agg.months.add(date.slice(0, 7));
-      }
-
-      const meters: RadarMeterSummary[] = [...byEquipment.entries()].map(([equipmentId, agg]) => {
-        // Divided by the months that actually reported, not by a flat 12: a
-        // machine installed in June would otherwise read as half as busy as it
-        // is, and under-report every volume play against it.
-        const months = Math.max(1, agg.months.size);
-        return {
-          equipmentId,
-          monthlyBlack: agg.black / months,
-          monthlyColor: agg.color / months,
-          lastReadingDate: agg.last,
-        };
-      });
-
-      // Service calls inside the lookback, counted per machine.
-      const lookbackFrom = new Date(
-        now.getTime() - thresholds.serviceLookbackDays * 86_400_000,
-      ).toISOString();
-      const tickets = await fetchAllRows<Row>(() =>
-        admin
-          .from('service_tickets')
-          .select('equipment_id, created_at')
-          .eq('tenant_id', tenantId)
-          .gte('created_at', lookbackFrom),
-      );
-      const serviceCalls = new Map<string, number>();
-      for (const t of tickets ?? []) {
-        if (!t.equipment_id) continue;
-        serviceCalls.set(t.equipment_id, (serviceCalls.get(t.equipment_id) ?? 0) + 1);
-      }
-
-      const drafts = detectPlays({
-        equipment: (equipment ?? []) as any,
-        contracts: (contracts ?? []) as any,
-        meters,
-        serviceCalls,
-        companyNames: new Map(),
-        thresholds,
-        now,
-      });
-
-      // Account names and owners, one read for every account the plays touch.
-      const accountIds = [...new Set(drafts.map((d) => d.customerId).filter(Boolean))] as string[];
-      const accounts = new Map<string, Row>();
-      if (accountIds.length > 0) {
-        const rows = await fetchAllRows<Row>(() =>
-          admin
-            .from('business_records')
-            .select('id, company_name, assigned_sales_rep')
-            .eq('tenant_id', tenantId)
-            .in('id', accountIds),
-        );
-        for (const a of rows ?? []) accounts.set(a.id, a);
-      }
-
-      const insertRows = drafts.map((d) => ({
-        tenant_id: tenantId,
-        play_type: d.playType,
-        dedupe_key: d.dedupeKey,
-        customer_id: d.customerId,
-        company_name: d.customerId ? (accounts.get(d.customerId)?.company_name ?? null) : null,
-        equipment_ids: d.equipmentIds,
-        contract_id: d.contractId,
-        reason: d.reason,
-        trigger_date: d.triggerDate,
-        estimated_value: d.estimatedValue != null ? d.estimatedValue.toFixed(2) : null,
-        score: d.score,
-        score_factors: d.scoreFactors,
-        owner_id: d.customerId ? (accounts.get(d.customerId)?.assigned_sales_rep ?? null) : null,
-      }));
-
-      let inserted = 0;
-      // Chunked so one oversized request cannot fail a whole sweep (AC8).
-      for (let i = 0; i < insertRows.length; i += 200) {
-        const batch = insertRows.slice(i, i + 200);
-        const { data, error } = await admin
-          .from('radar_plays')
-          .upsert(batch, { onConflict: 'tenant_id,dedupe_key', ignoreDuplicates: true })
-          .select('id');
-        if (error) {
-          console.error('[RADAR] insert batch failed:', error.message);
-          continue;
-        }
-        inserted += (data ?? []).length;
-      }
-
-      return createCorsResponse(
-        {
-          detected: drafts.length,
-          created: inserted,
-          // detected - created is the idempotency working, not a failure.
-          alreadyKnown: drafts.length - inserted,
-          machinesScanned: (equipment ?? []).length,
-          unbacked: [
-            'The service play counts CALLS, not cost: no service cost column exists on service_tickets or anywhere else in the schema, so a cost or margin threshold cannot be computed.',
-          ],
-        },
-        200,
-        req,
-      );
+      const result = await runScan(admin, tenantId, url.searchParams.get('force') === 'true');
+      return createCorsResponse(result, 200, req);
     }
 
     // ─── POST /:id/dismiss and /:id/convert (AC3, AC6) ───────────────

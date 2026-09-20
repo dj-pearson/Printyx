@@ -47,6 +47,9 @@ Every file is idempotent: each `cron.schedule(...)` call is preceded by a condit
 | `lease-payment-due-notices`       | leases.sql            | `0 7 * * *`    | HTTP | POST `/leases/payments/send-due-notices`                                     |
 | `mileage-auto-generate-nightly`   | mileage.sql           | `0 5 * * *`    | HTTP | POST `/field-service/mileage/auto-generate`                                  |
 | `scheduled-reports-dispatch`      | reports.sql           | `*/15 * * * *` | HTTP | POST `/reports/schedule/dispatch-due` (reports edge function pending US-023) |
+| `booking-reminders`               | booking-reminders.sql | `15 * * * *`   | HTTP | POST `/booking-pages/reminders/sweep` (COP-B14 AC6)                          |
+| `booking-attempts-prune`          | booking-reminders.sql | `40 3 * * *`   | SQL  | Delete `public_booking_attempts` older than 2 days (COP-B14 AC4)             |
+| `opportunity-radar-scan`          | opportunity-radar.sql | `20 4 * * *`   | HTTP | POST `/opportunity-radar/scan/all` — every tenant's installed base (COP-B04) |
 
 **Total: 16 jobs.**
 
