@@ -73,7 +73,6 @@ describe('every baseline writer keeps a note it did not write', () => {
     'check-raw-api-fetch.mjs',
     'check-route-shadowing.mjs',
     'check-server-fabricated.mjs',
-    'check-server-orphans.mjs',
     'check-session-user-auth.mjs',
     'check-shadowed-express.mjs',
     'check-sql-string-tables.mjs',

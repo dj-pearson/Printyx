@@ -1193,7 +1193,14 @@ async function seedServiceAndOperations(ctx: DemoSeedContext, results: DemoSeedC
       equipmentId: generateId('eq', 4),
       title: 'Print quality issues',
       priority: 'medium',
-      status: 'resolved',
+      // 'resolved' is NOT in this column's vocabulary and never has been since
+      // migration 0078_wf_v05_ticket_vocabulary.sql fixed it to
+      // open|assigned|scheduled|en_route|on_site|in_progress|on_hold|
+      // completed|cancelled. The CHECK is NOT VALID, so existing rows were left
+      // alone and only new ones are refused - which is why this surfaced as
+      // `npm run seed:demo` dying with 23514 on a freshly provisioned database
+      // rather than as anything on an old one.
+      status: 'completed',
     },
   ];
 
