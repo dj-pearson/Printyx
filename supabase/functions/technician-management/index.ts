@@ -26,6 +26,8 @@ import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { applyUserScope, resolveScope } from '../_shared/scope.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { startOfNextUtcDay, startOfUtcDay } from '../_shared/date-months.ts';
+import { buildTechnicianSchedule } from '../_shared/technician-schedule.ts';
 import { ROLE_LEVEL, RbacError, requireRoleLevel, type AuthContext } from '../_shared/rbac.ts';
 
 export default async function handler(req: Request) {
@@ -340,21 +342,110 @@ export default async function handler(req: Request) {
 
     // GET /technician-management/:id/schedule - Get technician schedule
     if (req.method === 'GET' && techId && subResource === 'schedule') {
+      /**
+       * WF-V-07. This read `work_orders`, a table in no schema, no migration and
+       * no database export here, and discarded the error into `schedule || []` -
+       * so every technician's schedule was a permanent empty list at 200. See
+       * _shared/technician-schedule.ts for why the three real tables cannot be
+       * queried with the id this route receives.
+       */
+      const { data: technician } = await admin
+        .from('technicians')
+        .select('id, user_id')
+        .eq('id', techId)
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+
+      if (!technician) {
+        return createCorsResponse({ error: 'Technician not found' }, 404, req);
+      }
+
+      // A contractor with no login cannot be the subject of any of these three
+      // columns, so an empty list would be a claim about their week rather than
+      // about what can be looked up.
+      if (!technician.user_id) {
+        return createCorsResponse(
+          {
+            items: [],
+            degraded: [],
+            unbacked: [
+              'This technician has no linked user account, and all three schedule ' +
+                'tables key the assignee on users.id, so nothing can be matched to them.',
+            ],
+          },
+          200,
+          req,
+        );
+      }
+
+      const userId = technician.user_id as string;
       const startDate = url.searchParams.get('startDate');
       const endDate = url.searchParams.get('endDate');
 
-      let query = admin
-        .from('work_orders')
-        .select('*')
-        .eq('assigned_technician_id', techId)
-        .order('scheduled_date', { ascending: true });
+      /**
+       * scheduled_date is a timestamp holding a CALENDAR DATE (DATE-LOCAL-002),
+       * so the bounds are snapped to day boundaries - an upper bound carrying a
+       * time of day drops or admits a whole day depending on which way the
+       * operator points. The upper bound is the exclusive next day rather than
+       * 23:59:59, which is a real timestamp a row can exceed.
+       */
+      // Open-ended sentinels rather than a conditional .gte()/.lt(): applying a
+      // bound only sometimes is what pushed this into a helper, and the helper
+      // is what the column checker could not follow. A row outside these is not
+      // a schedule entry.
+      const EPOCH = '1970-01-01T00:00:00.000Z';
+      const FAR_FUTURE = '9999-12-31T00:00:00.000Z';
+      const from = startDate ? startOfUtcDay(new Date(startDate)).toISOString() : null;
+      const to = endDate ? startOfNextUtcDay(new Date(endDate)).toISOString() : null;
 
-      if (startDate) query = query.gte('scheduled_date', startDate);
-      if (endDate) query = query.lte('scheduled_date', endDate);
+      /**
+       * The date bounds are applied INSIDE each chain rather than through a
+       * shared helper. That is not style: check:phantom-cols resolves a column
+       * literal against the table its call chain is on, and a helper taking a
+       * query has no chain of its own - it read `scheduled_date` as a column of
+       * `technicians`, the last .from() before it. equipment-lifecycle's crew
+       * day carries the same note for the same reason. Writing code the checker
+       * cannot follow is how a real 42703 gets through, so the repetition buys
+       * a guard that works.
+       */
+      const [installations, deliveries, tickets] = await Promise.all([
+        admin
+          .from('installation_schedules')
+          .select(
+            'id, scheduled_date, status, customer_id, equipment_id, estimated_duration, installation_notes',
+          )
+          .eq('tenant_id', tenantId)
+          .eq('technician_id', userId)
+          .gte('scheduled_date', from ?? EPOCH)
+          .lt('scheduled_date', to ?? FAR_FUTURE)
+          .order('scheduled_date', { ascending: true }),
+        admin
+          .from('delivery_schedules')
+          .select('id, scheduled_date, status, customer_id, equipment_id, special_instructions')
+          .eq('tenant_id', tenantId)
+          .eq('driver_id', userId)
+          .gte('scheduled_date', from ?? EPOCH)
+          .lt('scheduled_date', to ?? FAR_FUTURE)
+          .order('scheduled_date', { ascending: true }),
+        admin
+          .from('service_tickets')
+          .select(
+            'id, scheduled_date, status, customer_id, equipment_id, estimated_duration, title, description',
+          )
+          .eq('tenant_id', tenantId)
+          .eq('assigned_technician_id', userId)
+          .gte('scheduled_date', from ?? EPOCH)
+          .lt('scheduled_date', to ?? FAR_FUTURE)
+          .order('scheduled_date', { ascending: true }),
+      ]);
 
-      const { data: schedule } = await query;
+      const schedule = buildTechnicianSchedule([
+        { kind: 'installation', rows: installations.error ? null : (installations.data ?? []) },
+        { kind: 'delivery', rows: deliveries.error ? null : (deliveries.data ?? []) },
+        { kind: 'service', rows: tickets.error ? null : (tickets.data ?? []) },
+      ]);
 
-      return createCorsResponse(schedule || [], 200, req);
+      return createCorsResponse(schedule, 200, req);
     }
 
     // POST /technician-management/:id/availability - Update availability
