@@ -3,10 +3,10 @@
   "counts": {
     "headless": 35,
     "open-by-design": 31,
-    "unexamined": 20,
+    "unexamined": 19,
     "gated-branch": 9,
+    "row-scoped": 8,
     "public": 8,
-    "row-scoped": 7,
     "internal": 3,
     "needs-gate": 2
   },
@@ -373,8 +373,9 @@
     },
     {
       "fn": "portal-service",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "verdict": "row-scoped",
+      "reason": "EXAMINED AND ROW-SCOPED 2026-09-20. A CUSTOMER surface - routed at /portal, and the page's own header opens \"the customer describes what's wrong\" - whose four endpoints all take a caller-supplied requestId and looked it up filtered on tenant_id ALONE. A portal customer is in the tenant, so one customer could pass another's request id and read its timeline, read the free text they typed, submit a star rating for them, and run POST /classify against it, which OPENS A SERVICE TICKET on that customer's account, moves their request to 'assigned' and writes status history signed 'AI Dispatch' - a write, not just a read leak. Same defect and same fix as customer-portal one function over: app_metadata ONLY (the session holder writes user_metadata and every query runs on the service-role client), a claim narrows every lookup to that customer, no claim means internal staff and keeps the tenant-wide view the dealer's console needs. All five customer_service_requests queries go through one scopeToCustomer helper, and ownsRequest gates the classifications read because portal_service_classifications carries no customer column. 404 rather than 403, so an id on another account is not confirmed. Nothing in the repo sets customer_id on any user yet, so this closes a door before the feature that opens it ships. No role gate: a portal customer holds no dealer role and gating on one would lock out every real caller.",
+      "pathsRead": "index.ts - the dispatcher and all four branches (classify with its ticket insert, request update and status-history insert; rate; classifications/:id; timeline/:id), classify.ts, client/src/pages/CustomerPortalService.tsx, its App.tsx route, and the customer-portal claim-resolution block this mirrors."
     },
     {
       "fn": "predictive-dispatch",
