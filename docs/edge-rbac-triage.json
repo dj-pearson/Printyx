@@ -3,10 +3,10 @@
   "counts": {
     "headless": 35,
     "open-by-design": 31,
-    "unexamined": 22,
+    "unexamined": 21,
     "gated-branch": 8,
     "public": 8,
-    "row-scoped": 6,
+    "row-scoped": 7,
     "internal": 3,
     "needs-gate": 2
   },
@@ -288,8 +288,9 @@
     },
     {
       "fn": "meeting-transcription",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "verdict": "row-scoped",
+      "reason": "EXAMINED AND ROW-SCOPED 2026-09-20. Every handler filtered on tenant_id alone, so any authenticated member could list every recording in the company, read any transcript in full, see its AI notes and highlights, and run POST /content/search, which ilikes across every transcript and returns a snippet around the match - type a word, read someone else's call. THE ACCESS MODEL WAS ALREADY IN THE SCHEMA AND NOTHING READ IT: meeting_recordings declares uploaded_by NOT NULL, is_public DEFAULT false and access_permissions DEFAULT '[]', so a recording created private behaved as public and the column said otherwise. The page is alwaysVisible, so a role gate would take the feature from the reps it is for; _access.ts narrows ROWS instead (uploaded inside the caller's resolved scope tier, OR is_public), on the lists AND on every item route - scoping a list and leaving its items open is a half-measure (COP-B04). access_permissions is deliberately NOT honoured because nothing writes it, and that is named in the response's unbacked.",
+      "pathsRead": "index.ts dispatcher, handlers/recordings.ts (upload, consent, meeting list, tenant list, process), handlers/transcription.ts, handlers/notes.ts (notes + highlights), handlers/content.ts (search, analytics, speaker upsert), _consent.ts, _stt.ts, and the meeting_recordings DDL in drizzle/rls/meeting-transcription-tables.sql."
     },
     {
       "fn": "meetings",

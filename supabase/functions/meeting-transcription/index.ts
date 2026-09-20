@@ -39,6 +39,7 @@ import { getDb } from '../_shared/db.ts';
 import { errorResponse, generateRequestId } from '../_shared/http.ts';
 import { createLogger } from '../_shared/logger.ts';
 import { requireRateLimit, RateLimitError, PRESETS } from '../_shared/rate-limit.ts';
+import { resolveScope } from '../_shared/scope.ts';
 
 import { handleRecordings } from './handlers/recordings.ts';
 import { handleTranscription } from './handlers/transcription.ts';
@@ -69,9 +70,26 @@ export default async function handler(req: Request) {
     const auth = await requireAuth(req);
     const db = getDb();
 
+    /**
+     * SEC-EDGE-001: recording visibility is a ROW decision.
+     *
+     * Every handler filtered on tenant_id alone, so any member of the tenant
+     * could list every recording, read any transcript in full, and keyword
+     * search across all of them - while meeting_recordings.is_public sat at its
+     * `false` default saying the opposite. The page is alwaysVisible, so a role
+     * gate would take the feature from the reps it is for; the scope narrows
+     * which rows instead. See _access.ts.
+     */
+    const scope = await resolveScope(db, {
+      userId: auth.userId,
+      tenantId: auth.tenantId,
+      appMetadata: auth.supabaseUser?.app_metadata ?? null,
+      requestedScope: url.searchParams.get('scope'),
+    });
+
     const rest = stripPrefix(url.pathname);
     const pathParts = rest.split('/').filter(Boolean);
-    const ctx = { auth, db, requestId, pathParts, method, url };
+    const ctx = { auth, db, scope, requestId, pathParts, method, url };
 
     const firstSegment = pathParts[0];
 

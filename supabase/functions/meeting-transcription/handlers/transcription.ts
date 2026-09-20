@@ -3,9 +3,10 @@
 
 import { errorResponse, jsonResponse } from '../../_shared/http.ts';
 import type { HandlerCtx } from '../_context.ts';
+import { canAccessRecording } from '../_access.ts';
 
 export async function handleTranscription(req: Request, ctx: HandlerCtx): Promise<Response | null> {
-  const { method, auth, db, requestId, pathParts } = ctx;
+  const { method, auth, db, scope, requestId, pathParts } = ctx;
   if (
     method !== 'GET' ||
     pathParts[0] !== 'recordings' ||
@@ -15,6 +16,16 @@ export async function handleTranscription(req: Request, ctx: HandlerCtx): Promis
     return null;
 
   const recordingId = pathParts[1];
+
+  /**
+   * meeting_transcriptions carries no owner of its own - it hangs off a
+   * recording - so the recording decides. Checked BEFORE the lookup: a check
+   * afterwards has already answered whether a transcript exists, and a full
+   * transcript is the most sensitive thing this function holds.
+   */
+  if (!(await canAccessRecording(db, auth, scope, recordingId))) {
+    return errorResponse(404, 'Transcription not found', req, { code: 'NOT_FOUND', requestId });
+  }
 
   const { data, error } = await db
     .from('meeting_transcriptions')

@@ -11,12 +11,18 @@ import type { HandlerCtx } from '../_context.ts';
 import { createLogger } from '../../_shared/logger.ts';
 import { transcribe, TranscriptionUnavailableError } from '../_stt.ts';
 import { recordRecordingConsent, validateConsentAssertion } from '../_consent.ts';
+import {
+  applyRecordingScope,
+  canAccessRecording,
+  describeScope,
+  RECORDING_UNBACKED,
+} from '../_access.ts';
 
 const log = createLogger('meeting-transcription-recordings');
 const STORAGE_BUCKET = 'meeting-recordings';
 
 export async function handleRecordings(req: Request, ctx: HandlerCtx): Promise<Response | null> {
-  const { method, auth, db, requestId, pathParts } = ctx;
+  const { method, auth, db, scope, requestId, pathParts } = ctx;
   const first = pathParts[0];
   const second = pathParts[1];
   const third = pathParts[2];
@@ -31,6 +37,12 @@ export async function handleRecordings(req: Request, ctx: HandlerCtx): Promise<R
   // A dispute about whether someone agreed to be recorded arrives months later,
   // and "we always ask" is not evidence.
   if (method === 'GET' && first === 'recordings' && second && third === 'consent') {
+    // ABOVE the lookup, not after it: a check that runs afterwards has already
+    // told the caller whether a recording with that id exists.
+    if (!(await canAccessRecording(db, auth, scope, second))) {
+      return errorResponse(404, 'Recording not found', req, { code: 'NOT_FOUND', requestId });
+    }
+
     const { data, error } = await db
       .from('consent_records')
       .select(
@@ -73,14 +85,17 @@ export async function handleRecordings(req: Request, ctx: HandlerCtx): Promise<R
 
   // GET /meetings/:meetingId/recordings
   if (method === 'GET' && first === 'meetings' && second && third === 'recordings') {
-    const { data, error } = await db
-      .from('meeting_recordings')
-      .select(
-        'id, meeting_id, recording_name, recording_format, file_size_bytes, duration_seconds, recording_source, processing_status, transcription_status, ai_analysis_status, ai_confidence_score, ai_speaker_count, uploaded_at, uploaded_by, is_public',
-      )
-      .eq('tenant_id', auth.tenantId)
-      .eq('meeting_id', second)
-      .order('uploaded_at', { ascending: false });
+    const { data, error } = await applyRecordingScope(
+      db
+        .from('meeting_recordings')
+        .select(
+          'id, meeting_id, recording_name, recording_format, file_size_bytes, duration_seconds, recording_source, processing_status, transcription_status, ai_analysis_status, ai_confidence_score, ai_speaker_count, uploaded_at, uploaded_by, is_public',
+        )
+        .eq('tenant_id', auth.tenantId)
+        .eq('meeting_id', second)
+        .order('uploaded_at', { ascending: false }),
+      scope,
+    );
 
     if (error) {
       return errorResponse(500, 'Failed to fetch recordings', req, {
@@ -103,14 +118,17 @@ export async function handleRecordings(req: Request, ctx: HandlerCtx): Promise<R
     const limitParam = Number(ctx.url.searchParams.get('limit') ?? '50');
     const limit = Number.isFinite(limitParam) ? Math.min(Math.max(limitParam, 1), 200) : 50;
 
-    const { data, error } = await db
-      .from('meeting_recordings')
-      .select(
-        'id, meeting_id, recording_name, recording_format, file_size_bytes, duration_seconds, recording_source, processing_status, transcription_status, ai_analysis_status, ai_confidence_score, ai_speaker_count, uploaded_at, uploaded_by, is_public',
-      )
-      .eq('tenant_id', auth.tenantId)
-      .order('uploaded_at', { ascending: false })
-      .limit(limit);
+    const { data, error } = await applyRecordingScope(
+      db
+        .from('meeting_recordings')
+        .select(
+          'id, meeting_id, recording_name, recording_format, file_size_bytes, duration_seconds, recording_source, processing_status, transcription_status, ai_analysis_status, ai_confidence_score, ai_speaker_count, uploaded_at, uploaded_by, is_public',
+        )
+        .eq('tenant_id', auth.tenantId)
+        .order('uploaded_at', { ascending: false })
+        .limit(limit),
+      scope,
+    );
 
     if (error) {
       return errorResponse(500, 'Failed to fetch recordings', req, {
@@ -119,11 +137,37 @@ export async function handleRecordings(req: Request, ctx: HandlerCtx): Promise<R
         requestId,
       });
     }
-    return jsonResponse(data ?? [], 200, req, requestId);
+
+    /**
+     * An ENVELOPE, where the meeting-scoped list above stays a bare array.
+     * This is the one the console renders, and a narrowed list that does not
+     * say it was narrowed reads as "this company records very few meetings"
+     * (COP-I06). The page prints the note; the other branch has no caller and
+     * no screen to print one on.
+     */
+    return jsonResponse(
+      {
+        recordings: data ?? [],
+        // From the scope alone: the query above carried the predicate, so there
+        // is no id list to resolve and no second round trip to pay for.
+        ...describeScope(scope),
+        unbacked: RECORDING_UNBACKED,
+      },
+      200,
+      req,
+      requestId,
+    );
   }
 
   // POST /recordings/:recordingId/process
   if (method === 'POST' && first === 'recordings' && second && third === 'process') {
+    // Transcription spends money at the provider and rewrites the row, so the
+    // same predicate that decides who may READ a recording decides who may
+    // process one. Scoping a list and leaving its items open is a half-measure
+    // (COP-B04).
+    if (!(await canAccessRecording(db, auth, scope, second))) {
+      return errorResponse(404, 'Recording not found', req, { code: 'NOT_FOUND', requestId });
+    }
     return await processRecording(req, ctx, second);
   }
 

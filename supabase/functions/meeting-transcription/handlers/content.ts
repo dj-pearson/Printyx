@@ -5,9 +5,15 @@
 
 import { errorResponse, jsonResponse } from '../../_shared/http.ts';
 import type { HandlerCtx } from '../_context.ts';
+import {
+  canAccessMeeting,
+  describeRecordingScope,
+  RECORDING_UNBACKED,
+  resolveRecordingAccess,
+} from '../_access.ts';
 
 export async function handleContent(req: Request, ctx: HandlerCtx): Promise<Response | null> {
-  const { method, auth, db, requestId, pathParts } = ctx;
+  const { method, auth, db, scope, requestId, pathParts } = ctx;
   if (pathParts[0] !== 'content') return null;
   const sub = pathParts[1];
 
@@ -33,13 +39,34 @@ export async function handleContent(req: Request, ctx: HandlerCtx): Promise<Resp
 
     const limit = Math.min(50, Math.max(1, Number(body.limit ?? 20)));
 
-    const { data, error } = await db
+    /**
+     * THE SHARPEST OF THE SIX READS THIS FUNCTION SERVES. It runs `ilike`
+     * across every transcript and returns a snippet around the match, so
+     * before this filter a rep could type a word and read what was said in
+     * anyone else's call. Narrowed to the recordings the caller may reach;
+     * an empty accessible set short-circuits rather than issuing an
+     * `.in.()` with no values, which PostgREST rejects.
+     */
+    const access = await resolveRecordingAccess(db, auth, scope);
+    const scopeNote = { ...describeRecordingScope(access), unbacked: RECORDING_UNBACKED };
+
+    if (access.recordingIds !== null && access.recordingIds.length === 0) {
+      return jsonResponse({ query: q, results: [], total: 0, ...scopeNote }, 200, req, requestId);
+    }
+
+    let search = db
       .from('meeting_transcriptions')
       .select('id, meeting_id, recording_id, full_transcript, word_count, transcribed_at')
       .eq('tenant_id', auth.tenantId)
       .ilike('full_transcript', `%${q}%`)
       .order('transcribed_at', { ascending: false })
       .limit(limit);
+
+    if (access.recordingIds !== null) {
+      search = search.in('recording_id', access.recordingIds);
+    }
+
+    const { data, error } = await search;
 
     if (error) {
       return errorResponse(500, 'Failed to search content', req, {
@@ -68,7 +95,12 @@ export async function handleContent(req: Request, ctx: HandlerCtx): Promise<Resp
       };
     });
 
-    return jsonResponse({ query: q, results, total: results.length }, 200, req, requestId);
+    return jsonResponse(
+      { query: q, results, total: results.length, ...scopeNote },
+      200,
+      req,
+      requestId,
+    );
   }
 
   return null;
@@ -130,7 +162,7 @@ export async function handleSpeakerProfile(
   req: Request,
   ctx: HandlerCtx,
 ): Promise<Response | null> {
-  const { method, auth, db, requestId, pathParts } = ctx;
+  const { method, auth, db, scope, requestId, pathParts } = ctx;
   if (method !== 'POST' || pathParts[0] !== 'speakers' || pathParts[1] !== 'profile') return null;
 
   let body: {
@@ -154,6 +186,13 @@ export async function handleSpeakerProfile(
       code: 'VALIDATION',
       requestId,
     });
+  }
+
+  // Labelling a speaker writes to someone's meeting. Same predicate as the
+  // reads - a caller who cannot see the recording has no business naming who
+  // spoke in it.
+  if (!(await canAccessMeeting(db, auth, scope, body.meetingId))) {
+    return errorResponse(404, 'Meeting not found', req, { code: 'NOT_FOUND', requestId });
   }
 
   const { data, error } = await db
