@@ -116,6 +116,67 @@ const QUERIES = [
             ORDER BY expected_close_date ASC
             LIMIT 200`,
   },
+
+  /**
+   * COP-B01 AC5: the My Day workspace, whose bar is "under 1s at realistic
+   * data volumes". Six of these run in one Promise.all inside
+   * `supabase/functions/dashboards`' /today branch, so the page's database
+   * time is roughly the SLOWEST of them rather than their sum - which is
+   * exactly why a per-query budget is the right instrument here.
+   *
+   * Lifted from the handler, not invented: the `.is(completed_date, null)`
+   * filter, the or() that expresses "overdue by either date", the sort
+   * columns and the limits are all what that branch issues.
+   */
+  {
+    name: 'my-day overdue activities',
+    sql: `SELECT * FROM business_record_activities
+            WHERE tenant_id = $1
+              AND completed_date IS NULL
+              AND (due_date <= now() OR scheduled_date <= now() - interval '1 day')
+            ORDER BY due_date ASC
+            LIMIT 10`,
+  },
+  {
+    name: 'my-day due today',
+    sql: `SELECT * FROM business_record_activities
+            WHERE tenant_id = $1
+              AND completed_date IS NULL
+              AND scheduled_date >= date_trunc('day', now())
+              AND scheduled_date <= date_trunc('day', now()) + interval '1 day'
+            ORDER BY scheduled_date ASC
+            LIMIT 20`,
+  },
+  {
+    name: 'my-day stalled deals',
+    sql: `SELECT * FROM deals
+            WHERE tenant_id = $1 AND status = 'open'
+              AND (updated_at < now() - interval '14 days'
+                   OR (updated_at IS NULL AND created_at < now() - interval '14 days'))
+            ORDER BY updated_at ASC NULLS FIRST
+            LIMIT 5`,
+  },
+  {
+    name: 'my-day recent wins',
+    sql: `SELECT * FROM deals
+            WHERE tenant_id = $1 AND status = 'won'
+              AND actual_close_date >= now() - interval '7 days'
+            ORDER BY actual_close_date DESC
+            LIMIT 5`,
+  },
+  {
+    name: 'my-day team pipeline (COP-B01 AC6)',
+    sql: `SELECT owner_id, amount FROM deals
+            WHERE tenant_id = $1 AND status = 'open'
+              AND owner_id IN ('rep-1','rep-2','rep-3','rep-4','rep-5')`,
+  },
+  {
+    name: 'my-day team activity (COP-B01 AC6)',
+    sql: `SELECT created_by, activity_type FROM business_record_activities
+            WHERE tenant_id = $1
+              AND created_by IN ('rep-1','rep-2','rep-3','rep-4','rep-5')
+              AND created_at >= now() - interval '7 days'`,
+  },
 ];
 
 const client = new pg.Client({ connectionString: url });
@@ -133,19 +194,50 @@ async function seed() {
          FROM generate_series(1, $2) g`,
     [tenantId, ROWS],
   );
+  // `created_by_id` is NOT NULL on deals and was missing here, so this script
+  // could not insert a single deal against a faithfully migrated database -
+  // it died on the first seed statement. A benchmark that cannot run is the
+  // performance equivalent of a guard that passes vacuously, and its numbers
+  // were being quoted. Same for actual_close_date, which the recent-wins
+  // query below filters on.
   await client.query(
-    `INSERT INTO deals (tenant_id, title, owner_id, stage_id, status, amount, expected_close_date, created_at)
+    `INSERT INTO deals (tenant_id, title, owner_id, created_by_id, stage_id, status, amount,
+                        expected_close_date, actual_close_date, created_at, updated_at)
        SELECT $1,
               'Bench Deal ' || g,
+              'rep-' || (g % 10),
               'rep-' || (g % 10),
               'stage-' || (g % 6),
               (ARRAY['open','won','lost'])[1 + (g % 3)],
               (1000 + g)::numeric,
               now() + ((g % 180) || ' days')::interval,
-              now() - (g || ' minutes')::interval
+              CASE WHEN g % 3 = 1 THEN now() - ((g % 30) || ' days')::interval END,
+              now() - (g || ' minutes')::interval,
+              -- A third of the open deals are stale, so the stalled-deals query
+              -- has something to find rather than measuring an empty result.
+              CASE WHEN g % 3 = 0 THEN now() - ((g % 60) || ' days')::interval END
          FROM generate_series(1, $2) g`,
     [tenantId, ROWS],
   );
+  // COP-B01 AC5: the My Day workspace reads activities, so they are seeded at
+  // the same scale as the deals. `completed_date` null on two thirds of them,
+  // because the workspace only ever asks about outstanding work.
+  await client.query(
+    `INSERT INTO business_record_activities
+            (tenant_id, activity_type, subject, created_by, created_at,
+             scheduled_date, due_date, completed_date)
+       SELECT $1,
+              (ARRAY['call','email','meeting','note','task'])[1 + (g % 5)],
+              'Bench Activity ' || g,
+              'rep-' || (g % 10),
+              now() - ((g % 30) || ' days')::interval,
+              now() - ((g % 14) || ' days')::interval + ((g % 24) || ' hours')::interval,
+              now() - ((g % 14) || ' days')::interval,
+              CASE WHEN g % 3 = 0 THEN now() - ((g % 10) || ' days')::interval END
+         FROM generate_series(1, $2) g`,
+    [tenantId, ROWS],
+  );
+
   if (NOISE > 0) {
     console.log(`Seeding ${NOISE} rows across other tenants, so the scan is charged for them…`);
     await client.query(
@@ -156,22 +248,34 @@ async function seed() {
       [NOISE],
     );
     await client.query(
-      `INSERT INTO deals (tenant_id, title, owner_id, stage_id, status, amount, expected_close_date, created_at)
-         SELECT 'bench-noise-' || (g % 40), 'Other Deal ' || g, 'rep-1', 'stage-1', 'open',
+      `INSERT INTO deals (tenant_id, title, owner_id, created_by_id, stage_id, status, amount,
+                          expected_close_date, created_at)
+         SELECT 'bench-noise-' || (g % 40), 'Other Deal ' || g, 'rep-1', 'rep-1', 'stage-1', 'open',
                 1000::numeric, now(), now() - (g || ' minutes')::interval
+           FROM generate_series(1, $1) g`,
+      [NOISE],
+    );
+    await client.query(
+      `INSERT INTO business_record_activities
+              (tenant_id, activity_type, subject, created_by, created_at, scheduled_date, due_date)
+         SELECT 'bench-noise-' || (g % 40), 'call', 'Other Activity ' || g, 'rep-1',
+                now() - (g || ' minutes')::interval, now(), now()
            FROM generate_series(1, $1) g`,
       [NOISE],
     );
   }
   await client.query('ANALYZE companies');
   await client.query('ANALYZE deals');
+  await client.query('ANALYZE business_record_activities');
 }
 
 async function cleanup() {
   await client.query('DELETE FROM companies WHERE tenant_id = $1', [tenantId]);
   await client.query('DELETE FROM deals WHERE tenant_id = $1', [tenantId]);
+  await client.query('DELETE FROM business_record_activities WHERE tenant_id = $1', [tenantId]);
   await client.query("DELETE FROM companies WHERE tenant_id LIKE 'bench-noise-%'");
   await client.query("DELETE FROM deals WHERE tenant_id LIKE 'bench-noise-%'");
+  await client.query("DELETE FROM business_record_activities WHERE tenant_id LIKE 'bench-noise-%'");
 }
 
 /** Median, not mean: one cold run must not decide the verdict either way. */
