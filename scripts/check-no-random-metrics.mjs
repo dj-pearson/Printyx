@@ -47,6 +47,26 @@ import { readFileSync, writeFileSync, existsSync, readdirSync, statSync } from '
 import { join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+/**
+ * A note somebody WROTE survives --update-baseline.
+ *
+ * These baselines are worklists, and the prose at the top is what makes them
+ * one rather than an undifferentiated list - "each is a question, who fills
+ * this in", "a TODO list, not settled debt". Regenerating the default on every
+ * tighten silently discarded any annotation added since, which cost two rounds
+ * on check:raw-body-writes before a test caught it.
+ * server/tests/unit/baseline-notes-preserved.test.ts holds the property for
+ * every writer.
+ */
+function existingBaselineNote(p) {
+  try {
+    const note = JSON.parse(readFileSync(p, 'utf8')).note;
+    return typeof note === 'string' && note.length > 0 ? note : null;
+  } catch {
+    return null;
+  }
+}
+
 const ROOT = join(fileURLToPath(new URL('.', import.meta.url)), '..');
 const BASELINE = join(ROOT, 'docs', 'random-metrics-baseline.json');
 const UPDATE = process.argv.includes('--update-baseline');
@@ -130,9 +150,10 @@ if (UPDATE) {
     JSON.stringify(
       {
         note:
+          existingBaselineNote(BASELINE) ??
           'Object properties whose value comes from Math.random(), i.e. a measurement someone ' +
-          'made up. Keyed by file and property name so line moves do not churn it. Do not grow ' +
-          'this list; see scripts/check-no-random-metrics.mjs and AUDIT-020.',
+            'made up. Keyed by file and property name so line moves do not churn it. Do not grow ' +
+            'this list; see scripts/check-no-random-metrics.mjs and AUDIT-020.',
         total,
         offenders: current,
       },

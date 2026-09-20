@@ -686,7 +686,19 @@ export default async function handler(req: Request) {
       return createCorsResponse(rows, 200, req);
     }
 
-    // GET /crm/manager-insights
+    /**
+     * GET /crm/manager-insights
+     *
+     * NOTHING WRITES `manager_insights` (AUDIT-028). The read is correct and the
+     * table has never held a row, so CrmGoalsDashboard's insights panel renders
+     * nothing at all - it guards on `insights.length > 0`, which is the mild
+     * form of this defect: the feature looks absent rather than empty. What is
+     * missing is a PRODUCER; the rows describe a coaching insight per manager,
+     * team or rep, with a category and a priority, which is a generated
+     * artefact, not something a user types. Recorded in
+     * docs/unwritten-tables-baseline.json with that question rather than left
+     * looking like a table nobody uses.
+     */
     if (req.method === 'GET' && subRoute === 'manager-insights') {
       let query = admin
         .from('manager_insights')
@@ -714,7 +726,21 @@ export default async function handler(req: Request) {
     }
 
     if (subRoute === 'analytics') {
-      // GET /crm/analytics/conversion-analysis
+      /**
+       * GET /crm/analytics/conversion-analysis
+       *
+       * NOTHING WRITES `sales_metrics` either (AUDIT-028), and `commission`
+       * reads it too. These are per-rep conversion and activity figures that
+       * every input for already exists - business_records, deals and
+       * business_record_activities - so the answer to "who fills this in" is a
+       * DERIVATION rather than an importer, the shape system_alerts took. That
+       * is a feature, not a guard fix, and is recorded as such in
+       * docs/unwritten-tables-baseline.json.
+       *
+       * CR-033 already made the page distinguish a failed request from an empty
+       * one, so what a manager sees today is honest - "no conversion data yet"
+       * is true of the table. It is not true of the business.
+       */
       if (req.method === 'GET' && parts[1] === 'conversion-analysis') {
         const period = url.searchParams.get('period') ?? 'monthly';
         let query = admin

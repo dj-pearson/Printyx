@@ -58,6 +58,26 @@ import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+/**
+ * A note somebody WROTE survives --update-baseline.
+ *
+ * These baselines are worklists, and the prose at the top is what makes them
+ * one rather than an undifferentiated list - "each is a question, who fills
+ * this in", "a TODO list, not settled debt". Regenerating the default on every
+ * tighten silently discarded any annotation added since, which cost two rounds
+ * on check:raw-body-writes before a test caught it.
+ * server/tests/unit/baseline-notes-preserved.test.ts holds the property for
+ * every writer.
+ */
+function existingBaselineNote(path) {
+  try {
+    const note = JSON.parse(readFileSync(path, 'utf8')).note;
+    return typeof note === 'string' && note.length > 0 ? note : null;
+  } catch {
+    return null;
+  }
+}
+
 const ROOT = join(fileURLToPath(new URL('.', import.meta.url)), '..');
 const SHARED = join(ROOT, 'shared');
 const MIGRATIONS = join(ROOT, 'drizzle', 'migrations');
@@ -184,10 +204,11 @@ if (update) {
     `${JSON.stringify(
       {
         note:
+          existingBaselineNote(BASELINE) ??
           'Foreign-key columns whose type cannot hold the key they name. See scripts/check-fk-id-types.mjs. ' +
-          'Every entry is a feature that cannot store a row referencing a real record - the read is a 22P02, ' +
-          'the write a 42804, and under PostgREST both read as an empty table. Shrink this list, never grow it: ' +
-          'node scripts/check-fk-id-types.mjs --update-baseline',
+            'Every entry is a feature that cannot store a row referencing a real record - the read is a 22P02, ' +
+            'the write a 42804, and under PostgREST both read as an empty table. Shrink this list, never grow it: ' +
+            'node scripts/check-fk-id-types.mjs --update-baseline',
         total: failures.length,
         offenders: failures,
       },
