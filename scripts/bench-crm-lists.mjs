@@ -182,7 +182,7 @@ const QUERIES = [
 const client = new pg.Client({ connectionString: url });
 
 async function seed() {
-  console.log(`Seeding ${ROWS} companies and ${ROWS} deals into tenant ${tenantId}…`);
+  console.log(`Seeding ${ROWS} companies and ${ROWS} deals into tenant ${tenantId}...`);
   await client.query(
     `INSERT INTO companies (tenant_id, business_name, business_record_type, activity, created_by, created_at)
        SELECT $1,
@@ -239,7 +239,7 @@ async function seed() {
   );
 
   if (NOISE > 0) {
-    console.log(`Seeding ${NOISE} rows across other tenants, so the scan is charged for them…`);
+    console.log(`Seeding ${NOISE} rows across other tenants, so the scan is charged for them...`);
     await client.query(
       `INSERT INTO companies (tenant_id, business_name, business_record_type, activity, created_by, created_at)
          SELECT 'bench-noise-' || (g % 40), 'Other Account ' || g, 'Customer', 'active', 'rep-1',
