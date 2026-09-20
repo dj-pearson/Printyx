@@ -1,6 +1,6 @@
 {
   "note": "Story + guidance file-reference ratchet. scripts/check-prd-references.mjs fails when a path named in an OPEN story or in CLAUDE.md stops resolving — usually because someone deleted or moved the file, which means that story now describes a place that does not exist and needs re-reading. THIS LIST IS NOT A DEFECT LIST: many entries are forward-looking stories naming files they would create (the AOS-* subsystem is entirely of this kind). Do not \"fix\" those. Entries leave the list when the path resolves again or the story closes: node scripts/check-prd-references.mjs --update-baseline.",
-  "count": 61,
+  "count": 63,
   "allowed": [
     "AOS-001 drizzle/rls/agentic-os.sql",
     "AOS-001 shared/agentic-os-schema.ts",
@@ -62,6 +62,8 @@
     "SUPA-016 server/routes-workflow-automation.ts",
     "SUPA-023 server/routes-predictive-service-dispatch.ts",
     "UI-DEAD-BUTTONS-001 docs/dead-buttons-baseline.json",
-    "UI-DEAD-BUTTONS-001 scripts/check-dead-buttons.mjs"
+    "UI-DEAD-BUTTONS-001 scripts/check-dead-buttons.mjs",
+    "docs/lead-assignment-parity.md server/routes-territory-management.ts",
+    "docs/lead-assignment-parity.md server/services/territory-management-service.ts"
   ]
 }

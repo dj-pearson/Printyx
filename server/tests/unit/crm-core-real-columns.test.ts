@@ -13,7 +13,7 @@
  * linkedin_url, none of which exists.
  */
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 const repo = join(__dirname, '../../..');
@@ -54,15 +54,45 @@ describe('deals is read as amount, stage_id, title and actual_close_date', () =>
     );
   });
 
-  it('assignments filter deals on owner_id', () => {
-    // Scoped to the deals query: `leads` and the assignment table do have an
-    // assigned_to_id, so a whole-file assertion would be wrong.
-    const src = fn('supabase/functions/user-assignments/index.ts');
-    const at = src.indexOf("from('deals')");
-    const chain = src.slice(at, at + 400);
-    expect(at).toBeGreaterThan(-1);
-    expect(chain).toMatch(/eq\('owner_id', userId\)/);
-    expect(chain).not.toMatch(/assigned_to_id/);
+  it('no edge function filters deals on assigned_to_id', () => {
+    // WIDENED: this used to name supabase/functions/user-assignments/index.ts,
+    // which the lead-assignment consolidation deleted as a duplicate. A
+    // property asserted about one file by name stops being enforced the day
+    // that file goes, so it is asserted about every deals query in the tree.
+    //
+    // `deals` has owner_id. assigned_to_id belongs to other tables, so the
+    // assertion is scoped to each `.from('deals')` CHAIN rather than to whole
+    // files.
+    const root = join(repo, 'supabase/functions');
+    const files: string[] = [];
+    const walk = (dir: string) => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const full = join(dir, entry.name);
+        if (entry.isDirectory()) walk(full);
+        else if (entry.name.endsWith('.ts')) files.push(full);
+      }
+    };
+    walk(root);
+    // A walk that matches nothing must fail rather than pass in silence.
+    expect(files.length).toBeGreaterThan(300);
+
+    const offenders: string[] = [];
+    let chainsChecked = 0;
+    for (const file of files) {
+      const src = stripComments(readFileSync(file, 'utf8'));
+      let at = src.indexOf("from('deals')");
+      while (at !== -1) {
+        const next = src.indexOf('.from(', at + 14);
+        const chain = src.slice(at, next === -1 ? Math.min(at + 600, src.length) : next);
+        chainsChecked += 1;
+        if (/assigned_to_id/.test(chain)) {
+          offenders.push(file.slice(root.length + 1));
+        }
+        at = src.indexOf("from('deals')", at + 14);
+      }
+    }
+    expect(chainsChecked).toBeGreaterThan(20);
+    expect(offenders).toEqual([]);
   });
 
   it('opportunities read and write the primary_contact_ fields', () => {

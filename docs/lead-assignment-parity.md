@@ -1,7 +1,35 @@
 # Lead Assignment — Parity Audit
 
 **Part of:** Phase 3 US-013 · `tasks/prd-migration-lead-assignment.md`
-**Status:** audit complete; canonical `supabase/functions/lead-assignment/` in progress.
+**Status:** canonical shipped; PR 2 executed for seven of nine duplicates (see the status note below).
+
+> **PR 2 status (2026-09-20, SEC-EDGE-001 batch 14).** Seven of the nine
+> duplicates are now deleted: `lead-assignment-rules`, `lead-assignment-queue`,
+> `lead-assignment-history`, `assign-lead`, `territories`, `user-assignments`,
+> `rep-capacity`. `supabase/functions/server.ts` now maps those seven prefixes
+> onto the canonical function with `stripSegments = 0`, the fan-out this
+> document assumed and nothing had built, without which the deletions would have
+> 404'd those URLs rather than routing them.
+>
+> **`sales-territories` and `auto-lead-routing` are NOT deleted.** Both gained
+> live callers in `client/src` after this audit was written (COP-B09 wired
+> `SalesTerritories.tsx` to `sales-territories` and fixed its seven phantom
+> columns), so aliasing them onto a handler with a different response shape
+> would break a working page. Converging them is a shape question, not a
+> deletion.
+>
+> Two Express files this table lists are already gone: QUALITY-002 deleted
+> `server/routes-territory-management.ts` and
+> `server/services/territory-management-service.ts` as duplicates of the
+> canonical function. `server/routes-lead-assignment.ts` and
+> `server/routes-auto-lead-routing.ts` remain and are still mounted, so dev
+> serves these prefixes from Express while prod serves them from the edge
+> function.
+>
+> Not carried over: `DELETE /lead-assignment-queue/:id` has no canonical
+> equivalent, and `GET /user-assignments/:userId` returned a combined
+> leads + deals + tasks + history view where the canonical handler answers
+> history only.
 
 Maps every endpoint across the **3 Express files** + **10 existing edge functions** to the canonical location. Follows the action plan in the parent PRD: land canonical first, leave duplicates alive for 48h soak, delete in PR 2.
 
@@ -13,9 +41,9 @@ Maps every endpoint across the **3 Express files** + **10 existing edge function
 | ------- | ------------------------------------------------- | --------------------------------------------- |
 | Express | `server/routes-lead-assignment.ts`                | 21 endpoints, 683 loc                         |
 | Express | `server/routes-auto-lead-routing.ts`              | 6 endpoints, 343 loc                          |
-| Express | `server/routes-territory-management.ts`           | 20 endpoints, 508 loc                         |
+| Express | `server/routes-territory-management.ts`           | DELETED by QUALITY-002 (was 20 endpoints)     |
 | Express | `server/services/auto-lead-routing-service.ts`    | routing algorithm, 585 loc                    |
-| Express | `server/services/territory-management-service.ts` | territory matching, 681 loc                   |
+| Express | `server/services/territory-management-service.ts` | DELETED by QUALITY-002 (territory matching)   |
 | Edge    | `supabase/functions/lead-assignment/`             | 390 loc — **becomes canonical**               |
 | Edge    | `supabase/functions/lead-assignment-rules/`       | 153 loc — merge in                            |
 | Edge    | `supabase/functions/lead-assignment-queue/`       | 150 loc — merge in                            |
