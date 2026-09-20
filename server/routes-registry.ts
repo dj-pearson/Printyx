@@ -972,10 +972,16 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   // EDGE-003. Frontend hits /api/kpis/* and /api/reporting/* via the
   // edge-function-proxy.
 
+  // QUALITY-002: /api/territories and /api/cross-module were mounted here and
+  // both prefixes are in crmProxies, so neither router ever ran. They were
+  // invisible to check:shadowed-express because its tuple pattern demanded a
+  // two-element [path, module] entry and these carry a third, the label.
+  // routes-cross-module.ts duplicated supabase/functions/cross-module endpoint
+  // for endpoint; routes-territory-management.ts plus its service duplicated
+  // supabase/functions/lead-assignment over the same four tables, and nothing
+  // in any client tree called /api/territories on either host.
   const lazyModules: [string, string, string][] = [
     ['/api/gdpr', './routes-gdpr-core', 'GDPR Core Features'],
-    ['/api/territories', './routes-territory-management', 'Territory Management'],
-    ['/api/cross-module', './routes-cross-module', 'Cross-Module Integration'],
     ['/api/oid-mappings', './routes-oid-mappings', 'OID Mappings'],
     ['/api/address-books', './routes-address-books', 'Address Books (import/export + CRUD)'],
   ];

@@ -170,8 +170,15 @@ function prefixMountedFindings() {
     const ident = m[2].split(',').pop().trim().split('.')[0];
     if (importedFrom[ident]) mounts.push({ prefix: m[1], spec: importedFrom[ident], ident });
   }
-  // [ '/api/x', './module' ] tuples (asyncApiMounts and friends)
-  for (const m of registry.matchAll(/\[\s*'(\/api\/[^']+)'\s*,\s*'(\.[^']+)'\s*\]/g)) {
+  // [ '/api/x', './module' ] tuples (asyncApiMounts and friends), INCLUDING the
+  // three-element form that carries a human label:
+  //   ['/api/territories', './routes-territory-management', 'Territory Management']
+  // The first version demanded the closing bracket right after the module
+  // string, so `lazyModules` - five routers, two of them on proxied prefixes -
+  // was invisible to this gate in its entirety. A mount table is exactly the
+  // place a router goes to be forgotten, so the trailing element is optional
+  // rather than a second pattern.
+  for (const m of registry.matchAll(/\[\s*'(\/api\/[^']+)'\s*,\s*'(\.[^']+)'\s*(?:,[^\]]*)?\]/g)) {
     mounts.push({ prefix: m[1], spec: m[2] });
   }
   // Bare './routes/x' entries in the list mounted at '/api'
