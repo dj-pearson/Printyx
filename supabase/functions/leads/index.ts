@@ -3,6 +3,7 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import geocodeLeadsHandler from '../geocode-leads/index.ts';
 import { toCamel } from '../_shared/case.ts';
+import { planBusinessRecordWrite } from '../_shared/business-record-write.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { applyUserScope, resolveScope } from '../_shared/scope.ts';
 
@@ -337,19 +338,52 @@ export default async function handler(req: Request) {
     if (req.method === 'PUT' && leadId && !subResource) {
       const body = await req.json();
 
+      // COP-M01. This used to be `.update({ ...body, updated_at })`, handing
+      // the request body to PostgREST untouched. The page sends camelCase, PostgREST wants columns, so every save was a
+      // PGRST204 reported as "Failed to update lead" - in PRODUCTION ONLY,
+      // because /api/leads is not proxied and dev goes through Drizzle, which
+      // maps field names to columns. The same spread let a body set `tenant_id`:
+      // the .eq() filter below decides which row is written, not what is
+      // written into it.
+      const { update, ignoredFields, refusedFields } = planBusinessRecordWrite(body);
+
+      if (Object.keys(update).length === 0) {
+        return createCorsResponse(
+          {
+            error: 'No writable field in the request body',
+            code: 'NO_WRITABLE_FIELDS',
+            ignoredFields,
+            refusedFields,
+          },
+          400,
+          req,
+        );
+      }
+
       const { data: lead, error } = await admin
         .from('business_records')
-        .update({ ...body, updated_at: new Date().toISOString() })
+        .update({ ...update, updated_at: new Date().toISOString() })
         .eq('id', leadId)
         .eq('tenant_id', tenantId)
         .select()
         .single();
 
       if (error) {
+        console.error('Error updating lead:', error);
         return createCorsResponse({ error: 'Failed to update lead' }, 500, req);
       }
 
-      return createCorsResponse(lead, 200, req);
+      // What was dropped is SAID. A narrowing nobody can see turns a renamed
+      // field into data loss that reports success (COP-B06).
+      return createCorsResponse(
+        {
+          ...lead,
+          ...(ignoredFields.length > 0 ? { ignoredFields } : {}),
+          ...(refusedFields.length > 0 ? { refusedFields } : {}),
+        },
+        200,
+        req,
+      );
     }
 
     // POST /leads/:id/convert - Convert lead to customer
