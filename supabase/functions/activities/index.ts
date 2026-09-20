@@ -229,6 +229,12 @@ export default async function handler(req: Request) {
         activityDate: 'scheduled_date',
         scheduledDate: 'scheduled_date',
         durationMinutes: 'call_duration',
+        callDuration: 'call_duration',
+        // `call_outcome` is its own column and was missing from this map, so the
+        // edit dialog folded a call's outcome into the general `outcome` field
+        // and the general one then overwrote it. Two fields, one column, last
+        // write wins - and the call outcome was always the loser.
+        callOutcome: 'call_outcome',
         direction: 'direction',
         emailTo: 'email_to',
         emailCc: 'email_cc',

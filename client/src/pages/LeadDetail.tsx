@@ -500,6 +500,7 @@ export default function LeadDetailHubspot() {
           objectType="leads"
           record={lead as Record<string, unknown>}
           title={lead.companyName || 'Unnamed Lead'}
+          titleField="companyName"
           subtitle={lead.industry || undefined}
           badges={
             <>

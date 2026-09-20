@@ -55,6 +55,13 @@ export interface RecordPageLayoutProps {
   badges?: ReactNode;
   /** Rendered under the title: the stage picker belongs here. */
   headerContent?: ReactNode;
+  /**
+   * AC3's "record name (large, editable)". The field the title maps to, so the
+   * h1 can be edited in place. Omit it and the title is plain text: a pencil
+   * that leads nowhere is the same defect as a dead button, which is the rule
+   * PropertyRow already applies one level down.
+   */
+  titleField?: string;
   /** Only actions with a handler are drawn. */
   quickActions?: RecordQuickAction[];
   /** sectionId -> what to render for it. A section with no slot and no fields is reported. */
@@ -156,6 +163,7 @@ export function RecordPageLayout({
   subtitle,
   badges,
   headerContent,
+  titleField,
   quickActions = [],
   slots = {},
   onFieldSave,
@@ -209,7 +217,17 @@ export function RecordPageLayout({
         <CardContent className="pt-6 space-y-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
-              <h1 className="text-xl font-semibold leading-tight break-words">{title}</h1>
+              {titleField && onFieldSave ? (
+                <InlineEdit
+                  value={record[titleField] == null ? '' : String(record[titleField])}
+                  type="text"
+                  displayFormat={() => title}
+                  onSave={(v) => onFieldSave(titleField, v)}
+                  className="text-xl font-semibold leading-tight break-words"
+                />
+              ) : (
+                <h1 className="text-xl font-semibold leading-tight break-words">{title}</h1>
+              )}
               {subtitle && <div className="text-sm text-muted-foreground mt-0.5">{subtitle}</div>}
             </div>
             {badges && <div className="flex items-center gap-2">{badges}</div>}

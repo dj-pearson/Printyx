@@ -431,9 +431,12 @@ export default function DealDetail() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/deals/${dealId}`] });
       queryClient.invalidateQueries({ queryKey: ['/api/deals'] });
-      toast({ title: 'Forecast updated' });
+      // Generic copy because this one mutation now serves every inline edit on
+      // the page, the deal's own name included - "Forecast updated" after
+      // renaming a deal names the wrong thing.
+      toast({ title: 'Deal updated' });
     },
-    onError: () => toast({ title: 'Could not update the forecast', variant: 'destructive' }),
+    onError: () => toast({ title: 'Could not update the deal', variant: 'destructive' }),
   });
 
   const moveStage = useMutation({
@@ -1085,6 +1088,7 @@ export default function DealDetail() {
           objectType="deals"
           record={deal as unknown as Record<string, unknown>}
           title={deal.title}
+          titleField="title"
           subtitle={deal.companyName}
           badges={
             <>
