@@ -15,6 +15,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
+import { InlineQueryError } from '@/components/ui/inline-query-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -85,7 +86,7 @@ export function PlaybookPanel({
   const queryClient = useQueryClient();
   const key = `/api/playbooks/for-record/${parentType}/${parentId}`;
 
-  const { data, isLoading } = useQuery<ForRecordResponse>({
+  const { data, isLoading, isError, refetch } = useQuery<ForRecordResponse>({
     queryKey: [key],
     queryFn: () => apiRequest(key),
     enabled: Boolean(parentId),
@@ -144,6 +145,9 @@ export function PlaybookPanel({
 
   if (!parentId) return null;
   if (isLoading) return <Skeleton className="h-24 w-full" />;
+  // A failed fetch used to fall through to the same empty state as "this record
+  // matches no playbook", which is a different and much more reassuring claim.
+  if (isError) return <InlineQueryError label="playbooks" onRetry={refetch} />;
 
   if (!data || data.data.length === 0) {
     return (

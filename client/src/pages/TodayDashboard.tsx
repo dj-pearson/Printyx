@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ComponentType, ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { apiRequest } from '@/lib/queryClient';
@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useLocation } from 'wouter';
-import { format, formatDistance, isToday, isPast, isFuture } from 'date-fns';
+import { format, formatDistance } from 'date-fns';
 import {
   AlertCircle,
   Calendar,
@@ -134,7 +134,7 @@ export default function TodayDashboard() {
   // resolved against their LIVE role level on every read - so a promotion adds
   // the team cards immediately and a demotion withholds them immediately,
   // whatever the saved layout says.
-  const { mainCards, sideCards, layout, save, isSaving } = useMyDayLayout();
+  const { mainCards, sideCards, layout, save, isSaving, usingDefaultLayout } = useMyDayLayout();
 
   const handleCompleteActivity = async (activityId: string) => {
     try {
@@ -220,7 +220,7 @@ export default function TodayDashboard() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Calendar className="h-5 w-5 text-blue-600" />
-              <CardTitle>Today's Schedule</CardTitle>
+              <CardTitle>Today&apos;s Schedule</CardTitle>
               <Badge variant="secondary">{today.length} tasks</Badge>
             </div>
             <Button variant="outline" size="sm">
@@ -488,7 +488,16 @@ export default function TodayDashboard() {
             subtitle="Today"
           />
         </div>
-        <div className="flex justify-end">
+        <div className="flex items-center justify-end gap-3">
+          {/* CR-033: the layout request failing falls back to the default card
+              set, which is right - but a user whose hidden cards had all come
+              back deserves to know why rather than assume their preferences
+              were lost. */}
+          {usingDefaultLayout && (
+            <p className="text-xs text-muted-foreground">
+              Showing the default cards - your saved layout could not be loaded.
+            </p>
+          )}
           <MyDayCustomizer layout={layout} onSave={save} isSaving={isSaving} />
         </div>
 
@@ -523,7 +532,7 @@ function StatCard({
   color,
   subtitle,
 }: {
-  icon: any;
+  icon: ComponentType<{ className?: string }>;
   label: string;
   value: string;
   color: string;

@@ -92,6 +92,16 @@ export function useMyDayLayout() {
    */
   const cards = query.data?.cards ?? [];
 
+  /**
+   * CR-033, the deliberate-degradation case. A failed layout request falls back
+   * to the DEFAULT card set rather than an empty workspace, which is right.
+   * What was missing is that nothing distinguished it: `query.data ?? null`
+   * reads the same while loading and after a failure, so a user whose hidden
+   * cards had all come back would have no way to tell why.
+   *
+   * `isError` is surfaced rather than handled here, because the hook does not
+   * render - TodayDashboard shows the line.
+   */
   return useMemo(
     () => ({
       layout: query.data ?? null,
@@ -100,8 +110,10 @@ export function useMyDayLayout() {
       save: (next: MyDayCardPref[]) => save.mutate(next),
       isSaving: save.isPending,
       isLoading: query.isLoading,
+      /** True when the saved layout could not be loaded and the default is in use. */
+      usingDefaultLayout: query.isError,
     }),
-    [query.data, query.isLoading, save.isPending],
+    [query.data, query.isLoading, query.isError, save.isPending],
   );
 }
 

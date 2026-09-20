@@ -13,12 +13,13 @@
  * model does not exist yet.
  */
 import { useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, invalidateApiPath } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import MainLayout from '@/components/layout/main-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { InlineQueryError } from '@/components/ui/inline-query-error';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -65,7 +66,6 @@ const PLAY_LABELS: Record<string, string> = {
 
 export default function OpportunityRadar() {
   const { toast } = useToast();
-  const queryClient = useQueryClient();
   const [, navigate] = useLocation();
   const [playType, setPlayType] = useState('all');
   const [mine, setMine] = useState('all');
@@ -80,8 +80,22 @@ export default function OpportunityRadar() {
     queryFn: () => apiRequest(key),
   });
 
-  const invalidate = () =>
-    queryClient.invalidateQueries({ queryKey: [key.split('?')[0]], exact: false });
+  /**
+   * THE RADAR NEVER REFRESHED AFTER A SCAN, A DISMISS OR A CONVERT.
+   *
+   * The query key is the whole URL in one element -
+   * `['/api/opportunity-radar?playType=lease&mine=true']` - and this
+   * invalidated `['/api/opportunity-radar']`. TanStack matches ELEMENT-WISE, so
+   * a shorter string is not a prefix of a longer one: the two keys simply do
+   * not match and nothing was ever invalidated. A URL is not a path.
+   *
+   * `invalidateApiPath` is the helper for exactly this: it predicates on the
+   * first element being the prefix, or starting with `${prefix}/` or
+   * `${prefix}?`, so every filter combination is refreshed rather than the one
+   * that happens to be on screen. check:invalidation-keys is the guard, and it
+   * was red on main.
+   */
+  const invalidate = () => invalidateApiPath('/api/opportunity-radar');
 
   const scan = useMutation({
     mutationFn: () => apiRequest('/api/opportunity-radar/scan', 'POST'),
@@ -198,6 +212,11 @@ export default function OpportunityRadar() {
         <CardContent className="space-y-3">
           {playsQuery.isLoading ? (
             <Skeleton className="h-40 w-full" />
+          ) : playsQuery.isError ? (
+            /* CR-033: a failed fetch used to render "No open plays - run a
+               scan", so a rep would scan an installed base that had already
+               been scanned and conclude it holds nothing. */
+            <InlineQueryError label="the radar" onRetry={playsQuery.refetch} />
           ) : plays.length === 0 ? (
             <EmptyState
               title="No open plays"

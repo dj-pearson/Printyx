@@ -21,6 +21,7 @@ import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import MainLayout from '@/components/layout/main-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { InlineQueryError } from '@/components/ui/inline-query-error';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -234,6 +235,11 @@ export default function CompetitiveIntelligence() {
             <CardContent>
               {winLossQuery.isLoading ? (
                 <Skeleton className="h-40 w-full" />
+              ) : winLossQuery.isError ? (
+                /* CR-033: a failed fetch rendered "No competitive deals yet",
+                   which tells a sales manager their reps are not meeting
+                   competition. */
+                <InlineQueryError label="win/loss" onRetry={winLossQuery.refetch} />
               ) : !winLoss || winLoss.competitors.length === 0 ? (
                 <EmptyState
                   title="No competitive deals yet"

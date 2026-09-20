@@ -13,6 +13,7 @@ import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import MainLayout from '@/components/layout/main-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { InlineQueryError } from '@/components/ui/inline-query-error';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -177,6 +178,11 @@ export default function SalesPlaybooks() {
         <CardContent className="space-y-3">
           {listQuery.isLoading ? (
             <Skeleton className="h-32 w-full" />
+          ) : listQuery.isError ? (
+            /* CR-033: "No playbooks yet - install the four starter motions" is
+               an invitation to install duplicates of playbooks the dealer may
+               already have. */
+            <InlineQueryError label="playbooks" onRetry={listQuery.refetch} />
           ) : playbooks.length === 0 ? (
             <EmptyState
               title="No playbooks yet"

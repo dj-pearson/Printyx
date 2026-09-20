@@ -148,7 +148,29 @@ describe('today-dashboard reports what it could not load', () => {
     expect(CODE).toMatch(/taskCount:\s*countOf\(tasks\)/);
     expect(CODE).toMatch(/overdueCount:\s*countOf\(overdueTasks\)/);
     expect(CODE).toMatch(/pendingApprovalCount:\s*countOf\(pendingApprovals\)/);
-    expect(CODE).toMatch(/newLeads:\s*countOf\(newLeads\)/);
+    // newLeads is a HEAD COUNT now (check:row-caps: it used to fetch every
+    // lead created today only to read .length, so a tenant importing more
+    // than one PostgREST page had the number silently capped). The property
+    // is unchanged and is the one that matters - a family whose read failed
+    // answers null - so it is asserted against countFamily rather than
+    // against the rows helper it no longer goes through.
+    expect(CODE).toMatch(/newLeads:\s*newLeadCount/);
+    expect(CODE).toMatch(/countFamily\('newLeads'/);
+    /**
+     * Bound to the FIRST return inside countFamily's error branch.
+     *
+     * Two cuts at this missed. Slicing to a closing brace at the wrong
+     * indentation ran the window to the end of the file, and a mutant
+     * returning 0 on error survived. Then `[^}]*` to stop it walking on hit
+     * the `}` inside the branch's own template literal - the log line
+     * interpolates ${name} - so a correct file reported as wrong.
+     */
+    const cfAt = CODE.indexOf('async function countFamily');
+    expect(cfAt).toBeGreaterThan(-1);
+    const cf = CODE.slice(cfAt, CODE.indexOf('const [tasks', cfAt));
+    const errAt = cf.indexOf('if (error) {');
+    expect(errAt).toBeGreaterThan(-1);
+    expect(cf.slice(errAt).match(/return [^;]+;/)?.[0]).toBe('return null;');
     expect(CODE).toMatch(/rows === null \? null : rows\.length/);
   });
 

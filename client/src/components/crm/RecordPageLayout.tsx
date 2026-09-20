@@ -177,9 +177,22 @@ export function RecordPageLayout({
     retry: false,
   });
 
+  /**
+   * CR-033, the deliberate-degradation case.
+   *
+   * A failed config request falls back to the SHIPPED layout rather than
+   * leaving the record page blank, which is right - a rep can work a deal
+   * without their admin's section order. What was missing is that `?? default`
+   * treated "still loading" and "the request failed" as the same thing, and
+   * said neither out loud: an admin who had customised this page would see the
+   * stock one with no indication their configuration had not loaded.
+   *
+   * `isError` is read explicitly now, the fallback is unchanged, and the page
+   * carries one quiet line when it is running on the default.
+   */
+  const usingDefaultLayout = layoutQuery.isError;
+
   const resolved = useMemo(() => {
-    // A failed config request falls back to the shipped layout rather than
-    // leaving the record page blank.
     const sections = layoutQuery.data?.sections ?? mergeLayout(null, objectType);
     const slotIds = Object.keys(slots);
     const renderable = new Set(slotIds);
@@ -212,6 +225,12 @@ export function RecordPageLayout({
 
   return (
     <div className="space-y-4">
+      {usingDefaultLayout && (
+        <p className="text-xs text-muted-foreground">
+          Showing the standard layout - this page&apos;s saved configuration could not be loaded.
+        </p>
+      )}
+
       {/* ── Header ──────────────────────────────────────────────── */}
       <Card>
         <CardContent className="pt-6 space-y-4">

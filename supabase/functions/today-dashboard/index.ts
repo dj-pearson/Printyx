@@ -130,8 +130,37 @@ export default async function handler(req: Request) {
         }
       }
 
-      const [tasks, overdueTasks, recentActivities, pendingApprovals, newLeads] = await Promise.all(
-        [
+      /**
+       * A family whose only use is `.length`.
+       *
+       * `newLeads` fetched every lead created today and counted the rows, so a
+       * tenant importing more than PostgREST's default page in a day had the
+       * count silently capped - the number on the screen is the one thing that
+       * cannot show it (check:row-caps, which was red on main). A head count
+       * asks the database for the number instead, and keeps the same
+       * null-on-failure contract so a zero still means zero.
+       */
+      async function countFamily(
+        name: string,
+        run: () => Promise<{ count: number | null; error: unknown }>,
+      ): Promise<number | null> {
+        try {
+          const { count, error } = await run();
+          if (error) {
+            console.error(`today-dashboard: ${name} failed`, error);
+            degraded.push(name);
+            return null;
+          }
+          return count ?? 0;
+        } catch (err) {
+          console.error(`today-dashboard: ${name} threw`, err);
+          degraded.push(name);
+          return null;
+        }
+      }
+
+      const [tasks, overdueTasks, recentActivities, pendingApprovals, newLeadCount] =
+        await Promise.all([
           family<any>('tasks', () =>
             admin
               .from('tasks')
@@ -169,17 +198,16 @@ export default async function handler(req: Request) {
               .eq('tenant_id', tenantId)
               .in('status', ['pending', 'in_review']),
           ),
-          family<any>('newLeads', () =>
+          countFamily('newLeads', () =>
             admin
               .from('business_records')
-              .select('id')
+              .select('id', { count: 'exact', head: true })
               .eq('tenant_id', tenantId)
               .eq('record_type', 'lead')
               .gte('created_at', todayIso)
               .lt('created_at', tomorrowIso),
           ),
-        ],
-      );
+        ]);
 
       const wonDeals = await fetchAllRows<any>(() =>
         admin
@@ -217,7 +245,7 @@ export default async function handler(req: Request) {
           pendingApprovals: pendingApprovals || [],
           pendingApprovalCount: countOf(pendingApprovals),
           metrics: {
-            newLeads: countOf(newLeads),
+            newLeads: newLeadCount,
             todayRevenue,
             dealsWon: wonDeals?.length || 0,
           },

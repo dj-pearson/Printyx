@@ -15,6 +15,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'wouter';
 import { apiRequest } from '@/lib/queryClient';
 import { Badge } from '@/components/ui/badge';
+import { InlineQueryError } from '@/components/ui/inline-query-error';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertTriangle, Info, Swords } from 'lucide-react';
 
@@ -42,7 +43,7 @@ interface CompetitiveResponse {
 }
 
 export function CompetitiveCard({ dealId }: { dealId?: string }) {
-  const { data, isLoading } = useQuery<CompetitiveResponse>({
+  const { data, isLoading, isError, refetch } = useQuery<CompetitiveResponse>({
     queryKey: [`/api/competitors/for-deal/${dealId}`],
     queryFn: () => apiRequest(`/api/competitors/for-deal/${dealId}`),
     enabled: Boolean(dealId),
@@ -50,6 +51,10 @@ export function CompetitiveCard({ dealId }: { dealId?: string }) {
   });
 
   if (isLoading) return <Skeleton className="h-20 w-full" />;
+  // CR-033: `!data` covered a FAILED request too, so the whole competitive
+  // section vanished and read as "no competitor recorded on this deal" - which
+  // is the one thing a rep most wants to be true.
+  if (isError) return <InlineQueryError label="competitive intelligence" onRetry={refetch} />;
   if (!data) return null;
 
   const card = data.incumbent?.battlecard ?? null;

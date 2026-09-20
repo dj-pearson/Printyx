@@ -22,6 +22,7 @@ import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import MainLayout from '@/components/layout/main-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { InlineQueryError } from '@/components/ui/inline-query-error';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -189,6 +190,10 @@ export default function SalesTerritories() {
           <CardContent className="space-y-2">
             {listQuery.isLoading ? (
               <Skeleton className="h-32 w-full" />
+            ) : listQuery.isError ? (
+              /* CR-033: "No territories defined" is an invitation to define one
+                 the dealer may already have. */
+              <InlineQueryError label="territories" onRetry={listQuery.refetch} />
             ) : territories.length === 0 ? (
               <EmptyState
                 title="No territories defined"
@@ -240,6 +245,8 @@ export default function SalesTerritories() {
           <CardContent>
             {coverageQuery.isLoading ? (
               <Skeleton className="h-20 w-full" />
+            ) : coverageQuery.isError ? (
+              <InlineQueryError label="territory coverage" onRetry={coverageQuery.refetch} />
             ) : !coverage ? null : (
               <>
                 <div className="grid gap-4 sm:grid-cols-3">

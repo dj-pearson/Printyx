@@ -493,19 +493,37 @@ export default async function handler(req: Request) {
           ),
         ]);
 
-      // Revenue is a SUM, which PostgREST also cannot do, so the won deals are
-      // read and added here. Capped by fetchAllRows' paging upstream of a real
-      // tenant size; a tenant past that gets a low number rather than a wrong
-      // shape, which is named in `unbacked`.
-      // actual_close_date, NOT closed_at. check:phantom-cols caught that in this
-      // very branch before it shipped - `deals.closed_at` is a name eight other
-      // edge functions have reached for and the table has never had, which is
-      // why CLAUDE.md lists it by name.
-      const { data: wonDeals, error: dealsError } = await admin
-        .from('deals')
-        .select('amount, actual_close_date')
-        .eq('tenant_id', tenantId)
-        .eq('status', 'won');
+      /**
+       * Revenue is a SUM, which PostgREST cannot do, so the won deals are read
+       * and added here.
+       *
+       * THE COMMENT HERE USED TO CLAIM "capped by fetchAllRows' paging" AND THE
+       * CODE DID NOT CALL IT. A bare `.select()` stops at PostgREST's default
+       * page, so a tenant with more won deals than that had its total revenue
+       * silently reported as the sum of the first page - a wrong number that
+       * looks exactly like a right one, with a comment asserting the safety
+       * that was missing. check:row-caps is the guard that says so, and it was
+       * red on main.
+       *
+       * actual_close_date, NOT closed_at. check:phantom-cols caught that in this
+       * very branch before it shipped - `deals.closed_at` is a name eight other
+       * edge functions have reached for and the table has never had, which is
+       * why CLAUDE.md lists it by name.
+       */
+      let dealsError: unknown = null;
+      const wonDeals = await fetchAllRows<any>(() =>
+        admin
+          .from('deals')
+          .select('amount, actual_close_date')
+          .eq('tenant_id', tenantId)
+          .eq('status', 'won'),
+      ).catch((err) => {
+        // fetchAllRows throws where the old destructure returned an error, and
+        // the branch below distinguishes null (could not read) from 0 (nothing
+        // won), so the failure has to survive as a value rather than a throw.
+        dealsError = err;
+        return [] as any[];
+      });
 
       const sum = (rows: { amount?: unknown }[] | null) =>
         (rows ?? []).reduce((acc, r) => acc + (Number(r.amount) || 0), 0);

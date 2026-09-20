@@ -16,6 +16,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { InlineQueryError } from '@/components/ui/inline-query-error';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -159,6 +160,11 @@ export function ForecastCategoryPanel() {
         <CardContent>
           {categoriesQuery.isLoading ? (
             <Skeleton className="h-40 w-full" />
+          ) : categoriesQuery.isError ? (
+            /* CR-033: a failed request used to render "No open deals close in
+               this period", which is a forecast of zero rather than a failure
+               to fetch one. */
+            <InlineQueryError label="the forecast" onRetry={categoriesQuery.refetch} />
           ) : !data || data.totals.count === 0 ? (
             <EmptyState
               title="No open deals close in this period"
@@ -365,6 +371,8 @@ export function ForecastCategoryPanel() {
         <CardContent>
           {accuracyQuery.isLoading ? (
             <Skeleton className="h-24 w-full" />
+          ) : accuracyQuery.isError ? (
+            <InlineQueryError label="forecast accuracy" onRetry={accuracyQuery.refetch} />
           ) : (accuracyQuery.data?.periods.length ?? 0) === 0 ? (
             <EmptyState
               title="Nothing captured yet"

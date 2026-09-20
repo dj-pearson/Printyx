@@ -21,6 +21,7 @@ import { scoreDeal, PLANNED_FACTORS, type DealScoreBand } from '@shared/deal-sco
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
+import { InlineQueryError } from '@/components/ui/inline-query-error';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertTriangle, Info, RefreshCw, Sparkles, TrendingDown, TrendingUp } from 'lucide-react';
@@ -230,6 +231,10 @@ export function DealInsightsPanel({
 
         {summaryQuery.isLoading ? (
           <Skeleton className="h-12 w-full" />
+        ) : summaryQuery.isError ? (
+          /* CR-033: without this the failure fell through to "this deal has
+             none", which tells a rep their colleague logged nothing. */
+          <InlineQueryError label="the deal summary" onRetry={summaryQuery.refetch} />
         ) : summary && !summary.canGenerate ? (
           <p className="text-xs text-muted-foreground">
             Nothing to summarise yet. A summary is written from the deal&apos;s logged calls,

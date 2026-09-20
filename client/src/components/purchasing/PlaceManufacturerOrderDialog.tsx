@@ -18,6 +18,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiRequest, extractRecords } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
+import { InlineQueryError } from '@/components/ui/inline-query-error';
 import { Input } from '@/components/ui/input';
 import {
   Dialog,
@@ -68,9 +69,12 @@ export function PlaceManufacturerOrderDialog({
 
   const open = Boolean(purchaseOrder);
 
-  const { data: connections = [], isLoading: connectionsLoading } = useQuery<
-    ManufacturerConnection[]
-  >({
+  const {
+    data: connections = [],
+    isLoading: connectionsLoading,
+    isError: connectionsError,
+    refetch: refetchConnections,
+  } = useQuery<ManufacturerConnection[]>({
     queryKey: ['/api/manufacturer-orders/connections'],
     queryFn: async () =>
       extractRecords<ManufacturerConnection>(
@@ -150,6 +154,11 @@ export function PlaceManufacturerOrderDialog({
             </label>
             {connectionsLoading ? (
               <p className="text-sm text-muted-foreground">Loading manufacturers...</p>
+            ) : connectionsError ? (
+              /* CR-033: a failed fetch rendered "No manufacturers configured
+                 yet. Add one below." - an invitation to create a duplicate of
+                 one the dealer already has. */
+              <InlineQueryError label="manufacturers" onRetry={refetchConnections} />
             ) : connections.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 No manufacturers configured yet. Add one below.
