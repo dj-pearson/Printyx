@@ -1,6 +1,6 @@
 {
   "note": "server/*.ts files not reachable from server/index.ts by any static or dynamic import. Dead product code: it cannot run. \"(test-only)\" marks a file reached only from server/tests, which is dead product code a test still pins. A TODO list, not settled debt - each entry is wire it, delete it, or record why it is loaded some other way. See scripts/check-server-orphans.mjs.",
-  "total": 139,
+  "total": 137,
   "orphans": [
     "server/auth-setup.ts",
     "server/cli/company-dedup-cli.ts",
@@ -68,11 +68,9 @@
     "server/seed-crm-goals.ts",
     "server/seed-customer-success.ts",
     "server/seed-email-marketing-data.ts",
-    "server/seed-field-service-data.ts",
     "server/seed-gps-tracking.ts",
     "server/seed-knowledge-base.ts",
     "server/seed-lead-scoring.ts",
-    "server/seed-lease-data.ts",
     "server/seed-manufacturer-orders.ts",
     "server/seed-mfa-data.ts",
     "server/seed-oid-mappings.ts",

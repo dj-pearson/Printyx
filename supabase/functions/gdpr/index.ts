@@ -4,11 +4,21 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { fetchAllRows } from '../_shared/paged-select.ts';
 
 // The consent_type and consent_source pg enums (shared/gdpr-core-schema.ts).
 // Kept here because PostgREST rejects an unlisted value with a 500, and an
 // unrecorded consent is the one outcome this endpoint must never produce
 // quietly.
+/** snake_case row -> the camelCase keys every consuming page reads. */
+function toCamel(row: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(row)) {
+    out[key.replace(/_([a-z])/g, (_m, c: string) => c.toUpperCase())] = value;
+  }
+  return out;
+}
+
 const CONSENT_TYPES = new Set([
   'marketing_email',
   'marketing_sms',
@@ -474,6 +484,103 @@ export default async function handler(req: Request) {
     // Note the routing: these are two-segment paths, so they match on
     // endpoint + requestId, where requestId happens to be the sub-resource.
 
+    /**
+     * GET /gdpr/consent/stats
+     *
+     * The GDPR compliance dashboard's four cards go through one QueryStates
+     * wrapper, so ANY of them failing renders "Could not load compliance data"
+     * over the whole page - and this endpoint and /data-export/requests below
+     * existed only on Express, which does not serve /api/gdpr in production
+     * (the prefix is not proxied). So the entire dashboard was an error state
+     * on the deployed host while working on every developer machine.
+     *
+     * Counted with head:true rather than fetched, because a tenant's consent
+     * ledger grows with every cookie banner acceptance and the cards need four
+     * numbers, not the rows. The per-status and per-type breakdowns DO need the
+     * rows - PostgREST has no GROUP BY - but only those two columns.
+     */
+    if (req.method === 'GET' && endpoint === 'consent' && requestId === 'stats') {
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+      const [{ count: totalRecords }, groupRows, { count: recentWithdrawals }] = await Promise.all([
+        admin
+          .from('consent_records')
+          .select('id', { count: 'exact', head: true })
+          .eq('tenant_id', tenantId),
+        fetchAllRows<{ status: string | null; consent_type: string | null }>((from, to) =>
+          admin
+            .from('consent_records')
+            .select('status, consent_type')
+            .eq('tenant_id', tenantId)
+            .range(from, to),
+        ),
+        admin
+          .from('consent_records')
+          .select('id', { count: 'exact', head: true })
+          .eq('tenant_id', tenantId)
+          .eq('status', 'withdrawn')
+          .gte('withdrawn_at', thirtyDaysAgo),
+      ]);
+
+      const byStatus: Record<string, number> = {};
+      const byType: Record<string, number> = {};
+      for (const row of groupRows) {
+        const status = String(row.status ?? 'unknown');
+        const type = String(row.consent_type ?? 'unknown');
+        byStatus[status] = (byStatus[status] ?? 0) + 1;
+        byType[type] = (byType[type] ?? 0) + 1;
+      }
+
+      return createCorsResponse(
+        {
+          totalRecords: totalRecords ?? 0,
+          byStatus,
+          byType,
+          recentWithdrawals: recentWithdrawals ?? 0,
+        },
+        200,
+        req,
+      );
+    }
+
+    /**
+     * GET /gdpr/data-export/requests[?status=&subjectId=&page=&limit=]
+     *
+     * Rows go out CAMELISED: the dashboard reads exp.exportNumber,
+     * exp.subjectType and exp.format straight off each row, so raw PostgREST
+     * snake_case renders a list of blank entries with a status badge - which on
+     * this page reads as "requests exist but say nothing" rather than as a bug.
+     */
+    if (req.method === 'GET' && endpoint === 'data-export' && requestId === 'requests') {
+      const status = url.searchParams.get('status');
+      const subjectId = url.searchParams.get('subjectId');
+      const page = Math.max(1, Number(url.searchParams.get('page') ?? '1') || 1);
+      const limit = Math.min(100, Math.max(1, Number(url.searchParams.get('limit') ?? '25') || 25));
+      const offset = (page - 1) * limit;
+
+      let query = admin
+        .from('personal_data_exports')
+        .select('*', { count: 'exact' })
+        .eq('tenant_id', tenantId);
+      if (status) query = query.eq('status', status);
+      if (subjectId) query = query.eq('subject_id', subjectId);
+
+      const { data, count, error } = await query
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1);
+
+      if (error) {
+        console.error('Error listing data export requests:', error);
+        return createCorsResponse({ error: 'Failed to list data export requests' }, 500, req);
+      }
+
+      return createCorsResponse(
+        { exports: (data ?? []).map(toCamel), total: count ?? 0 },
+        200,
+        req,
+      );
+    }
+
     // GET /gdpr/dpa/stats
     if (req.method === 'GET' && endpoint === 'dpa' && requestId === 'stats') {
       const { data: agreements, error } = await admin
@@ -493,14 +600,22 @@ export default async function handler(req: Request) {
         byStatus[status] = (byStatus[status] ?? 0) + 1;
       }
 
-      // "Expiring in" is the 90-day window the renewal reminder works to.
+      // The card reads `expiringIn30Days` and is LABELLED "expiring in 30
+      // days"; this answered `expiringIn` over a NINETY-day window, so the
+      // number the page wanted was never sent (permanently 0) and the number
+      // sent described a different question. Both halves are fixed here: the
+      // key the card reads, over the window the card names. The 90-day
+      // renewal-reminder horizon stays beside it, named for what it is.
       const now = Date.now();
-      const ninetyDays = now + 90 * 24 * 60 * 60 * 1000;
-      const expiringIn = rows.filter((r: any) => {
-        if (!r.expiration_date) return false;
-        const at = new Date(r.expiration_date).getTime();
-        return at >= now && at <= ninetyDays;
-      }).length;
+      const windowEnd = (days: number) => now + days * 24 * 60 * 60 * 1000;
+      const expiringWithin = (days: number) =>
+        rows.filter((r: any) => {
+          if (!r.expiration_date) return false;
+          const at = new Date(r.expiration_date).getTime();
+          return at >= now && at <= windowEnd(days);
+        }).length;
+      const expiringIn30Days = expiringWithin(30);
+      const expiringIn90Days = expiringWithin(90);
 
       // Compliance checks that have not been signed off yet.
       const { count: pendingCompliance } = await admin
@@ -513,7 +628,8 @@ export default async function handler(req: Request) {
         {
           totalDpas: rows.length,
           byStatus,
-          expiringIn,
+          expiringIn30Days,
+          expiringIn90Days,
           pendingCompliance: pendingCompliance ?? 0,
         },
         200,
