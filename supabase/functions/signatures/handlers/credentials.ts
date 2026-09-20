@@ -21,6 +21,7 @@ import {
   encryptCredentialColumns,
 } from '../../_shared/credential-envelope.ts';
 import type { HandlerCtx } from '../_context.ts';
+import { ROLE_LEVEL, RbacError, requireRoleLevel } from '../../_shared/rbac.ts';
 
 const SIGNATURE_PROVIDERS = ['docusign', 'adobe_sign', 'hellosign'];
 
@@ -29,8 +30,49 @@ export async function handleCredentials(req: Request, ctx: HandlerCtx): Promise<
   const id = pathParts[0];
   const sub = pathParts[1];
 
+  /**
+   * SEC-EDGE-001: these rows are the DocuSign / Adobe Sign / HelloSign
+   * credentials this tenant signs contracts with, and every write was open to
+   * any authenticated member - create one pointing at your own provider
+   * account, or delete the real one and signature sending stops.
+   *
+   * Reads are already safe by construction and stay open: every response goes
+   * through `redactCredentials` and the stored columns are envelope-encrypted,
+   * so a caller learns which providers are configured without the secrets.
+   * That is what makes leaving them open a decision rather than a concession.
+   *
+   * SUPERVISOR mirrors `/esignature-integration` (minLevel 3). A LEVEL check,
+   * per SEC-EDGE-002. Worth knowing for whoever picks this up: no client tree
+   * calls these four branches today - the page manages requests, not
+   * credentials - so this closes a URL, not a screen.
+   */
+  const requireCredentialAdmin = (): Response | null => {
+    try {
+      requireRoleLevel(auth, ROLE_LEVEL.SUPERVISOR);
+      return null;
+    } catch (err) {
+      // Only a role refusal answers 403; anything else is rethrown so a
+      // database outage is not reported as an insufficient role.
+      if (err instanceof RbacError) {
+        return errorResponse(
+          403,
+          'Managing signature-provider credentials requires a supervisor role',
+          req,
+          {
+            code: 'INSUFFICIENT_ROLE',
+            details: err.details,
+            requestId,
+          },
+        );
+      }
+      throw err;
+    }
+  };
+
   // POST /:id/test
   if (method === 'POST' && id && sub === 'test') {
+    const denied = requireCredentialAdmin();
+    if (denied) return denied;
     return await testCredential(req, ctx, id);
   }
 
@@ -71,6 +113,8 @@ export async function handleCredentials(req: Request, ctx: HandlerCtx): Promise<
 
   // POST /
   if (method === 'POST' && !id) {
+    const denied = requireCredentialAdmin();
+    if (denied) return denied;
     const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
     if (!body) return errorResponse(400, 'Invalid JSON', req, { code: 'INVALID_JSON', requestId });
     let row = mapCredential(body);
@@ -104,6 +148,8 @@ export async function handleCredentials(req: Request, ctx: HandlerCtx): Promise<
 
   // PATCH /:id
   if ((method === 'PATCH' || method === 'PUT') && id && !sub) {
+    const denied = requireCredentialAdmin();
+    if (denied) return denied;
     const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
     if (!body) return errorResponse(400, 'Invalid JSON', req, { code: 'INVALID_JSON', requestId });
     let row = mapCredential(body);
@@ -129,6 +175,8 @@ export async function handleCredentials(req: Request, ctx: HandlerCtx): Promise<
 
   // DELETE /:id
   if (method === 'DELETE' && id && !sub) {
+    const denied = requireCredentialAdmin();
+    if (denied) return denied;
     const { error } = await db
       .from('integration_credentials')
       .delete()

@@ -11,6 +11,7 @@ import { z } from 'https://esm.sh/zod@3.22.4';
 import { errorResponse, jsonResponse, validateBody } from '../../_shared/http.ts';
 import { toCamel, toSnakeShallow } from '../../_shared/case.ts';
 import type { HandlerContext } from '../_types.ts';
+import { ROLE_LEVEL, RbacError, requireRoleLevel } from '../../_shared/rbac.ts';
 
 export async function getEffective(req: Request, hc: HandlerContext): Promise<Response> {
   const { ctx, db, requestId } = hc;
@@ -136,6 +137,43 @@ export async function upsert(req: Request, hc: HandlerContext): Promise<Response
   }
 
   const effectiveUserId = parsed.scope === 'user' ? ctx.userId : null;
+
+  /**
+   * SEC-EDGE-001: the gate belongs on the SCOPE, not on the branch.
+   *
+   * `scope: 'user'` writes the caller's own override and stays open - that is a
+   * rep tuning how their own outreach reads. `scope: 'tenant'` writes the row
+   * with `user_id = null`, which is the company-wide default every rep's
+   * generated email falls back to, so any authenticated member could rewrite
+   * how the whole company describes itself to prospects. Gating the branch
+   * would have taken the personal override with it, which is the thing reps
+   * actually use.
+   *
+   * Sibling checked rather than assumed: `/specializations` looked like the
+   * same shape from the router line and is not - `replaceMine` filters on
+   * `ctx.userId`, so it is already per-user and needs nothing.
+   */
+  if (parsed.scope !== 'user') {
+    try {
+      requireRoleLevel(ctx, ROLE_LEVEL.MANAGER);
+    } catch (err) {
+      // Only a role refusal answers 403; anything else is rethrown so a
+      // database or config failure is not reported as an insufficient role.
+      if (err instanceof RbacError) {
+        return errorResponse(
+          403,
+          'Changing the company-wide business context requires a manager role',
+          req,
+          {
+            code: 'INSUFFICIENT_ROLE',
+            details: err.details,
+            requestId,
+          },
+        );
+      }
+      throw err;
+    }
+  }
 
   // Check if a row exists for this scope
   let existingQuery = db

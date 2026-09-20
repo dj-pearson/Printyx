@@ -3,10 +3,10 @@
   "counts": {
     "open-by-design": 23,
     "headless": 44,
-    "unexamined": 44,
-    "needs-gate": 2,
+    "unexamined": 41,
+    "needs-gate": 3,
     "internal": 3,
-    "gated-branch": 4,
+    "gated-branch": 6,
     "public": 8,
     "row-scoped": 1
   },
@@ -308,8 +308,8 @@
     },
     {
       "fn": "manufacturer-orders",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "verdict": "needs-gate",
+      "reason": "EXAMINED 2026-09-20, NOT GATED, and the reason is the finding. 39 writes over orders, shipments, exceptions and manufacturer_connections - which holds api_key, api_secret, client_secret, access_token, refresh_token and webhook_secret. THE ACUTE RISK IS ALREADY CLOSED: every read path runs redactConnection/redactConnections from _credentials.ts, so no caller sees a secret. What is left is that placing or amending a manufacturer order is spending money, and its only caller (PlaceManufacturerOrderDialog on /purchase-orders) sits on a page with NO minLevel - so mirroring navigation would gate at level 1 and constrain nobody, while gating higher would break the dialog including its own add-a-manufacturer flow. The control this wants is a spend limit or an approval on the order, not a role, which is the ai-gpt5 and contract-tiered-rates precedent."
     },
     {
       "fn": "me",
@@ -363,8 +363,8 @@
     },
     {
       "fn": "outreach",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "verdict": "gated-branch",
+      "reason": "EXAMINED AND GATED 2026-09-20, and the gate is on the SCOPE rather than the branch. PUT /business-context takes scope: tenant|user. The user row is a rep tuning how their own outreach reads and stays open; the TENANT row (user_id null) is the company-wide default every generated prospect email falls back to, so any member could rewrite how the company describes itself. Gating the branch would have taken the personal override with it. Everything else here - sequences, prospects, drafts, mark-sent, mark-replied - is a rep own prospecting work. Sibling CHECKED rather than assumed: /specializations looked like the same shape from the router line and is not, since replaceMine already filters on ctx.userId."
     },
     {
       "fn": "parts-inventory",
@@ -553,8 +553,8 @@
     },
     {
       "fn": "signatures",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "verdict": "gated-branch",
+      "reason": "EXAMINED AND GATED 2026-09-20. The four integration-credential writes are the DocuSign / Adobe Sign / HelloSign credentials this tenant signs contracts with - create one pointing at your own provider account, or delete the real one and signature sending stops. Gated at SUPERVISOR, mirroring /esignature-integration minLevel 3. Reads stay open and were already safe: every response goes through redactCredentials and the stored columns are envelope-encrypted. Request send/void/remind stay open because sending a contract for signature is normal sales work. NOTE no client tree calls the credential branches today, so this closes a URL rather than a screen."
     },
     {
       "fn": "signup",
