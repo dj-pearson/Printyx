@@ -2,11 +2,11 @@
   "note": "SEC-EDGE-001. A REASON for every entry in docs/edge-rbac-baseline.json, so \"open to all roles\" stops reading the same whether an entry is deliberate or unexamined. Verdicts: public (the handler never authenticates, so role is a category error), internal (pg_cron, not a user), headless (nothing calls it, so gating decides nothing \u2014 AUDIT-024), open-by-design (every tenant member legitimately uses it; row scoping is the real control), needs-gate (a restriction is wanted and is missing \u2014 this is the worklist), unexamined (nobody has looked yet, stated rather than implied). check:edge-rbac requires an entry here for every baselined function.",
   "counts": {
     "headless": 35,
-    "unexamined": 31,
-    "open-by-design": 26,
+    "unexamined": 28,
+    "open-by-design": 27,
     "public": 8,
     "gated-branch": 6,
-    "row-scoped": 5,
+    "row-scoped": 6,
     "internal": 3,
     "needs-gate": 2
   },
@@ -272,11 +272,6 @@
       "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
     },
     {
-      "fn": "maintenance",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
-    },
-    {
       "fn": "managed-services",
       "verdict": "unexamined",
       "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
@@ -399,8 +394,9 @@
     },
     {
       "fn": "printer-monitoring",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "verdict": "open-by-design",
+      "reason": "An agent ingest plus a tenant-scoped dashboard. Device and metric submissions are authenticated by monitoring_clients.api_key - a DEVICE credential, so a role check is a category error - and the dashboard read filters on the caller's tenant. CORRECTED this round: the two oid-presets branches said 'requires auth' and fell through when neither a JWT nor an api key was present, serving a global SNMP catalogue to anyone; both now answer 401.",
+      "pathsRead": "index.ts - both oid-presets branches, the api-key block and the jwt block"
     },
     {
       "fn": "professional-services",
@@ -534,8 +530,9 @@
     },
     {
       "fn": "technician-sessions",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "verdict": "row-scoped",
+      "reason": "Every path takes technicianId from user.id in the handler and filters technician_ticket_sessions on it, so a technician only ever reads or writes their own visit. The ticket status update and the workflow_steps insert hang off a session created under that filter. A role gate would break the field workflow it exists for.",
+      "pathsRead": "index.ts - the dispatcher plus check-in, complete-step and both session reads"
     },
     {
       "fn": "templates",

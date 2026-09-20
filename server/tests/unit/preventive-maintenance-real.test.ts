@@ -80,7 +80,16 @@ vi.mock('../../../supabase/functions/_shared/supabase.ts', () => ({
   createSupabaseClient: () => ({
     auth: {
       getUser: async () => ({
-        data: { user: { id: 'user-1', app_metadata: { tenant_id: 'tenant-1' } } },
+        data: {
+          user: {
+            id: 'user-1',
+            // SEC-EDGE-001 gated this function's writes at SUPERVISOR, so the
+            // fixture carries the level claim a real scheduler would hold.
+            // Without it these branches now answer 403, which is the gate
+            // working rather than a regression.
+            app_metadata: { tenant_id: 'tenant-1', roleLevel: 3 },
+          },
+        },
         error: null,
       }),
     },

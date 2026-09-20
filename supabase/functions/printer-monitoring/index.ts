@@ -60,6 +60,14 @@ export default async function handler(req: Request) {
         if (!client) {
           return createCorsResponse({ error: 'Invalid or inactive API key' }, 401, req);
         }
+      } else {
+        // SEC-EDGE-001: the comment above says "requires auth" and, with no
+        // final branch, it did not. Neither a JWT nor an api key meant both
+        // checks were skipped and the presets were served to anyone who
+        // asked. Low stakes - `oid_presets` is a global SNMP reference
+        // catalogue with no tenant filter - but a comment promising more than
+        // the code is how a real gap gets read as covered.
+        return createCorsResponse({ error: 'Unauthorized' }, 401, req);
       }
 
       const { data: presets, error } = await admin
@@ -112,6 +120,9 @@ export default async function handler(req: Request) {
         if (!client) {
           return createCorsResponse({ error: 'Invalid or inactive API key' }, 401, req);
         }
+      } else {
+        // Same fall-through as the list branch above.
+        return createCorsResponse({ error: 'Unauthorized' }, 401, req);
       }
 
       const { data: presets, error } = await admin
