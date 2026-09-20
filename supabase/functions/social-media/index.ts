@@ -3,6 +3,8 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { ROLE_LEVEL, RbacError, requireRoleLevel } from '../_shared/rbac.ts';
+import type { AuthContext } from '../_shared/auth.ts';
 import { safeFetch, SSRFError } from '../_shared/safe-fetch.ts';
 import { validateUrl } from '../_shared/ssrf.ts';
 import { generateCompletion } from '../_shared/anthropic.ts';
@@ -111,6 +113,41 @@ export default async function handler(req: Request) {
     // Extract tenant ID
     const admin = createSupabaseServiceClient();
     const tenantId = await resolveTenantId(req, user, admin);
+
+    /**
+     * SEC-EDGE-001. Publishing posts on the tenant brand is a management act.
+     *
+     * The gate is on the BRANCH, not the function: generating copy is fine for any rep, and the page
+     * /social-media-generator is alwaysVisible, so gating the function would
+     * break the feature it exists for.
+     * A LEVEL check rather than a permission code (SEC-EDGE-002).
+     */
+    const requireManager = () => {
+      requireRoleLevel(
+        {
+          userId: user.id,
+          tenantId,
+          email: user.email,
+          jwt: jwt ?? '',
+          supabaseUser: user,
+        } as AuthContext,
+        ROLE_LEVEL.MANAGER,
+      );
+    };
+    const denyManager = (err: unknown) => {
+      if (err instanceof RbacError) {
+        return createCorsResponse(
+          {
+            error: 'Publishing a post requires a manager role',
+            code: 'INSUFFICIENT_ROLE',
+            details: err.details,
+          },
+          403,
+          req,
+        );
+      }
+      throw err;
+    };
 
     if (!tenantId) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
@@ -313,6 +350,11 @@ export default async function handler(req: Request) {
 
     // POST /social-media/posts/:id/publish - Publish post
     if (req.method === 'POST' && endpoint === 'posts' && postId && parts[2] === 'publish') {
+      try {
+        requireManager();
+      } catch (err) {
+        return denyManager(err);
+      }
       // social_media_posts has no published_at, so this update 42703'd and no
       // post could be published. The table's only send timestamp is
       // webhook_sent_at, which belongs to the webhook delivery path — this

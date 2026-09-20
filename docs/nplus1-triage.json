@@ -147,7 +147,7 @@
       "why": "The inventory levels are read once for the whole receipt already. What loops is the write, and each one is quantity_on_hand + this movement - arithmetic PostgREST cannot express across rows."
     },
     {
-      "loop": "qbr/index.ts:433",
+      "loop": "qbr/index.ts:480",
       "table": "qbr_reports",
       "verdict": "deliberate",
       "why": "Produces a DOCUMENT per customer - assemble, render, upload. There is nothing to batch. Annotated in place."

@@ -26,6 +26,8 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { ROLE_LEVEL, RbacError, requireRoleLevel } from '../_shared/rbac.ts';
+import type { AuthContext } from '../_shared/auth.ts';
 import { toCamelShallow } from '../_shared/case.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 
@@ -87,6 +89,41 @@ export default async function handler(req: Request) {
     const sub = parts[1];
     const method = req.method;
 
+    /**
+     * SEC-EDGE-001. A form definition decides what the outside world sees and what lands
+     * in the CRM.
+     *
+     * The gate is on the BRANCH, not the function: reading the forms and their submissions stays open to the
+     * tenant; changing a definition does not.
+     * A LEVEL check rather than a permission code (SEC-EDGE-002).
+     */
+    const requireManager = () => {
+      requireRoleLevel(
+        {
+          userId: user.id,
+          tenantId,
+          email: user.email,
+          jwt: jwt ?? '',
+          supabaseUser: user,
+        } as AuthContext,
+        ROLE_LEVEL.MANAGER,
+      );
+    };
+    const denyManager = (err: unknown) => {
+      if (err instanceof RbacError) {
+        return createCorsResponse(
+          {
+            error: 'Changing a web form requires a manager role',
+            code: 'INSUFFICIENT_ROLE',
+            details: err.details,
+          },
+          403,
+          req,
+        );
+      }
+      throw err;
+    };
+
     // ─── SUBMISSIONS (before the bare /:id branches) ─────────────────
     if (method === 'GET' && id && sub === 'submissions') {
       const raw = url.searchParams.get('limit');
@@ -125,6 +162,11 @@ export default async function handler(req: Request) {
 
     // ─── CREATE ──────────────────────────────────────────────────────
     if (method === 'POST' && !id) {
+      try {
+        requireManager();
+      } catch (err) {
+        return denyManager(err);
+      }
       const body = await req.json().catch(() => ({}));
       const err = validateForm(body, true);
       if (err) return createCorsResponse({ error: err }, 400, req);
@@ -168,6 +210,11 @@ export default async function handler(req: Request) {
 
     // ─── UPDATE ──────────────────────────────────────────────────────
     if ((method === 'PUT' || method === 'PATCH') && id && !sub) {
+      try {
+        requireManager();
+      } catch (err) {
+        return denyManager(err);
+      }
       const body = await req.json().catch(() => ({}));
       const err = validateForm(body, false);
       if (err) return createCorsResponse({ error: err }, 400, req);
@@ -197,6 +244,11 @@ export default async function handler(req: Request) {
 
     // ─── DELETE ──────────────────────────────────────────────────────
     if (method === 'DELETE' && id && !sub) {
+      try {
+        requireManager();
+      } catch (err) {
+        return denyManager(err);
+      }
       const { data, error } = await admin
         .from('web_forms')
         .delete()

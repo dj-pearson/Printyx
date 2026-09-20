@@ -1,12 +1,11 @@
 {
   "note": "SEC-EDGE-001. A REASON for every entry in docs/edge-rbac-baseline.json, so \"open to all roles\" stops reading the same whether an entry is deliberate or unexamined. Verdicts: public (the handler never authenticates, so role is a category error), internal (pg_cron, not a user), headless (nothing calls it, so gating decides nothing \u2014 AUDIT-024), open-by-design (every tenant member legitimately uses it; row scoping is the real control), needs-gate (a restriction is wanted and is missing \u2014 this is the worklist), unexamined (nobody has looked yet, stated rather than implied). check:edge-rbac requires an entry here for every baselined function.",
   "counts": {
-    "unexamined": 70,
+    "unexamined": 69,
     "open-by-design": 15,
     "headless": 43,
     "internal": 3,
-    "public": 8,
-    "needs-gate": 4
+    "public": 8
   },
   "triage": [
     {
@@ -203,11 +202,6 @@
       "fn": "dashboards",
       "verdict": "open-by-design",
       "reason": "Widget data for the caller's own dashboard."
-    },
-    {
-      "fn": "data-enrichment",
-      "verdict": "unexamined",
-      "reason": "No index.ts at this path \u2014 the directory needs a look before anything is decided about it."
     },
     {
       "fn": "db-probe",
@@ -505,11 +499,6 @@
       "reason": "Deliberately unauthenticated \u2014 the handler never calls auth.getUser. \"Open to all roles\" is a category error for it; its controls are rate limiting and input validation."
     },
     {
-      "fn": "qbr",
-      "verdict": "needs-gate",
-      "reason": "Creates, updates and deletes QBR records against a customer. Reads are arguably a rep's own work; the writes are the act worth gating, and nothing distinguishes them today."
-    },
-    {
       "fn": "quote-line-items",
       "verdict": "unexamined",
       "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
@@ -615,11 +604,6 @@
       "reason": "Deliberately unauthenticated \u2014 the handler never calls auth.getUser. \"Open to all roles\" is a category error for it; its controls are rate limiting and input validation."
     },
     {
-      "fn": "social-media",
-      "verdict": "needs-gate",
-      "reason": "NARROWED after reading it: generating copy is fine for any rep and the page /social-media-generator is alwaysVisible, so gating the FUNCTION would break it. POST /posts/:id/publish is the privileged act - it posts on the tenant brand - and that branch is what wants the gate."
-    },
-    {
       "fn": "software-products",
       "verdict": "unexamined",
       "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
@@ -693,16 +677,6 @@
       "fn": "validate",
       "verdict": "unexamined",
       "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
-    },
-    {
-      "fn": "voice-agent",
-      "verdict": "needs-gate",
-      "reason": "CORRECTED: it does NOT place outbound calls - the real-time stack is unbuilt on both sides. It ingests call-end summaries and serves a CALL LOG of customer conversations, plus a destructive POST /purge-recordings. The log and the purge are what want a gate; the intake is a cron-shaped ingest and needs cron-auth rather than a role."
-    },
-    {
-      "fn": "web-forms",
-      "verdict": "needs-gate",
-      "reason": "Editing a form definition changes what the outside world sees and what lands in the CRM. The READS can stay open; the writes want a gate."
     },
     {
       "fn": "webhooks",
