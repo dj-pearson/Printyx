@@ -4,6 +4,8 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { ROLE_LEVEL, RbacError, requireRoleLevel } from '../_shared/rbac.ts';
+import type { AuthContext } from '../_shared/auth.ts';
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -35,10 +37,56 @@ export default async function handler(req: Request) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
     }
 
-    // tenantId gates access only. oid_mappings is a SHARED reference catalogue
-    // with no tenant_id column, so nothing below is tenant-scoped; is_custom is
-    // what separates user-authored rows from the shipped presets.
-    // Use service_role client for database operations
+    /**
+     * tenantId gates access only. oid_mappings is a SHARED reference catalogue
+     * with no tenant_id column, so nothing below is tenant-scoped; is_custom is
+     * what separates user-authored rows from the shipped presets.
+     *
+     * THAT IS A CROSS-TENANT WRITE AND NO ROLE CLOSES IT. A custom mapping
+     * authored at one dealer carries nothing that says so, so the update,
+     * delete and overwrite-import branches below reach every dealer's custom
+     * rows. `is_custom` protects the shipped presets and separates nobody from
+     * anybody. The column that would fix it does not exist, and `created_by` is
+     * declared `integer` against a uuid `users.id` (AUDIT-032's shape), so it
+     * cannot record an author either - which is why this function writes it
+     * null rather than coercing.
+     *
+     * server/tests/unit/oid-mappings-write-gate.test.ts asserts the gap and is
+     * written to FAIL the day a tenant_id lands, so the note cannot go stale.
+     *
+     * The gate below is what IS available: these mappings decide which SNMP
+     * OIDs printer monitoring polls for toner level and meter counts, so a
+     * wrong or deleted one silently stops a machine reporting. /oid-management
+     * is minLevel 4 with service.equipment.configure, and mirroring that is the
+     * honest level. Reads stay open - the catalogue holds no tenant's data.
+     */
+    const requireManager = () =>
+      requireRoleLevel(
+        {
+          userId: user.id,
+          tenantId,
+          email: user.email,
+          jwt: jwt ?? '',
+          supabaseUser: user,
+        } as AuthContext,
+        ROLE_LEVEL.MANAGER,
+      );
+    const denyManager = (err: unknown) => {
+      // Only an RbacError is a role refusal; anything else is rethrown, or a
+      // database outage reads as "your role is too low".
+      if (err instanceof RbacError) {
+        return createCorsResponse(
+          {
+            error: 'Editing the shared OID catalogue requires a manager role',
+            code: 'INSUFFICIENT_ROLE',
+            details: err.details,
+          },
+          403,
+          req,
+        );
+      }
+      throw err;
+    };
 
     const url = new URL(req.url);
     // server.ts strips the function-name segment before invoking this handler,
@@ -47,6 +95,22 @@ export default async function handler(req: Request) {
     const { parts } = normalizePath(url.pathname, 'oid-mappings');
     const mappingId = parts[0]; // /oid-mappings/:id
     const subResource = parts[1];
+
+    /**
+     * `export` is a READ that arrives as a POST because that is what the page
+     * sends (it posts an optional { manufacturer } and downloads the result),
+     * so it is exempt: gating it would refuse a read on the strength of its
+     * verb. `test` answers 501 and cannot reach the table at all. Everything
+     * else past here writes the shared catalogue.
+     */
+    const READ_ONLY_POSTS = new Set(['export', 'test']);
+    if (req.method !== 'GET' && req.method !== 'HEAD' && !READ_ONLY_POSTS.has(mappingId)) {
+      try {
+        requireManager();
+      } catch (err) {
+        return denyManager(err);
+      }
+    }
 
     // GET /oid-mappings - List all OID mappings
     if (req.method === 'GET' && !mappingId) {

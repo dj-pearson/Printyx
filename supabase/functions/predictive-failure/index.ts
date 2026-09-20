@@ -42,6 +42,8 @@ import {
 } from './scoring.ts';
 import { fetchAllRows } from '../_shared/paged-select.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { ROLE_LEVEL, RbacError, requireRoleLevel } from '../_shared/rbac.ts';
+import type { AuthContext } from '../_shared/auth.ts';
 
 const DAY_MS = 86_400_000;
 /** The scorer's deltas need the last 12 readings per machine. */
@@ -111,6 +113,58 @@ export default async function handler(req: Request) {
     const { parts } = normalizePath(url.pathname, 'predictive-failure');
     const [first, second, third] = parts;
     const method = req.method.toUpperCase();
+
+    /**
+     * SEC-EDGE-001: every write here reaches outside the browser.
+     *
+     * `POST /score` creates draft service tickets, `/predictions/:id/approve`
+     * dispatches one to a customer site, and `PUT /settings` carries the agent
+     * kill switch and the confidence threshold - both tenant-wide. Raising the
+     * threshold empties the prediction board for everybody, and an empty board
+     * is indistinguishable from a fleet in good health, which is the same
+     * failure churn-risk's settings had.
+     *
+     * /service/predictions is minLevel 3, and that is the only page reaching
+     * this function, so SUPERVISOR mirrors navigation exactly. It constrains
+     * nobody who can open the page and closes the direct-API path for everyone
+     * who cannot - a nav rule hides a menu item and protects nothing (COP-I06).
+     * Reads stay open because the board has to render.
+     */
+    const requireSupervisor = () =>
+      requireRoleLevel(
+        {
+          userId: user.id,
+          tenantId,
+          email: user.email,
+          jwt: jwt ?? '',
+          supabaseUser: user,
+        } as AuthContext,
+        ROLE_LEVEL.SUPERVISOR,
+      );
+    const denySupervisor = (err: unknown) => {
+      // Only an RbacError is a role refusal; anything else is rethrown, or a
+      // database outage reads as "your role is too low".
+      if (err instanceof RbacError) {
+        return createCorsResponse(
+          {
+            error: 'Scoring, dispatching and agent settings require a supervisor role',
+            code: 'INSUFFICIENT_ROLE',
+            details: err.details,
+          },
+          403,
+          req,
+        );
+      }
+      throw err;
+    };
+
+    if (method !== 'GET' && method !== 'HEAD') {
+      try {
+        requireSupervisor();
+      } catch (err) {
+        return denySupervisor(err);
+      }
+    }
 
     // --- POST /score -------------------------------------------------------
     if (method === 'POST' && first === 'score') {

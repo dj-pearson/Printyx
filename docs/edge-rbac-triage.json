@@ -2,10 +2,10 @@
   "note": "SEC-EDGE-001. A REASON for every entry in docs/edge-rbac-baseline.json, so \"open to all roles\" stops reading the same whether an entry is deliberate or unexamined. Verdicts: public (the handler never authenticates, so role is a category error), internal (pg_cron, not a user), headless (nothing calls it, so gating decides nothing \u2014 AUDIT-024), open-by-design (every tenant member legitimately uses it; row scoping is the real control), needs-gate (a restriction is wanted and is missing \u2014 this is the worklist), unexamined (nobody has looked yet, stated rather than implied). check:edge-rbac requires an entry here for every baselined function.",
   "counts": {
     "headless": 35,
-    "unexamined": 28,
-    "open-by-design": 27,
+    "open-by-design": 31,
+    "unexamined": 22,
+    "gated-branch": 8,
     "public": 8,
-    "gated-branch": 6,
     "row-scoped": 6,
     "internal": 3,
     "needs-gate": 2
@@ -324,8 +324,9 @@
     },
     {
       "fn": "oid-mappings",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "verdict": "gated-branch",
+      "reason": "EXAMINED AND GATED 2026-09-20. oid_mappings decides which SNMP OIDs printer monitoring polls for toner level and meter counts, so a wrong or deleted mapping silently stops a machine reporting. Create, update, delete, bulk and import now require MANAGER, mirroring /oid-management (minLevel 4, service.equipment.configure). Reads stay open and POST /export and POST /test are exempt - export is a read that arrives as a POST because that is what the page sends, and test answers 501. WHAT THE GATE DOES NOT CLOSE, said out loud: the table has NO tenant_id, so a custom mapping authored at one dealer is editable and deletable by a manager at any other. is_custom protects the shipped presets and separates nobody from anybody, and created_by is declared integer against a uuid users.id so it cannot record an author either. server/tests/unit/oid-mappings-write-gate.test.ts fails the day a tenant_id lands.",
+      "pathsRead": "index.ts - all six write branches (POST /, PUT /:id, DELETE /:id, POST /bulk, POST /import including its overwrite delete loop) plus every read branch and the export/test branches."
     },
     {
       "fn": "onboarding",
@@ -354,8 +355,9 @@
     },
     {
       "fn": "performance",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "verdict": "open-by-design",
+      "reason": "EXAMINED 2026-09-20. Zero writes. This is the source behind SystemAlertBell, PageAlerts, the notification bell and KpiSummaryBar - components mounted on every page for every user - so a role gate would blank the bell for the people it exists to warn. All five reads filter tenant_id, and deriveOperationalAlerts runs over the same tenant-scoped sets (AUDIT-028).",
+      "pathsRead": "index.ts - every branch and all five query chains."
     },
     {
       "fn": "pipeline-config",
@@ -379,8 +381,9 @@
     },
     {
       "fn": "predictive-failure",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "verdict": "gated-branch",
+      "reason": "EXAMINED AND GATED 2026-09-20. Every write reaches outside the browser: POST /score creates draft service tickets, POST /predictions/:id/approve dispatches one to a customer site, and PUT /settings carries the agent kill switch and the confidence threshold, both tenant-wide - raising the threshold empties the prediction board for everybody, and an empty board is indistinguishable from a fleet in good health (churn-risk had the same shape). /service/predictions is minLevel 3 and is the only page reaching this function, so all non-GET requires SUPERVISOR: it constrains nobody who can open the page and closes the direct-API path for everyone who cannot. Reads stay open because the board has to render.",
+      "pathsRead": "index.ts dispatcher and all five write endpoints, handleScore (ticket insert + settings read), handlePredictionAction (approve/snooze/dismiss), PUT /settings, plus the GET reads and the accuracy branch. No cron caller - drizzle/cron/ names this function nowhere."
     },
     {
       "fn": "predictive-maintenance",
@@ -490,8 +493,9 @@
     },
     {
       "fn": "service-analytics",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "verdict": "open-by-design",
+      "reason": "EXAMINED 2026-09-20. Two GET branches, zero writes. Both service_tickets reads filter tenant_id; the users lookup is .in(id, technicianIds) over ids already derived from those tenant-scoped tickets, so it is transitively scoped. Service metrics are not per-rep compensation data and ServiceHub renders them for the team.",
+      "pathsRead": "index.ts - GET / and GET /trends, every .from chain checked (three of the six matches are Array.from, not a query)."
     },
     {
       "fn": "service-contracts",
@@ -567,8 +571,9 @@
     },
     {
       "fn": "validate",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "verdict": "open-by-design",
+      "reason": "EXAMINED 2026-09-20. Advisory Definition-of-Done checks with ZERO writes, read from the quote and proposal builders. Every one of its five reads filters tenant_id. It selects total_amount but only to test it is greater than zero - the response carries field names and messages, never a value - so validating a colleague quote reveals no margin and no figure. A role gate would break the banner on pages a rep uses.",
+      "pathsRead": "index.ts - all four route branches and all five query chains."
     },
     {
       "fn": "webhooks",
@@ -582,8 +587,9 @@
     },
     {
       "fn": "workflow-automation",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "verdict": "open-by-design",
+      "reason": "EXAMINED 2026-09-20. One GET /dashboard branch, zero writes. workflows and workflow_executions filter tenant_id and every other read is .in(...) over ids taken from those two, so it is transitively scoped. The one exception is workflow_templates, which has no tenant_id - checked rather than assumed: its only writer anywhere in the tree is server/seed-sales-workflow-automation.ts, so it is shipped catalogue content and reading it tenant-wide is correct.",
+      "pathsRead": "index.ts - the dashboard branch and all nine query chains, plus the workflow_templates declaration in shared/workflow-automation-schema.ts and a tree-wide grep for its writers."
     },
     {
       "fn": "workflows",
