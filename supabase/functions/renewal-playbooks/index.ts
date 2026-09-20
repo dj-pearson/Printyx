@@ -1,4 +1,17 @@
 // Renewal Playbooks Edge Function
+//
+// SEC-EDGE-001 batch 16. The table stores playbook_name and trigger_conditions;
+// this function wrote `name` and `risk_levels`, so every create and update was a
+// PGRST204 and the list ORDERED BY `name`, taking the whole read down with a
+// 42703.
+//
+// THE RECOMMENDATION WAS THE WORSE HALF. It read `p.risk_levels?.includes(...)`,
+// which is undefined on every row, so the find() never matched and the code fell
+// through to `playbooks?.[0]` - the FIRST playbook in the list, returned under
+// the key `recommendedPlaybook` as though it had been matched against the
+// renewal's risk level. Arbitrary selection wearing matching logic's clothes.
+// It matches trigger_conditions now and returns null with a reason when nothing
+// fits, because no recommendation is honest and a wrong one is not.
 // Handles renewal playbook templates and recommendations
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
@@ -41,7 +54,7 @@ export default async function handler(req: Request) {
         .from('renewal_playbooks')
         .select('*')
         .eq('tenant_id', tenantId)
-        .order('name', { ascending: true });
+        .order('playbook_name', { ascending: true });
 
       if (error) {
         return createCorsResponse({ error: 'Failed to fetch playbooks' }, 500, req);
@@ -73,16 +86,24 @@ export default async function handler(req: Request) {
         .eq('tenant_id', tenantId)
         .eq('is_active', true);
 
-      // Simple recommendation logic based on risk level
-      const recommended =
-        (playbooks || []).find((p: any) => p.risk_levels?.includes(renewal.risk_level)) ||
-        playbooks?.[0];
+      // trigger_conditions is free-form jsonb; riskLevels is the key this
+      // matching has always meant to read. A playbook flagged is_default wins
+      // when nothing matches on risk, and when there is no default either the
+      // answer is null rather than whichever row came back first.
+      const rows = playbooks || [];
+      const matchesRisk = (p: any) => {
+        const levels = p?.trigger_conditions?.riskLevels ?? p?.trigger_conditions?.risk_levels;
+        return Array.isArray(levels) && levels.includes(renewal.risk_level);
+      };
+      const matched = rows.find(matchesRisk) ?? null;
+      const fallback = matched ? null : (rows.find((p: any) => p.is_default) ?? null);
 
       return createCorsResponse(
         {
           renewal,
-          recommendedPlaybook: recommended,
-          allPlaybooks: playbooks || [],
+          recommendedPlaybook: matched ?? fallback,
+          recommendationBasis: matched ? 'risk_level' : fallback ? 'tenant_default' : 'none',
+          allPlaybooks: rows,
         },
         200,
         req,
@@ -113,10 +134,15 @@ export default async function handler(req: Request) {
         .from('renewal_playbooks')
         .insert({
           tenant_id: tenantId,
-          name: body.name,
+          playbook_name: body.playbookName || body.playbook_name || body.name,
           description: body.description,
-          risk_levels: body.riskLevels || body.risk_levels || [],
+          // risk_levels was never a column; the criteria live in this jsonb blob.
+          trigger_conditions: body.triggerConditions ||
+            body.trigger_conditions || {
+              riskLevels: body.riskLevels || body.risk_levels || [],
+            },
           steps: body.steps || [],
+          is_default: body.isDefault ?? body.is_default ?? false,
           is_active: body.isActive !== false,
           created_by: user.id,
           created_at: new Date().toISOString(),
@@ -138,14 +164,24 @@ export default async function handler(req: Request) {
 
       const { data: playbook, error } = await admin
         .from('renewal_playbooks')
-        .update({
-          name: body.name,
-          description: body.description,
-          risk_levels: body.riskLevels || body.risk_levels,
-          steps: body.steps,
-          is_active: body.isActive ?? body.is_active,
-          updated_at: new Date().toISOString(),
-        })
+        .update(
+          Object.fromEntries(
+            Object.entries({
+              playbook_name: body.playbookName ?? body.playbook_name ?? body.name,
+              description: body.description,
+              trigger_conditions:
+                body.triggerConditions ??
+                body.trigger_conditions ??
+                (body.riskLevels || body.risk_levels
+                  ? { riskLevels: body.riskLevels ?? body.risk_levels }
+                  : undefined),
+              steps: body.steps,
+              is_active: body.isActive ?? body.is_active,
+              is_default: body.isDefault ?? body.is_default,
+              updated_at: new Date().toISOString(),
+            }).filter(([, v]) => v !== undefined),
+          ),
+        )
         .eq('id', playbookId)
         .eq('tenant_id', tenantId)
         .select()

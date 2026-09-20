@@ -124,8 +124,9 @@ describe('the guard does not punish a story that wrote the orphan down', () => {
 
 describe('the report is not hidden behind a count', () => {
   it('prints every finding on a clean run', () => {
-    // 40 open questions reading as one green tick is the failure mode this
-    // whole story is about.
+    // A page of open questions reading as one green tick is the failure mode
+    // this whole story is about. The expected count comes from the baseline
+    // rather than a literal, so tightening it does not break the assertion.
     const { code, out } = runGuard();
     expect(code).toBe(0);
     const baseline = JSON.parse(

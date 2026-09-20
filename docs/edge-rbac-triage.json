@@ -2,7 +2,7 @@
   "note": "SEC-EDGE-001. A REASON for every entry in docs/edge-rbac-baseline.json, so \"open to all roles\" stops reading the same whether an entry is deliberate or unexamined. Verdicts: public (the handler never authenticates, so role is a category error), internal (pg_cron, not a user), headless (nothing calls it, so gating decides nothing — AUDIT-024), open-by-design (every tenant member legitimately uses it; row scoping is the real control), needs-gate (a restriction is wanted and is missing — this is the worklist), unexamined (nobody has looked yet, stated rather than implied). check:edge-rbac requires an entry here for every baselined function.",
   "counts": {
     "open-by-design": 25,
-    "headless": 37,
+    "headless": 35,
     "internal": 3,
     "gated-branch": 6,
     "needs-gate": 2,
@@ -417,11 +417,6 @@
       "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
     },
     {
-      "fn": "projects-enhanced",
-      "verdict": "headless",
-      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it — that is AUDIT-024, not this story."
-    },
-    {
       "fn": "public-booking",
       "verdict": "public",
       "reason": "Deliberately unauthenticated — the handler never calls auth.getUser. \"Open to all roles\" is a category error for it; its controls are rate limiting and input validation."
@@ -458,11 +453,6 @@
     },
     {
       "fn": "renewal-playbooks",
-      "verdict": "headless",
-      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it — that is AUDIT-024, not this story."
-    },
-    {
-      "fn": "role-management",
       "verdict": "headless",
       "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it — that is AUDIT-024, not this story."
     },
