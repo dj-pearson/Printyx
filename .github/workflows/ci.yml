@@ -117,6 +117,8 @@ jobs:
         run: npm run check:raw-body-writes
       - name: Over-cap list request guard (COP-I01)
         run: npm run check:over-cap-limits
+      - name: useState-as-effect guard (QUALITY-002)
+        run: npm run check:usestate-as-effect
       - name: Session-only auth ratchet (handlers gated on a field nothing sets)
         run: npm run check:session-auth
       - name: Unwritten-table ratchet (features reading a table nothing fills)

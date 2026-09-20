@@ -1,5 +1,5 @@
 import { percentOfOr } from '@/lib/utils';
-import { useState, useMemo, useCallback, lazy, Suspense } from 'react';
+import { useEffect, useState, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest, invalidateApiPath } from '@/lib/queryClient';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -486,10 +486,19 @@ function TerritoryMapTab({ reps }: { reps: Rep[] }) {
 
   const [zipCentroids, setZipCentroids] = useState<Record<string, [number, number]>>({});
 
-  // Load zip centroids on mount
-  useState(() => {
-    loadZipCentroids().then(setZipCentroids);
-  });
+  // Load zip centroids on mount. This was a `useState(() => ...)` call whose
+  // return value was discarded - it happened to fire once, which is what a
+  // mount load wants, but it allocated a state slot nobody reads and ran the
+  // fetch during render.
+  useEffect(() => {
+    let cancelled = false;
+    loadZipCentroids().then((centroids) => {
+      if (!cancelled) setZipCentroids(centroids);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const accountsWithCoords = useMemo(() => {
     if (!accountsQuery.data) return [];
