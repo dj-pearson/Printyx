@@ -27,6 +27,32 @@ This runbook documents the procedures for backing up and restoring the Printyx d
 | Weekly  | 4 weeks   | Sunday backups       |
 | Monthly | 12 months | 1st of month backups |
 
+**Verified 2026-09-21 (LAUNCH-011)** against a real PostgreSQL 16 with the full
+migration chain applied, not read from the scripts. The run found three defects,
+all now fixed and locked by `server/tests/unit/backup-restore-procedures.test.ts`:
+
+- `npm run db:backup` produced the forecasting archive by dumping the **whole
+  main database** (`run_backup "$DB_NAME" "printyx-forecast-backup"` with no
+  `--schema`), so the two files were both 228K with the same 683 tables while
+  the log said "Forecasting database backup successful". The CronJob had always
+  passed `--schema=forecasting`, so the hand-run script and the nightly job were
+  writing different artifacts under the same name into the same GCS folder.
+- Local retention was a flat `find -mtime +7 -delete`, which deletes the Sunday
+  and first-of-month archives this table promises to keep for four weeks and
+  twelve months. A deployment without GCS - which the script explicitly supports
+  - had **no weekly and no monthly retention at all**. The tier now comes from
+    the date in the filename, so one archive serves all three tiers.
+- The CronJob's `[ -f ] && [ -s ]` guard on the forecasting dump could not fail:
+  `|| echo` swallows pg_dump's status, and gzip of empty input is a 20-byte file
+  that `[ -s ]` calls non-empty. A dump that never ran uploaded a 20-byte archive
+  and logged "Forecasting backup uploaded".
+
+What is still untested and why: the **GCS upload, the GCS-side retention and the
+weekly/monthly tagging** all require `gsutil` and a bucket. This environment has
+neither and no outbound egress (PROD-020 records the same block), so the script's
+local-only degradation path is what was exercised. That path is the one a
+developer runs; the GCS path is the one the CronJob runs.
+
 ---
 
 ## 1. Automated Backups

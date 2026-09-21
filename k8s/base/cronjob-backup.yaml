@@ -69,7 +69,18 @@ spec:
                   FORECAST_FILE="printyx-forecast-backup-${TIMESTAMP}.sql.gz"
                   FORECAST_GCS="gs://${BACKUP_GCS_BUCKET}/printyx-forecast-backup/${FORECAST_FILE}"
 
+                  # LAUNCH-011: the guard below used to be `[ -f ] && [ -s ]`, and it
+                  # could not fail. The `|| echo` swallows pg_dump's status even under
+                  # `set -o pipefail`, and `gzip` of EMPTY INPUT is a 20-byte file - so
+                  # `[ -s ]` calls it non-empty. A forecasting dump that never ran
+                  # therefore uploaded a 20-byte archive and logged "Forecasting backup
+                  # uploaded". Both facts verified in a shell before this was changed.
+                  #
+                  # The schema is genuinely optional (a deployment may not have it), so
+                  # the status is CAPTURED rather than swallowed, and a too-small archive
+                  # is reported and not uploaded.
                   echo "Backing up forecasting database..."
+                  FORECAST_RC=0
                   pg_dump \
                     --host="${DB_HOST}" \
                     --port="${DB_PORT}" \
@@ -79,11 +90,16 @@ spec:
                     --format=plain \
                     --no-owner \
                     --no-privileges \
-                    | gzip -9 > "/tmp/${FORECAST_FILE}" || echo "Forecasting schema backup skipped (may not exist)"
+                    | gzip -9 > "/tmp/${FORECAST_FILE}" || FORECAST_RC=$?
 
-                  if [ -f "/tmp/${FORECAST_FILE}" ] && [ -s "/tmp/${FORECAST_FILE}" ]; then
+                  FORECAST_BYTES=$(stat -c %s "/tmp/${FORECAST_FILE}" 2>/dev/null || echo 0)
+                  if [ "${FORECAST_RC}" -ne 0 ]; then
+                    echo "Forecasting schema backup FAILED (exit ${FORECAST_RC}) - not uploading"
+                  elif [ "${FORECAST_BYTES}" -lt 100 ]; then
+                    echo "Forecasting schema backup produced ${FORECAST_BYTES} bytes - an empty gzip is 20 bytes, so this is not a backup. Not uploading."
+                  else
                     gsutil cp "/tmp/${FORECAST_FILE}" "${FORECAST_GCS}"
-                    echo "Forecasting backup uploaded"
+                    echo "Forecasting backup uploaded (${FORECAST_BYTES} bytes)"
                   fi
 
                   # Tag weekly backups (Sunday = day 0)

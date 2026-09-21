@@ -123,14 +123,32 @@ check_tools() {
   fi
 }
 
-# Run a single database backup
+# Run a single database backup.
+#
+# LAUNCH-011: the third argument is an optional pg_dump --schema filter, and it
+# is the whole reason the forecasting backup existed as a lie. This function was
+# called as `run_backup "$DB_NAME" "printyx-forecast-backup"` with no filter, so
+# it dumped the ENTIRE MAIN DATABASE and named the archive as the forecasting
+# one - two 228K files, both 683 tables, neither containing anything from the
+# forecasting schema, and the log reporting "Forecasting database backup
+# successful". k8s/base/cronjob-backup.yaml has always passed
+# `--schema=forecasting` and the runbook has always called it the "Forecasting
+# schema", so the script an operator runs by hand and the job that runs nightly
+# wrote DIFFERENT ARTIFACTS UNDER THE SAME NAME, into the same GCS folder.
+# Restoring "the latest forecast backup" then depends on which ran last, and one
+# of them is the whole main database.
 run_backup() {
   local db_name="$1"
   local backup_prefix="$2"
+  local schema="${3:-}"
   local backup_file="${backup_prefix}-${TIMESTAMP}.sql.gz"
   local local_path="${BACKUP_LOCAL_DIR}/${backup_file}"
 
-  log_info "Starting backup of database '${db_name}' on ${DB_HOST}:${DB_PORT}..."
+  if [ -n "$schema" ]; then
+    log_info "Starting backup of schema '${schema}' in database '${db_name}' on ${DB_HOST}:${DB_PORT}..."
+  else
+    log_info "Starting backup of database '${db_name}' on ${DB_HOST}:${DB_PORT}..."
+  fi
 
   # Set password for pg_dump
   export PGPASSWORD="${DB_PASSWORD}"
@@ -138,15 +156,27 @@ run_backup() {
   # Run pg_dump and compress with gzip
   local start_time=$(date +%s)
 
-  if pg_dump \
-    --host="$DB_HOST" \
-    --port="$DB_PORT" \
-    --username="$DB_USER" \
-    --dbname="$db_name" \
-    --format=plain \
-    --no-owner \
-    --no-privileges \
-    --verbose \
+  # Built as an array so the optional --schema can be appended without a second
+  # copy of the pg_dump call. Failure detection is already sound here and was
+  # before this change: `set -euo pipefail` at the top of the file means the
+  # `pg_dump | gzip` pipeline reports pg_dump's status, which was verified by
+  # pointing this at a database that does not exist (exit 1, "backup FAILED",
+  # no file left behind). The place that shape DOES bite is
+  # k8s/base/cronjob-backup.yaml, where a `|| echo` swallows the status - see
+  # the note there.
+  local dump_args=(
+    --host="$DB_HOST"
+    --port="$DB_PORT"
+    --username="$DB_USER"
+    --dbname="$db_name"
+    --format=plain
+    --no-owner
+    --no-privileges
+    --verbose
+  )
+  [ -n "$schema" ] && dump_args+=(--schema="$schema")
+
+  if pg_dump "${dump_args[@]}" \
     2>"${local_path%.sql.gz}.log" \
     | gzip -9 > "$local_path"; then
 
@@ -212,12 +242,69 @@ run_backup() {
 }
 
 # Retention cleanup
+# LAUNCH-011: the LOCAL cleanup used to be `find -name '*.sql.gz' -mtime +7
+# -delete`, which deletes EVERYTHING at seven days - including the Sunday and
+# first-of-month archives the policy keeps for four weeks and twelve months. So
+# a deployment without GCS, which this script explicitly supports ("backups will
+# only be saved locally"), had no weekly and no monthly retention at all, while
+# both this script and db-backup-list.sh printed the three-tier policy. Proven
+# by aging four files: a 20-day-old weekly and a 100-day-old monthly were both
+# deleted alongside the 20-day-old daily.
+#
+# The tier comes from the DATE IN THE FILENAME, which is the same thing the GCS
+# branch below keys on, rather than from a weekly/ and monthly/ subdirectory -
+# so one archive serves all three tiers instead of being copied three times.
+prune_local_backups() {
+  local now_epoch
+  now_epoch=$(date -u +%s)
+  local removed=0 kept=0
+
+  shopt -s nullglob
+  for file in "$BACKUP_LOCAL_DIR"/*.sql.gz; do
+    local base file_date keep_days file_epoch age_days dom dow
+    base=$(basename "$file")
+    file_date=$(echo "$base" | grep -oE '[0-9]{4}-[0-9]{2}-[0-9]{2}' | head -1)
+
+    # No parseable date means no way to tier it. KEPT, not deleted: an archive
+    # nobody can date is not an archive anybody should silently destroy.
+    if [ -z "$file_date" ]; then
+      kept=$((kept + 1))
+      continue
+    fi
+
+    file_epoch=$(date -u -d "$file_date" +%s 2>/dev/null || echo "")
+    if [ -z "$file_epoch" ]; then
+      kept=$((kept + 1))
+      continue
+    fi
+
+    age_days=$(( (now_epoch - file_epoch) / 86400 ))
+    dom=$(date -u -d "$file_date" +%d)
+    dow=$(date -u -d "$file_date" +%u)   # 1=Monday .. 7=Sunday
+
+    if [ "$dom" = "01" ]; then
+      keep_days=365                      # monthly: 12 months
+    elif [ "$dow" = "7" ]; then
+      keep_days=28                       # weekly: 4 weeks
+    else
+      keep_days=7                        # daily
+    fi
+
+    if [ "$age_days" -gt "$keep_days" ]; then
+      rm -f "$file" && removed=$((removed + 1))
+    else
+      kept=$((kept + 1))
+    fi
+  done
+  shopt -u nullglob
+
+  log_info "Local retention: kept ${kept}, removed ${removed} (daily 7d, weekly 28d, monthly 365d)"
+}
+
 run_retention() {
   if ! command -v gsutil &>/dev/null; then
     log_warn "gsutil not available - skipping GCS retention cleanup"
-    # Clean local backups older than 7 days
-    log_info "Cleaning local backups older than 7 days..."
-    find "$BACKUP_LOCAL_DIR" -name "*.sql.gz" -mtime +7 -delete 2>/dev/null || true
+    prune_local_backups
     log_success "Local retention cleanup complete"
     return 0
   fi
@@ -261,8 +348,7 @@ run_retention() {
     done
   fi
 
-  # Clean local backups older than 7 days
-  find "$BACKUP_LOCAL_DIR" -name "*.sql.gz" -mtime +7 -delete 2>/dev/null || true
+  prune_local_backups
 
   log_success "Retention cleanup complete for ${prefix}"
 }
@@ -320,7 +406,11 @@ fi
 
 if [ "$BACKUP_FORECAST" = true ]; then
   log_info "=== Forecasting Database Backup ==="
-  if run_backup "$DB_NAME" "printyx-forecast-backup"; then
+  # The forecasting data is a SCHEMA inside the main database, which is what
+  # the CronJob and the runbook have always said. BACKUP_FORECAST_SCHEMA exists
+  # so a deployment that names it differently can say so rather than silently
+  # dumping everything.
+  if run_backup "$DB_NAME" "printyx-forecast-backup" "${BACKUP_FORECAST_SCHEMA:-forecasting}"; then
     log_success "Forecasting database backup successful"
   else
     log_error "Forecasting database backup FAILED"
