@@ -111,7 +111,7 @@
       "why": "One upsert per calendar event on a sync, and a busy calendar is hundreds. A batched upsert on (connection, external_event_id) is the obvious fix; left open because the two providers build their rows differently and the conflict target needs checking against the real index."
     },
     {
-      "loop": "mobile/index.ts:599",
+      "loop": "mobile/index.ts:897",
       "table": "mobile_service_sessions",
       "verdict": "deliberate",
       "why": "What remains is the SESSION loop, which is an update-or-insert per row keyed on whether the client sent an id. The three pure-insert loops beside it (photos, time entries, location history) are batched now."

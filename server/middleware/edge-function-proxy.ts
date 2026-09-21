@@ -1097,6 +1097,16 @@ export function registerEdgeFunctionProxy(app: any) {
     '/api/sales-pipeline/summary': { fn: 'sales-pipeline', pathPrefix: '/summary' },
     '/api/sales-pipeline/stages': { fn: 'sales-pipeline', pathPrefix: '/stages' },
     //
+    // PROD-008: SCOPED, not the whole /api/mobile prefix. The edge function
+    // now serves time tracking and the ticket-status write, so dev and
+    // production run one implementation - but /api/mobile/dashboard and
+    // /api/mobile/jobs/:jobId are still Express-only, and a bare '/api/mobile'
+    // entry would take those from working-in-dev to 404-in-dev. The note in
+    // server/routes-registry.ts that set that condition is the reason these two
+    // are here and a third is not.
+    '/api/mobile/time-tracking': { fn: 'mobile', pathPrefix: '/time-tracking' },
+    '/api/mobile/service-tickets': { fn: 'mobile', pathPrefix: '/service-tickets' },
+    //
     // /api/ai-employees is deliberately NOT here. Its edge fn covers the two
     // READ endpoints the dashboard calls, but the Express router also owns
     // create / tasks / workflows-execute, which run agents through

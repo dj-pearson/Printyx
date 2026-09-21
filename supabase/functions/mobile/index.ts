@@ -6,6 +6,10 @@ import { normalizePath } from '../_shared/path.ts';
 import { resolveScope, rowInScope } from '../_shared/scope.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 import { WRITE_BATCH, writeInBatches } from '../_shared/batch-fetch.ts';
+import {
+  SERVICE_TICKET_STATUSES,
+  normalizeTicketStatus,
+} from '../_shared/service-ticket-vocabulary.ts';
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -52,6 +56,7 @@ export default async function handler(req: Request) {
     // Path structure: /mobile/sessions, /mobile/sessions/:id, /mobile/photos, /mobile/photos/:id, /mobile/sync
     const resource = parts[0]; // sessions, photos, sync
     const resourceId = parts[1]; // :id or :ticketId for photos
+    const subAction = parts[2]; // /service-tickets/:id/status
 
     // ========================================
     // SESSIONS ENDPOINTS
@@ -349,6 +354,299 @@ export default async function handler(req: Request) {
       }
 
       return createCorsResponse(session, 200, req);
+    }
+
+    // ========================================
+    // TIME TRACKING + TICKET STATUS (PROD-008)
+    // ========================================
+    //
+    // The React Native field-service screen calls all three of these and NONE
+    // of them existed here, so every one 404'd in production while Express
+    // served them in dev - the dev/prod split running in its worse direction,
+    // because production is where the technician is standing.
+    //
+    // THEY ARE THE SESSION MACHINERY UNDER ANOTHER NAME, so they reuse it
+    // rather than opening a second timer model: `mobile_service_sessions`
+    // already carries check-in and check-out timestamps, total and working
+    // hours, and `time_tracking_entries` is the per-event log hanging off it.
+    // The Express versions wrote neither - `stop` bumped `updated_at` and
+    // answered `{ stoppedAt }`, so the technician was told the timer had
+    // stopped and nothing recorded any time at all.
+
+    /** Is this ticket the caller's to act on? Null means yes. */
+    const denyIfTicketOutOfScope = async (ticketId: string): Promise<Response | null> => {
+      const { data: ticket } = await admin
+        .from('service_tickets')
+        .select('id, assigned_technician_id, created_by')
+        .eq('id', ticketId)
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+      if (!ticket) {
+        return createCorsResponse({ error: 'Service ticket not found' }, 404, req);
+      }
+      const scope = await resolveScope(admin, {
+        userId: user.id,
+        tenantId,
+        appMetadata: user.app_metadata,
+      });
+      if (rowInScope(ticket, ['assigned_technician_id', 'created_by'], scope)) return null;
+      return createCorsResponse(
+        { error: 'This ticket is outside your scope', code: 'ROW_OUT_OF_SCOPE' },
+        403,
+        req,
+      );
+    };
+
+    // POST /mobile/time-tracking/start
+    //
+    // The Express version set the ticket to `'in-progress'` WITH A HYPHEN,
+    // which WF-V-05's CHECK constraint does not allow, so starting a timer was
+    // a 23514 surfaced as "Failed to start timer"; and it wrote
+    // `assigned_technician_id = caller` with no scope check, so any tenant
+    // member could take any ticket by pressing Start.
+    if (req.method === 'POST' && resource === 'time-tracking' && resourceId === 'start') {
+      const body = await req.json().catch(() => ({}) as Record<string, unknown>);
+      const ticketId = (body.ticketId ?? body.ticket_id ?? body.serviceTicketId) as
+        | string
+        | undefined;
+      if (!ticketId) {
+        return createCorsResponse({ error: 'ticketId is required' }, 400, req);
+      }
+
+      const denied = await denyIfTicketOutOfScope(ticketId);
+      if (denied) return denied;
+
+      // Idempotent: pressing Start twice must not open a second session, and a
+      // technician who backgrounds the app and returns should find the one they
+      // already have rather than starting the clock again.
+      const { data: open } = await admin
+        .from('mobile_service_sessions')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .eq('service_ticket_id', ticketId)
+        .eq('technician_id', user.id)
+        .is('check_out_timestamp', null)
+        .order('check_in_timestamp', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      let session = open;
+      if (!session) {
+        const startedAt = new Date().toISOString();
+        const { data: created, error } = await admin
+          .from('mobile_service_sessions')
+          .insert({
+            tenant_id: tenantId,
+            service_ticket_id: ticketId,
+            // WF-V-02: the session's technician is the caller, never a
+            // body-supplied id.
+            technician_id: user.id,
+            check_in_latitude: body.latitude ?? null,
+            check_in_longitude: body.longitude ?? null,
+            check_in_address: body.address ?? null,
+            check_in_timestamp: startedAt,
+            status: 'in_progress',
+            created_at: startedAt,
+            updated_at: startedAt,
+          })
+          .select()
+          .single();
+        if (error) {
+          console.error('Error starting time tracking:', error);
+          return createCorsResponse(
+            { error: 'Failed to start time tracking', details: error.message },
+            500,
+            req,
+          );
+        }
+        session = created;
+
+        await admin.from('time_tracking_entries').insert({
+          tenant_id: tenantId,
+          session_id: session.id,
+          latitude: body.latitude ?? null,
+          longitude: body.longitude ?? null,
+          address: body.address ?? null,
+          check_in_type: 'arrival',
+          timestamp: startedAt,
+          notes: (body.notes as string) ?? 'Timer started',
+          created_at: startedAt,
+        });
+      }
+
+      // Canonical spelling. Starting work on a ticket is the one status change
+      // this endpoint makes; everything else goes through /status below.
+      const { error: ticketErr } = await admin
+        .from('service_tickets')
+        .update({ status: 'in_progress', updated_at: new Date().toISOString() })
+        .eq('id', ticketId)
+        .eq('tenant_id', tenantId);
+      if (ticketErr) {
+        console.error('Error moving ticket to in_progress:', ticketErr);
+      }
+
+      return createCorsResponse(
+        {
+          success: true,
+          sessionId: session.id,
+          startedAt: session.check_in_timestamp,
+          alreadyRunning: Boolean(open),
+        },
+        200,
+        req,
+      );
+    }
+
+    // POST /mobile/time-tracking/stop
+    //
+    // Stopping the clock is NOT finishing the job. The screen has a separate
+    // status control, so this closes the session and leaves the ticket where it
+    // is - unlike the session check-out path above, which is the "I am done
+    // here" action and does complete the ticket.
+    if (req.method === 'POST' && resource === 'time-tracking' && resourceId === 'stop') {
+      const body = await req.json().catch(() => ({}) as Record<string, unknown>);
+      const ticketId = (body.ticketId ?? body.ticket_id ?? body.serviceTicketId) as
+        | string
+        | undefined;
+      if (!ticketId) {
+        return createCorsResponse({ error: 'ticketId is required' }, 400, req);
+      }
+
+      const denied = await denyIfTicketOutOfScope(ticketId);
+      if (denied) return denied;
+
+      const { data: open } = await admin
+        .from('mobile_service_sessions')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .eq('service_ticket_id', ticketId)
+        .eq('technician_id', user.id)
+        .is('check_out_timestamp', null)
+        .order('check_in_timestamp', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!open) {
+        // Not an error - the clock is already stopped. Saying so beats a 500
+        // that makes the technician press it again.
+        return createCorsResponse(
+          { success: true, stopped: false, reason: 'No running timer for this ticket' },
+          200,
+          req,
+        );
+      }
+
+      const stoppedAt = new Date().toISOString();
+      const totalHours =
+        (new Date(stoppedAt).getTime() - new Date(open.check_in_timestamp).getTime()) / 3_600_000;
+      const breakHours = Number(open.break_hours ?? 0) || 0;
+
+      const { data: session, error } = await admin
+        .from('mobile_service_sessions')
+        .update({
+          check_out_timestamp: stoppedAt,
+          check_out_latitude: body.latitude ?? null,
+          check_out_longitude: body.longitude ?? null,
+          check_out_address: body.address ?? null,
+          // A clock that ran backwards records nothing rather than a negative
+          // number somebody gets paid on.
+          total_hours: totalHours >= 0 ? totalHours.toFixed(2) : null,
+          working_hours: totalHours >= 0 ? Math.max(0, totalHours - breakHours).toFixed(2) : null,
+          status: 'completed',
+          updated_at: stoppedAt,
+        })
+        .eq('id', open.id)
+        .eq('tenant_id', tenantId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error stopping time tracking:', error);
+        return createCorsResponse(
+          { error: 'Failed to stop time tracking', details: error.message },
+          500,
+          req,
+        );
+      }
+
+      await admin.from('time_tracking_entries').insert({
+        tenant_id: tenantId,
+        session_id: open.id,
+        latitude: body.latitude ?? null,
+        longitude: body.longitude ?? null,
+        address: body.address ?? null,
+        check_in_type: 'departure',
+        timestamp: stoppedAt,
+        notes: (body.notes as string) ?? 'Timer stopped',
+        created_at: stoppedAt,
+      });
+
+      return createCorsResponse(
+        {
+          success: true,
+          stopped: true,
+          sessionId: session.id,
+          stoppedAt,
+          totalHours: session.total_hours,
+          workingHours: session.working_hours,
+        },
+        200,
+        req,
+      );
+    }
+
+    // POST /mobile/service-tickets/:id/status
+    //
+    // The Express version passed the body straight through, so anything outside
+    // WF-V-05's vocabulary was a 23514 reported as a generic failure. Aliases
+    // are normalized ('in-progress' means the same thing) and an unknown value
+    // is refused WITH the vocabulary, which is the part that stops it growing a
+    // fifth spelling.
+    if (
+      (req.method === 'POST' || req.method === 'PATCH') &&
+      resource === 'service-tickets' &&
+      resourceId &&
+      subAction === 'status'
+    ) {
+      const body = await req.json().catch(() => ({}) as Record<string, unknown>);
+      const status = normalizeTicketStatus(body.status);
+      if (!status) {
+        return createCorsResponse(
+          {
+            error: 'Unknown ticket status',
+            code: 'UNKNOWN_STATUS',
+            allowed: SERVICE_TICKET_STATUSES,
+          },
+          400,
+          req,
+        );
+      }
+
+      const denied = await denyIfTicketOutOfScope(resourceId);
+      if (denied) return denied;
+
+      const nowIso = new Date().toISOString();
+      const patch: Record<string, unknown> = { status, updated_at: nowIso };
+      if (status === 'completed') patch.resolved_at = nowIso;
+
+      const { data: ticket, error } = await admin
+        .from('service_tickets')
+        .update(patch)
+        .eq('id', resourceId)
+        .eq('tenant_id', tenantId)
+        .select('id, status, resolved_at')
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error updating ticket status:', error);
+        return createCorsResponse(
+          { error: 'Failed to update ticket status', details: error.message },
+          500,
+          req,
+        );
+      }
+
+      return createCorsResponse({ success: true, status, ticket }, 200, req);
     }
 
     // ========================================
