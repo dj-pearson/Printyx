@@ -241,19 +241,15 @@ export default async function handler(req: Request) {
 
     // GET /geocode-leads/status - Get geocoding progress
     if (req.method === 'GET') {
-      const { data, error } = await admin.rpc('exec_sql', {
-        sql: `
-          SELECT
-            COUNT(*) as total,
-            COUNT(CASE WHEN latitude IS NOT NULL THEN 1 END) as geocoded,
-            COUNT(CASE WHEN latitude IS NULL THEN 1 END) as pending
-          FROM business_records
-          WHERE tenant_id = '${tenantId}'
-            AND source = 'EDA Import'
-        `,
-      });
-
-      // Fallback: query directly
+      // There used to be an admin.rpc('exec_sql', { sql: `... tenant_id =
+      // '${tenantId}' ...` }) here whose result was destructured and never
+      // read, so the counts below were never a fallback - they were the only
+      // path, and the RPC was a round trip that always failed. `exec_sql` is
+      // defined in no migration and in no drizzle/functions file, which is the
+      // ONLY reason the interpolated tenant id was not a SQL injection sink:
+      // it is a common Supabase helper, so the day anyone defines one the
+      // string would have started executing. It was the single interpolated
+      // SQL literal in the whole edge tree; check:edge-rpc keeps that at zero.
       const { count: total } = await admin
         .from('business_records')
         .select('*', { count: 'exact', head: true })

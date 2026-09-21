@@ -200,6 +200,8 @@ jobs:
         run: npm run check:edge-coverage
       - name: Edge boot-load guard (WF-G-01)
         run: npm run check:edge-boot
+      - name: Edge RPC resolution + hand-applied SQL inventory (round 139)
+        run: npm run check:edge-rpc
       - name: Month-arithmetic ratchet (DATE-SETMONTH-001)
         run: npm run check:month-arithmetic
       - name: Proxy-override parity (PA-019)

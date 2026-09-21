@@ -167,8 +167,17 @@ export async function handleAssign(req: Request, ctx: HandlerCtx): Promise<Respo
       .eq('id', matched.id);
   }
 
-  // Bump rep load counter
-  await db.rpc('lead_assignment_bump_rep_load', {
+  // Bump rep load counter. The result was discarded here, which made this the
+  // quiet half of a pair: _engine.ts THROWS when the same RPC fails, while
+  // this path answered 201 with the counter unmoved - so the rep keeps their
+  // old load and round-robin keeps handing them the next lead. The RPC lives
+  // in drizzle/functions/lead-assignment.sql, which is applied BY HAND, so
+  // "the function is not there yet" is a real state rather than a hypothetical.
+  // The assignment row is already written by this point, so a failure here is
+  // reported as a warning on a 201 rather than turned into an error: telling
+  // the caller the assignment failed would be a worse lie than the counter
+  // being stale.
+  const bump = await db.rpc('lead_assignment_bump_rep_load', {
     p_tenant_id: auth.tenantId,
     p_user_id: assignedTo,
   });
@@ -179,6 +188,15 @@ export async function handleAssign(req: Request, ctx: HandlerCtx): Promise<Respo
       assignment: hist.data,
       assignedTo,
       ruleUsed: matched.rule_name,
+      ...(bump.error
+        ? {
+            warning:
+              'Assigned, but the rep load counter was not updated: ' +
+              bump.error.message +
+              '. Routing will keep treating this rep as having their previous load.',
+            repLoadUpdated: false,
+          }
+        : { repLoadUpdated: true }),
     },
     200,
     req,
