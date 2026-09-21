@@ -48,6 +48,10 @@ const EXPECTED: Record<string, { visibility: 'public' | 'private'; why: string }
     why: 'Quarterly business reviews: customer fleet, usage and spend.',
   },
   qbr: { visibility: 'private', why: 'Legacy name for the QBR bucket. See LEGAL-006.' },
+  'service-photos': {
+    visibility: 'private',
+    why: "Field technician photos of a customer's machine, often geotagged. PROD-008.",
+  },
 };
 
 const admin = createClient(SUPABASE_URL, SERVICE_KEY, {

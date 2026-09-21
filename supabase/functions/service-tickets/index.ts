@@ -5,6 +5,12 @@ import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { enrichTickets } from './_enrich.ts';
 import { applyUserScope, resolveScope, rowInScope } from '../_shared/scope.ts';
+import {
+  ATTACHMENT_BUCKET,
+  ATTACHMENT_URL_TTL_SECONDS,
+  MAX_ATTACHMENT_BYTES,
+  planTicketAttachment,
+} from '../_shared/ticket-attachment.ts';
 import { applyTicketFields, assignmentNotification, dispatchLoad } from './_dispatch.ts';
 import {
   OPEN_TICKET_STATUSES,
@@ -19,6 +25,29 @@ import {
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 
 // Helper: Batch-enrich records with customer names from business_records
+/**
+ * Create the attachments bucket if it is missing, PRIVATE.
+ *
+ * `public: false` is the whole point and is not a default worth relying on -
+ * docs/storage-bucket-inventory.md records that reading the code tells you
+ * nothing about whether an object is world-readable, so the creation call says
+ * it explicitly and the allowed types are pinned at the bucket as well as in
+ * the planner.
+ */
+async function ensureAttachmentBucket(admin: {
+  storage: {
+    getBucket: (id: string) => Promise<{ data: unknown }>;
+    createBucket: (id: string, opts: Record<string, unknown>) => Promise<unknown>;
+  };
+}) {
+  const { data } = await admin.storage.getBucket(ATTACHMENT_BUCKET);
+  if (data) return;
+  await admin.storage.createBucket(ATTACHMENT_BUCKET, {
+    public: false,
+    fileSizeLimit: MAX_ATTACHMENT_BYTES,
+  });
+}
+
 export default async function handler(req: Request) {
   // Handle CORS preflight
   const corsResponse = handleCors(req);
@@ -268,6 +297,156 @@ export default async function handler(req: Request) {
       }
 
       return createCorsResponse(updates || [], 200, req);
+    }
+
+    // GET/POST /service-tickets/:id/attachments
+    //
+    // PROD-008. The iOS ticket photo picker posts here and NOTHING served it:
+    // this function had no `attachments` branch, so the upload fell through to
+    // the trailing 405, and Express has no handler either. `POST /mobile/photos`
+    // reads like the existing implementation and is not - its own header says
+    // "actual file handled separately" and it requires an `object_path` that
+    // nothing in this tree produces, so the metadata half shipped and the file
+    // half never did.
+    //
+    // The bytes go THROUGH the function (SEC-SVG-002) into a PRIVATE bucket,
+    // and what comes back out is a short-lived signed URL: a site photo carries
+    // a customer's equipment, serials and premises, so this is the
+    // qbr-artifacts case and not the public-logo one.
+    if (
+      ticketId &&
+      subResource === 'attachments' &&
+      (req.method === 'GET' || req.method === 'POST')
+    ) {
+      // Not-found is answered here rather than inside denyIfTicketOutOfScope,
+      // which returns null for a missing ticket on purpose so each handler
+      // keeps its own 404 and no branch leaks which ids are real.
+      const { data: ticket } = await admin
+        .from('service_tickets')
+        .select('id')
+        .eq('id', ticketId)
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+      if (!ticket) {
+        return createCorsResponse({ error: 'Service ticket not found' }, 404, req);
+      }
+
+      const denied = await denyIfTicketOutOfScope(ticketId);
+      if (denied) return denied;
+
+      if (req.method === 'GET') {
+        const { data: photos, error } = await admin
+          .from('service_photos')
+          .select('*')
+          .eq('service_ticket_id', ticketId)
+          .eq('tenant_id', tenantId)
+          .order('taken_at', { ascending: false });
+
+        if (error) {
+          console.error('Error fetching ticket attachments:', error);
+          return createCorsResponse({ error: 'Failed to fetch attachments' }, 500, req);
+        }
+
+        // Signed, never public. getPublicUrl hands back a URL whether or not
+        // the bucket is public, which is exactly how the QBR decks came to be
+        // world-readable - a link that looks right is not evidence the object
+        // is meant to be fetchable.
+        //
+        // One batched call rather than one per row: createSignedUrls takes the
+        // whole list, so a ticket with twenty photos is one round trip and the
+        // N+1 report has nothing to classify.
+        const paths = (photos ?? []).map((p: any) => p.object_path).filter(Boolean);
+        const signedByPath = new Map<string, string>();
+        if (paths.length > 0) {
+          const { data: signedList } = await admin.storage
+            .from(ATTACHMENT_BUCKET)
+            .createSignedUrls(paths, ATTACHMENT_URL_TTL_SECONDS);
+          for (const entry of signedList ?? []) {
+            if (entry.path && entry.signedUrl) signedByPath.set(entry.path, entry.signedUrl);
+          }
+        }
+        return createCorsResponse(
+          (photos ?? []).map((photo: any) => ({
+            ...photo,
+            url: signedByPath.get(photo.object_path) ?? null,
+          })),
+          200,
+          req,
+        );
+      }
+
+      const body = await req.json().catch(() => ({}) as Record<string, unknown>);
+      const plan = planTicketAttachment(body, {
+        tenantId,
+        ticketId,
+        uuid: crypto.randomUUID(),
+      });
+
+      if (plan.error || !plan.bytes || !plan.storagePath || !plan.mime) {
+        return createCorsResponse(
+          {
+            error: plan.error?.message ?? 'Attachment rejected',
+            code: plan.error?.code ?? 'ATTACHMENT_REJECTED',
+          },
+          plan.error?.status ?? 400,
+          req,
+        );
+      }
+
+      await ensureAttachmentBucket(admin);
+
+      const { error: upErr } = await admin.storage
+        .from(ATTACHMENT_BUCKET)
+        .upload(plan.storagePath, plan.bytes, {
+          // The SNIFFED type. The client's `mimeType` is a string it chose.
+          contentType: plan.mime,
+          upsert: false,
+        });
+      if (upErr) {
+        console.error('Error uploading ticket attachment:', upErr);
+        return createCorsResponse(
+          { error: 'Failed to store attachment', details: upErr.message },
+          500,
+          req,
+        );
+      }
+
+      const { data: photo, error } = await admin
+        .from('service_photos')
+        .insert({
+          tenant_id: tenantId,
+          service_ticket_id: ticketId,
+          file_name: plan.fileName,
+          original_name: plan.originalName,
+          mime_type: plan.mime,
+          file_size: plan.bytes.length,
+          object_path: plan.storagePath,
+          category: typeof body.category === 'string' ? body.category : 'during',
+          description: typeof body.description === 'string' ? body.description : null,
+          taken_at: new Date().toISOString(),
+          uploaded_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      if (error) {
+        // The object is already in the bucket, so leaving it there on a failed
+        // insert is an orphan nothing can reach. Remove it and report the
+        // failure rather than answering 201 for a photo with no row.
+        await admin.storage.from(ATTACHMENT_BUCKET).remove([plan.storagePath]);
+        console.error('Error recording ticket attachment:', error);
+        return createCorsResponse(
+          { error: 'Failed to record attachment', details: error.message },
+          500,
+          req,
+        );
+      }
+
+      const { data: signed } = await admin.storage
+        .from(ATTACHMENT_BUCKET)
+        .createSignedUrl(plan.storagePath, ATTACHMENT_URL_TTL_SECONDS);
+
+      return createCorsResponse({ ...photo, url: signed?.signedUrl ?? null }, 201, req);
     }
 
     // GET /service-tickets/:id - Get single ticket

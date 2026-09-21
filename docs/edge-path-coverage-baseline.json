@@ -34,7 +34,6 @@
     "onboarding": ["export", "getting-started", "wizard-state"],
     "proposals": [":id/send"],
     "seo": ["analyze", "validate"],
-    "service-tickets": [":id/attachments"],
     "team-reports": ["no-touch"],
     "technician-management": ["dashboard"]
   }
