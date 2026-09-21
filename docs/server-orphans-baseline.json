@@ -1,6 +1,6 @@
 {
   "note": "server/*.ts files reachable from NEITHER server/index.ts NOR any package.json script, by any static or dynamic import. Dead product code: it cannot run. \"(test-only)\" marks a file reached only from server/tests, which is dead product code a test still pins. CORRECTED 2026-09-20 (round 90): the walk rooted at index.ts alone, so every CLI read as dead - db:migrate, seed:demo, seed:rbac, seed:kpis, seed:reports and nine more, 14 of these entries, each one a working tool this list was telling somebody to delete. A TODO list, not settled debt - each entry is wire it, delete it, or record why it is loaded some other way. See scripts/check-server-orphans.mjs.",
-  "total": 120,
+  "total": 117,
   "orphans": [
     "server/auth-setup.ts",
     "server/cli/company-dedup-cli.ts",
@@ -44,15 +44,12 @@
     "server/routes-user-lifecycle.ts",
     "server/routes/knowledge-base-routes.ts",
     "server/routes/sso-routes.ts (test-only)",
-    "server/run-advanced-workflows-migration.ts",
-    "server/run-ai-documentation-migration.ts",
     "server/run-ai-employees-migration.ts",
     "server/run-ai-migration.ts",
     "server/run-ai-search-knowledge-migration.ts",
     "server/run-calendar-migration.ts",
     "server/run-meeting-transcription-migration.ts",
     "server/run-task-migration.ts",
-    "server/run-team-collaboration-migration.ts",
     "server/scripts/command-injection-audit.ts",
     "server/seed-advanced-billing.ts",
     "server/seed-crm-goals.ts",

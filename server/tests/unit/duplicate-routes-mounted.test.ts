@@ -15,7 +15,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
 const repo = join(__dirname, '../../..');
@@ -62,9 +62,28 @@ describe('the guard resolves mount prefixes', () => {
 
 describe('the collisions it exposed are gone', () => {
   it('leaves one owner for /api/projects, and it is the real one', () => {
-    const team = read('server/routes/team-collaboration-routes.ts');
-    expect(team).not.toMatch(/router\.(get|post)\('\/projects',/);
+    // AUDIT-035 deleted team-collaboration-routes.ts outright, so the old
+    // version of this - read that file, assert it no longer declares
+    // /projects - has no subject. The PROPERTY is that exactly one server file
+    // claims the path, so it is asserted over the tree: a second root-mounted
+    // router declaring a bare '/projects' would be the same collision wearing
+    // a different filename.
     expect(read('server/routes-tasks.ts')).toMatch(/app\.get\('\/api\/projects'/);
+
+    const claimants: string[] = [];
+    const visit = (dir: string) => {
+      for (const entry of readdirSync(join(repo, dir))) {
+        if (entry === 'node_modules' || entry.startsWith('.')) continue;
+        const rel = `${dir}/${entry}`;
+        if (statSync(join(repo, rel)).isDirectory()) {
+          if (!rel.startsWith('server/tests')) visit(rel);
+        } else if (/\.ts$/.test(entry) && /router\.(get|post)\('\/projects',/.test(read(rel))) {
+          claimants.push(rel);
+        }
+      }
+    };
+    visit('server');
+    expect(claimants).toEqual([]);
   });
 
   it('deletes the signature fixtures rather than the real handler', () => {

@@ -614,7 +614,24 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
 
   // Async routes mounted at /api root
   const asyncRootApiMounts: string[] = [
-    './routes/team-collaboration-routes',
+    // team-collaboration-routes retired (AUDIT-035). Nine handlers, ZERO
+    // database calls, and zero callers for every path they answered -
+    // /api/teams, /api/teams/:id[/members|/capacity|/insights],
+    // /api/projects/:id/assignments/optimize, /api/projects/:id/dependencies,
+    // /api/collaboration/templates and /api/collaboration/analytics - across
+    // all eight client trees. supabase/functions/teams/ is the canonical
+    // replacement and says so in its own header ("Replaces
+    // server/routes/team-collaboration-routes.ts"); it covers every one of
+    // those paths over tasks, projects, users and time_entries, so production
+    // was already being served correctly while dev got the mocks.
+    //
+    // Its service went with it. AUDIT-021 had made analyzeTeamCapacity and
+    // getTeamMembers real, but the other thirteen methods were mocks
+    // (getTeamProjects returned a hardcoded "Q4 Sales Campaign" at 75%), and a
+    // real island inside an unreachable file duplicated by a live handler is
+    // not the "unwired work that WORKS" PROD-008c kept advanced-billing for.
+    // What the richer version could do and the edge one cannot is recorded on
+    // the story, not lost with the file.
     // meeting-scheduling-routes retired (MEETINGS-READS-001). Its four read
     // handlers already answered 501, and reading the file settled the other
     // half: server/services/meeting-scheduling-service.ts was 775 lines that
