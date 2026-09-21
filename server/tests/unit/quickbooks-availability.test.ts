@@ -62,13 +62,18 @@ describe('the tables this feature read do not exist', () => {
     }
   });
 
-  it('both are still recorded as phantom, against this exact file', () => {
+  it('and the edge function no longer queries either, so the baseline is clear', () => {
+    // Round 126 asserted the two were LISTED in docs/phantom-tables-baseline.json,
+    // which was a claim about the defect rather than about the fix - round 127
+    // tightened the baseline and the assertion went red on correct code. The
+    // property was always that this function does not query a table that does
+    // not exist.
     const baseline = JSON.stringify(JSON.parse(read('docs/phantom-tables-baseline.json')));
     for (const table of ['integrations', 'quickbooks_mappings']) {
       expect({
         table,
         listed: baseline.includes(`${table} (supabase/functions/quickbooks/index.ts)`),
-      }).toEqual({ table, listed: true });
+      }).toEqual({ table, listed: false });
     }
   });
 

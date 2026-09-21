@@ -31,7 +31,7 @@
     "server/routes-contract-renewal.ts": 28,
     "server/routes-document-automation.ts": 28,
     "server/routes-dod-enforcement.ts": 5,
-    "server/routes-enhanced-rbac.ts": 37,
+    "server/routes-enhanced-rbac.ts": 35,
     "server/routes-enhanced-service.ts": 10,
     "server/routes-export.ts": 9,
     "server/routes-intelligent-alerts.ts": 30,
