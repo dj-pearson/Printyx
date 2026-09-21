@@ -291,6 +291,39 @@ router.get('/api/seo/keywords', async (req: any, res) => {
   }
 });
 
+/**
+ * What a caller may declare about a keyword they track.
+ *
+ * currentPosition, bestPosition, impressions, clicks, ctr and lastChecked are
+ * deliberately absent: those are what the position checker measures, and a
+ * write path that accepts them lets a user set their own rankings.
+ */
+const KEYWORD_WRITABLE_FIELDS = [
+  'keyword',
+  'targetUrl',
+  'targetPosition',
+  'searchVolume',
+  'difficulty',
+  'cpc',
+  'competitorUrls',
+  'isActive',
+  'priority',
+  'checkFrequency',
+] as const;
+
+type KeywordPlan = Partial<
+  Pick<typeof seoKeywords.$inferInsert, (typeof KEYWORD_WRITABLE_FIELDS)[number]>
+>;
+
+function pickKeywordFields(body: unknown): KeywordPlan {
+  const source = (body ?? {}) as Record<string, unknown>;
+  const plan: Record<string, unknown> = {};
+  for (const field of KEYWORD_WRITABLE_FIELDS) {
+    if (source[field] !== undefined) plan[field] = source[field];
+  }
+  return plan as KeywordPlan;
+}
+
 // Add keyword
 router.post('/api/seo/keywords', async (req: any, res) => {
   try {
@@ -299,9 +332,23 @@ router.post('/api/seo/keywords', async (req: any, res) => {
       return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
+    // PROD-008: this spread `...req.body` into drizzle, so a caller could set
+    // currentPosition, bestPosition, impressions, clicks and ctr - the columns
+    // the position checker MEASURES - and the rank-tracking panel would then
+    // report numbers the user typed in. Only what somebody is meant to declare
+    // about a keyword is accepted; the measured ones come from
+    // POST /keywords/check-positions.
+    const plan = pickKeywordFields(req.body);
+    if (Object.keys(plan).length === 0 || !plan.keyword) {
+      return res.status(400).json({
+        message: 'A keyword is required',
+        code: 'MISSING_KEYWORD',
+      });
+    }
+
     const [keyword] = await db
       .insert(seoKeywords)
-      .values({ ...req.body, tenantId })
+      .values({ ...plan, keyword: plan.keyword, tenantId })
       .returning();
 
     res.json(keyword);
@@ -319,9 +366,18 @@ router.put('/api/seo/keywords/:id', async (req: any, res) => {
       return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
+    const plan = pickKeywordFields(req.body);
+    if (Object.keys(plan).length === 0) {
+      // Never a 200 that bumps updatedAt and reports success (COP-M01).
+      return res.status(400).json({
+        message: 'No writable fields in request',
+        code: 'NO_WRITABLE_FIELDS',
+      });
+    }
+
     const [keyword] = await db
       .update(seoKeywords)
-      .set({ ...req.body, updatedAt: new Date() })
+      .set({ ...plan, updatedAt: new Date() })
       .where(and(eq(seoKeywords.id, req.params.id), eq(seoKeywords.tenantId, tenantId)))
       .returning();
 
@@ -644,24 +700,38 @@ router.post('/api/seo/analyze/images', async (req: any, res) => {
       return res.status(400).json({ message: 'Page URL is required' });
     }
 
-    const images = await analyzeImages(pageUrl);
+    const { images, unbacked } = await analyzeImages(pageUrl);
 
-    const storedImages = await Promise.all(
-      images.map(async (image: any) => {
-        const [stored] = await db
+    // Explicit columns, not `...image`: drizzle drops a key the table does not
+    // have, so a spread stores whatever happens to line up and discards the
+    // rest in silence. fileSizeBytes and potentialSavingsBytes are left null
+    // because nothing here fetches an image.
+    const storedImages = images.length
+      ? await db
           .insert(seoImageAnalysis)
-          .values({
-            tenantId,
-            pageUrl,
-            ...image,
-            analyzedAt: new Date(),
-          })
-          .returning();
-        return stored;
-      }),
-    );
+          .values(
+            images.map((image) => ({
+              tenantId,
+              pageUrl,
+              imageUrl: image.imageUrl,
+              altText: image.altText,
+              title: image.title,
+              width: image.width,
+              height: image.height,
+              format: image.format,
+              isOptimized: image.isOptimized,
+              hasAltText: image.hasAltText,
+              isLazy: image.isLazy,
+              hasResponsive: image.hasResponsive,
+              issues: image.issues,
+              recommendedFormat: image.recommendedFormat,
+              analyzedAt: new Date(),
+            })),
+          )
+          .returning()
+      : [];
 
-    res.json(storedImages);
+    res.json({ pageUrl, images: storedImages, unbacked });
   } catch (error: any) {
     log.error('Error analyzing images:', error);
     res.status(500).json({ message: 'An internal error occurred' });
@@ -715,22 +785,39 @@ router.post('/api/seo/check/broken-links', async (req: any, res) => {
 
     const links = await checkBrokenLinks(sourceUrl);
 
-    const storedLinks = await Promise.all(
-      links.map(async (link: any) => {
-        const [stored] = await db
+    const storedLinks = links.length
+      ? await db
           .insert(seoLinkAnalysis)
-          .values({
-            tenantId,
-            sourceUrl,
-            ...link,
-            checkedAt: new Date(),
-          })
-          .returning();
-        return stored;
-      }),
-    );
+          .values(
+            links.map((link) => ({
+              tenantId,
+              sourceUrl,
+              targetUrl: String(link.targetUrl),
+              anchorText: String(link.anchorText ?? ''),
+              linkType: String(link.linkType),
+              isNoFollow: Boolean(link.isNoFollow),
+              isNoOpener: Boolean(link.isNoOpener),
+              isBroken: link.isBroken as boolean | null,
+              statusCode: link.statusCode as number | null,
+              errorMessage: (link.errorMessage as string | undefined) ?? null,
+              linkValue: link.linkValue as number,
+              checkedAt: new Date(),
+            })),
+          )
+          .returning()
+      : [];
 
-    res.json(storedLinks);
+    res.json({
+      sourceUrl,
+      links: storedLinks,
+      checkedLinkLimit: CHECKED_LINK_LIMIT,
+      unbacked:
+        links.length > CHECKED_LINK_LIMIT
+          ? [
+              `Only the first ${CHECKED_LINK_LIMIT} links were requested; the remaining ${links.length - CHECKED_LINK_LIMIT} are recorded as unchecked rather than as working.`,
+            ]
+          : [],
+    });
   } catch (error: any) {
     log.error('Error checking broken links:', error);
     res.status(500).json({ message: 'An internal error occurred' });
@@ -812,17 +899,25 @@ router.post('/api/seo/check/mobile', async (req: any, res) => {
 
     const mobile = await checkMobileFriendliness(url);
 
+    // hasTouchFriendlyElements, hasReadableText, contentFitsViewport,
+    // mobileLoadTimeMs, mobileFcp and mobileLcp are NOT written: every one
+    // needs a rendered page, and the originals filled them with `true` and `0`,
+    // which reads as a pass and as an instant load.
     const [stored] = await db
       .insert(seoMobileAnalysis)
       .values({
         tenantId,
         url,
-        ...mobile,
+        isMobileFriendly: mobile.isMobileFriendly,
+        mobileScore: mobile.mobileScore,
+        hasViewportMeta: mobile.hasViewportMeta,
+        viewportContent: mobile.viewportContent,
+        issues: mobile.issues,
         analyzedAt: new Date(),
       })
       .returning();
 
-    res.json(stored);
+    res.json({ url, ...mobile, id: stored?.id });
   } catch (error: any) {
     log.error('Error checking mobile friendliness:', error);
     res.status(500).json({ message: 'An internal error occurred' });
@@ -845,24 +940,31 @@ router.post('/api/seo/validate/structured-data', async (req: any, res) => {
       return res.status(400).json({ message: 'URL is required' });
     }
 
-    const schemas = await validateStructuredData(url);
+    const { schemas, unbacked } = await validateStructuredData(url);
 
-    const storedSchemas = await Promise.all(
-      schemas.map(async (schema: any) => {
-        const [stored] = await db
+    // richResultsEligible stays null: presence of @context and @type is not
+    // eligibility, and the original set it from exactly that.
+    const storedSchemas = schemas.length
+      ? await db
           .insert(seoStructuredData)
-          .values({
-            tenantId,
-            url,
-            ...schema,
-            detectedAt: new Date(),
-          })
-          .returning();
-        return stored;
-      }),
-    );
+          .values(
+            schemas.map((schema) => ({
+              tenantId,
+              url,
+              schemaType: schema.schemaType,
+              schemaFormat: schema.schemaFormat,
+              schemaData: schema.schemaData,
+              isValid: schema.isValid,
+              validationErrors: schema.validationErrors ?? null,
+              validationWarnings: schema.validationWarnings ?? null,
+              detectedAt: new Date(),
+              validatedAt: new Date(),
+            })),
+          )
+          .returning()
+      : [];
 
-    res.json(storedSchemas);
+    res.json({ url, schemas: storedSchemas, unbacked });
   } catch (error: any) {
     log.error('Error validating structured data:', error);
     res.status(500).json({ message: 'An internal error occurred' });
@@ -1152,6 +1254,7 @@ const crawlSite = (url: string, maxPages: number, maxDepth: number) =>
 const checkCoreWebVitals = seoService.checkCoreWebVitalsWithAPI;
 const analyzeImages = seoService.analyzePageImages;
 const checkBrokenLinks = seoService.checkBrokenLinks;
+const CHECKED_LINK_LIMIT = seoService.CHECKED_LINK_LIMIT;
 const checkSecurityHeaders = seoService.checkSecurityHeaders;
 const checkMobileFriendliness = seoService.analyzeMobileFriendliness;
 const validateStructuredData = seoService.validateStructuredData;

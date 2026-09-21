@@ -274,38 +274,37 @@ describe('both hosts serve the three endpoints from the one module', () => {
   });
 });
 
-describe('the four endpoints that still 404 in production are named, not forgotten', () => {
+describe('the HTML-parsing endpoints are served on both hosts now', () => {
   const EDGE = readFileSync(join(repo, 'supabase/functions/seo/index.ts'), 'utf8');
 
   /**
-   * check:edge-path-coverage works at SEGMENT granularity, so serving
+   * These four were the remainder SEO-TRANSPORT-001 named here, because
+   * check:edge-path-coverage works at SEGMENT granularity - serving
    * /seo/check/security cleared `check` from its baseline while
-   * /seo/check/broken-links and /seo/check/mobile remain unserved. Tightening
-   * that baseline is right - it keeps the ratchet honest about what it measures
-   * - but it means the guard can no longer see these two. This is where that
-   * fact lives instead, and it FAILS when somebody serves one, so the list
-   * cannot quietly go stale.
+   * /seo/check/broken-links and /seo/check/mobile stayed unserved, so the guard
+   * could no longer see them. PROD-008 round 135 ported all four; this block
+   * inverted rather than being deleted, so the list still costs something if
+   * one of them is removed.
+   *
+   * What remains unported is POST /seo/audit and POST /seo/crawl, named in
+   * server/tests/unit/seo-page-checks.test.ts by the same mechanism.
    */
-  const STILL_UNSERVED = [
+  const NOW_SERVED = [
     ['analyze', 'images'],
     ['check', 'broken-links'],
     ['check', 'mobile'],
     ['validate', 'structured-data'],
   ] as const;
 
-  it.each(STILL_UNSERVED)('/seo/%s/%s is still Express-only', (resource, id) => {
-    expect(EDGE).not.toContain(`resourceId === '${id}'`);
+  it.each(NOW_SERVED)('/seo/%s/%s has an edge branch', (_resource, id) => {
+    expect(EDGE).toContain(`resourceId === '${id}'`);
   });
 
-  it('all four are the HTML-parsing ones, which is why they were not ported', () => {
-    // They need a DOM parser in Deno; the three that shipped read response
-    // headers and a JSON API. Recorded against EDGE-002e, which owns the port.
-    expect(STILL_UNSERVED).toHaveLength(4);
-    const prd = JSON.parse(readFileSync(join(repo, 'prd.json'), 'utf8'));
-    const story = prd.userStories.find((x: { id: string }) => x.id === 'EDGE-002e');
-    expect(story, 'EDGE-002e owns the remaining port').toBeDefined();
-    for (const [resource, id] of STILL_UNSERVED) {
-      expect(story.notes, `${resource}/${id} not recorded`).toContain(`${resource}/${id}`);
-    }
+  it('all four read the page through the one shared evaluator module', () => {
+    // A DOM parser in Deno was the reason they were held back; the split is a
+    // node-html-parser extraction per host over shared/seo-page-facts.ts.
+    expect(NOW_SERVED).toHaveLength(4);
+    expect(EDGE).toContain("from '../../../shared/seo-page-facts.ts'");
+    expect(EDGE).toContain("from './_page-facts.ts'");
   });
 });

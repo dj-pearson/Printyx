@@ -29,6 +29,16 @@ import {
 } from '@shared/schema';
 import * as cheerio from 'cheerio';
 import {
+  CHECKED_LINK_LIMIT,
+  evaluateMobileFriendliness,
+  evaluatePageImages,
+  planLinkChecks,
+  validateJsonLdBlocks,
+  type ImageFact,
+  type LinkFact,
+  type PageFacts,
+} from '@shared/seo-page-facts';
+import {
   evaluateSecurityHeaders,
   MAX_REDIRECTS,
   readPageSpeedVitals,
@@ -589,52 +599,85 @@ export async function checkCoreWebVitalsWithAPI(
   };
 }
 
+/**
+ * PROD-008: the four checks below now DECIDE nothing here.
+ *
+ * `/api/seo` is not proxied, so Express serves these in dev and
+ * supabase/functions/seo/ serves them in production - and that function had no
+ * branch for any of the four, so the image, broken-link, mobile and
+ * structured-data buttons 404'd for every deployed user. The evaluation moved
+ * to shared/seo-page-facts.ts, which both hosts import; what stays here is the
+ * cheerio extraction, because the Deno side has node-html-parser instead and
+ * neither resolves on the other runtime.
+ *
+ * Read that module's header for the five claims these functions used to make
+ * that nothing measured - among them a flat 50KB "potential saving" on every
+ * non-webp image, and a small-text count taken from cheerio's `.css()`, which
+ * reads an inline style attribute and knows nothing about stylesheets.
+ */
+export function extractPageFacts(html: string): PageFacts {
+  const $ = cheerio.load(html);
+
+  const attr = (el: cheerio.Element, name: string): string | null => {
+    const value = $(el).attr(name);
+    return value === undefined ? null : value;
+  };
+
+  const images: ImageFact[] = $('img')
+    .toArray()
+    .map((el) => ({
+      src: attr(el, 'src') ?? '',
+      alt: attr(el, 'alt'),
+      title: attr(el, 'title'),
+      width: attr(el, 'width'),
+      height: attr(el, 'height'),
+      loading: attr(el, 'loading'),
+    }));
+
+  const links: LinkFact[] = $('a[href]')
+    .toArray()
+    .map((el) => ({
+      href: attr(el, 'href') ?? '',
+      text: $(el).text() ?? '',
+      rel: attr(el, 'rel'),
+    }));
+
+  const viewportEl = $('meta[name="viewport"]').first();
+  const viewport = viewportEl.length ? (viewportEl.attr('content') ?? '') : null;
+
+  // The type attribute alone misses the commonest embed shape, so the source
+  // extension counts too.
+  const flashElements = $('object, embed')
+    .toArray()
+    .filter((el) => {
+      const type = (attr(el, 'type') ?? '').toLowerCase();
+      const source = `${attr(el, 'data') ?? ''} ${attr(el, 'src') ?? ''}`.toLowerCase();
+      return type.includes('flash') || type.includes('shockwave') || source.includes('.swf');
+    }).length;
+
+  const jsonLdBlocks = $('script[type="application/ld+json"]')
+    .toArray()
+    // html(), the raw-content accessor. In cheerio today text() happens to
+    // return the same string for a script element, because htmlparser2 stores
+    // its content as a raw-text node - so a mutation between the two changes
+    // nothing and proves nothing. The PROPERTY the test binds to is that
+    // 'Ben &amp; Jerry' still reads as 'Ben &amp; Jerry' by the time JSON.parse
+    // sees it, which is what the HTML spec says about character data in a
+    // script and what an entity-decoding read would quietly rewrite.
+    .map((el) => $(el).html() ?? '');
+
+  return { images, links, viewport, flashElements, jsonLdBlocks };
+}
+
+/** Fetch a page and extract its facts. */
+async function loadPageFacts(pageUrl: string): Promise<PageFacts> {
+  const response = await fetch(pageUrl);
+  return extractPageFacts(await response.text());
+}
+
 export async function analyzePageImages(pageUrl: string) {
   try {
-    const response = await fetch(pageUrl);
-    const html = await response.text();
-    const $ = cheerio.load(html);
-
-    const images: Array<any> = [];
-
-    $('img').each((i, img) => {
-      const src = $(img).attr('src');
-      if (!src) return;
-
-      const imageUrl = new URL(src, pageUrl).href;
-      const altText = $(img).attr('alt');
-      const title = $(img).attr('title');
-      const width = parseInt($(img).attr('width') || '0');
-      const height = parseInt($(img).attr('height') || '0');
-      const loading = $(img).attr('loading');
-
-      const issues: string[] = [];
-      if (!altText) issues.push('Missing alt text');
-      if (!width || !height) issues.push('Missing dimensions');
-      if (loading !== 'lazy') issues.push('Not using lazy loading');
-
-      // Determine format from extension
-      const format = imageUrl.split('.').pop()?.toLowerCase() || 'unknown';
-      const recommendedFormat = ['jpg', 'jpeg', 'png'].includes(format) ? 'webp' : format;
-
-      images.push({
-        imageUrl,
-        altText,
-        title,
-        width,
-        height,
-        format,
-        isOptimized: format === 'webp',
-        hasAltText: !!altText,
-        isLazy: loading === 'lazy',
-        hasResponsive: !!(width && height),
-        issues,
-        recommendedFormat,
-        potentialSavings: format !== 'webp' ? 50000 : 0, // Estimated
-      });
-    });
-
-    return images;
+    return evaluatePageImages(await loadPageFacts(pageUrl), pageUrl);
   } catch (error: any) {
     throw new Error(`Image analysis failed: ${error.message}`);
   }
@@ -642,86 +685,50 @@ export async function analyzePageImages(pageUrl: string) {
 
 // ============= BROKEN LINK CHECKER =============
 
-/**
- * How many of a page's links are actually fetched. Everything past this is
- * stored unchecked rather than assumed healthy - see the note inside.
- */
-export const CHECKED_LINK_LIMIT = 20;
+export { CHECKED_LINK_LIMIT };
 
 export async function checkBrokenLinks(sourceUrl: string) {
   try {
-    const response = await fetch(sourceUrl);
-    const html = await response.text();
-    const $ = cheerio.load(html);
+    const planned = planLinkChecks(await loadPageFacts(sourceUrl), sourceUrl);
+    const links: Array<Record<string, unknown>> = [];
 
-    const links: Array<any> = [];
-    const linkElements = $('a[href]');
+    for (const link of planned) {
+      // Past the budget the link is recorded UNCHECKED - statusCode null,
+      // isBroken null - and never as healthy. They used to be initialised to
+      // 200 and false, so a page with 200 links reported 180 of them working
+      // on no evidence.
+      let statusCode: number | null = null;
+      let isBroken: boolean | null = null;
+      let errorMessage: string | undefined;
 
-    for (let i = 0; i < linkElements.length; i++) {
-      const link = linkElements[i];
-      const href = $(link).attr('href');
-      if (!href || href.startsWith('#') || href.startsWith('javascript:')) continue;
-
-      try {
-        const targetUrl = new URL(href, sourceUrl).href;
-        const anchorText = $(link).text().trim();
-        const isNoFollow = $(link).attr('rel')?.includes('nofollow') || false;
-        const isNoOpener = $(link).attr('rel')?.includes('noopener') || false;
-
-        // Determine link type
-        const sourceHost = new URL(sourceUrl).hostname;
-        const targetHost = new URL(targetUrl).hostname;
-        const linkType = sourceHost === targetHost ? 'internal' : 'external';
-
-        // Only the first 20 links are fetched, to avoid hammering the target
-        // site. The rest are recorded as UNCHECKED - statusCode null, isBroken
-        // null - not as 200/false. They used to be initialised to 200 and
-        // `false` and stored that way, so every link past the twentieth was
-        // persisted as a working link that nothing had ever requested, and a
-        // page with 200 links reported 180 of them healthy on no evidence.
-        let statusCode: number | null = null;
-        let isBroken: boolean | null = null;
-        let errorMessage: string | undefined;
-
-        if (i < CHECKED_LINK_LIMIT) {
-          try {
-            const linkResponse = await fetch(targetUrl, {
-              method: 'HEAD',
-              headers: { 'User-Agent': 'Mozilla/5.0 (compatible; PrintyxSEOBot/1.0)' },
-            });
-            statusCode = linkResponse.status;
-            isBroken = statusCode >= 400;
-          } catch (error: any) {
-            isBroken = true;
-            errorMessage = error.message;
-            statusCode = 0;
-          }
+      if (link.shouldCheck) {
+        try {
+          const linkResponse = await fetch(link.targetUrl, {
+            method: 'HEAD',
+            headers: { 'User-Agent': 'Mozilla/5.0 (compatible; PrintyxSEOBot/1.0)' },
+          });
+          statusCode = linkResponse.status;
+          isBroken = statusCode >= 400;
+        } catch (error: any) {
+          isBroken = true;
+          errorMessage = error.message;
+          statusCode = 0;
         }
-
-        links.push({
-          targetUrl,
-          anchorText,
-          linkType,
-          isNoFollow,
-          isNoOpener,
-          isBroken,
-          statusCode,
-          errorMessage,
-          linkValue:
-            linkType === 'internal' && !isNoFollow
-              ? 80
-              : linkType === 'external' && !isNoFollow
-                ? 60
-                : 20,
-        });
-
-        // Rate limiting
-        if (i < CHECKED_LINK_LIMIT) {
-          await new Promise((resolve) => setTimeout(resolve, 200));
-        }
-      } catch (error) {
-        // Invalid URL, skip
+        await new Promise((resolve) => setTimeout(resolve, 200));
       }
+
+      links.push({
+        targetUrl: link.targetUrl,
+        anchorText: link.anchorText,
+        linkType: link.linkType,
+        isNoFollow: link.isNoFollow,
+        isNoOpener: link.isNoOpener,
+        linkValue: link.linkValue,
+        statusCode,
+        isBroken,
+        errorMessage,
+        wasChecked: link.shouldCheck,
+      });
     }
 
     return links;
@@ -773,51 +780,7 @@ export async function checkSecurityHeaders(url: string) {
 
 export async function analyzeMobileFriendliness(url: string) {
   try {
-    const response = await fetch(url);
-    const html = await response.text();
-    const $ = cheerio.load(html);
-
-    const viewportMeta = $('meta[name="viewport"]').attr('content');
-    const hasViewportMeta = !!viewportMeta;
-
-    const issues: string[] = [];
-
-    if (!hasViewportMeta) {
-      issues.push('Missing viewport meta tag');
-    }
-
-    // Check for mobile-unfriendly elements
-    const hasFlash = $('object[type*="flash"], embed[type*="flash"]').length > 0;
-    if (hasFlash) {
-      issues.push('Uses Flash content');
-    }
-
-    // Check font sizes
-    const smallText = $('*').filter(
-      (i, el) => $(el).css('font-size') && parseInt($(el).css('font-size')) < 12,
-    ).length;
-    if (smallText > 0) {
-      issues.push(`${smallText} elements with small text`);
-    }
-
-    const isMobileFriendly = issues.length === 0;
-    const mobileScore = Math.max(0, 100 - issues.length * 15);
-
-    return {
-      isMobileFriendly,
-      mobileScore,
-      hasViewportMeta,
-      viewportContent: viewportMeta,
-      hasTouchFriendlyElements: true, // Would need more complex analysis
-      touchElementsIssues: issues,
-      hasReadableText: smallText === 0,
-      textIssues: smallText > 0 ? [`${smallText} elements with text smaller than 12px`] : [],
-      contentFitsViewport: hasViewportMeta,
-      mobileLoadTime: 0, // Would need PageSpeed API
-      mobileFcp: 0,
-      mobileLcp: 0,
-      issues,
-    };
+    return evaluateMobileFriendliness(await loadPageFacts(url));
   } catch (error: any) {
     throw new Error(`Mobile analysis failed: ${error.message}`);
   }
@@ -827,52 +790,7 @@ export async function analyzeMobileFriendliness(url: string) {
 
 export async function validateStructuredData(url: string) {
   try {
-    const response = await fetch(url);
-    const html = await response.text();
-    const $ = cheerio.load(html);
-
-    const schemas: Array<any> = [];
-    const schemaScripts = $('script[type="application/ld+json"]');
-
-    schemaScripts.each((i, script) => {
-      try {
-        const schemaData = JSON.parse($(script).html() || '{}');
-
-        const validationErrors: Array<any> = [];
-        const validationWarnings: string[] = [];
-
-        // Basic validation
-        if (!schemaData['@context']) {
-          validationErrors.push({ property: '@context', message: 'Missing @context property' });
-        }
-        if (!schemaData['@type']) {
-          validationErrors.push({ property: '@type', message: 'Missing @type property' });
-        }
-
-        const isValid = validationErrors.length === 0;
-
-        schemas.push({
-          schemaType: schemaData['@type'] || 'Unknown',
-          schemaFormat: 'json-ld',
-          schemaData,
-          isValid,
-          validationErrors: validationErrors.length > 0 ? validationErrors : undefined,
-          validationWarnings: validationWarnings.length > 0 ? validationWarnings : undefined,
-          richResultsEligible: isValid,
-          richResultTypes: isValid && schemaData['@type'] ? [schemaData['@type']] : [],
-        });
-      } catch (error) {
-        schemas.push({
-          schemaType: 'Invalid',
-          schemaFormat: 'json-ld',
-          schemaData: {},
-          isValid: false,
-          validationErrors: [{ property: 'json', message: 'Invalid JSON syntax' }],
-        });
-      }
-    });
-
-    return schemas;
+    return validateJsonLdBlocks((await loadPageFacts(url)).jsonLdBlocks);
   } catch (error: any) {
     throw new Error(`Structured data validation failed: ${error.message}`);
   }
@@ -919,6 +837,7 @@ export async function detectRedirectChains(sourceUrl: string) {
 // ============= EXPORTS =============
 
 export const seoService = {
+  CHECKED_LINK_LIMIT,
   performComprehensiveSEOAudit,
   crawlWebsite,
   checkCoreWebVitalsWithAPI,

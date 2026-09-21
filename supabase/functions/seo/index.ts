@@ -23,6 +23,50 @@ import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 import { ROLE_LEVEL, RbacError, requireRoleLevel } from '../_shared/rbac.ts';
 import type { AuthContext } from '../_shared/auth.ts';
 import { subtractMonths } from '../_shared/date-months.ts';
+import {
+  CHECKED_LINK_LIMIT,
+  evaluateMobileFriendliness,
+  evaluatePageImages,
+  planLinkChecks,
+  validateJsonLdBlocks,
+} from '../../../shared/seo-page-facts.ts';
+import { extractPageFacts } from './_page-facts.ts';
+
+/**
+ * Fetch a page the caller named and hand back its HTML, or the Response to
+ * return instead.
+ *
+ * safeFetch rather than fetch because the URL is caller-supplied and this
+ * function runs inside the deployment's network with the service-role key in
+ * scope (SEC-002). A refused address answers 400 and not 502: the request was
+ * declined, not attempted, and "could not reach" would be a measurement nobody
+ * took.
+ */
+async function loadPage(targetUrl: string, req: Request): Promise<string | Response> {
+  let response: Response;
+  try {
+    response = await safeFetch(targetUrl);
+  } catch (err) {
+    if (err instanceof SSRFError) {
+      return createCorsResponse({ error: err.message, code: 'BLOCKED_URL' }, 400, req);
+    }
+    return createCorsResponse(
+      { error: `Could not reach ${targetUrl}: ${err instanceof Error ? err.message : err}` },
+      502,
+      req,
+    );
+  }
+
+  try {
+    return await response.text();
+  } catch (err) {
+    return createCorsResponse(
+      { error: `Could not read ${targetUrl}: ${err instanceof Error ? err.message : err}` },
+      502,
+      req,
+    );
+  }
+}
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -704,6 +748,247 @@ export default async function handler(req: Request) {
       }
 
       return createCorsResponse(result, 200, req);
+    }
+
+    /**
+     * PROD-008: the four branches below had no edge counterpart at all, so
+     * SEODashboard's image, broken-link, mobile and structured-data buttons
+     * 404'd for every deployed user while working on every developer machine.
+     *
+     * All four fetch a page the caller named, so all four go through safeFetch
+     * (SEC-002) and all four read the page with the SAME evaluators the Express
+     * half now imports - shared/seo-page-facts.ts - so the two hosts cannot
+     * reach different verdicts about one URL.
+     */
+
+    // POST /seo/analyze/images - alt text, dimensions and format per image
+    if (req.method === 'POST' && resource === 'analyze' && resourceId === 'images') {
+      const body = await req.json().catch(() => ({}));
+      const pageUrl = body.pageUrl || body.url;
+      if (!pageUrl) {
+        return createCorsResponse({ error: 'Page URL is required' }, 400, req);
+      }
+
+      const page = await loadPage(pageUrl, req);
+      if (page instanceof Response) return page;
+
+      const { images, unbacked } = evaluatePageImages(extractPageFacts(page), pageUrl);
+
+      if (images.length > 0) {
+        // One insert, not one per image: a gallery page has hundreds.
+        // file_size_bytes and potential_savings_bytes are deliberately NOT
+        // written - nothing here fetches an image, and a column left null says
+        // that where a number would claim a measurement.
+        const { error: insertError } = await admin.from('seo_image_analysis').insert(
+          images.map((image) => ({
+            tenant_id: tenantId,
+            page_url: pageUrl,
+            image_url: image.imageUrl,
+            alt_text: image.altText,
+            title: image.title,
+            width: image.width,
+            height: image.height,
+            format: image.format,
+            is_optimized: image.isOptimized,
+            has_alt_text: image.hasAltText,
+            is_lazy: image.isLazy,
+            has_responsive: image.hasResponsive,
+            issues: image.issues,
+            recommended_format: image.recommendedFormat,
+            analyzed_at: new Date().toISOString(),
+          })),
+        );
+        if (insertError) {
+          return createCorsResponse(
+            { error: 'Image analysis ran but could not be stored', details: insertError.message },
+            500,
+            req,
+          );
+        }
+      }
+
+      return createCorsResponse({ pageUrl, images, unbacked }, 200, req);
+    }
+
+    // POST /seo/check/broken-links - resolve a page's links and probe the first few
+    if (req.method === 'POST' && resource === 'check' && resourceId === 'broken-links') {
+      const body = await req.json().catch(() => ({}));
+      const sourceUrl = body.sourceUrl || body.url;
+      if (!sourceUrl) {
+        return createCorsResponse({ error: 'Source URL is required' }, 400, req);
+      }
+
+      const page = await loadPage(sourceUrl, req);
+      if (page instanceof Response) return page;
+
+      const planned = planLinkChecks(extractPageFacts(page), sourceUrl);
+
+      const links: Array<Record<string, unknown>> = [];
+      for (const link of planned) {
+        // Past the budget the link is stored UNCHECKED - status null, broken
+        // null - never as healthy. A page with two hundred links otherwise
+        // reports a hundred and eighty working on no evidence at all.
+        let statusCode: number | null = null;
+        let isBroken: boolean | null = null;
+        let errorMessage: string | null = null;
+
+        if (link.shouldCheck) {
+          try {
+            // These URLs come out of a document somebody else controls, so the
+            // probe is a safeFetch and a refusal is recorded as a refusal
+            // rather than as a broken link.
+            const probe = await safeFetch(link.targetUrl, { method: 'HEAD' });
+            statusCode = probe.status;
+            isBroken = probe.status >= 400;
+          } catch (err) {
+            if (err instanceof SSRFError) {
+              errorMessage = `Not checked: ${err.message}`;
+            } else {
+              isBroken = true;
+              statusCode = 0;
+              errorMessage = err instanceof Error ? err.message : String(err);
+            }
+          }
+        }
+
+        links.push({
+          targetUrl: link.targetUrl,
+          anchorText: link.anchorText,
+          linkType: link.linkType,
+          isNoFollow: link.isNoFollow,
+          isNoOpener: link.isNoOpener,
+          linkValue: link.linkValue,
+          statusCode,
+          isBroken,
+          errorMessage,
+          wasChecked: link.shouldCheck,
+        });
+      }
+
+      if (links.length > 0) {
+        const { error: insertError } = await admin.from('seo_link_analysis').insert(
+          links.map((link) => ({
+            tenant_id: tenantId,
+            source_url: sourceUrl,
+            target_url: link.targetUrl,
+            anchor_text: link.anchorText,
+            link_type: link.linkType,
+            is_no_follow: link.isNoFollow,
+            is_no_opener: link.isNoOpener,
+            is_broken: link.isBroken,
+            status_code: link.statusCode,
+            error_message: link.errorMessage,
+            link_value: link.linkValue,
+            checked_at: new Date().toISOString(),
+          })),
+        );
+        if (insertError) {
+          return createCorsResponse(
+            { error: 'Link check ran but could not be stored', details: insertError.message },
+            500,
+            req,
+          );
+        }
+      }
+
+      return createCorsResponse(
+        {
+          sourceUrl,
+          links,
+          checkedLinkLimit: CHECKED_LINK_LIMIT,
+          unbacked:
+            planned.length > CHECKED_LINK_LIMIT
+              ? [
+                  `Only the first ${CHECKED_LINK_LIMIT} links were requested; the remaining ${planned.length - CHECKED_LINK_LIMIT} are recorded as unchecked rather than as working.`,
+                ]
+              : [],
+        },
+        200,
+        req,
+      );
+    }
+
+    // POST /seo/check/mobile - what the markup can settle about small screens
+    if (req.method === 'POST' && resource === 'check' && resourceId === 'mobile') {
+      const body = await req.json().catch(() => ({}));
+      const targetUrl = body.url || body.pageUrl;
+      if (!targetUrl) {
+        return createCorsResponse({ error: 'URL is required' }, 400, req);
+      }
+
+      const page = await loadPage(targetUrl, req);
+      if (page instanceof Response) return page;
+
+      const mobile = evaluateMobileFriendliness(extractPageFacts(page));
+
+      // has_touch_friendly_elements, has_readable_text, content_fits_viewport,
+      // mobile_load_time_ms, mobile_fcp and mobile_lcp are NOT written. All six
+      // need a rendered page; the originals filled them with `true` and `0`,
+      // which reads as a pass and as an instant load.
+      const { error: insertError } = await admin.from('seo_mobile_analysis').insert({
+        tenant_id: tenantId,
+        url: targetUrl,
+        is_mobile_friendly: mobile.isMobileFriendly,
+        mobile_score: mobile.mobileScore,
+        has_viewport_meta: mobile.hasViewportMeta,
+        viewport_content: mobile.viewportContent,
+        issues: mobile.issues,
+        analyzed_at: new Date().toISOString(),
+      });
+      if (insertError) {
+        return createCorsResponse(
+          { error: 'Mobile check ran but could not be stored', details: insertError.message },
+          500,
+          req,
+        );
+      }
+
+      return createCorsResponse({ url: targetUrl, ...mobile }, 200, req);
+    }
+
+    // POST /seo/validate/structured-data - parse and check the JSON-LD blocks
+    if (req.method === 'POST' && resource === 'validate' && resourceId === 'structured-data') {
+      const body = await req.json().catch(() => ({}));
+      const targetUrl = body.url || body.pageUrl;
+      if (!targetUrl) {
+        return createCorsResponse({ error: 'URL is required' }, 400, req);
+      }
+
+      const page = await loadPage(targetUrl, req);
+      if (page instanceof Response) return page;
+
+      const { schemas, unbacked } = validateJsonLdBlocks(extractPageFacts(page).jsonLdBlocks);
+
+      if (schemas.length > 0) {
+        // rich_results_eligible stays null: presence of @context and @type is
+        // not eligibility, and the original set it from exactly that.
+        const { error: insertError } = await admin.from('seo_structured_data').insert(
+          schemas.map((schema) => ({
+            tenant_id: tenantId,
+            url: targetUrl,
+            schema_type: schema.schemaType,
+            schema_format: schema.schemaFormat,
+            schema_data: schema.schemaData,
+            is_valid: schema.isValid,
+            validation_errors: schema.validationErrors ?? null,
+            validation_warnings: schema.validationWarnings ?? null,
+            detected_at: new Date().toISOString(),
+            validated_at: new Date().toISOString(),
+          })),
+        );
+        if (insertError) {
+          return createCorsResponse(
+            {
+              error: 'Structured data check ran but could not be stored',
+              details: insertError.message,
+            },
+            500,
+            req,
+          );
+        }
+      }
+
+      return createCorsResponse({ url: targetUrl, schemas, unbacked }, 200, req);
     }
 
     // POST /seo/detect/redirect-chains - Follow and summarise a redirect chain
