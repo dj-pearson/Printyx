@@ -17,6 +17,7 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { computeCoverageGaps } from '../../../scripts/check-edge-path-coverage.mjs';
+import { computeParity } from '../../../scripts/lib/route-parity.mjs';
 
 const repo = process.cwd();
 
@@ -92,9 +93,29 @@ describe('the leads gap is closed and stays closed', () => {
     expect(gaps.leads ?? []).not.toContain(':id/activities');
   });
 
-  it('the run found gaps at all, so a clean leads entry is not a broken walk', () => {
-    // The floor that separates "fixed" from "the analysis matched nothing".
-    expect(Object.keys(gaps).length).toBeGreaterThan(10);
+  it('the walk examined a real corpus, so a clean leads entry is not a broken walk', () => {
+    // THE FLOOR IS ON WHAT WAS EXAMINED, NOT ON WHAT FAILED.
+    //
+    // This was `Object.keys(gaps).length > 10` - a claim about how much debt
+    // exists, so closing any one domain failed it. Round 141 closed
+    // technician-management's `dashboard` and took the count 11 -> 10, and the
+    // test went red on work that was strictly correct. CLAUDE.md records the
+    // same shape three times (phantom-cols-reachable-zero round 72, the
+    // edge-rbac `unexamined` floor round 91, edge-path-depth round 109) and
+    // the repair is always the same: assert the property, never the tally.
+    //
+    // The property is that the analysis RAN. Its corpus is every domain with
+    // an edge function, which is the predicate computeCoverageGaps itself
+    // filters on - derived here rather than pinned, and it does not shrink
+    // when a gap is fixed. A walk whose regexes stopped matching, or whose
+    // client corpus collapsed, examines nothing and fails this.
+    const examined = computeParity(repo).rows.filter((r: { edge: unknown }) => r.edge);
+    expect(examined.length).toBeGreaterThan(100);
+
+    // And the findings are a proper subset of what was examined: "matched
+    // nothing" still fails, while fixing a domain only shrinks the left side.
+    expect(Object.keys(gaps).length).toBeGreaterThan(0);
+    expect(Object.keys(gaps).length).toBeLessThan(examined.length);
   });
 
   it('import-eda is still reported - it is a real gap and was not silently absorbed', () => {

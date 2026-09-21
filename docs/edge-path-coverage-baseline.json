@@ -17,7 +17,6 @@
     "integrations": ["bulk-sync", "eautomate", "quickbooks", "salesforce"],
     "leads": ["import-eda"],
     "mobile": ["device-tokens", "jobs", "push-token", "route-optimization", "service-report"],
-    "mobile-field": ["metrics", "technicians", "voice-notes", "work-orders"],
-    "technician-management": ["dashboard"]
+    "mobile-field": ["metrics", "technicians", "voice-notes", "work-orders"]
   }
 }

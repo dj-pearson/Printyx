@@ -79,12 +79,26 @@ interface Technician {
   updatedAt: string;
 }
 
+/**
+ * Every count is `number | null`. A read that FAILED is null, not 0 - a zeroed
+ * roster card says the dealer employs no technicians, which is a measurement
+ * rather than the absence of one. utilizationRate is additionally null when
+ * nothing is active, because 0% claims a fully idle crew where the honest
+ * answer is that there is no crew to be idle.
+ *
+ * The counts are scoped the same way the roster below them is (WF-R-07's
+ * applyUserScope on technicians.user_id), so `scopeTier` says which set they
+ * describe and the page prints it when it is narrower than the tenant.
+ */
 interface DashboardStats {
-  totalTechnicians: number;
-  activeTechnicians: number;
-  availableTechnicians: number;
-  busyTechnicians: number;
-  utilizationRate: number;
+  totalTechnicians: number | null;
+  activeTechnicians: number | null;
+  availableTechnicians: number | null;
+  busyTechnicians: number | null;
+  utilizationRate: number | null;
+  scopeTier?: string;
+  coversWholeTenant?: boolean;
+  degraded?: string[];
 }
 
 // Form schema
@@ -103,6 +117,11 @@ const technicianSchema = z.object({
 });
 
 type TechnicianFormData = z.infer<typeof technicianSchema>;
+
+/** A count that could not be read renders as an em dash, never as zero. */
+function statValue(n: number | null | undefined) {
+  return n === null || n === undefined ? '\u2014' : n;
+}
 
 export default function TechnicianManagement() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -493,9 +512,13 @@ export default function TechnicianManagement() {
                 <Users className="h-4 w-4 text-blue-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{dashboardStats.totalTechnicians}</div>
+                <div className="text-2xl font-bold">
+                  {statValue(dashboardStats.totalTechnicians)}
+                </div>
                 <p className="text-xs text-muted-foreground">
-                  {dashboardStats.utilizationRate.toFixed(0)}% utilization
+                  {dashboardStats.utilizationRate === null
+                    ? 'Utilization not available'
+                    : `${dashboardStats.utilizationRate.toFixed(0)}% utilization`}
                 </p>
               </CardContent>
             </Card>
@@ -505,7 +528,9 @@ export default function TechnicianManagement() {
                 <CheckCircle className="h-4 w-4 text-green-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{dashboardStats.activeTechnicians}</div>
+                <div className="text-2xl font-bold">
+                  {statValue(dashboardStats.activeTechnicians)}
+                </div>
                 <p className="text-xs text-muted-foreground">On duty</p>
               </CardContent>
             </Card>
@@ -515,7 +540,9 @@ export default function TechnicianManagement() {
                 <Activity className="h-4 w-4 text-blue-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{dashboardStats.availableTechnicians}</div>
+                <div className="text-2xl font-bold">
+                  {statValue(dashboardStats.availableTechnicians)}
+                </div>
                 <p className="text-xs text-muted-foreground">Ready to dispatch</p>
               </CardContent>
             </Card>
@@ -525,11 +552,24 @@ export default function TechnicianManagement() {
                 <AlertCircle className="h-4 w-4 text-red-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{dashboardStats.busyTechnicians}</div>
+                <div className="text-2xl font-bold">
+                  {statValue(dashboardStats.busyTechnicians)}
+                </div>
                 <p className="text-xs text-muted-foreground">On assignment</p>
               </CardContent>
             </Card>
           </div>
+        )}
+
+        {dashboardStats && dashboardStats.coversWholeTenant === false && (
+          // A narrowed total that does not say it was narrowed is a wrong
+          // number, not a safe one (COP-I06). These counts are scoped the same
+          // way the roster below them is.
+          <p className="text-xs text-muted-foreground">
+            Counts cover the technicians you can see
+            {dashboardStats.scopeTier ? ` (${dashboardStats.scopeTier} scope)` : ''}, not the whole
+            tenant.
+          </p>
         )}
 
         {/* Filters */}

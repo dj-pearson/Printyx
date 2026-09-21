@@ -24,6 +24,14 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { fetchAllRows } from '../_shared/paged-select.ts';
+import {
+  TERMINAL_TICKET_STATUSES,
+  bucketTicketCounts,
+  toRosterRow,
+  type TechnicianRow,
+  type TicketRow,
+} from '../../../shared/technician-roster.ts';
 import { applyUserScope, resolveScope } from '../_shared/scope.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 import { startOfNextUtcDay, startOfUtcDay } from '../_shared/date-months.ts';
@@ -83,7 +91,22 @@ export default async function handler(req: Request) {
     };
 
     const url = new URL(req.url);
-    const { parts } = normalizePath(url.pathname, 'technician-management');
+    const { parts: rawParts } = normalizePath(url.pathname, 'technician-management');
+
+    // STRIP AN OPTIONAL LEADING `technicians` SEGMENT.
+    //
+    // Every caller in every client tree asks for exactly three paths -
+    // /technician-management/technicians, /technicians/${id} and /dashboard -
+    // and this function routed NONE of them: its list branch is the bare path,
+    // so `technicians` was read as a technician id and the roster 404'd in
+    // production on every load, while Express (the prefix is not proxied)
+    // served it in dev. The branches below, written against /:id and
+    // /:id/skills, were therefore unreachable from any client.
+    //
+    // Stripping the segment rather than renaming the branches keeps both
+    // spellings working, which is the same idiom normalizePath applies to the
+    // function name and `signatures` applies to its legacy `signature-` prefix.
+    const parts = rawParts[0] === 'technicians' ? rawParts.slice(1) : rawParts;
     const techId = parts[0];
     const subResource = parts[1];
 
@@ -136,7 +159,42 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to fetch technicians' }, 500, req);
       }
 
-      return createCorsResponse(technicians || [], 200, req);
+      // Project into the shape the page reads, and bucket the two ticket
+      // counts beside it. The raw row carries first_name/skills/is_active,
+      // which the page does not read, so every cell was blank on this host.
+      const rows = (technicians || []) as TechnicianRow[];
+      const ids = rows.map((r) => r.id).filter((id): id is string => !!id);
+
+      let counts = new Map<string, { activeTickets: number; completedThisMonth: number }>();
+      if (ids.length > 0) {
+        const now = new Date();
+        const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+        // ONE fetch of the rows that can possibly count - open tickets plus
+        // this month's completions - rather than two head counts per
+        // technician, which is the N+1 AUDIT-007 removed from the Express side
+        // and which must not come back through the other host. Paged, because
+        // a busy tenant's open tickets exceed PostgREST's default page.
+        // build() must return a FRESH query each page - a PostgREST builder
+        // accumulates filters, so reusing one narrows the result silently.
+        const tickets = await fetchAllRows<TicketRow>(() =>
+          admin
+            .from('service_tickets')
+            .select('assigned_technician_id, status, updated_at')
+            .eq('tenant_id', tenantId)
+            .in('assigned_technician_id', ids)
+            .or(
+              `status.not.in.(${TERMINAL_TICKET_STATUSES.join(',')}),` +
+                `and(status.eq.completed,updated_at.gte.${monthStart.toISOString()})`,
+            ),
+        );
+        counts = bucketTicketCounts(ids, tickets, monthStart);
+      }
+
+      return createCorsResponse(
+        rows.map((r) => toRosterRow(r, r.id ? counts.get(r.id) : undefined)),
+        200,
+        req,
+      );
     }
 
     // GET /technician-management/available - Get available technicians
@@ -154,6 +212,80 @@ export default async function handler(req: Request) {
       const { data: technicians } = await query;
 
       return createCorsResponse(technicians || [], 200, req);
+    }
+
+    // GET /technician-management/dashboard - roster counts for the stat cards
+    //
+    // This branch did not exist, and the prefix is not proxied, so
+    // TechnicianManagement.tsx's four cards were served by
+    // server/routes-technician-management.ts in dev and by nothing in
+    // production: the page 404'd there and the cards stayed empty. Sits ABOVE
+    // the /:id branches, which makes 'dashboard' a reserved technician id -
+    // free, because these are uuids.
+    //
+    // THE COUNTS CARRY THE SAME SCOPE AS THE ROSTER BELOW THEM. The list
+    // applies applyUserScope on technicians.user_id (WF-R-07), so counting on
+    // tenant alone would tell a supervisor "24 technicians" above a list of
+    // four - a real count of a set the page does not show, which is harder to
+    // spot than an invented number because both figures are true of something
+    // (COP-I01, CRM-008 AC6).
+    if (req.method === 'GET' && techId === 'dashboard' && !subResource) {
+      const scope = await resolveScope(admin, {
+        userId: user.id,
+        tenantId,
+        appMetadata: user.app_metadata,
+        requestedScope: url.searchParams.get('scope'),
+      });
+
+      const countOf = async (filters: (q: any) => any) => {
+        let q = admin
+          .from('technicians')
+          .select('id', { count: 'exact', head: true })
+          .eq('tenant_id', tenantId);
+        q = applyUserScope(q, 'user_id', scope);
+        const { count, error } = await filters(q);
+        if (error) {
+          console.error('Error counting technicians:', error);
+          return null;
+        }
+        return count ?? 0;
+      };
+
+      const [total, active, available, busy] = await Promise.all([
+        countOf((q: any) => q),
+        countOf((q: any) => q.eq('is_active', true)),
+        countOf((q: any) => q.eq('is_active', true).eq('is_available', true)),
+        countOf((q: any) => q.eq('is_active', true).eq('is_available', false)),
+      ]);
+
+      // A read that FAILED is null, not 0: a zeroed roster card says the dealer
+      // employs no technicians, which is a measurement rather than an absence
+      // of one. The page renders an em dash for null.
+      const degraded = [
+        total === null && 'totalTechnicians',
+        active === null && 'activeTechnicians',
+        available === null && 'availableTechnicians',
+        busy === null && 'busyTechnicians',
+      ].filter(Boolean);
+
+      return createCorsResponse(
+        {
+          totalTechnicians: total,
+          activeTechnicians: active,
+          availableTechnicians: available,
+          busyTechnicians: busy,
+          // Utilisation is busy over ACTIVE, and it is null when nothing is
+          // active - 0% would claim a fully idle crew where the honest answer
+          // is that there is no crew to be idle.
+          utilizationRate:
+            active === null || busy === null || active === 0 ? null : (busy / active) * 100,
+          scopeTier: scope.tier,
+          coversWholeTenant: scope.tier === 'tenant',
+          ...(degraded.length > 0 ? { degraded } : {}),
+        },
+        200,
+        req,
+      );
     }
 
     // GET /technician-management/:id - Get single technician
