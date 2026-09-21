@@ -13,6 +13,7 @@ import {
 import crypto from 'crypto';
 
 import { getUserId, getTenantId } from './utils/auth-helpers';
+import { QUICKBOOKS_SYNC_ENTITIES, SYNC_GAP } from '@shared/quickbooks-availability';
 import { badRequest, serverError } from './lib/error-response';
 // Extend session interface to include QuickBooks data
 declare module 'express-session' {
@@ -148,120 +149,31 @@ export function registerQuickBooksRoutes(app: Express) {
     }
   });
 
-  // Sync customers from QuickBooks
-  app.post('/api/quickbooks/sync/customers', isAuthenticated, async (req, res) => {
-    try {
-      const accessToken = req.session.qb_access_token;
-      const companyId = req.session.qb_company_id;
-
-      if (!accessToken || !companyId) {
-        return badRequest(res, 'QuickBooks not connected');
-      }
-
-      // Refresh token if needed
-      const tokenValid = req.session.qb_token_expires && Date.now() < req.session.qb_token_expires;
-      if (!tokenValid) {
-        await refreshQuickBooksToken(req);
-      }
-
-      // Fetch customers from QuickBooks
-      const qbResponse = await fetch(
-        `${QUICKBOOKS_CONFIG.auth.base_url}/v3/company/${companyId}/customers?fetchAll=true`,
-        {
-          headers: {
-            Authorization: `Bearer ${req.session.qb_access_token}`,
-            Accept: 'application/json',
-          },
-        },
-      );
-
-      if (!qbResponse.ok) {
-        throw new Error(`QuickBooks API error: ${qbResponse.statusText}`);
-      }
-
-      const qbData = await qbResponse.json();
-      const customers = qbData.QueryResponse?.Customer || [];
-
-      // Transform and store customers
-      const transformedCustomers = customers.map((customer: any) => {
-        const transformed = transformQuickBooksData('Customer', customer);
-        // Add tenant isolation
-        transformed.tenantId = (req.user as any)?.tenantId;
-        transformed.recordType = 'customer';
-        transformed.leadStatus = 'active';
-        // Map QB external system
-        transformed.external_system_id = 'quickbooks';
-        transformed.migration_status = 'synced';
-        return transformed;
-      });
-
-      // In a real implementation, save to database here
-      log.info(`Synced ${transformedCustomers.length} customers from QuickBooks`);
-
-      res.json({
-        message: `Successfully synced ${transformedCustomers.length} customers`,
-        customers: transformedCustomers,
-      });
-    } catch (error) {
-      log.error('QuickBooks customer sync error:', error);
-      serverError(res, 'Failed to sync customers from QuickBooks');
-    }
-  });
-
-  // Sync products/items from QuickBooks
-  app.post('/api/quickbooks/sync/items', isAuthenticated, async (req, res) => {
-    try {
-      const accessToken = req.session.qb_access_token;
-      const companyId = req.session.qb_company_id;
-
-      if (!accessToken || !companyId) {
-        return badRequest(res, 'QuickBooks not connected');
-      }
-
-      // Refresh token if needed
-      const tokenValid = req.session.qb_token_expires && Date.now() < req.session.qb_token_expires;
-      if (!tokenValid) {
-        await refreshQuickBooksToken(req);
-      }
-
-      // Fetch items from QuickBooks
-      const qbResponse = await fetch(
-        `${QUICKBOOKS_CONFIG.auth.base_url}/v3/company/${companyId}/items?fetchAll=true`,
-        {
-          headers: {
-            Authorization: `Bearer ${req.session.qb_access_token}`,
-            Accept: 'application/json',
-          },
-        },
-      );
-
-      if (!qbResponse.ok) {
-        throw new Error(`QuickBooks API error: ${qbResponse.statusText}`);
-      }
-
-      const qbData = await qbResponse.json();
-      const items = qbData.QueryResponse?.Item || [];
-
-      // Transform and store items
-      const transformedItems = items.map((item: any) => {
-        const transformed = transformQuickBooksData('Item', item);
-        // Add tenant isolation
-        transformed.tenantId = (req.user as any)?.tenantId;
-        transformed.category = 'service'; // Default category
-        // Map QB external system
-        transformed.external_system_id = 'quickbooks';
-        return transformed;
-      });
-
-      res.json({
-        message: `Successfully synced ${transformedItems.length} items`,
-        items: transformedItems,
-      });
-    } catch (error) {
-      log.error('QuickBooks items sync error:', error);
-      serverError(res, 'Failed to sync items from QuickBooks');
-    }
-  });
+  /**
+   * POST /api/quickbooks/sync/:entity - REFUSED (round 126).
+   *
+   * These two handlers were the most convincing fabricated write in the tree.
+   * They really called Intuit, really transformed what came back, and then:
+   *
+   *     // In a real implementation, save to database here
+   *     log.info(`Synced ${transformedCustomers.length} customers from QuickBooks`);
+   *     res.json({ message: `Successfully synced ${n} customers` });
+   *
+   * A real count off a real API call, with no row written - so a developer
+   * testing in dev saw a number and concluded the integration worked, while
+   * the edge function production serves never called Intuit at all and
+   * answered "sync initiated" for the same reason.
+   *
+   * Both hosts answer the same 501 now, from the same shared module, because
+   * a dev seeing a different answer from a dealer is how this survived. The
+   * transform helpers (`transformQuickBooksData`) are untouched and still
+   * exported - what is missing is the step that stores what they return.
+   */
+  for (const entity of QUICKBOOKS_SYNC_ENTITIES) {
+    app.post(`/api/quickbooks/sync/${entity}`, isAuthenticated, async (_req, res) => {
+      res.status(501).json(SYNC_GAP);
+    });
+  }
 
   // Create customer in QuickBooks
   app.post('/api/quickbooks/create/customer', isAuthenticated, async (req, res) => {
