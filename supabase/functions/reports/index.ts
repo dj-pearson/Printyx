@@ -66,6 +66,8 @@ import { handleCustomReports } from './handlers/custom-reports.ts';
 import { handleKpis } from './handlers/kpis.ts';
 import { handleReporting } from './handlers/reporting.ts';
 import { handleScheduledReports } from './handlers/scheduled.ts';
+import { dispatchDueSchedules } from './handlers/dispatch-due.ts';
+import { isCronRequest } from '../_shared/cron-auth.ts';
 
 const log = createLogger('reports');
 
@@ -97,6 +99,31 @@ export default async function handler(req: Request) {
   const startedAt = Date.now();
 
   try {
+    /**
+     * POST /reports/schedule/dispatch-due — the scheduled-report sweep.
+     *
+     * ABOVE requireAuth, because pg_cron carries the internal cron token and no
+     * user JWT. `isCronRequest` is the whole authentication for this branch with
+     * no user fallback, deliberately: sweeping every tenant's schedules is not a
+     * user action. A user runs one of their own schedules through
+     * POST /reports/scheduled/:id/run.
+     *
+     * drizzle/cron/reports.sql has posted to this exact path every fifteen
+     * minutes since it shipped, and until now nothing served it.
+     */
+    {
+      const sweepParts = stripPrefix(url.pathname).split('/').filter(Boolean);
+      if (method === 'POST' && sweepParts[0] === 'schedule' && sweepParts[1] === 'dispatch-due') {
+        if (!isCronRequest(req)) {
+          return errorResponse(403, 'This endpoint is for the scheduler', req, {
+            code: 'CRON_ONLY',
+            requestId,
+          });
+        }
+        return await dispatchDueSchedules(req, getDb(), requestId);
+      }
+    }
+
     const auth = await requireAuth(req);
     const db = getDb();
 

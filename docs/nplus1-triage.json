@@ -165,6 +165,12 @@
       "why": "Produces a DOCUMENT per customer - assemble, render, upload. There is nothing to batch. Annotated in place."
     },
     {
+      "loop": "reports/handlers/dispatch-due.ts:81",
+      "table": "report_executions",
+      "verdict": "deliberate",
+      "why": "One execution insert and one schedule update per DUE schedule in the fifteen-minute sweep. Deliberately sequential and deliberately per-row: the set is only the schedules whose next_run has passed since the last tick, so it is normally empty and at worst a handful; a failure must be recorded against its own schedule and stepped over rather than aborting the rest; and each update carries that row's own tenant_id, so batching them into one statement would either lose the per-row tenant scope or need a CASE per row. A bulk insert of the executions alone is possible and would not help - the update is the other half and cannot batch."
+    },
+    {
       "loop": "saved-views/index.ts:489",
       "table": "saved_view_pins",
       "verdict": "bounded",
