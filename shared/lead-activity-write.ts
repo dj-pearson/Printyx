@@ -216,6 +216,8 @@ export interface PresentedActivity extends Record<string, unknown> {
   leadId: string | null;
   /** Alias: the iOS timeline reads `activityDate`. */
   activityDate: string | null;
+  /** Alias: the React Native dashboard reads `description || title`. */
+  title: string | null;
 }
 
 /**
@@ -269,6 +271,10 @@ export function presentActivity(row: Record<string, unknown>): PresentedActivity
     type: activityType,
     leadId: recordId,
     activityDate: completedDate ?? scheduledDate,
+    // The React Native dashboard renders `description || title`, and the column
+    // holding an activity's headline is `subject`. Without this alias a logged
+    // call with a subject and no description renders as a blank row.
+    title: str(row.subject),
   };
 }
 

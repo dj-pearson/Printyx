@@ -68,6 +68,18 @@ export default function ReportsScreen() {
     queryKey: ['/api/analytics/performance-metrics'],
   });
 
+  // PROD-008: `!= null` rather than truthiness on all three. A real 0% close
+  // rate and a real 0-hour turnaround are measurements; rendering them as "--"
+  // says nobody looked, which is what the endpoint returns null for.
+  const caveats: string[] = [
+    // A revenue total over an invoice settled with no amount recorded is a
+    // FLOOR, and a card that does not say so reads as exact (COP-B05).
+    ...(kpis?.revenueIsFloor
+      ? ['Revenue MTD is a floor: some settled invoices carry no amount']
+      : []),
+    ...(Array.isArray(kpis?.unbacked) ? (kpis.unbacked as string[]) : []),
+  ];
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -77,7 +89,7 @@ export default function ReportsScreen() {
         <View style={styles.kpiRow}>
           <StatCard
             title="Revenue MTD"
-            value={kpis?.revenueMtd ? `$${Number(kpis.revenueMtd).toLocaleString()}` : '--'}
+            value={kpis?.revenueMtd != null ? `$${Number(kpis.revenueMtd).toLocaleString()}` : '--'}
             icon="currency-usd"
             iconColor={colors.success.main}
             variant="hero"
@@ -89,19 +101,21 @@ export default function ReportsScreen() {
         <View style={styles.kpiRow}>
           <StatCard
             title="Close Rate"
-            value={kpis?.closeRate ? `${kpis.closeRate}%` : '--'}
+            value={kpis?.closeRate != null ? `${kpis.closeRate}%` : '--'}
             icon="percent"
             iconColor={colors.primary[600]}
             delay={120}
           />
           <StatCard
             title="Avg Ticket Time"
-            value={kpis?.avgTicketTime ? `${kpis.avgTicketTime}h` : '--'}
+            value={kpis?.avgTicketTime != null ? `${kpis.avgTicketTime}h` : '--'}
             icon="clock-outline"
             iconColor={colors.accent[600]}
             delay={200}
           />
         </View>
+
+        {caveats.length > 0 ? <Text style={styles.caveats}>{caveats.join(' · ')}</Text> : null}
 
         <View style={styles.section}>
           <SectionHeader title="Categories" overline="Explore reports" />
@@ -194,6 +208,11 @@ const styles = StyleSheet.create({
   kpiRow: {
     flexDirection: 'row',
     gap: spacing.md,
+    marginBottom: spacing.md,
+  },
+  caveats: {
+    ...typography.caption,
+    color: colors.text.secondary,
     marginBottom: spacing.md,
   },
   section: {
