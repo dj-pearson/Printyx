@@ -35,6 +35,7 @@ import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 import { fetchAllRows } from '../_shared/paged-select.ts';
+import { isCronRequest } from '../_shared/cron-auth.ts';
 import { ROLE_LEVEL, RbacError, requireRoleLevel } from '../_shared/rbac.ts';
 import type { AuthContext } from '../_shared/auth.ts';
 import {
@@ -83,11 +84,320 @@ function toSuggestionResponse(row: Row) {
   };
 }
 
+/**
+ * The per-tenant sweep. ONE implementation: the manager's button and the
+ * nightly all-tenants schedule both call this (COP-B04 - extract the per-tenant
+ * work into one function the button and the schedule share, or they drift and
+ * only one of them gets looked at).
+ *
+ * WHY THIS MOVED OUT OF THE HANDLER. This function's own header has always
+ * said the sweep "is callable from a workflow action or pg_cron the day that
+ * runtime closes", and nothing ever called it: no client tree posts to /sweep,
+ * no drizzle/cron/*.sql fired it, and `suggested_tasks` therefore had no
+ * reachable writer at all. `SuggestedTasksCard` is in TodayDashboard's card
+ * slots, so every rep's My Day carried a Suggested Tasks card that was
+ * permanently empty - and an empty suggestions card reads as "nothing needs
+ * doing", which is the most flattering way for a feature to be absent.
+ *
+ * Returns `skipped` rather than a zeroed result when the tenant's kill switch
+ * is off, because a silent no-op reads as "nothing to suggest" (AC5).
+ */
+async function runSweep(
+  admin: ReturnType<typeof createSupabaseServiceClient>,
+  tenantId: string,
+  opts: { force?: boolean } = {},
+): Promise<Record<string, unknown>> {
+  const { data: settingsRow } = (await admin
+    .from('suggested_task_settings')
+    .select('*')
+    .eq('tenant_id', tenantId)
+    .maybeSingle()) as { data: Row | null };
+
+  if (settingsRow && settingsRow.sweep_enabled === 0 && !opts.force) {
+    return { skipped: true, reason: 'Suggested-task sweeps are disabled for this tenant' };
+  }
+  const thresholds = toThresholds(settingsRow);
+  const now = new Date();
+
+  const [dealRows, quoteRows, playRows] = await Promise.all([
+    fetchAllRows<Row>(() =>
+      admin
+        .from('deals')
+        .select(
+          'id, title, status, amount, probability, created_at, owner_id, customer_id, company_name, stage_id, expected_close_date, last_activity_date, next_follow_up_date, primary_contact_email, primary_contact_phone',
+        )
+        .eq('tenant_id', tenantId)
+        .in('status', OPEN_DEAL_STATUSES),
+    ),
+    fetchAllRows<Row>(() =>
+      admin
+        .from('proposals')
+        .select(
+          'id, proposal_number, title, valid_until, deal_id, business_record_id, assigned_to, status',
+        )
+        .eq('tenant_id', tenantId)
+        .not('status', 'in', '("accepted","rejected","expired","superseded")'),
+    ),
+    fetchAllRows<Row>(() =>
+      admin
+        .from('radar_plays')
+        .select('id, play_type, reason, score, owner_id, customer_id, company_name, status')
+        .eq('tenant_id', tenantId)
+        .eq('status', 'open'),
+    ),
+  ]);
+
+  const dealIds = (dealRows ?? []).map((d) => String(d.id));
+
+  /**
+   * Stage entry and its SLA, so `deal_stage_sla_breached` can fire at all.
+   * `deals` has no stage_entered_at column - the pipeline-config function
+   * writes `deal_stage_history` on every move, and `pipeline_stages` holds
+   * the SLA, bridged to the legacy `deals.stage_id` by `legacy_stage_id`
+   * (CRMX-005). A deal that has never moved has no history row and simply
+   * contributes no SLA signal, which is the no-fabrication rule.
+   *
+   * Best-effort: losing this costs one signal, not the sweep.
+   */
+  const stageEnteredAt = new Map<string, string>();
+  const slaByStage = new Map<string, number>();
+  try {
+    const [history, stages] = await Promise.all([
+      dealIds.length > 0
+        ? fetchAllRows<Row>(() =>
+            admin
+              .from('deal_stage_history')
+              .select('deal_id, entered_at')
+              .eq('tenant_id', tenantId)
+              .in('deal_id', dealIds.slice(0, 1000)),
+          )
+        : Promise.resolve([]),
+      fetchAllRows<Row>(() =>
+        admin
+          .from('pipeline_stages')
+          .select('id, legacy_stage_id, sla_days')
+          .eq('tenant_id', tenantId),
+      ),
+    ]);
+    for (const h of history ?? []) {
+      const dealId = String(h.deal_id ?? '');
+      const at = String(h.entered_at ?? '');
+      if (!dealId || !at) continue;
+      const seen = stageEnteredAt.get(dealId);
+      if (!seen || at > seen) stageEnteredAt.set(dealId, at);
+    }
+    for (const s of stages ?? []) {
+      const sla = Number(s.sla_days);
+      if (!Number.isFinite(sla) || sla <= 0) continue;
+      if (s.legacy_stage_id) slaByStage.set(String(s.legacy_stage_id), sla);
+      if (s.id) slaByStage.set(String(s.id), sla);
+    }
+  } catch (err) {
+    console.error('[SUGGESTED-TASKS] stage SLA lookup failed:', (err as Error).message);
+  }
+
+  const deals: SuggestionDealRow[] = (dealRows ?? []).map((d) => ({
+    id: String(d.id),
+    owner_id: d.owner_id ?? null,
+    customer_id: d.customer_id ?? null,
+    company_name: d.company_name ?? null,
+    title: d.title ?? null,
+    status: d.status,
+    amount: d.amount,
+    probability: d.probability,
+    createdAt: d.created_at,
+    lastActivityDate: d.last_activity_date,
+    nextFollowUpDate: d.next_follow_up_date,
+    expectedCloseDate: d.expected_close_date,
+    stageEnteredAt: stageEnteredAt.get(String(d.id)) ?? null,
+    stageSlaDays: d.stage_id ? (slaByStage.get(String(d.stage_id)) ?? null) : null,
+    primaryContactEmail: d.primary_contact_email ?? null,
+    primaryContactPhone: d.primary_contact_phone ?? null,
+  }));
+
+  // Account names for the quote suggestions, one read for the accounts the
+  // quotes actually name.
+  const accountIds = [
+    ...new Set((quoteRows ?? []).map((q) => q.business_record_id).filter(Boolean)),
+  ] as string[];
+  const companyNames = new Map<string, string>();
+  if (accountIds.length > 0) {
+    const accounts = await fetchAllRows<Row>(() =>
+      admin
+        .from('business_records')
+        .select('id, company_name')
+        .eq('tenant_id', tenantId)
+        .in('id', accountIds.slice(0, 1000)),
+    );
+    for (const a of accounts ?? []) {
+      if (a.company_name) companyNames.set(String(a.id), String(a.company_name));
+    }
+  }
+
+  const drafts = rankSuggestions([
+    ...suggestionsFromDeals(deals, now, thresholds),
+    ...suggestionsFromQuotes((quoteRows ?? []) as any, now, thresholds, companyNames),
+    ...suggestionsFromPlays((playRows ?? []) as any, thresholds),
+  ]);
+
+  const nowIso = now.toISOString();
+  const insertRows = drafts.map((d) => ({
+    tenant_id: tenantId,
+    suggestion_type: d.suggestionType,
+    dedupe_key: d.dedupeKey,
+    record_type: d.recordType,
+    record_id: d.recordId,
+    reason: d.reason,
+    action: d.action,
+    score: d.score,
+    owner_id: d.ownerId,
+    customer_id: d.customerId,
+    company_name: d.companyName,
+  }));
+
+  let created = 0;
+  // Chunked so one oversized request cannot fail a whole sweep.
+  for (let i = 0; i < insertRows.length; i += 200) {
+    const batch = insertRows.slice(i, i + 200);
+    const { data, error } = await admin
+      .from('suggested_tasks')
+      .upsert(batch, { onConflict: 'tenant_id,dedupe_key', ignoreDuplicates: true })
+      .select('id');
+    if (error) {
+      console.error('[SUGGESTED-TASKS] insert batch failed:', error.message);
+      continue;
+    }
+    created += (data ?? []).length;
+  }
+
+  // AC4. Every OPEN row the sweep did not regenerate has lost its signal.
+  const openRows = await fetchAllRows<Row>(() =>
+    admin
+      .from('suggested_tasks')
+      .select('id, dedupe_key')
+      .eq('tenant_id', tenantId)
+      .eq('status', 'open'),
+  );
+  const byKey = new Map((openRows ?? []).map((r) => [String(r.dedupe_key), String(r.id)]));
+  const staleKeys = expireKeys(
+    [...byKey.keys()],
+    drafts.map((d) => d.dedupeKey),
+  );
+  let expired = 0;
+  for (let i = 0; i < staleKeys.length; i += 200) {
+    const ids = staleKeys.slice(i, i + 200).map((k) => byKey.get(k)!);
+    const { error } = await admin
+      .from('suggested_tasks')
+      .update({ status: 'expired', resolved_at: nowIso, updated_at: nowIso })
+      .eq('tenant_id', tenantId)
+      .in('id', ids);
+    if (error) {
+      console.error('[SUGGESTED-TASKS] expiry batch failed:', error.message);
+      continue;
+    }
+    expired += ids.length;
+  }
+  return {
+    detected: drafts.length,
+    created,
+    // detected - created is the idempotency working, not a failure.
+    alreadyOpen: drafts.length - created,
+    expired,
+    dealsScanned: deals.length,
+    unbacked: [
+      'A deal that has never changed stage has no deal_stage_history row, so no stage-SLA suggestion can be raised for it. Nothing back-fills stage entry for deals created before pipeline-config started recording moves.',
+    ],
+  };
+}
+
+/**
+ * POST /suggested-tasks/sweep/all - the nightly cross-tenant sweep.
+ *
+ * Mirrors opportunity-radar's sweepAllTenants, which is the shape COP-B04
+ * settled on: tenants SEQUENTIALLY (each one pages its own deals, quotes and
+ * plays, so fifty in parallel multiplies the peak load to finish a nightly job
+ * a few minutes sooner), a tenant that throws recorded and stepped over, and a
+ * sweep where every tenant failed answering 500 rather than a 200 nobody reads.
+ *
+ * A tenant with the kill switch off is SKIPPED and counted, not failed - the
+ * per-tenant `sweep_enabled` flag is honoured inside runSweep (AC5).
+ */
+async function sweepAllTenants(req: Request, url: URL): Promise<Response> {
+  const admin = createSupabaseServiceClient();
+  const force = url.searchParams.get('force') === 'true';
+  const limit = Number(url.searchParams.get('limit')) || 0;
+
+  const { data: tenantRows, error } = await admin.from('tenants').select('id').order('id');
+  if (error) {
+    return createCorsResponse({ error: 'Could not list tenants', detail: error.message }, 503, req);
+  }
+
+  const tenants = (tenantRows ?? []).map((t: Row) => String(t.id));
+  const swept: Row[] = [];
+  const skipped: string[] = [];
+  const failed: Row[] = [];
+
+  for (const tenantId of limit > 0 ? tenants.slice(0, limit) : tenants) {
+    try {
+      const result = await runSweep(admin, tenantId, { force });
+      if (result.skipped) {
+        skipped.push(tenantId);
+        continue;
+      }
+      swept.push({
+        tenantId,
+        detected: result.detected,
+        created: result.created,
+        expired: result.expired,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error(`[SUGGESTED-TASKS] tenant ${tenantId} sweep failed:`, message);
+      failed.push({ tenantId, error: message });
+    }
+  }
+
+  return createCorsResponse(
+    {
+      tenants: tenants.length,
+      swept: swept.length,
+      skipped: skipped.length,
+      failed: failed.length,
+      created: swept.reduce((sum, r) => sum + (Number(r.created) || 0), 0),
+      expired: swept.reduce((sum, r) => sum + (Number(r.expired) || 0), 0),
+      failures: failed,
+    },
+    failed.length > 0 && swept.length === 0 ? 500 : 200,
+    req,
+  );
+}
+
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
 
   try {
+    /**
+     * Above auth.getUser: pg_cron carries the internal cron token and no user
+     * JWT, and `isCronRequest` is the WHOLE authentication for this branch with
+     * no user fallback, deliberately - sweeping every tenant is not a user
+     * action. A manager sweeps their own tenant through POST /sweep.
+     */
+    {
+      const cronUrl = new URL(req.url);
+      const { parts: cronParts } = normalizePath(cronUrl.pathname, 'suggested-tasks');
+      if (cronParts[0] === 'sweep' && cronParts[1] === 'all' && req.method === 'POST') {
+        if (!isCronRequest(req)) {
+          return createCorsResponse(
+            { error: 'This endpoint is for the scheduler', code: 'CRON_ONLY' },
+            403,
+            req,
+          );
+        }
+        return await sweepAllTenants(req, cronUrl);
+      }
+    }
+
     const authHeader = req.headers.get('Authorization');
     const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
 
@@ -194,220 +504,17 @@ export default async function handler(req: Request) {
     }
 
     // ─── POST /sweep (AC1's replacement, AC4, AC7) ───────────────────
-    if (resource === 'sweep' && req.method === 'POST') {
+    // The work itself is runSweep, shared with the nightly all-tenants sweep.
+    if (resource === 'sweep' && !action && req.method === 'POST') {
       try {
         requireManager();
       } catch (err) {
         return denyManager(err);
       }
-      const settingsRow = await loadSettings();
-      const force = url.searchParams.get('force') === 'true';
-      // AC5's kill switch. A skip, not a silent no-op that reads as "nothing
-      // to suggest".
-      if (settingsRow && settingsRow.sweep_enabled === 0 && !force) {
-        return createCorsResponse(
-          { skipped: true, reason: 'Suggested-task sweeps are disabled for this tenant' },
-          200,
-          req,
-        );
-      }
-      const thresholds = toThresholds(settingsRow);
-      const now = new Date();
-
-      const [dealRows, quoteRows, playRows] = await Promise.all([
-        fetchAllRows<Row>(() =>
-          admin
-            .from('deals')
-            .select(
-              'id, title, status, amount, probability, created_at, owner_id, customer_id, company_name, stage_id, expected_close_date, last_activity_date, next_follow_up_date, primary_contact_email, primary_contact_phone',
-            )
-            .eq('tenant_id', tenantId)
-            .in('status', OPEN_DEAL_STATUSES),
-        ),
-        fetchAllRows<Row>(() =>
-          admin
-            .from('proposals')
-            .select(
-              'id, proposal_number, title, valid_until, deal_id, business_record_id, assigned_to, status',
-            )
-            .eq('tenant_id', tenantId)
-            .not('status', 'in', '("accepted","rejected","expired","superseded")'),
-        ),
-        fetchAllRows<Row>(() =>
-          admin
-            .from('radar_plays')
-            .select('id, play_type, reason, score, owner_id, customer_id, company_name, status')
-            .eq('tenant_id', tenantId)
-            .eq('status', 'open'),
-        ),
-      ]);
-
-      const dealIds = (dealRows ?? []).map((d) => String(d.id));
-
-      /**
-       * Stage entry and its SLA, so `deal_stage_sla_breached` can fire at all.
-       * `deals` has no stage_entered_at column - the pipeline-config function
-       * writes `deal_stage_history` on every move, and `pipeline_stages` holds
-       * the SLA, bridged to the legacy `deals.stage_id` by `legacy_stage_id`
-       * (CRMX-005). A deal that has never moved has no history row and simply
-       * contributes no SLA signal, which is the no-fabrication rule.
-       *
-       * Best-effort: losing this costs one signal, not the sweep.
-       */
-      const stageEnteredAt = new Map<string, string>();
-      const slaByStage = new Map<string, number>();
-      try {
-        const [history, stages] = await Promise.all([
-          dealIds.length > 0
-            ? fetchAllRows<Row>(() =>
-                admin
-                  .from('deal_stage_history')
-                  .select('deal_id, entered_at')
-                  .eq('tenant_id', tenantId)
-                  .in('deal_id', dealIds.slice(0, 1000)),
-              )
-            : Promise.resolve([]),
-          fetchAllRows<Row>(() =>
-            admin
-              .from('pipeline_stages')
-              .select('id, legacy_stage_id, sla_days')
-              .eq('tenant_id', tenantId),
-          ),
-        ]);
-        for (const h of history ?? []) {
-          const dealId = String(h.deal_id ?? '');
-          const at = String(h.entered_at ?? '');
-          if (!dealId || !at) continue;
-          const seen = stageEnteredAt.get(dealId);
-          if (!seen || at > seen) stageEnteredAt.set(dealId, at);
-        }
-        for (const s of stages ?? []) {
-          const sla = Number(s.sla_days);
-          if (!Number.isFinite(sla) || sla <= 0) continue;
-          if (s.legacy_stage_id) slaByStage.set(String(s.legacy_stage_id), sla);
-          if (s.id) slaByStage.set(String(s.id), sla);
-        }
-      } catch (err) {
-        console.error('[SUGGESTED-TASKS] stage SLA lookup failed:', (err as Error).message);
-      }
-
-      const deals: SuggestionDealRow[] = (dealRows ?? []).map((d) => ({
-        id: String(d.id),
-        owner_id: d.owner_id ?? null,
-        customer_id: d.customer_id ?? null,
-        company_name: d.company_name ?? null,
-        title: d.title ?? null,
-        status: d.status,
-        amount: d.amount,
-        probability: d.probability,
-        createdAt: d.created_at,
-        lastActivityDate: d.last_activity_date,
-        nextFollowUpDate: d.next_follow_up_date,
-        expectedCloseDate: d.expected_close_date,
-        stageEnteredAt: stageEnteredAt.get(String(d.id)) ?? null,
-        stageSlaDays: d.stage_id ? (slaByStage.get(String(d.stage_id)) ?? null) : null,
-        primaryContactEmail: d.primary_contact_email ?? null,
-        primaryContactPhone: d.primary_contact_phone ?? null,
-      }));
-
-      // Account names for the quote suggestions, one read for the accounts the
-      // quotes actually name.
-      const accountIds = [
-        ...new Set((quoteRows ?? []).map((q) => q.business_record_id).filter(Boolean)),
-      ] as string[];
-      const companyNames = new Map<string, string>();
-      if (accountIds.length > 0) {
-        const accounts = await fetchAllRows<Row>(() =>
-          admin
-            .from('business_records')
-            .select('id, company_name')
-            .eq('tenant_id', tenantId)
-            .in('id', accountIds.slice(0, 1000)),
-        );
-        for (const a of accounts ?? []) {
-          if (a.company_name) companyNames.set(String(a.id), String(a.company_name));
-        }
-      }
-
-      const drafts = rankSuggestions([
-        ...suggestionsFromDeals(deals, now, thresholds),
-        ...suggestionsFromQuotes((quoteRows ?? []) as any, now, thresholds, companyNames),
-        ...suggestionsFromPlays((playRows ?? []) as any, thresholds),
-      ]);
-
-      const nowIso = now.toISOString();
-      const insertRows = drafts.map((d) => ({
-        tenant_id: tenantId,
-        suggestion_type: d.suggestionType,
-        dedupe_key: d.dedupeKey,
-        record_type: d.recordType,
-        record_id: d.recordId,
-        reason: d.reason,
-        action: d.action,
-        score: d.score,
-        owner_id: d.ownerId,
-        customer_id: d.customerId,
-        company_name: d.companyName,
-      }));
-
-      let created = 0;
-      // Chunked so one oversized request cannot fail a whole sweep.
-      for (let i = 0; i < insertRows.length; i += 200) {
-        const batch = insertRows.slice(i, i + 200);
-        const { data, error } = await admin
-          .from('suggested_tasks')
-          .upsert(batch, { onConflict: 'tenant_id,dedupe_key', ignoreDuplicates: true })
-          .select('id');
-        if (error) {
-          console.error('[SUGGESTED-TASKS] insert batch failed:', error.message);
-          continue;
-        }
-        created += (data ?? []).length;
-      }
-
-      // AC4. Every OPEN row the sweep did not regenerate has lost its signal.
-      const openRows = await fetchAllRows<Row>(() =>
-        admin
-          .from('suggested_tasks')
-          .select('id, dedupe_key')
-          .eq('tenant_id', tenantId)
-          .eq('status', 'open'),
-      );
-      const byKey = new Map((openRows ?? []).map((r) => [String(r.dedupe_key), String(r.id)]));
-      const staleKeys = expireKeys(
-        [...byKey.keys()],
-        drafts.map((d) => d.dedupeKey),
-      );
-      let expired = 0;
-      for (let i = 0; i < staleKeys.length; i += 200) {
-        const ids = staleKeys.slice(i, i + 200).map((k) => byKey.get(k)!);
-        const { error } = await admin
-          .from('suggested_tasks')
-          .update({ status: 'expired', resolved_at: nowIso, updated_at: nowIso })
-          .eq('tenant_id', tenantId)
-          .in('id', ids);
-        if (error) {
-          console.error('[SUGGESTED-TASKS] expiry batch failed:', error.message);
-          continue;
-        }
-        expired += ids.length;
-      }
-
-      return createCorsResponse(
-        {
-          detected: drafts.length,
-          created,
-          // detected - created is the idempotency working, not a failure.
-          alreadyOpen: drafts.length - created,
-          expired,
-          dealsScanned: deals.length,
-          unbacked: [
-            'A deal that has never changed stage has no deal_stage_history row, so no stage-SLA suggestion can be raised for it. Nothing back-fills stage entry for deals created before pipeline-config started recording moves.',
-          ],
-        },
-        200,
-        req,
-      );
+      const result = await runSweep(admin, tenantId, {
+        force: url.searchParams.get('force') === 'true',
+      });
+      return createCorsResponse(result, 200, req);
     }
 
     // ─── POST /:id/dismiss and /:id/complete (AC6) ───────────────────

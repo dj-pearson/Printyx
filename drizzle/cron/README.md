@@ -52,8 +52,9 @@ Every file is idempotent: each `cron.schedule(...)` call is preceded by a condit
 | `opportunity-radar-scan`          | opportunity-radar.sql | `20 4 * * *`   | HTTP | POST `/opportunity-radar/scan/all` — every tenant's installed base (COP-B04) |
 | `deal-desk-sla-check`             | deal-desk-sla.sql     | `35 * * * *`   | HTTP | POST `/deal-desk/check-sla/all` — approval SLA breaches, hourly              |
 | `platform-cs-health-scores`       | platform-cs.sql       | `50 3 * * *`   | HTTP | POST `/platform-cs/health-scores/calculate-all` — rescore every tenant account         |
+| `suggested-tasks-sweep`           | suggested-tasks.sql   | `50 4 * * *`   | HTTP | POST `/suggested-tasks/sweep/all` — every tenant's suggestions (COP-B03)              |
 
-**Total: 21 jobs.**
+**Total: 22 jobs.**
 
 <!--
   That number said 16 while the table listed 19. It is asserted now rather than
