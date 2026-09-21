@@ -10,7 +10,7 @@
  * a comment naming BANTAssessment as its caller.
  */
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { scoreBant, statusForScore, statusLabel, statusTone } from '@shared/bant-score';
 
@@ -125,7 +125,16 @@ describe('one module, both hosts', () => {
   const FORM = stripComments(read('client/src/components/leads/BANTAssessment.tsx'));
 
   it('the edge handler derives its stored scores from shared/bant-score', () => {
-    expect(EDGE).toMatch(/from '\.\.\/\.\.\/\.\.\/shared\/bant-score\.ts'/);
+    // Bound to the property, not the depth: this pinned `../../../shared/`,
+    // which is what a handler ONE directory higher needs. From
+    // `<fn>/handlers/` it resolves to `supabase/shared/` - nothing - and
+    // server.ts omits a function whose import throws, so the whole of
+    // /api/lead-scoring answered 404 in production. check:edge-boot caught it.
+    const spec = /from '((?:\.\.\/)+shared\/bant-score\.ts)'/.exec(EDGE);
+    expect(spec).not.toBeNull();
+    expect(
+      existsSync(join(process.cwd(), 'supabase/functions/lead-scoring/handlers', spec![1])),
+    ).toBe(true);
     // Bound to the call, not to the import: an import that nothing calls is the
     // shape COP-B04 found in the opportunity radar.
     expect(EDGE).toMatch(/\}\s*=\s*scoreBant\(\{/);

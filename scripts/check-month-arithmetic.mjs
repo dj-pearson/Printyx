@@ -69,10 +69,25 @@ const EXEMPT = new Set([
   'server/tests/unit/contract-and-maintenance-dates.test.ts',
   'server/tests/unit/lease-schedule-months.test.ts',
   'server/tests/unit/month-arithmetic-closed.test.ts',
+  // REPORTS-CHARTS-002: this one asserts the widened rule matches the UTC
+  // twin, so it has to contain the idiom to prove it.
+  'server/tests/unit/report-chart-series.test.ts',
   'scripts/check-month-arithmetic.mjs',
 ]);
 
-const IDIOM = /\.setMonth\(\s*[\w.$]*\.getMonth\(\)\s*[-+]/;
+/**
+ * The overflowing idiom, in BOTH tenses.
+ *
+ * REPORTS-CHARTS-002: this matched `setMonth` only, so `setUTCMonth` - the
+ * identical overflow one method name over - sat uncaught in
+ * supabase/functions/reports/_date.ts, where it widened every report window by
+ * up to three days on the last days of a long month. `setUTCFullYear` is here
+ * for the leap-day version: 29 February minus a year resolves to 1 March.
+ *
+ * A ban that names one spelling of an idiom bans one spelling.
+ */
+const IDIOM =
+  /\.set(?:UTC)?(?:Month|FullYear)\(\s*[\w.$]*\.get(?:UTC)?(?:Month|FullYear)\(\)\s*[-+]/;
 
 const files = [];
 for (const root of ROOTS) {
@@ -144,8 +159,10 @@ if (added.length > 0) {
   added.forEach((o) => console.error(`    ${o.file}:${o.line}  ${o.code.slice(0, 90)}`));
   console.error(`
   Date.setMonth overflows: 31 March minus one month is 3 March, not 28 February.
-  Use subtractMonths / addMonths / monthsBetween / termEndDate from
-  supabase/functions/_shared/date-months.ts.
+  setUTCMonth does the same. setFullYear/setUTCFullYear overflow on 29 February,
+  which resolves to 1 March.
+  Use subtractMonths / subtractUtcMonths / subtractUtcYears / addMonths /
+  monthsBetween / termEndDate from supabase/functions/_shared/date-months.ts.
 `);
   process.exit(1);
 }

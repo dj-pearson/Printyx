@@ -28,7 +28,7 @@
 
 import { errorResponse, jsonResponse } from '../../_shared/http.ts';
 import { toCamelShallow } from '../../_shared/case.ts';
-import { scoreBant } from '../../../shared/bant-score.ts';
+import { scoreBant } from '../../../../shared/bant-score.ts';
 import type { HandlerCtx } from '../_context.ts';
 import { isAdminOrManager } from '../_rbac.ts';
 

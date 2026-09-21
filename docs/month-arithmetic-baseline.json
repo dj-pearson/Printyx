@@ -1,5 +1,21 @@
 {
-  "note": "DATE-SETMONTH-001, CLOSED at zero. This was a ratchet of 30 sites; every one is fixed and the gate is now hard, so an empty list is the point rather than an accident. Date.setMonth OVERFLOWS rather than clamping - 31 March minus one month is 3 March, not 28 February - which makes the bare `d.setMonth(d.getMonth() +/- n)` idiom wrong on about four days in twelve of every year and silently right the rest of the time. Use subtractMonths / addMonths / monthsBetween / termEndDate from supabase/functions/_shared/date-months.ts, re-exported for the Node and browser trees as @shared/date-months. Do not re-populate this list: a fix belongs in the code, and a list of known-bad sites is somewhere a new one hides.",
-  "total": 0,
-  "allowed": []
+  "note": "DATE-SETMONTH-001, CLOSED at zero. This was a ratchet of 30 sites; every one is fixed and the gate is now hard, so an empty list is the point rather than an accident. Date.setMonth OVERFLOWS rather than clamping - 31 March minus one month is 3 March, not 28 February - which makes the bare `d.setMonth(d.getMonth() +/- n)` idiom wrong on about four days in twelve of every year and silently right the rest of the time. Use subtractMonths / addMonths / monthsBetween / termEndDate from supabase/functions/_shared/date-months.ts, re-exported for the Node and browser trees as @shared/date-months. Do not re-populate this list: a fix belongs in the code, and a list of known-bad sites is somewhere a new one hides. REOPENED AT 15 ON 2026-09-21 BECAUSE THE GUARD GOT BETTER, NOT BECAUSE THE CODE GOT WORSE (REPORTS-CHARTS-002): the rule matched .setMonth only, so the UTC twin .setUTCMonth sat uncaught - supabase/functions/reports/_date.ts widened every report window by up to three days on the last days of a long month - and the YEAR form was never in scope at all. The month half is still at zero and is still a hard property; these 15 are all .setFullYear(x.getFullYear() +/- n), which overflows only on 29 February, resolving to 1 March. One day every four years, so it is a worklist rather than an outage: each entry wants subtractUtcYears or an explicit clamp. Do not read the jump from 0 to 15 as a regression.",
+  "total": 15,
+  "allowed": [
+    "server/routes-platform-deals.ts::startDate.setFullYear(now.getFullYear() - 1);",
+    "server/services/audit-archival-service.ts::retainUntil.setFullYear(retainUntil.getFullYear() + retentionYears);",
+    "server/services/automated-billing-service.ts::next.setFullYear(next.getFullYear() + 1);",
+    "server/services/automated-billing-service.ts::start.setFullYear(start.getFullYear() - 1);",
+    "server/services/dpa-management-service.ts::oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);",
+    "server/services/dpa-management-service.ts::oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);",
+    "server/services/equipment-lifecycle-state-machine.ts::warrantyExpiryDate.setFullYear(warrantyExpiryDate.getFullYear() + 1);",
+    "supabase/functions/analytics/index.ts::startDate.setFullYear(now.getFullYear() - 1);",
+    "supabase/functions/customer-portal/handlers/analytics.ts::startDate.setFullYear(endDate.getFullYear() - 1);",
+    "supabase/functions/customer-portal/handlers/satisfaction.ts::startDate.setFullYear(now.getFullYear() - 1);",
+    "supabase/functions/reports/handlers/scheduled.ts::next.setFullYear(next.getFullYear() + 1);",
+    "supabase/functions/seo/index.ts::startDate.setFullYear(now.getFullYear() - 1);",
+    "supabase/functions/subscriptions/index.ts::newPeriodEnd.setFullYear(newPeriodEnd.getFullYear() + 1);",
+    "supabase/functions/subscriptions/index.ts::periodEnd.setFullYear(periodEnd.getFullYear() + 1);",
+    "supabase/functions/subscriptions/index.ts::periodEnd.setFullYear(periodEnd.getFullYear() + 1);"
+  ]
 }

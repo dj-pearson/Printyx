@@ -48,7 +48,7 @@ import { ReportViewer } from '@/components/reports/ReportViewer';
 import { getThemeForCategory, THEME_CONFIG } from '@/lib/brandTheme';
 import { cn } from '@/lib/utils';
 import { EmptyState } from '@/components/ui/empty-state';
-import { NotConnectedState } from '@/components/ui/not-connected-state';
+import { ReportChartsPanel } from '@/components/reports/ReportChartsPanel';
 
 // Types for the new reporting architecture
 interface ReportDefinition {
@@ -347,19 +347,19 @@ export default function EnhancedReportsHub() {
                 Interactive Charts
               </Badge>
             </div>
-            {/* AUDIT-020: these three charts - "Performance Trends",
-                "Distribution Analysis" and "Period Comparison" - were built by
-                generateMockChartData, which is Math.random() with a hardcoded
-                target of 40000 laid over it. On a routed page. The values moved
-                on every render, which is exactly what real telemetry does, so
-                refreshing appeared to confirm them. There is no reports
-                aggregation endpoint behind this panel; the catalog below is the
-                real part of the page. */}
-            <NotConnectedState
-              title="Report charts"
-              what="Trend, distribution and period-comparison charts need a reports aggregation endpoint, which does not exist yet."
-              storyRef="REPORTS-CHARTS-001"
-            />
+            {/* AUDIT-020 removed the three charts that used to be here -
+                "Performance Trends", "Distribution Analysis" and "Period
+                Comparison" - because generateMockChartData built them from
+                Math.random() with a hardcoded 40000 target drawn over it, on a
+                routed page.
+
+                REPORTS-CHARTS-002 gives them an endpoint:
+                GET /api/reporting/charts reads `deals`, `service_tickets` or
+                `invoices` for the sales, service and finance categories, and
+                answers `charted: false` with a per-category reason for the
+                other five rather than drawing a line over nothing. The panel
+                renders that refusal as carefully as it renders the charts. */}
+            <ReportChartsPanel category={dashboardState.selectedCategory} />
           </div>
         )}
 

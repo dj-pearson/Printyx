@@ -13,7 +13,7 @@
     },
     {
       "file": "client/src/components/leads/BANTAssessment.tsx",
-      "key": "bantQueryKey(leadId)",
+      "key": "bantQueryKey",
       "reason": "WF-S-09. The query and the invalidation call the SAME exported helper, so they cannot disagree by construction - a stronger guarantee than matching two literals, and the reason it is a helper is that LeadDetail's At-a-glance card reads the same cache entry. Inlining the array to satisfy the scanner would reintroduce exactly the drift the helper removes."
     },
     {

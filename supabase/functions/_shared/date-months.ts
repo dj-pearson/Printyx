@@ -54,6 +54,45 @@ export function monthsBetween(start: Date, end: Date): Array<{ key: string; at: 
   return out;
 }
 
+/**
+ * The UTC twin of subtractMonths, for callers whose comparison values are UTC
+ * instants (REPORTS-CHARTS-002).
+ *
+ * `subtractMonths` above builds its cursor with `new Date(y, m, 1)`, which is
+ * LOCAL midnight, so using it to bound a UTC window shifts the edge by the
+ * deployment's offset. That is a small error next to the overflow it prevents,
+ * and it is still an error with no reason to accept: a report window should not
+ * move when the container's TZ does.
+ *
+ * Same clamping rule: 31 March minus one month is 28 February, not 3 March.
+ */
+export function subtractUtcMonths(from: Date, months: number): Date {
+  const target = new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth() - months, 1));
+  const daysInTargetMonth = new Date(
+    Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0),
+  ).getUTCDate();
+  target.setUTCDate(Math.min(from.getUTCDate(), daysInTargetMonth));
+  target.setUTCHours(
+    from.getUTCHours(),
+    from.getUTCMinutes(),
+    from.getUTCSeconds(),
+    from.getUTCMilliseconds(),
+  );
+  return target;
+}
+
+/**
+ * Whole years back, in UTC, clamping 29 February to 28 February.
+ *
+ * `setUTCFullYear` overflows the same way `setUTCMonth` does: 29 February 2024
+ * minus one year is asked for as "29 February 2023" and resolves to 1 March.
+ * One day a year, and the day a leap-year report is wrong is not a day anybody
+ * is looking.
+ */
+export function subtractUtcYears(from: Date, years: number): Date {
+  return subtractUtcMonths(from, years * 12);
+}
+
 /** Add whole months, clamping the day to the target month's length. */
 export function addMonths(from: Date, months: number): Date {
   return subtractMonths(from, -months);

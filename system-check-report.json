@@ -1,555 +1,114 @@
 [
   {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\components\\customer-portal\\ServiceRequestsDashboard.tsx",
-    "line": 335,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\components\\dashboard\\DashboardCustomizer.tsx",
-    "line": 82,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\components\\forms\\MultipleContactsForm.tsx",
-    "line": 59,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\components\\knowledge-base\\ContentGapDashboard.tsx",
-    "line": 68,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\components\\tasks\\AllTasksView.tsx",
-    "line": 83,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\components\\tasks\\MyTasksView.tsx",
-    "line": 76,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\hooks\\useCrossModuleIntegration.ts",
-    "line": 50,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\hooks\\useOptimisticMutations.ts",
-    "line": 11,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\hooks\\useOptimisticMutations.ts",
-    "line": 55,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\hooks\\useOptimisticMutations.ts",
-    "line": 99,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\hooks\\useOptimisticMutations.ts",
-    "line": 142,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\hooks\\useSubscription.ts",
-    "line": 161,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\hooks\\useSubscription.ts",
-    "line": 194,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\hooks\\useSubscription.ts",
-    "line": 226,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\hooks\\useSubscription.ts",
-    "line": 254,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\hooks\\useSubscription.ts",
-    "line": 282,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\hooks\\useSubscription.ts",
-    "line": 373,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\admin\\DatabaseUpdaterPage.tsx",
-    "line": 56,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\admin\\KnowledgeBaseAdminDashboard.tsx",
-    "line": 117,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\admin\\TenantManagement.tsx",
-    "line": 39,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\AdvancedBillingEngine.tsx",
-    "line": 231,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\ApprovalRequestDetail.tsx",
-    "line": 109,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\ApprovalRulesConfiguration.tsx",
-    "line": 96,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\AutoSupplyReplenishmentDashboard.tsx",
-    "line": 42,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\BasicTaskManagement.tsx",
-    "line": 128,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\ContractRenewalDashboard.tsx",
-    "line": 54,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\CrmGoalsDashboard.tsx",
-    "line": 146,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\CustomerAccessManagement.tsx",
-    "line": 109,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\CustomerNumberSettings.tsx",
-    "line": 64,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\customers.tsx",
-    "line": 159,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\CustomerSelfServicePortal.tsx",
-    "line": 225,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\CustomerSuccessManagement.tsx",
-    "line": 196,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\DatabaseManagement.tsx",
-    "line": 137,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\DataEnrichment.tsx",
-    "line": 117,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\DemoScheduling.tsx",
-    "line": 142,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\EnhancedProductModels.tsx",
-    "line": 88,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\EquipmentLifecycleManagement.tsx",
-    "line": 254,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\ESignatureIntegration.tsx",
-    "line": 174,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\FleetMonitoringDashboard.tsx",
-    "line": 217,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\KnowledgeArticle.tsx",
-    "line": 55,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\LeaseDetail.tsx",
-    "line": 75,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\ManagedServices.tsx",
-    "line": 55,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\ManagedServices.tsx",
-    "line": 57,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\ManufacturerIntegration.tsx",
-    "line": 79,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\ManufacturerIntegrationDevices.tsx",
-    "line": 94,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\MobileFieldOperations.tsx",
-    "line": 210,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\MobileServiceApp.tsx",
-    "line": 181,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\MonitoringClients.tsx",
-    "line": 114,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\OidManagement.tsx",
+    "severity": "error",
+    "file": "/home/user/Printyx/client/src/components/reports/ReportViewer.tsx",
     "line": 116,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
+    "issue": "API call to non-existent endpoint: /api/reporting",
+    "suggestion": "Create 'reporting' edge function or express route. Available endpoints: _shared, accessories, account-payable, account-receivable, activities, address-books, admin, ai-analytics, ai-documentation, ai-employee..."
   },
   {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\OnboardingDashboard.tsx",
-    "line": 120,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
+    "severity": "error",
+    "file": "/home/user/Printyx/client/src/components/reports/ReportViewer.tsx",
+    "line": 143,
+    "issue": "API call to non-existent endpoint: /api/reporting",
+    "suggestion": "Create 'reporting' edge function or express route. Available endpoints: _shared, accessories, account-payable, account-receivable, activities, address-books, admin, ai-analytics, ai-documentation, ai-employee..."
   },
   {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\OnboardingDetails.tsx",
-    "line": 70,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
+    "severity": "error",
+    "file": "/home/user/Printyx/client/src/pages/AccountsPayable.tsx",
+    "line": 86,
+    "issue": "API call to non-existent endpoint: /api/accounts-payable",
+    "suggestion": "Create 'accounts-payable' edge function or express route. Available endpoints: _shared, accessories, account-payable, account-receivable, activities, address-books, admin, ai-analytics, ai-documentation, ai-employee..."
   },
   {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\PipelineConfiguration.tsx",
-    "line": 134,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
+    "severity": "error",
+    "file": "/home/user/Printyx/client/src/pages/AccountsPayable.tsx",
+    "line": 136,
+    "issue": "API call to non-existent endpoint: /api/accounts-payable",
+    "suggestion": "Create 'accounts-payable' edge function or express route. Available endpoints: _shared, accessories, account-payable, account-receivable, activities, address-books, admin, ai-analytics, ai-documentation, ai-employee..."
   },
   {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\PlatformAssignmentRules.tsx",
-    "line": 174,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
+    "severity": "error",
+    "file": "/home/user/Printyx/client/src/pages/AccountsPayable.tsx",
+    "line": 169,
+    "issue": "API call to non-existent endpoint: /api/accounts-payable",
+    "suggestion": "Create 'accounts-payable' edge function or express route. Available endpoints: _shared, accessories, account-payable, account-receivable, activities, address-books, admin, ai-analytics, ai-documentation, ai-employee..."
   },
   {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\PlatformBusinessRecordDetail.tsx",
-    "line": 155,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
+    "severity": "error",
+    "file": "/home/user/Printyx/client/src/pages/AccountsReceivable.tsx",
+    "line": 84,
+    "issue": "API call to non-existent endpoint: /api/accounts-receivable",
+    "suggestion": "Create 'accounts-receivable' edge function or express route. Available endpoints: _shared, accessories, account-payable, account-receivable, activities, address-books, admin, ai-analytics, ai-documentation, ai-employee..."
   },
   {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\PlatformDealDetail.tsx",
-    "line": 122,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
+    "severity": "error",
+    "file": "/home/user/Printyx/client/src/pages/AccountsReceivable.tsx",
+    "line": 130,
+    "issue": "API call to non-existent endpoint: /api/accounts-receivable",
+    "suggestion": "Create 'accounts-receivable' edge function or express route. Available endpoints: _shared, accessories, account-payable, account-receivable, activities, address-books, admin, ai-analytics, ai-documentation, ai-employee..."
   },
   {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\PlatformDealsPipeline.tsx",
-    "line": 82,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
+    "severity": "error",
+    "file": "/home/user/Printyx/client/src/pages/AccountsReceivable.tsx",
+    "line": 163,
+    "issue": "API call to non-existent endpoint: /api/accounts-receivable",
+    "suggestion": "Create 'accounts-receivable' edge function or express route. Available endpoints: _shared, accessories, account-payable, account-receivable, activities, address-books, admin, ai-analytics, ai-documentation, ai-employee..."
   },
   {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\PlatformLeadScoring.tsx",
-    "line": 205,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
+    "severity": "error",
+    "file": "/home/user/Printyx/client/src/pages/EnhancedReportsHub.tsx",
+    "line": 125,
+    "issue": "API call to non-existent endpoint: /api/reporting",
+    "suggestion": "Create 'reporting' edge function or express route. Available endpoints: _shared, accessories, account-payable, account-receivable, activities, address-books, admin, ai-analytics, ai-documentation, ai-employee..."
   },
   {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\PlatformTerritories.tsx",
+    "severity": "error",
+    "file": "/home/user/Printyx/client/src/pages/EnhancedReportsHub.tsx",
     "line": 145,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
+    "issue": "API call to non-existent endpoint: /api/reporting",
+    "suggestion": "Create 'reporting' edge function or express route. Available endpoints: _shared, accessories, account-payable, account-receivable, activities, address-books, admin, ai-analytics, ai-documentation, ai-employee..."
   },
   {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\PreventiveMaintenanceAutomation.tsx",
-    "line": 216,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
+    "severity": "error",
+    "file": "/home/user/Printyx/client/src/pages/LeaseDetail.tsx",
+    "line": 83,
+    "issue": "API call to non-existent endpoint: /api/lease-payments",
+    "suggestion": "Create 'lease-payments' edge function or express route. Available endpoints: _shared, accessories, account-payable, account-receivable, activities, address-books, admin, ai-analytics, ai-documentation, ai-employee..."
   },
   {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\PreventiveMaintenanceScheduling.tsx",
-    "line": 131,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
+    "severity": "error",
+    "file": "/home/user/Printyx/client/src/pages/ScheduledReportsDashboard.tsx",
+    "line": 129,
+    "issue": "API call to non-existent endpoint: /api/scheduled-reports",
+    "suggestion": "Create 'scheduled-reports' edge function or express route. Available endpoints: _shared, accessories, account-payable, account-receivable, activities, address-books, admin, ai-analytics, ai-documentation, ai-employee..."
   },
   {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\PriceApprovals.tsx",
-    "line": 74,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
+    "severity": "error",
+    "file": "/home/user/Printyx/client/src/pages/ScheduledReportsDashboard.tsx",
+    "line": 133,
+    "issue": "API call to non-existent endpoint: /api/scheduled-reports",
+    "suggestion": "Create 'scheduled-reports' edge function or express route. Available endpoints: _shared, accessories, account-payable, account-receivable, activities, address-books, admin, ai-analytics, ai-documentation, ai-employee..."
   },
   {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\ProductHubUnified.tsx",
-    "line": 252,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
+    "severity": "error",
+    "file": "/home/user/Printyx/client/src/pages/ScheduledReportsDashboard.tsx",
+    "line": 144,
+    "issue": "API call to non-existent endpoint: /api/scheduled-reports",
+    "suggestion": "Create 'scheduled-reports' edge function or express route. Available endpoints: _shared, accessories, account-payable, account-receivable, activities, address-books, admin, ai-analytics, ai-documentation, ai-employee..."
   },
   {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\ProfessionalServices.tsx",
-    "line": 56,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
+    "severity": "error",
+    "file": "/home/user/Printyx/client/src/pages/ScheduledReportsDashboard.tsx",
+    "line": 155,
+    "issue": "API call to non-existent endpoint: /api/scheduled-reports",
+    "suggestion": "Create 'scheduled-reports' edge function or express route. Available endpoints: _shared, accessories, account-payable, account-receivable, activities, address-books, admin, ai-analytics, ai-documentation, ai-employee..."
   },
   {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\ProfessionalServices.tsx",
-    "line": 58,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\QuickBooksIntegration.tsx",
-    "line": 53,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\QuoteProposalGeneration.tsx",
-    "line": 124,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\RemoteMonitoring.tsx",
-    "line": 245,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\SEODashboard.tsx",
-    "line": 260,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\ServiceAnalytics.tsx",
-    "line": 261,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\ServiceProducts.tsx",
-    "line": 52,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\ServiceProducts.tsx",
-    "line": 54,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\SocialMediaGenerator.tsx",
-    "line": 110,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\Supplies.tsx",
-    "line": 51,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\Supplies.tsx",
-    "line": 53,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\SystemIntegrations.tsx",
-    "line": 81,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\TechnicianManagement.tsx",
-    "line": 122,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\VendorManagement.tsx",
-    "line": 72,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\WhiteLabelDashboard.tsx",
-    "line": 17,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
-  },
-  {
-    "severity": "warning",
-    "file": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\client\\src\\pages\\WhiteLabelDashboard.tsx",
-    "line": 20,
-    "issue": "useQuery with API call missing queryFn - may cause data transformation issues",
-    "suggestion": "Add queryFn with proper snake_case → camelCase transformation"
+    "severity": "error",
+    "file": "/home/user/Printyx/client/src/pages/ScheduledReportsDashboard.tsx",
+    "line": 489,
+    "issue": "API call to non-existent endpoint: /api/scheduled-reports",
+    "suggestion": "Create 'scheduled-reports' edge function or express route. Available endpoints: _shared, accessories, account-payable, account-receivable, activities, address-books, admin, ai-analytics, ai-documentation, ai-employee..."
   }
 ]
