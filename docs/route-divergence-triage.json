@@ -74,8 +74,8 @@
       "reason": "SEC-EDGE-001's catalogue family. The Express twin in routes-products-crud.ts / routes-product-models.ts checks a permission nobody reaches; the edge function carries the equivalent gate on operations.inventory.manage. Verified round 121 by counting gate calls in each function. The Express handlers are redundant rather than load-bearing."
     },
     "invoices": {
-      "verdict": "unexamined",
-      "reason": "routes-bulk-operations.ts registers here. Not compared to the edge function."
+      "verdict": "divergent",
+      "reason": "Round 132. The Invoices page LISTS from /api/billing/invoices (proxied, so one host) but bulk-mutates through /api/invoices/bulk-update and /bulk-delete, which are NOT proxied - so dev runs server/routes-bulk-operations.ts and production runs supabase/functions/invoices/. Express registers only those two bulk POSTs, so GET /api/invoices, /:id, POST, PATCH and DELETE reach no dev handler at all while working in production: the split running backwards, which nobody files because production is fine. Both bulk implementations reported deletedCount: ids.length - the request, not the result - and that is fixed on both hosts through shared/bulk-result.ts, so the remaining divergence is which host serves them rather than what they answer. Converging needs either a crmProxies entry (safe only once the two bulk shapes are confirmed identical against a deploy) or Express list handlers; neither is free, so this stays divergent rather than resolved."
     },
     "leads": {
       "verdict": "divergent",

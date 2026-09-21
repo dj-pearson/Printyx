@@ -4,6 +4,7 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { parseBulkIds, parseBulkUpdate } from '../_shared/bulk-ops.ts';
+import { summariseBulkWrite } from '../../../shared/bulk-result.ts';
 import { accessibleCustomerIds, applyCustomerScope, resolveScope } from '../_shared/scope.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 
@@ -212,21 +213,29 @@ export default async function handler(req: Request) {
         );
       }
 
-      const { error: updateError } = await admin
+      const { data: updated, error: updateError } = await admin
         .from('invoices')
         .update({ ...parsed.updates, updated_at: new Date().toISOString() })
         .eq('tenant_id', tenantId)
-        .in('id', parsed.ids);
+        .in('id', parsed.ids)
+        .select('id');
 
       if (updateError) {
         console.error('Failed to bulk update invoices:', updateError);
         return createCorsResponse({ message: 'Failed to bulk update invoices' }, 500, req);
       }
 
+      const outcome = summariseBulkWrite(
+        parsed.ids,
+        (updated ?? []).map((row: any) => row.id),
+        'invoice',
+        'updated',
+      );
       return createCorsResponse(
         {
-          message: `Successfully updated ${parsed.ids.length} invoices`,
-          updatedCount: parsed.ids.length,
+          message: outcome.message,
+          updatedCount: outcome.affectedCount,
+          notFound: outcome.notFound,
         },
         200,
         req,
@@ -240,21 +249,34 @@ export default async function handler(req: Request) {
         return createCorsResponse({ message: parsed.message }, 400, req);
       }
 
-      const { error } = await admin
+      // `.select('id')` is what turns this from a claim into a measurement: the
+      // delete is tenant-scoped, so an id from another tenant - or one a
+      // colleague removed thirty seconds ago - matches nothing, and reporting
+      // `parsed.ids.length` told the operator every invoice they selected was
+      // gone (round 132).
+      const { data: deleted, error } = await admin
         .from('invoices')
         .delete()
         .eq('tenant_id', tenantId)
-        .in('id', parsed.ids);
+        .in('id', parsed.ids)
+        .select('id');
 
       if (error) {
         console.error('Failed to bulk delete invoices:', error);
         return createCorsResponse({ message: 'Failed to bulk delete invoices' }, 500, req);
       }
 
+      const outcome = summariseBulkWrite(
+        parsed.ids,
+        (deleted ?? []).map((row: any) => row.id),
+        'invoice',
+        'deleted',
+      );
       return createCorsResponse(
         {
-          message: `Successfully deleted ${parsed.ids.length} invoices`,
-          deletedCount: parsed.ids.length,
+          message: outcome.message,
+          deletedCount: outcome.affectedCount,
+          notFound: outcome.notFound,
         },
         200,
         req,

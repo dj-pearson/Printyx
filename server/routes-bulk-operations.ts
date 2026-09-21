@@ -4,6 +4,7 @@
  * Part of US-060: Bulk operations framework with progress tracking.
  */
 import type { Express, Request, Response } from 'express';
+import { summariseBulkWrite } from '@shared/bulk-result';
 import { eq, and, inArray } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from './db';
@@ -76,15 +77,27 @@ export function registerBulkOperationsRoutes(app: Express) {
 
       safeUpdates.updatedAt = new Date();
 
-      await db
+      // The existence check above 400s on an id this tenant cannot reach, so
+      // `ids.length` was nearly right - and "nearly" is a row somebody deleted
+      // between the check and the update. Measure it; one shape for every bulk
+      // write beats a special case a guard has to know about.
+      const updated = await db
         .update(invoices)
         .set(safeUpdates)
-        .where(and(eq(invoices.tenantId, tenantId), inArray(invoices.id, ids)));
+        .where(and(eq(invoices.tenantId, tenantId), inArray(invoices.id, ids)))
+        .returning({ id: invoices.id });
 
-      log.info(`Bulk updated ${ids.length} invoices by user ${userId}`);
+      const outcome = summariseBulkWrite(
+        ids,
+        updated.map((row) => row.id),
+        'invoice',
+        'updated',
+      );
+      log.info(`Bulk updated ${outcome.affectedCount} invoices by user ${userId}`);
       res.json({
-        message: `Successfully updated ${ids.length} invoices`,
-        updatedCount: ids.length,
+        message: outcome.message,
+        updatedCount: outcome.affectedCount,
+        notFound: outcome.notFound,
       });
     } catch (error: any) {
       log.error('Failed to bulk update invoices:', error);
@@ -104,14 +117,27 @@ export function registerBulkOperationsRoutes(app: Express) {
         return res.status(400).json({ message: 'Validation failed' });
       }
 
-      await db
+      // `.returning` is what turns this from a claim into a measurement. The
+      // delete is tenant-scoped and there is no existence check above it (the
+      // bulk-UPDATE beside this one has one and 400s), so an id from another
+      // tenant - or one a colleague removed thirty seconds ago - matched
+      // nothing while the response said every selected invoice was gone.
+      const deleted = await db
         .delete(invoices)
-        .where(and(eq(invoices.tenantId, tenantId), inArray(invoices.id, parsed.data.ids)));
+        .where(and(eq(invoices.tenantId, tenantId), inArray(invoices.id, parsed.data.ids)))
+        .returning({ id: invoices.id });
 
-      log.info(`Bulk deleted ${parsed.data.ids.length} invoices by user ${userId}`);
+      const outcome = summariseBulkWrite(
+        parsed.data.ids,
+        deleted.map((row) => row.id),
+        'invoice',
+        'deleted',
+      );
+      log.info(`Bulk deleted ${outcome.affectedCount} invoices by user ${userId}`);
       res.json({
-        message: `Successfully deleted ${parsed.data.ids.length} invoices`,
-        deletedCount: parsed.data.ids.length,
+        message: outcome.message,
+        deletedCount: outcome.affectedCount,
+        notFound: outcome.notFound,
       });
     } catch (error: any) {
       log.error('Failed to bulk delete invoices:', error);
@@ -166,15 +192,23 @@ export function registerBulkOperationsRoutes(app: Express) {
 
       safeUpdates.updatedAt = new Date();
 
-      await db
+      const updated = await db
         .update(equipment)
         .set(safeUpdates)
-        .where(and(eq(equipment.tenantId, tenantId), inArray(equipment.id, ids)));
+        .where(and(eq(equipment.tenantId, tenantId), inArray(equipment.id, ids)))
+        .returning({ id: equipment.id });
 
-      log.info(`Bulk updated ${ids.length} equipment items by user ${userId}`);
+      const outcome = summariseBulkWrite(
+        ids,
+        updated.map((row) => row.id),
+        'equipment item',
+        'updated',
+      );
+      log.info(`Bulk updated ${outcome.affectedCount} equipment items by user ${userId}`);
       res.json({
-        message: `Successfully updated ${ids.length} equipment items`,
-        updatedCount: ids.length,
+        message: outcome.message,
+        updatedCount: outcome.affectedCount,
+        notFound: outcome.notFound,
       });
     } catch (error: any) {
       log.error('Failed to bulk update equipment:', error);
@@ -194,14 +228,22 @@ export function registerBulkOperationsRoutes(app: Express) {
         return res.status(400).json({ message: 'Validation failed' });
       }
 
-      await db
+      const deleted = await db
         .delete(equipment)
-        .where(and(eq(equipment.tenantId, tenantId), inArray(equipment.id, parsed.data.ids)));
+        .where(and(eq(equipment.tenantId, tenantId), inArray(equipment.id, parsed.data.ids)))
+        .returning({ id: equipment.id });
 
-      log.info(`Bulk deleted ${parsed.data.ids.length} equipment items by user ${userId}`);
+      const outcome = summariseBulkWrite(
+        parsed.data.ids,
+        deleted.map((row) => row.id),
+        'equipment item',
+        'deleted',
+      );
+      log.info(`Bulk deleted ${outcome.affectedCount} equipment items by user ${userId}`);
       res.json({
-        message: `Successfully deleted ${parsed.data.ids.length} equipment items`,
-        deletedCount: parsed.data.ids.length,
+        message: outcome.message,
+        deletedCount: outcome.affectedCount,
+        notFound: outcome.notFound,
       });
     } catch (error: any) {
       log.error('Failed to bulk delete equipment:', error);

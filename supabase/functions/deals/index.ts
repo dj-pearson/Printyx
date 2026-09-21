@@ -20,6 +20,7 @@ import {
   type DealStageRow,
 } from '../_shared/deal-stage.ts';
 import { applyUserScope, resolveScope } from '../_shared/scope.ts';
+import { summariseBulkWrite } from '../../../shared/bulk-result.ts';
 import {
   buildDealFingerprint,
   buildDealSummaryPrompt,
@@ -1026,12 +1027,35 @@ export default async function handler(req: Request) {
       if (ids.length === 0) {
         return createCorsResponse({ error: 'dealIds required' }, 400, req);
       }
-      const { error } = await admin.from('deals').delete().in('id', ids).eq('tenant_id', tenantId);
+      // The bulk-UPDATE branch two dozen lines above already measured what it
+      // touched (`.select('id')` then `data?.length`); this one reported the
+      // request back to the caller. Same file, same shape, opposite answer.
+      const { data: deleted, error } = await admin
+        .from('deals')
+        .delete()
+        .in('id', ids)
+        .eq('tenant_id', tenantId)
+        .select('id');
       if (error) {
         console.error('Error bulk-deleting deals:', error);
         return createCorsResponse({ error: 'Failed to bulk-delete deals' }, 500, req);
       }
-      return createCorsResponse({ success: true, deleted: ids.length }, 200, req);
+      const outcome = summariseBulkWrite(
+        ids,
+        (deleted ?? []).map((row: any) => row.id),
+        'deal',
+        'deleted',
+      );
+      return createCorsResponse(
+        {
+          success: true,
+          deleted: outcome.affectedCount,
+          notFound: outcome.notFound,
+          message: outcome.message,
+        },
+        200,
+        req,
+      );
     }
 
     // GET /deals - List deals
