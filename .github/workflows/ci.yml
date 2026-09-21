@@ -137,6 +137,8 @@ jobs:
         run: npm run check:stale-gates
       - name: Undefined identifiers in the edge tree (COP-B04)
         run: npm run check:edge-undef
+      - name: Unknown sub-resource must not answer the parent record (PA-020)
+        run: npm run check:subresource-fallthrough
       - name: Raw-fetch ratchet (PROD-013)
         run: npm run check:raw-fetch
       - name: Raw request-body write ratchet (COP-M01)

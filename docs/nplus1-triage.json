@@ -159,7 +159,7 @@
       "why": "One update per pinned view in a drag-reorder, each with its own sort_order, bounded by what one user has pinned."
     },
     {
-      "loop": "service-tickets/index.ts:661",
+      "loop": "service-tickets/index.ts:674",
       "table": "service_ticket_updates",
       "verdict": "bounded",
       "why": "At most three writes - the loop is over changed fields and only status, assigned technician and priority produce a row."

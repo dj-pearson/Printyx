@@ -145,6 +145,15 @@ export default async function handler(req: Request) {
     }
 
     // GET /activities/:id - Get single activity
+    // An unknown sub-resource answers 404 rather than the parent record.
+    // PA-020's rule: falling through to the row is what makes the NEXT missing
+    // branch invisible - a component mapping over an object renders an empty
+    // list and reports nothing, so the gap reads as "no data yet". Non-GET
+    // methods already reach the terminal refusal below.
+    if (req.method === 'GET' && activityId && action) {
+      return createCorsResponse({ error: `Unknown activity sub-resource: ${action}` }, 404, req);
+    }
+
     if (req.method === 'GET' && activityId) {
       const { data: activity, error } = await admin
         .from('business_record_activities')

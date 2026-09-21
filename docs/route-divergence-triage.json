@@ -50,8 +50,8 @@
       "reason": "Round 85 established that ProductHubUnified only GETs this prefix and every write goes through /api/catalog, so the edge write branches have no caller. The Express side has not been compared."
     },
     "equipment": {
-      "verdict": "unexamined",
-      "reason": "Four Express files register under this domain (bulk-operations, mobile-api, warehouse, workflow-mobile). Round 115 ported the service-history sub-resource edge-side. The rest is not examined."
+      "verdict": "parity",
+      "reason": "Round 131. Every path a client tree calls - GET /api/equipment, /:id, /:id/meter-readings, /:id/service-history - has a branch in supabase/functions/equipment/. The Express extras have NO caller anywhere: routes-equipment-qr.ts (/:id/qr-code, /:id/asset-label, POST /bulk-qr-codes) mounted at routes-registry:820, routes-bulk-operations.ts (/bulk-update, /bulk-delete), routes-warehouse.ts (/:id/lifecycle) and routes-workflow-mobile.ts (/:id/trigger-service) - grepped across all seven client trees plus ios. The edge function already refuses an unknown sub-resource with a 404 above its /:id branch (round 115), so a POST to any of those Express-only paths cannot fall into the CREATE branch and write a junk equipment row, which was the first thing checked."
     },
     "equipment-lifecycle": {
       "verdict": "unexamined",

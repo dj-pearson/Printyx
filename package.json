@@ -34,6 +34,7 @@
     "check:fabricated": "node scripts/check-fabricated-fallbacks.mjs",
     "check:prd-refs": "node scripts/check-prd-references.mjs",
     "check:stale-gates": "node scripts/check-stale-gates.mjs",
+    "check:subresource-fallthrough": "node scripts/check-subresource-fallthrough.mjs",
     "check:edge-undef": "node scripts/check-edge-undef.mjs",
     "check:raw-fetch": "node scripts/check-raw-api-fetch.mjs",
     "check:raw-body-writes": "node scripts/check-raw-body-writes.mjs",

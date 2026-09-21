@@ -450,6 +450,19 @@ export default async function handler(req: Request) {
     }
 
     // GET /service-tickets/:id - Get single ticket
+    // An unknown sub-resource answers 404 rather than the parent record.
+    // PA-020's rule: falling through to the row is what makes the NEXT missing
+    // branch invisible - a component mapping over an object renders an empty
+    // list and reports nothing, so the gap reads as "no data yet". Non-GET
+    // methods already reach the terminal refusal below.
+    if (req.method === 'GET' && ticketId && subResource) {
+      return createCorsResponse(
+        { error: `Unknown service ticket sub-resource: ${subResource}` },
+        404,
+        req,
+      );
+    }
+
     if (req.method === 'GET' && ticketId) {
       const { data: ticket, error } = await admin
         .from('service_tickets')
