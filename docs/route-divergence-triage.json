@@ -1,0 +1,181 @@
+{
+  "note": "A verdict and a reason for every ambiguous-ownership domain in docs/route-ownership-baseline.json's bothDivergent list: Express registers handlers for it, an edge function serves it, and nothing proxies between them, so dev and production run different code for the same path. 'unexamined' is a permitted verdict and is the point - it is what stops a guess from being written down as a finding, and this file exists because two priority-1 stories (LAUNCH-013, LEGAL-004) sat inside the flat list indistinguishable from the entries where the divergence is harmless. VERDICTS: parity (both hosts checked, same behaviour); divergent (a named behavioural difference that matters in production); resolved (was divergent, ported, with the round named); express-only-capability (Express does something the edge does not and that is a recorded gap); unexamined (nobody has compared them). Added round 124.",
+  "entries": {
+    "analytics": {
+      "verdict": "unexamined",
+      "reason": "server/analytics-routes.ts was DELETED by PA-040 (184 lines, four handlers, no database import). Whatever Express still registers under this domain has not been compared to the edge function."
+    },
+    "audit-logs": {
+      "verdict": "unexamined",
+      "reason": "Both hosts write audit_logs. _shared/audit-log.ts is the one edge writer; the Express side has not been compared to it."
+    },
+    "auto-supply-replenishment": {
+      "verdict": "unexamined",
+      "reason": "AUDIT-032 records all three of this feature's input tables as unwritable until migration 0062. Which host serves what has not been compared."
+    },
+    "catalog": {
+      "verdict": "unexamined",
+      "reason": "The quote builder reads /api/catalog and SEC-EDGE-001 gated the edge side; the Express handlers in routes-catalog.ts and routes-catalog-csv.ts have not been compared to it."
+    },
+    "chatbot": {
+      "verdict": "unexamined",
+      "reason": "The edge function is minLevel 1 by design (a rep reads the console). The Express twin has not been compared."
+    },
+    "content-gap-analysis": {
+      "verdict": "unexamined",
+      "reason": "Express registers it from routes-registry.ts directly; supabase/functions/content-gap-analysis/ serves it in production. Neither side has been read, so it is unknown whether the shapes or the gating agree."
+    },
+    "contract-renewal": {
+      "verdict": "unexamined",
+      "reason": "AUDIT-026 holds the renewal model question open - a complete feature over four real tables, never wired to a screen, beside a different renewal model that was. Which host serves which has not been settled."
+    },
+    "dashboards": {
+      "verdict": "unexamined",
+      "reason": "Round 105 rewrote the edge /today branch for per-user scoping. server/routes-today-dashboard.ts has not been compared to it."
+    },
+    "database-updater": {
+      "verdict": "unexamined",
+      "reason": "database-updater/seeders/ STORE SQL for report definitions to run later rather than executing it (check:sql-string-tables baselines 78 of them). Not examined as a routing question."
+    },
+    "deal-desk-copilot": {
+      "verdict": "unexamined",
+      "reason": "SEC-EDGE-001 gated PUT /settings (the gp_floor_pct guardrail) edge-side. server/routes-deal-desk-copilot.ts carries a TODO(rbac) comment and no gate; the two have not been compared."
+    },
+    "deal-stages": {
+      "verdict": "unexamined",
+      "reason": "COP-M07 records deals.stage_id as a LEGACY deal_stages.id bridged by pipeline_stages.legacy_stage_id. Which host serves the vocabulary has not been compared."
+    },
+    "enabled-products": {
+      "verdict": "unexamined",
+      "reason": "Round 85 established that ProductHubUnified only GETs this prefix and every write goes through /api/catalog, so the edge write branches have no caller. The Express side has not been compared."
+    },
+    "equipment": {
+      "verdict": "unexamined",
+      "reason": "Four Express files register under this domain (bulk-operations, mobile-api, warehouse, workflow-mobile). Round 115 ported the service-history sub-resource edge-side. The rest is not examined."
+    },
+    "equipment-lifecycle": {
+      "verdict": "unexamined",
+      "reason": "WF-L-01 fixed a duplicate declaration that stopped the edge function loading in production. The Express side has not been compared since."
+    },
+    "gdpr": {
+      "verdict": "resolved",
+      "reason": "Round 123. The Express service erased a data subject's uploaded objects across six buckets with Art. 17(3) exemptions named per bucket; the edge function anonymised two tables of rows, touched no storage, and answered 'User data has been anonymized'. The core is shared/gdpr-storage-erasure.ts now and both hosts import it."
+    },
+    "import": {
+      "verdict": "divergent",
+      "reason": "LAUNCH-013. requireFeature('ai_csv_import') gates /api/import/ai/map-columns and /ai-process on Express only; supabase/functions/import/ has role checks but no feature or plan check, so the AI import paths are open to any tenant regardless of plan in production. OPEN GAP."
+    },
+    "integrations": {
+      "verdict": "unexamined",
+      "reason": "Three Express files register here. QUALITY-002 found system_integrations read and written on a phantom `config` column by the live Express service. Whether the edge function repeats it is not examined."
+    },
+    "inventory": {
+      "verdict": "parity",
+      "reason": "SEC-EDGE-001's catalogue family. The Express twin in routes-products-crud.ts / routes-product-models.ts checks a permission nobody reaches; the edge function carries the equivalent gate on operations.inventory.manage. Verified round 121 by counting gate calls in each function. The Express handlers are redundant rather than load-bearing."
+    },
+    "invoices": {
+      "verdict": "unexamined",
+      "reason": "routes-bulk-operations.ts registers here. Not compared to the edge function."
+    },
+    "leads": {
+      "verdict": "divergent",
+      "reason": "LAUNCH-013. enforceUsageLimits is mounted on POST /api/leads and decides nothing in production: supabase/functions/leads/ serves that path and carries no subscription, plan or usage check. Also round 109: the activities sub-resource diverged on both hosts for different reasons. OPEN GAP."
+    },
+    "managed-services": {
+      "verdict": "parity",
+      "reason": "SEC-EDGE-001's catalogue family. The Express twin in routes-products-crud.ts / routes-product-models.ts checks a permission nobody reaches; the edge function carries the equivalent gate on operations.inventory.manage. Verified round 121 by counting gate calls in each function. The Express handlers are redundant rather than load-bearing."
+    },
+    "manufacturer-integrations": {
+      "verdict": "unexamined",
+      "reason": "Round 74 added redaction and a role gate to the edge function's credential reads. server/routes-manufacturer-integration.ts has not been checked for the same exposure."
+    },
+    "meter-readings": {
+      "verdict": "resolved",
+      "reason": "Round 122. The edge function had zero role checks while routes-products-crud.ts guarded a permission nobody reaches, and its PATCH field map named five columns that do not exist. PATCH and DELETE now require a supervisor and the write goes through _shared/meter-reading-write.ts."
+    },
+    "mobile": {
+      "verdict": "resolved",
+      "reason": "Round 113/114. /time-tracking and /service-tickets/:id/status were Express-only and 404'd in production; they are ported and carry SCOPED crmProxies entries. /mobile/dashboard is deliberately NOT proxied - MobileServiceApp.tsx dereferences a fixture's shape with no guard, so wiring it would turn a dev-only fixture into a crash. See AUDIT-033."
+    },
+    "onboarding": {
+      "verdict": "unexamined",
+      "reason": "WF-L-11 fixed six blank wizard steps and the network-config write path. Which host serves the checklist endpoints is not examined."
+    },
+    "parts-orders": {
+      "verdict": "unexamined",
+      "reason": "SEC-EDGE-001 batch 13 fixed two phantom embeds in the edge function. The Express twin in routes-service-analysis.ts is not examined."
+    },
+    "pricing": {
+      "verdict": "unexamined",
+      "reason": "server/routes-product-pricing.ts and a routes-registry.ts mount register here; supabase/functions/pricing/ serves it in production. Pricing decides what a customer is charged, so this one is worth reading before the ones above it - nobody has."
+    },
+    "product-accessories": {
+      "verdict": "parity",
+      "reason": "SEC-EDGE-001's catalogue family. The Express twin in routes-products-crud.ts / routes-product-models.ts checks a permission nobody reaches; the edge function carries the equivalent gate on operations.inventory.manage. Verified round 121 by counting gate calls in each function. The Express handlers are redundant rather than load-bearing."
+    },
+    "product-models": {
+      "verdict": "parity",
+      "reason": "SEC-EDGE-001's catalogue family. The Express twin in routes-products-crud.ts / routes-product-models.ts checks a permission nobody reaches; the edge function carries the equivalent gate on operations.inventory.manage. Verified round 121 by counting gate calls in each function. The Express handlers are redundant rather than load-bearing."
+    },
+    "professional-services": {
+      "verdict": "parity",
+      "reason": "SEC-EDGE-001's catalogue family. The Express twin in routes-products-crud.ts / routes-product-models.ts checks a permission nobody reaches; the edge function carries the equivalent gate on operations.inventory.manage. Verified round 121 by counting gate calls in each function. The Express handlers are redundant rather than load-bearing."
+    },
+    "projects": {
+      "verdict": "unexamined",
+      "reason": "SEC-EDGE-001 batch 16 deleted projects-enhanced as a subset of the reachable projects function. routes-tasks.ts and routes-templates.ts register here and are not examined."
+    },
+    "quickbooks": {
+      "verdict": "unexamined",
+      "reason": "server/routes-quickbooks-integration.ts registers the OAuth and sync endpoints; supabase/functions/quickbooks/ serves them in production. QUALITY-002 found the sibling OAuth path (oauth-token-refresh over system_integrations) writing a phantom `config` column, so the same class is plausible here and has not been checked."
+    },
+    "rbac": {
+      "verdict": "unexamined",
+      "reason": "PROD-013 records that the edge function answers bare arrays where the page reads rolesData.roles, and that its list reads the GLOBAL roles table while a tile beside it counts enhanced_roles. The Express side is not examined."
+    },
+    "root-admin": {
+      "verdict": "unexamined",
+      "reason": "Platform-admin surface; the edge function is gated (check:edge-rbac reports platform-admin). The Express side is not examined."
+    },
+    "seo": {
+      "verdict": "unexamined",
+      "reason": "SEO-004/008 and round 94 rewrote the edge analysers and deleted the fabricated fallbacks. routes-seo.ts and routes-seo-core.ts still register here; routes-seo-core.ts deliberately serves the three committed build artifacts from disk (SEO-006), which is NOT a divergence. The rest is not examined."
+    },
+    "service-analysis": {
+      "verdict": "unexamined",
+      "reason": "server/routes-service-analysis.ts registers both this and /api/parts-orders; supabase/functions/service-analysis/ serves it in production. Not read on either side."
+    },
+    "service-analytics": {
+      "verdict": "unexamined",
+      "reason": "server/routes-misc-stubs.ts registers it - the filename says what to expect - and supabase/functions/service-analytics/ serves it in production. Whether the stub is shadowing something real has not been checked."
+    },
+    "social-media": {
+      "verdict": "unexamined",
+      "reason": "SEC-EDGE-001 gated POST /posts/:id/publish edge-side while leaving generation open. server/routes-social-media.ts is not examined."
+    },
+    "software-products": {
+      "verdict": "unexamined",
+      "reason": "Round 85 gated this edge function's writes after it survived two family sweeps ungated. The Express twin is not examined."
+    },
+    "subscriptions": {
+      "verdict": "unexamined",
+      "reason": "LAUNCH-013. supabase/functions/subscriptions/ is the management surface and reads tenant_subscriptions and usage_metrics; routes-subscriptions.ts mounts twelve gates that cannot run in production. The gates are recorded in docs/dead-policy-gates-baseline.json; the read/write surfaces themselves are not compared."
+    },
+    "supplies": {
+      "verdict": "parity",
+      "reason": "SEC-EDGE-001's catalogue family. The Express twin in routes-products-crud.ts / routes-product-models.ts checks a permission nobody reaches; the edge function carries the equivalent gate on operations.inventory.manage. Verified round 121 by counting gate calls in each function. The Express handlers are redundant rather than load-bearing."
+    },
+    "task-workflows": {
+      "verdict": "unexamined",
+      "reason": "server/routes-task-workflows.ts registers it; supabase/functions/task-workflows/ serves it in production. CRMX-008 records the workflow runtime as genuinely live via the edge seams, so this domain is worth separating from that; nobody has."
+    },
+    "technician-management": {
+      "verdict": "resolved",
+      "reason": "Round 92. All five edge writes were ungated while the Express twin checked SERVICE.TECHNICIAN.MANAGE - dev was the safe host and production the open one. The edge function carries eight gate calls now."
+    },
+    "templates": {
+      "verdict": "unexamined",
+      "reason": "AUDIT-037 found routes-templates.ts writing `dependencies: task.dependencies || []`, always the empty branch, so every generated template asserted its tasks were independent. The edge side is not examined."
+    }
+  }
+}

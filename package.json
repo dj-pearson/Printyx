@@ -221,6 +221,7 @@
     "check:sqli": "tsx server/scripts/sql-injection-audit.ts",
     "check:command-injection": "tsx server/scripts/command-injection-audit.ts --check",
     "check:dead-policy-gates": "node scripts/check-dead-policy-gates.mjs",
+    "check:route-divergence": "node scripts/check-route-divergence-triage.mjs",
     "security:headers": "node scripts/generate-security-headers.mjs",
     "check:migration-enums": "node scripts/check-migration-enum-values.mjs"
   },
