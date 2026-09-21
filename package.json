@@ -217,6 +217,8 @@
     "check:dead-buttons": "node scripts/check-dead-buttons.mjs",
     "check:ssrf-fetch": "node scripts/check-ssrf-fetch.mjs",
     "check:mounted-path-lists": "node scripts/check-mounted-path-lists.mjs",
+    "check:security-headers": "node scripts/check-security-headers.mjs",
+    "security:headers": "node scripts/generate-security-headers.mjs",
     "check:migration-enums": "node scripts/check-migration-enum-values.mjs"
   },
   "dependencies": {

@@ -99,6 +99,8 @@ jobs:
         run: npm run check:mounted-path-lists
       - name: Unguarded outbound fetch in the edge tree (SEC-002)
         run: npm run check:ssrf-fetch
+      - name: Security headers are current and do not block a used capability
+        run: npm run check:security-headers
       - name: Passing stories naming an unreachable deliverable (WF-G-03)
         run: npm run check:story-orphans
       - name: Fabricated-fallback ratchet (AUDIT-019)
