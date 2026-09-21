@@ -3,6 +3,10 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import {
+  MAX_BULK_ASSIGN,
+  buildBulkAssignPlan,
+} from '../../../shared/platform-record-assignment.ts';
 import { cachedRoleLookup } from '../_shared/auth-cache.ts';
 import { getCorsHeaders } from '../_shared/cors.ts';
 import { fetchAllRows } from '../_shared/paged-select.ts';
@@ -158,11 +162,11 @@ const EXPORT_COLUMNS = [
   'status',
   'primary_contact_name',
   'primary_contact_email',
-  'phone',
+  'primary_contact_phone',
   'website',
   'industry',
   'employee_count',
-  'estimated_revenue',
+  'annual_revenue',
   'city',
   'state',
   'postal_code',
@@ -171,11 +175,11 @@ const EXPORT_COLUMNS = [
   'lead_grade',
   'lead_tier',
   'lead_source',
-  'assigned_rep',
+  'assigned_sales_rep',
   'current_mrr',
   'churn_risk',
   'customer_since',
-  'last_activity_date',
+  'last_contact_date',
   'created_at',
 ] as const;
 
@@ -185,11 +189,11 @@ const EXPORT_HEADERS: Record<string, string> = {
   status: 'Status',
   primary_contact_name: 'Contact',
   primary_contact_email: 'Email',
-  phone: 'Phone',
+  primary_contact_phone: 'Phone',
   website: 'Website',
   industry: 'Industry',
   employee_count: 'Employees',
-  estimated_revenue: 'Estimated Revenue',
+  annual_revenue: 'Annual Revenue',
   city: 'City',
   state: 'State',
   postal_code: 'Postal Code',
@@ -198,11 +202,11 @@ const EXPORT_HEADERS: Record<string, string> = {
   lead_grade: 'Lead Grade',
   lead_tier: 'Lead Tier',
   lead_source: 'Lead Source',
-  assigned_rep: 'Assigned Rep',
+  assigned_sales_rep: 'Assigned Rep',
   current_mrr: 'Current MRR',
   churn_risk: 'Churn Risk',
   customer_since: 'Customer Since',
-  last_activity_date: 'Last Activity',
+  last_contact_date: 'Last Activity',
   created_at: 'Created',
 };
 
@@ -227,12 +231,12 @@ const BUSINESS_RECORD_COLUMNS = new Set([
   'company_name',
   'primary_contact_name',
   'primary_contact_email',
-  'phone',
+  'primary_contact_phone',
   'website',
   'industry',
   'employee_count',
-  'estimated_revenue',
-  'address',
+  'annual_revenue',
+  'address_line1',
   'city',
   'state',
   'postal_code',
@@ -241,19 +245,59 @@ const BUSINESS_RECORD_COLUMNS = new Set([
   'lead_grade',
   'lead_tier',
   'lead_source',
-  'assigned_rep',
+  'assigned_sales_rep',
   'current_mrr',
   'tenant_id',
   'customer_since',
   'churn_risk',
-  'last_activity_date',
+  'last_contact_date',
   'notes',
 ]);
+
+/**
+ * ROUND 130: five of the names the three lists above carried are columns
+ * `platform_business_records` has never had, checked against migration 0000 and
+ * the drizzle declaration, which agree:
+ *
+ *   phone              -> primary_contact_phone
+ *   estimated_revenue  -> annual_revenue
+ *   address            -> address_line1
+ *   assigned_rep       -> assigned_sales_rep
+ *   last_activity_date -> last_contact_date
+ *
+ * `assigned_rep` is the instructive one: the INDEX is named
+ * platform_business_records_assigned_rep_idx and sits on `assignedSalesRep`, so
+ * the index name is where the wrong column name came from.
+ *
+ * An unknown column fails the WHOLE statement, so the CSV export - which hands
+ * EXPORT_COLUMNS straight to `.select()` - was a 42703 on every request since it
+ * shipped, and a PATCH naming any of them wrote nothing. check:phantom-cols is
+ * blind to all of it: these are named Sets, its documented blind spot.
+ *
+ * `last_contact_date` is chosen on evidence rather than on the closest-sounding
+ * name: `platform-activities` stamps it on every activity write, which makes it
+ * the column that actually answers "last activity". `last_engagement_date`
+ * sounds closer and nothing anywhere writes it.
+ *
+ * The old spellings stay accepted on the WRITE path, mapped onto the real
+ * column, so a client that has not been redeployed still lands its field
+ * instead of having it silently dropped (COP-B06).
+ */
+const RECORD_FIELD_ALIASES: Record<string, string> = {
+  assignedRep: 'assigned_sales_rep',
+  assigned_rep: 'assigned_sales_rep',
+  phone: 'primary_contact_phone',
+  estimatedRevenue: 'annual_revenue',
+  estimated_revenue: 'annual_revenue',
+  address: 'address_line1',
+  lastActivityDate: 'last_contact_date',
+  last_activity_date: 'last_contact_date',
+};
 
 function toRecordColumns(body: Row): Row {
   const out: Row = {};
   for (const [k, v] of Object.entries(body || {})) {
-    const column = BUSINESS_RECORD_COLUMNS.has(k) ? k : toSnake(k);
+    const column = RECORD_FIELD_ALIASES[k] ?? (BUSINESS_RECORD_COLUMNS.has(k) ? k : toSnake(k));
     if (BUSINESS_RECORD_COLUMNS.has(column)) out[column] = v;
   }
   return out;
@@ -460,6 +504,100 @@ export default async function handler(req: Request) {
             total: count || 0,
             totalPages: Math.ceil((count || 0) / limit),
           },
+        },
+        200,
+        req,
+      );
+    }
+
+    /**
+     * POST /platform-crm/business-records/bulk/assign
+     *
+     * PlatformBusinessRecords.tsx has posted here since it shipped and NOTHING
+     * served it - no Express route registers the path and the branches below
+     * stop at `business-records/:id`. It sits ABOVE those, or `bulk` is read
+     * as a record id (SUPA-024).
+     */
+    if (
+      req.method === 'POST' &&
+      endpoint === 'business-records' &&
+      resourceId === 'bulk' &&
+      parts[2] === 'assign'
+    ) {
+      const body = (await req.json().catch(() => ({}))) as Row;
+      const requestedIds = Array.isArray(body.recordIds) ? (body.recordIds as string[]) : [];
+
+      // Read current owners first: the plan needs assigned_from, and a record
+      // already held by that rep is not a change.
+      const { data: found, error: readError } =
+        requestedIds.length > 0 && requestedIds.length <= MAX_BULK_ASSIGN
+          ? await admin
+              .from('platform_business_records')
+              .select('id, assigned_sales_rep')
+              .in('id', requestedIds)
+          : { data: [], error: null };
+
+      if (readError) {
+        console.error('Error reading records for bulk assign:', readError);
+        return createCorsResponse({ error: 'Failed to read the selected records' }, 500, req);
+      }
+
+      const plan = buildBulkAssignPlan({
+        recordIds: body.recordIds,
+        assignedRep: body.assignedRep ?? body.assigned_sales_rep,
+        found: (found ?? []) as { id: string; assigned_sales_rep?: string | null }[],
+        actorId: user.id,
+      });
+
+      if (plan.error) {
+        return createCorsResponse({ error: plan.error, code: 'INVALID_BULK_ASSIGN' }, 400, req);
+      }
+
+      if (plan.changedIds.length > 0) {
+        const { error: updateError } = await admin
+          .from('platform_business_records')
+          .update({
+            assigned_sales_rep: String(body.assignedRep ?? body.assigned_sales_rep).trim(),
+            updated_at: new Date().toISOString(),
+          })
+          .in('id', plan.changedIds);
+
+        if (updateError) {
+          console.error('Error assigning records:', updateError);
+          return createCorsResponse({ error: 'Failed to assign records' }, 500, req);
+        }
+
+        // platform_lead_assignment_history had no writer anywhere (AUDIT-028),
+        // so every reassignment so far would have left no trail. The history
+        // is written AFTER the update, and a failure here is reported rather
+        // than rolled back: the assignment is the thing the operator asked
+        // for, and a warning they can see beats silently undoing it.
+        const { error: historyError } = await admin
+          .from('platform_lead_assignment_history')
+          .insert(plan.history);
+
+        if (historyError) {
+          console.error('Error writing assignment history:', historyError);
+          return createCorsResponse(
+            {
+              assigned: plan.changedIds.length,
+              unchanged: plan.unchangedIds.length,
+              missing: plan.missingIds,
+              historyRecorded: false,
+              warning: 'The records were assigned but the assignment history could not be written',
+            },
+            200,
+            req,
+          );
+        }
+      }
+
+      return createCorsResponse(
+        {
+          assigned: plan.changedIds.length,
+          unchanged: plan.unchangedIds.length,
+          missing: plan.missingIds,
+          historyRecorded: plan.changedIds.length > 0,
         },
         200,
         req,

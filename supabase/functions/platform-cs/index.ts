@@ -11,6 +11,31 @@ import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { cachedRoleLookup } from '../_shared/auth-cache.ts';
 
+/**
+ * When something last happened on this account.
+ *
+ * ROUND 130: both sites below read `last_engagement_date`, and NOTHING in the
+ * tree writes that column - the one writer of `platform_business_records`
+ * (`platform-activities`' counter bump) stamps `last_contact_date` on every
+ * activity. So the health score's engagement component fell to the `: 999`
+ * branch for every tenant, costing all of them 20 points of a score nobody
+ * could raise, and the churn model's dormancy term never fired at all, both in
+ * the flattering direction.
+ *
+ * The most recent of the two is taken rather than one or the other, because
+ * that is correct whichever column a future writer maintains.
+ */
+function lastActivityAt(row: {
+  last_contact_date?: string | null;
+  last_engagement_date?: string | null;
+}): Date | null {
+  const times = [row.last_contact_date, row.last_engagement_date]
+    .filter((v): v is string => typeof v === 'string' && v.length > 0)
+    .map((v) => new Date(v).getTime())
+    .filter((t) => Number.isFinite(t));
+  return times.length > 0 ? new Date(Math.max(...times)) : null;
+}
+
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
@@ -174,8 +199,9 @@ export default async function handler(req: Request) {
         }
 
         const usageScore = Math.min(100, br.engagement_score || 0);
-        const daysSinceLastActivity = br.last_engagement_date
-          ? Math.floor((Date.now() - new Date(br.last_engagement_date).getTime()) / 86400000)
+        const lastActivity = lastActivityAt(br);
+        const daysSinceLastActivity = lastActivity
+          ? Math.floor((Date.now() - lastActivity.getTime()) / 86400000)
           : 999;
         const engagementScore = Math.max(0, 100 - daysSinceLastActivity * 2);
         const adoptionScore = 70;
@@ -386,10 +412,9 @@ export default async function handler(req: Request) {
         let churnProbability = hs ? (100 - hs.overall_score) / 100 : 0.5;
         if (!br.current_mrr) churnProbability += 0.3;
         if (br.nps_score && br.nps_score < 0) churnProbability += 0.2;
-        if (br.last_engagement_date) {
-          const days = Math.floor(
-            (Date.now() - new Date(br.last_engagement_date).getTime()) / 86400000,
-          );
+        const churnLastActivity = lastActivityAt(br);
+        if (churnLastActivity) {
+          const days = Math.floor((Date.now() - churnLastActivity.getTime()) / 86400000);
           if (days > 60) churnProbability += 0.2;
         }
         churnProbability = Math.min(1.0, churnProbability);

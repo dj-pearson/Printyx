@@ -66,12 +66,12 @@ interface BusinessRecord {
   companyName: string;
   primaryContactEmail?: string;
   primaryContactName?: string;
-  phone?: string;
+  primaryContactPhone?: string;
   website?: string;
   industry?: string;
   employeeCount?: number;
-  estimatedRevenue?: string;
-  address?: string;
+  annualRevenue?: string;
+  addressLine1?: string;
   city?: string;
   state?: string;
   postalCode?: string;
@@ -80,13 +80,13 @@ interface BusinessRecord {
   leadGrade?: string;
   leadTier?: string;
   leadSource?: string;
-  assignedRep?: string;
+  assignedSalesRep?: string;
   currentMRR?: string;
   tenantId?: string;
   customerSince?: string;
   churnRisk?: string;
   createdAt: string;
-  lastActivityDate?: string;
+  lastContactDate?: string;
   notes?: string;
 }
 
@@ -502,7 +502,7 @@ export default function PlatformBusinessRecordDetail() {
                         <DollarSign className="w-4 h-4 text-muted-foreground" />
                         <span className="text-muted-foreground">Est. Revenue:</span>
                         <span className="font-semibold">
-                          {formatCurrency(record.estimatedRevenue)}
+                          {formatCurrency(record.annualRevenue)}
                         </span>
                       </div>
                     </>
@@ -543,8 +543,10 @@ export default function PlatformBusinessRecordDetail() {
                       <div className="space-y-2">
                         <Label>Phone</Label>
                         <Input
-                          value={formData.phone ?? record.phone}
-                          onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                          value={formData.primaryContactPhone ?? record.primaryContactPhone}
+                          onChange={(e) =>
+                            setFormData({ ...formData, primaryContactPhone: e.target.value })
+                          }
                         />
                       </div>
                     </>
@@ -574,12 +576,12 @@ export default function PlatformBusinessRecordDetail() {
                       <div className="flex items-center gap-2 text-sm">
                         <Phone className="w-4 h-4 text-muted-foreground" />
                         <span className="text-muted-foreground">Phone:</span>
-                        {record.phone ? (
+                        {record.primaryContactPhone ? (
                           <a
-                            href={`tel:${record.phone}`}
+                            href={`tel:${record.primaryContactPhone}`}
                             className="font-semibold text-primary hover:underline"
                           >
-                            {record.phone}
+                            {record.primaryContactPhone}
                           </a>
                         ) : (
                           <span className="font-semibold">Not specified</span>
@@ -607,7 +609,7 @@ export default function PlatformBusinessRecordDetail() {
                   <div className="flex items-center gap-2 text-sm">
                     <User className="w-4 h-4 text-muted-foreground" />
                     <span className="text-muted-foreground">Assigned Rep:</span>
-                    <span className="font-semibold">{record.assignedRep || 'Unassigned'}</span>
+                    <span className="font-semibold">{record.assignedSalesRep || 'Unassigned'}</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
                     <Clock className="w-4 h-4 text-muted-foreground" />
@@ -620,8 +622,8 @@ export default function PlatformBusinessRecordDetail() {
                     <Activity className="w-4 h-4 text-muted-foreground" />
                     <span className="text-muted-foreground">Last Activity:</span>
                     <span className="font-semibold">
-                      {record.lastActivityDate
-                        ? formatDistanceToNow(new Date(record.lastActivityDate), {
+                      {record.lastContactDate
+                        ? formatDistanceToNow(new Date(record.lastContactDate), {
                             addSuffix: true,
                           })
                         : 'Never'}

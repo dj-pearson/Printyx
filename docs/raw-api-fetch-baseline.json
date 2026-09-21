@@ -3,13 +3,11 @@
   "allowed": [
     "client/src/lib/validations.ts:/api/auth/check-disposable-email",
     "client/src/pages/LeadMapViewer.tsx:/api/leads/import-eda",
-    "client/src/pages/PlatformBusinessRecords.tsx:/api/platform-crm/business-records/bulk/assign",
     "client/src/pages/admin/TenantManagement.tsx:/api/admin/tenants"
   ],
   "reasons": {
     "client/src/lib/validations.ts:/api/auth/check-disposable-email": "No edge directory for /api/auth at all, so production resolves the prefix to nothing. Converting it would make signup validation fail loudly instead of silently. The endpoint needs a home before the caller is pointed at one.",
     "client/src/pages/LeadMapViewer.tsx:/api/leads/import-eda": "Express-only by design: CLAUDE.md records that proxying /api/leads would take import-eda from working-in-dev to 404-in-dev. Converting the transport does not change which host answers.",
-    "client/src/pages/PlatformBusinessRecords.tsx:/api/platform-crm/business-records/bulk/assign": "The prefix IS proxied, and supabase/functions/platform-crm/ has no bulk branch - so this is the one entry where the conversion is a one-line change once the branch exists.",
     "client/src/pages/admin/TenantManagement.tsx:/api/admin/tenants": "The admin function POST branch covers ORG_TABLES (locations, regions, teams) and not tenants, so creating a tenant is unserved in production. Platform-admin surface; needs its own pass."
   }
 }
