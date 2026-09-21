@@ -67,13 +67,37 @@
  * broken, which is the worse trade and is what the word-boundary rule above
  * already got wrong once.
  *
+ * PROD-008 WIDENED THE CORPUS, AND THAT IS WHY THE BASELINE GREW. Everything
+ * above reads `client/src` and nothing else, because computeParity - which this
+ * shares with check:routes - walks that one tree. This repo ships SEVEN more
+ * clients (printyx-client, printyx-desktop, mobile-app, mobile,
+ * browser-extensions, printyx-extension and the iOS project), and
+ * check:unreferenced-edge-fns already had to learn that lesson once: reading
+ * client/src alone reported five functions as unreferenced that the iOS app
+ * calls. The same blind spot hid a live defect here. iOS posts to
+ * /api/leads/:id/activities from its quick-log FAB and its offline write queue,
+ * the leads function had no `activities` branch, and this guard could not see
+ * the caller, so `leads` carried one baselined gap (import-eda) and read as
+ * otherwise covered.
+ *
+ * Native placeholders are their own syntax. Swift interpolates with `\(id)` and
+ * Kotlin with `$id`; the shape normalizer only understood `${...}` and `:param`,
+ * so `/api/leads/\(leadId)/activities` produced no placeholder, `activities`
+ * was never treated as sitting behind an id, and the path was dropped even once
+ * the file was in the corpus. Both forms are placeholders now.
+ *
+ * The native trees get no reachability walk - there is no import graph to
+ * follow from a .swift file here - so every native source counts as live. That
+ * is the same safe direction route-parity takes when its own walk cannot be
+ * trusted.
+ *
  * Ratchet, not a gate: docs/edge-path-coverage-baseline.json records what is
  * known. The check fails on anything NEW and reports what has been resolved.
  *
  *   node scripts/check-edge-path-coverage.mjs [--update-baseline] [--list]
  */
 import { readFileSync, writeFileSync, readdirSync, statSync, existsSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { computeParity } from './lib/route-parity.mjs';
 
@@ -144,7 +168,14 @@ function isLiteralSegment(segment) {
 
 /** `${expr}` in a template literal, or `:param` in a route string. */
 function isPlaceholder(segment) {
-  return /^\$\{[^}]*\}$/.test(segment) || /^:[A-Za-z]/.test(segment);
+  return (
+    /^\$\{[^}]*\}$/.test(segment) ||
+    /^:[A-Za-z]/.test(segment) ||
+    // Swift: "/api/leads/\(leadId)/activities"
+    /^\\\([^)]*\)$/.test(segment) ||
+    // Kotlin / shell-style: "/api/leads/$leadId/activities"
+    /^\$[A-Za-z_][\w$.]*$/.test(segment)
+  );
 }
 
 /**
@@ -351,13 +382,88 @@ function aliasTargets() {
   return out;
 }
 
+/**
+ * Client trees beyond `client/src`, and the source extensions each one uses.
+ *
+ * Same list as check:unreferenced-edge-fns, for the same reason: a caller in
+ * the iOS project is a caller. Documentation is not - a path named in a
+ * SECURITY.md is prose - so only source files are read.
+ */
+const NATIVE_TREES = [
+  'printyx-client',
+  'printyx-desktop',
+  'mobile-app',
+  'mobile',
+  'browser-extensions',
+  'printyx-extension',
+  'ios',
+];
+const NATIVE_SOURCE = /\.(ts|tsx|js|jsx|mjs|cjs|swift|kt|java|dart)$/;
+
+/**
+ * Tests are not production surface.
+ *
+ * ios/PrintyxTests names `/api/leads/123/activities` and `/api/leads/abc/...`
+ * as fixtures, and without this the ids `123` and `abc` arrive as literal
+ * depth-1 segments and land in the baseline as if two endpoints were missing.
+ * Same exclusion, same reasoning, as route-parity applies to server routers
+ * declared inside supertest fixtures.
+ */
+const NATIVE_TEST =
+  /(^|[\\/])(tests?|__tests__|spec|specs)[\\/]|[\\/][^\\/]*(Tests|\.test|\.spec)\.[a-z]+$/i;
+
+/** Every source file under the non-web client trees. */
+function nativeClientFiles() {
+  const out = [];
+  const walk = (dir) => {
+    if (!existsSync(dir)) return;
+    for (const entry of readdirSync(dir)) {
+      if (
+        entry === 'node_modules' ||
+        entry === 'dist' ||
+        entry === 'build' ||
+        entry.startsWith('.')
+      )
+        continue;
+      const full = join(dir, entry);
+      if (statSync(full).isDirectory()) walk(full);
+      else if (NATIVE_SOURCE.test(entry) && !NATIVE_TEST.test(full)) out.push(full);
+    }
+  };
+  for (const tree of NATIVE_TREES) walk(join(repo, tree));
+  return out;
+}
+
+/** domain -> native files naming `/api/<domain>/...` or the bare prefix. */
+function nativeCallersByDomain() {
+  const byDomain = new Map();
+  for (const file of nativeClientFiles()) {
+    let text;
+    try {
+      text = stripComments(readFileSync(file, 'utf8'));
+    } catch {
+      continue;
+    }
+    for (const m of text.matchAll(/\/api\/([a-z0-9-]+)/g)) {
+      const domain = m[1];
+      if (!byDomain.has(domain)) byDomain.set(domain, []);
+      const list = byDomain.get(domain);
+      if (!list.includes(file)) list.push(file);
+    }
+  }
+  return byDomain;
+}
+
 export function computeCoverageGaps() {
   const parity = computeParity(repo);
   const aliases = aliasTargets();
+  const native = nativeCallersByDomain();
   const gaps = {};
 
   for (const row of parity.rows) {
-    if (!row.edge || !row.frontendLive) continue;
+    if (!row.edge) continue;
+    const nativeFiles = native.get(row.domain) ?? [];
+    if (!row.frontendLive && nativeFiles.length === 0) continue;
     const dir = join(repo, 'supabase/functions', row.domain);
     if (!existsSync(dir)) continue;
     const src = readDirSrc(dir);
@@ -365,7 +471,8 @@ export function computeCoverageGaps() {
     const segments = new Set();
     const deepShapes = new Set();
     const bareMethods = new Set();
-    for (const file of row.callers.live) {
+    // Native sources get no reachability walk, so all of them count as live.
+    for (const file of [...row.callers.live, ...nativeFiles]) {
       let text;
       try {
         // Comments are stripped from the CLIENT too, not only the edge
@@ -433,73 +540,106 @@ function flatten(gaps) {
   return new Set(Object.entries(gaps).flatMap(([d, segs]) => segs.map((s) => `${d}/${s}`)));
 }
 
-const args = process.argv.slice(2);
-const gaps = computeCoverageGaps();
-
-if (args.includes('--list')) {
-  for (const [domain, segments] of Object.entries(gaps).sort()) {
-    console.log(`${domain}: ${segments.join(', ')}`);
+/**
+ * The note already in the baseline, so --update-baseline does not destroy it.
+ *
+ * This writer used to regenerate its note on every run, which is exactly the
+ * defect round 82 found in check:raw-body-writes: the paragraph explaining WHY
+ * a count jumped is the one thing stopping the next reader taking the longer
+ * list for a regression, and the next tighten silently threw it away.
+ */
+function existingNote() {
+  try {
+    const note = JSON.parse(readFileSync(baselinePath, 'utf8')).note;
+    return typeof note === 'string' && note.length > 0 ? note : null;
+  } catch {
+    return null;
   }
-  const total = [...flatten(gaps)].length;
-  console.log(`\n${Object.keys(gaps).length} domain(s), ${total} path(s).`);
-  process.exit(0);
 }
 
-if (args.includes('--update-baseline')) {
-  writeFileSync(
-    baselinePath,
-    JSON.stringify(
-      {
-        note:
-          'Sub-paths a reachable client file calls whose literal segment appears nowhere in ' +
-          "that domain's edge function. An entry is either a bare segment (/api/<domain>/<seg>) " +
-          'or, since PA-025, a normalized shape with ids collapsed to :id ' +
-          '(/api/<domain>/:id/<seg>). Likely prod-only 404s, or worse - a request that falls ' +
-          'through to a generic :id branch and answers 200 with the PARENT OBJECT, which a ' +
-          'component maps over and renders as empty. Do not grow this list; see ' +
-          'scripts/check-edge-path-coverage.mjs.',
-        gaps,
-      },
-      null,
-      2,
-    ) + '\n',
+/**
+ * All of the IO, behind an entry-point test.
+ *
+ * `computeCoverageGaps` is exported so a test can call it, and top-level code in
+ * an ESM module runs on import - so without this, importing the analysis also
+ * ran the comparison and could `process.exit(1)` out of a test run the moment a
+ * new gap appeared. `import.meta.main` is a Deno API and is always undefined in
+ * Node, which this repo has already paid for once in a seeder that did nothing.
+ */
+function main() {
+  const args = process.argv.slice(2);
+  const gaps = computeCoverageGaps();
+
+  if (args.includes('--list')) {
+    for (const [domain, segments] of Object.entries(gaps).sort()) {
+      console.log(`${domain}: ${segments.join(', ')}`);
+    }
+    const total = [...flatten(gaps)].length;
+    console.log(`\n${Object.keys(gaps).length} domain(s), ${total} path(s).`);
+    process.exit(0);
+  }
+
+  if (args.includes('--update-baseline')) {
+    writeFileSync(
+      baselinePath,
+      JSON.stringify(
+        {
+          note:
+            existingNote() ??
+            'Sub-paths a reachable client file calls whose literal segment appears nowhere in ' +
+              "that domain's edge function. An entry is either a bare segment (/api/<domain>/<seg>) " +
+              'or, since PA-025, a normalized shape with ids collapsed to :id ' +
+              '(/api/<domain>/:id/<seg>). Likely prod-only 404s, or worse - a request that falls ' +
+              'through to a generic :id branch and answers 200 with the PARENT OBJECT, which a ' +
+              'component maps over and renders as empty. Do not grow this list; see ' +
+              'scripts/check-edge-path-coverage.mjs.',
+          gaps,
+        },
+        null,
+        2,
+      ) + '\n',
+    );
+    const total = [...flatten(gaps)].length;
+    console.log(`Baseline updated: ${Object.keys(gaps).length} domain(s), ${total} path(s).`);
+    process.exit(0);
+  }
+
+  if (!existsSync(baselinePath)) {
+    console.error(`No baseline at ${baselinePath}. Create one with --update-baseline.`);
+    process.exit(1);
+  }
+
+  const baseline = JSON.parse(readFileSync(baselinePath, 'utf8')).gaps ?? {};
+  const known = flatten(baseline);
+  const current = flatten(gaps);
+
+  const added = [...current].filter((p) => !known.has(p)).sort();
+  const resolved = [...known].filter((p) => !current.has(p)).sort();
+
+  if (added.length) {
+    console.error(
+      `✗ ${added.length} NEW frontend path(s) with no matching segment in the edge function:`,
+    );
+    for (const p of added) console.error(`    /api/${p}`);
+    console.error(
+      '\n  Either implement the branch, or — if the handler dispatches on a variable — confirm it\n' +
+        '  resolves and re-baseline with: node scripts/check-edge-path-coverage.mjs --update-baseline',
+    );
+    process.exit(1);
+  }
+
+  if (resolved.length) {
+    console.log(`ℹ ${resolved.length} baselined path(s) now resolve:`);
+    for (const p of resolved.slice(0, 12)) console.log(`    /api/${p}`);
+    if (resolved.length > 12) console.log(`    …and ${resolved.length - 12} more`);
+    console.log('  Tighten with: node scripts/check-edge-path-coverage.mjs --update-baseline');
+  }
+
+  console.log(
+    `✓ No new edge-path coverage gaps (${known.size} baselined across ${Object.keys(baseline).length} domain(s)).`,
   );
-  const total = [...flatten(gaps)].length;
-  console.log(`Baseline updated: ${Object.keys(gaps).length} domain(s), ${total} path(s).`);
-  process.exit(0);
 }
 
-if (!existsSync(baselinePath)) {
-  console.error(`No baseline at ${baselinePath}. Create one with --update-baseline.`);
-  process.exit(1);
-}
-
-const baseline = JSON.parse(readFileSync(baselinePath, 'utf8')).gaps ?? {};
-const known = flatten(baseline);
-const current = flatten(gaps);
-
-const added = [...current].filter((p) => !known.has(p)).sort();
-const resolved = [...known].filter((p) => !current.has(p)).sort();
-
-if (added.length) {
-  console.error(
-    `✗ ${added.length} NEW frontend path(s) with no matching segment in the edge function:`,
-  );
-  for (const p of added) console.error(`    /api/${p}`);
-  console.error(
-    '\n  Either implement the branch, or — if the handler dispatches on a variable — confirm it\n' +
-      '  resolves and re-baseline with: node scripts/check-edge-path-coverage.mjs --update-baseline',
-  );
-  process.exit(1);
-}
-
-if (resolved.length) {
-  console.log(`ℹ ${resolved.length} baselined path(s) now resolve:`);
-  for (const p of resolved.slice(0, 12)) console.log(`    /api/${p}`);
-  if (resolved.length > 12) console.log(`    …and ${resolved.length - 12} more`);
-  console.log('  Tighten with: node scripts/check-edge-path-coverage.mjs --update-baseline');
-}
-
-console.log(
-  `✓ No new edge-path coverage gaps (${known.size} baselined across ${Object.keys(baseline).length} domain(s)).`,
-);
+const isEntryPoint =
+  !!process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (isEntryPoint) main();

@@ -93,18 +93,52 @@ describe('the findings are recorded as findings', () => {
     ss.map((s) => `${d}/${s}`),
   );
 
-  it('has no deep shapes left in the baseline', () => {
-    // This used to assert at least 19 of them, which was an assertion about
-    // DEBT: equipment/:id/meter-readings was the worked example, and the rest
-    // were the same shape elsewhere. PA-052 and the ports after it closed every
-    // one, so the count is 0 and asserting a floor made the story's own success
-    // look like a regression.
-    //
-    // The guard that FINDS them is locked by the describe above, which is the
-    // part that has to survive. A new deep shape appearing here is not a silent
-    // pass either way - check:edge-coverage gates the baseline against growth.
-    expect(flat.filter((p) => p.includes('/:id/'))).toEqual([]);
+  /**
+   * The deep shapes currently in the baseline, BY NAME.
+   *
+   * This assertion has been wrong twice in opposite directions, and both times
+   * because it was a claim about DEBT rather than about a property. It first
+   * demanded at least 19 of them, so closing them made the story that closed
+   * them look like a regression; it was then relaxed to exactly zero, so
+   * PROD-008 widening the guard's corpus to the native client trees - which
+   * found three real ones - looked like a regression too.
+   *
+   * All three are paths only a native client calls, which is precisely what
+   * that widening exists to surface:
+   *   equipment/:id/service-history   mobile/app/(app)/(equipment)/[id].tsx
+   *   proposals/:id/send              the iOS proposals surface
+   *   service-tickets/:id/attachments ios/.../APIEndpoint.swift
+   *
+   * Listed rather than counted, and asserted in both directions, so it cannot
+   * rot into a pre-forgiveness for whatever is added next.
+   */
+  const KNOWN_DEEP_SHAPES = [
+    'equipment/:id/service-history',
+    'proposals/:id/send',
+    'service-tickets/:id/attachments',
+  ];
+
+  it('the deep shapes in the baseline are exactly the ones that were examined', () => {
+    const deep = flat.filter((p) => p.includes('/:id/')).sort();
+    expect(deep).toEqual([...KNOWN_DEEP_SHAPES].sort());
     expect(flat.length).toBeGreaterThan(0);
+  });
+
+  it('every deep entry is a shape, not a bare word', () => {
+    // The property the guard actually owns: a deep finding names the whole path
+    // a caller uses, so the report says where the gap is rather than leaving a
+    // segment that could belong to any depth.
+    for (const entry of flat.filter((p) => p.includes('/:id/'))) {
+      const segs = entry.split('/').slice(1);
+      expect({ entry, hasPlaceholder: segs.includes(':id') }).toEqual({
+        entry,
+        hasPlaceholder: true,
+      });
+      expect({ entry, literalLeaf: /^[a-z0-9][a-z0-9-]*$/.test(segs[segs.length - 1]) }).toEqual({
+        entry,
+        literalLeaf: true,
+      });
+    }
   });
 
   it('keeps the depth-1 entries alongside them in one list', () => {

@@ -20,6 +20,11 @@ import { insertLeadSchema, insertLeadContactSchema } from '@shared/schema';
 import { BusinessRecordsTransformer } from './data-field-mapping';
 import { enforceUsageLimits } from './middleware/subscription';
 import { getUserId, getTenantId } from './utils/auth-helpers';
+import {
+  ACTIVITY_FIELDS_WITHOUT_COLUMNS,
+  buildActivityInsert,
+  presentActivity,
+} from '@shared/lead-activity-write';
 
 // Multer for CSV import
 
@@ -126,6 +131,13 @@ export function registerCrmCoreRoutes(app: Express) {
 
   // ─── Lead Activities ─────────────────────────────────────────────
 
+  // Both handlers go through @shared/lead-activity-write, which
+  // supabase/functions/leads/ imports too (PROD-008). They used to disagree in
+  // the two ways a dev/prod split usually does NOT show up: production had no
+  // edge branch at all, and this POST spread the request body straight into
+  // Drizzle - so `type`, the name the iOS quick-log sends, was dropped as a
+  // non-column and `activity_type` (NOT NULL) arrived null. 23502, reproduced
+  // on Postgres 16.
   app.get('/api/leads/:id/activities', async (req: any, res, next) => {
     try {
       const { id } = req.params;
@@ -134,7 +146,7 @@ export function registerCrmCoreRoutes(app: Express) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
       const activities = await storage.getLeadActivities(id, tenantId);
-      res.json(activities);
+      res.json((activities ?? []).map((row: Record<string, unknown>) => presentActivity(row)));
     } catch (error) {
       next(error);
     }
@@ -147,14 +159,32 @@ export function registerCrmCoreRoutes(app: Express) {
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
-      const activityData = {
-        ...req.body,
-        leadId: id,
+      const plan = buildActivityInsert(req.body ?? {}, {
         tenantId,
+        businessRecordId: id,
         createdBy: getUserId(req) || 'system',
-      };
-      const activity = await storage.createLeadActivity(activityData);
-      res.json(activity);
+      });
+      if (!plan.fields) {
+        return res.status(400).json({
+          message: plan.error?.message ?? 'Invalid activity',
+          code: plan.error?.code ?? 'ACTIVITY_INVALID',
+          ignoredFields: plan.ignoredFields,
+          refusedFields: plan.refusedFields,
+        });
+      }
+      const activity = await storage.createBusinessRecordActivity(plan.fields);
+      res.status(201).json({
+        ...presentActivity(activity),
+        ignoredFields: plan.ignoredFields,
+        refusedFields: plan.refusedFields,
+        unbacked: plan.ignoredFields.some((f) =>
+          (ACTIVITY_FIELDS_WITHOUT_COLUMNS as readonly string[]).includes(f),
+        )
+          ? [
+              'business_record_activities has no location columns, so latitude, longitude and accuracy are not stored',
+            ]
+          : [],
+      });
     } catch (error) {
       next(error);
     }

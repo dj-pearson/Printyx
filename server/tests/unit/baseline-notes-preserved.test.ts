@@ -56,7 +56,6 @@ describe('every baseline writer keeps a note it did not write', () => {
     'check-chained-where.mjs',
     'check-duplicate-routes.mjs',
     'check-duplicate-tables.mjs',
-    'check-edge-path-coverage.mjs',
     'check-edge-path-normalization.mjs',
     'check-edge-rbac.mjs',
     'check-fabricated-fallbacks.mjs',

@@ -6,6 +6,11 @@ import { toCamel } from '../_shared/case.ts';
 import { planBusinessRecordWrite } from '../_shared/business-record-write.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { applyUserScope, resolveScope } from '../_shared/scope.ts';
+import {
+  ACTIVITY_FIELDS_WITHOUT_COLUMNS,
+  buildActivityInsert,
+  presentActivity,
+} from '../../../shared/lead-activity-write.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -550,6 +555,91 @@ export default async function handler(req: Request) {
       }
 
       return createCorsResponse(toCamel(contact), 201, req);
+    }
+
+    // GET/POST /leads/:id/activities
+    //
+    // PROD-008. The iOS quick-log FAB and its offline write queue post here
+    // (ios/.../ActivityQuickLogService.swift), and this function had no
+    // `activities` branch, so every one of those writes hit the trailing 404
+    // while Express answered them in dev - and Express answered them with a
+    // 23502, because iOS sends `type` and the column is `activity_type`. Both
+    // halves live in shared/lead-activity-write.ts now, imported by the Express
+    // handler too, so the two hosts cannot drift apart again.
+    //
+    // A lead IS a business record here, so the rows are the same
+    // `business_record_activities` the web timeline reads through
+    // /api/companies/:id/activities.
+    if (leadId && subResource === 'activities' && (req.method === 'GET' || req.method === 'POST')) {
+      if (req.method === 'GET') {
+        const { data: activities, error } = await admin
+          .from('business_record_activities')
+          .select('*')
+          .eq('business_record_id', leadId)
+          .eq('tenant_id', tenantId)
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('Error fetching lead activities:', error);
+          return createCorsResponse({ message: 'Failed to fetch activities' }, 500, req);
+        }
+
+        return createCorsResponse((activities ?? []).map(presentActivity), 200, req);
+      }
+
+      const body = await req.json().catch(() => ({}) as Record<string, unknown>);
+      const plan = buildActivityInsert(body, {
+        tenantId,
+        businessRecordId: leadId,
+        createdBy: user.id,
+      });
+
+      if (!plan.columns) {
+        return createCorsResponse(
+          {
+            message: plan.error?.message ?? 'Invalid activity',
+            code: plan.error?.code ?? 'ACTIVITY_INVALID',
+            ignoredFields: plan.ignoredFields,
+            refusedFields: plan.refusedFields,
+          },
+          400,
+          req,
+        );
+      }
+
+      const { data: activity, error } = await admin
+        .from('business_record_activities')
+        .insert(plan.columns)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating lead activity:', error);
+        return createCorsResponse(
+          { message: 'Failed to create activity', details: error.message },
+          500,
+          req,
+        );
+      }
+
+      // What could not be stored is named on the response. A rep whose call was
+      // geotagged and whose coordinates went nowhere should be able to find out.
+      return createCorsResponse(
+        {
+          ...presentActivity(activity),
+          ignoredFields: plan.ignoredFields,
+          refusedFields: plan.refusedFields,
+          unbacked: plan.ignoredFields.some((f) =>
+            (ACTIVITY_FIELDS_WITHOUT_COLUMNS as readonly string[]).includes(f),
+          )
+            ? [
+                'business_record_activities has no location columns, so latitude, longitude and accuracy are not stored',
+              ]
+            : [],
+        },
+        201,
+        req,
+      );
     }
 
     // POST /leads/geocode
