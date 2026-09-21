@@ -719,6 +719,44 @@ export default async function handler(req: Request) {
       return createCorsResponse({ success: true, message: 'Integration disconnected' }, 200, req);
     }
 
+    /**
+     * POST /integrations/oauth/init and GET /integrations/:provider/callback
+     * MUST STAY ON EXPRESS, and saying so beats a 404.
+     *
+     * IntegrationHub's Connect button posts to /oauth/init, which had no
+     * branch here - `oauth` is not an integration type, so it fell past every
+     * branch above to the 405 below. It was also a bare fetch, so in
+     * production the request never left the static origin and the page's
+     * catch logged a JSON parse error; converting the transport (round 129)
+     * makes this refusal the thing it sees.
+     *
+     * The flow is session-bound in a way an edge function cannot reproduce,
+     * the same shape as /quickbooks/connect: the CSRF state is issued here
+     * and stored in req.session, the provider redirects the browser back to
+     * the Express host's registered redirect_uri, and the callback verifies
+     * against that session record. Moving the initiator away from the session
+     * that holds the state would leave the check comparing against nothing -
+     * it would not fail loudly, it would stop protecting anything, which is
+     * what round 129 found it already doing.
+     *
+     * Porting it needs the pending state in a table first, not a rewrite of
+     * this branch.
+     */
+    if (segment1 === 'oauth' || segment2 === 'callback') {
+      return createCorsResponse(
+        {
+          error: 'Integration OAuth must be started from the Express host',
+          code: 'OAUTH_STATE_IS_SESSION_BOUND',
+          details:
+            'POST /api/integrations/oauth/init issues a CSRF state into req.session and ' +
+            'GET /api/integrations/:provider/callback verifies against it, so both halves live ' +
+            'where that session does. Porting requires moving the pending state into a table.',
+        },
+        501,
+        req,
+      );
+    }
+
     return createCorsResponse({ error: 'Method not allowed' }, 405, req);
   } catch (error) {
     console.error('Error in integrations function:', error);

@@ -57,6 +57,22 @@ declare module 'express-session' {
      * mfaVerifiedAt stays nullable: its reader distinguishes absent from
      * cleared, and a future writer should keep that distinction.
      */
+    /**
+     * The pending integration OAuth round trip (round 129).
+     *
+     * The whole record lives here, not just the token, because the callback
+     * must take the tenant, the user and the provider from what the server
+     * issued rather than from the state string the caller returns - which is
+     * what it used to do, on an endpoint with no authentication.
+     */
+    oauthState?: {
+      state: string;
+      providerId: string;
+      tenantId: string;
+      userId: string;
+      createdAt: number;
+    };
+
     mfaVerified?: boolean;
     mfaVerifiedAt?: number | null;
 

@@ -4,7 +4,8 @@
  */
 import express from 'express';
 import { IntegrationService } from './integration-service';
-import { availableIntegrations, validateOAuthConfig } from './oauth-config';
+import { availableIntegrations, generateAuthUrl, validateOAuthConfig } from './oauth-config';
+import { createOAuthState, verifyOAuthState } from '@shared/oauth-state';
 import webhookRoutes from './webhook-routes';
 import { db } from '../db';
 import { platformIntegrations } from '../../shared/schema';
@@ -109,17 +110,18 @@ router.post('/api/integrations/oauth/init', requireAuth, async (req: any, res) =
       return res.status(400).json({ message: 'Provider ID is required' });
     }
 
-    const { authUrl, state } = await IntegrationService.initializeOAuth(
-      tenantId,
-      providerId,
-      userId,
-    );
+    // The state is random and carries nothing (shared/oauth-state.ts). The
+    // tenant, user and provider live in the session record beside it, so the
+    // callback never has to read them out of a string the caller controls.
+    const record = createOAuthState({ providerId, tenantId, userId });
+    const authUrl = generateAuthUrl(providerId, record.state);
 
-    // Store state in session for validation
-    req.session.oauthState = state;
-    req.session.oauthProvider = providerId;
+    req.session.oauthState = record;
 
-    res.json({ authUrl, state });
+    // The state is not secret, but it is not the client's business either -
+    // it goes to the provider in the authorization URL and comes back on the
+    // redirect, so there is nothing for the page to do with a copy.
+    res.json({ authUrl });
   } catch (error) {
     log.error('Error initializing OAuth:', error);
     res.status(500).json({ message: 'Failed to initialize OAuth flow' });
@@ -144,15 +146,35 @@ router.get('/api/integrations/:provider/callback', async (req: any, res) => {
       return res.redirect(`${process.env.CLIENT_URL}/integration-hub?error=missing_parameters`);
     }
 
-    // Validate state (you might want to implement more robust state validation)
-    const [tenantId, providerId] = state.split('-');
+    /**
+     * The state is compared to the one this server issued, and the tenant
+     * comes from THAT record rather than from the string.
+     *
+     * What this replaces read `state.split('-')` for the tenant and compared
+     * the URL segment to `split('-')[1]` - two caller-controlled fields
+     * checked against each other, on an endpoint with no authentication, in
+     * front of a write that stores OAuth tokens against whatever tenant it
+     * was handed. It also could not pass: a tenant id is a uuid, so that
+     * second group is four hex characters and never a provider name.
+     */
+    const verdict = verifyOAuthState({
+      returnedState: state as string,
+      provider,
+      stored: req.session?.oauthState ?? null,
+    });
 
-    if (provider !== providerId) {
-      return res.redirect(`${process.env.CLIENT_URL}/integration-hub?error=invalid_state`);
+    if (!verdict.ok) {
+      return res.redirect(
+        `${process.env.CLIENT_URL}/integration-hub?error=${encodeURIComponent(verdict.reason)}`,
+      );
     }
 
+    // Single use: a callback replayed from history or a proxy log must not
+    // store a second connection.
+    delete req.session.oauthState;
+
     const integration = await IntegrationService.handleOAuthCallback(
-      tenantId,
+      verdict.record.tenantId,
       provider,
       code as string,
       state as string,
