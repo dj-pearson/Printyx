@@ -853,143 +853,15 @@ export function registerOnboardingRoutes(app: Express): void {
   // second of three registrations of that path; the routes-contacts.ts copy was
   // retired with that module under PROD-008b. check:dup-routes tracks the rest.
 
-  // ─── Setup Wizard State ──────────────────────────────────────────
-  // In-memory store for wizard state (keyed by tenantId:userId)
-  const wizardStateStore = new Map<string, any>();
-
-  app.get('/api/onboarding/wizard-state', async (req: Request, res: Response) => {
-    try {
-      const userId = getUserId(req);
-      const tenantId = getTenantId(req);
-      if (!userId || !tenantId) {
-        return res.status(401).json({ message: 'Authentication required' });
-      }
-
-      const key = `${tenantId}:${userId}`;
-      const state = wizardStateStore.get(key) || {
-        currentStep: 0,
-        completedSteps: [],
-        completed: false,
-      };
-
-      res.json(state);
-    } catch (error) {
-      log.error('Error fetching wizard state:', error);
-      res.status(500).json({ message: 'Failed to fetch wizard state' });
-    }
-  });
-
-  app.post('/api/onboarding/wizard-state', async (req: Request, res: Response) => {
-    try {
-      const userId = getUserId(req);
-      const tenantId = getTenantId(req);
-      if (!userId || !tenantId) {
-        return res.status(401).json({ message: 'Authentication required' });
-      }
-
-      const { currentStep, completedSteps, completed } = req.body;
-      const key = `${tenantId}:${userId}`;
-
-      wizardStateStore.set(key, {
-        currentStep: currentStep ?? 0,
-        completedSteps: completedSteps ?? [],
-        completed: completed ?? false,
-        updatedAt: new Date().toISOString(),
-      });
-
-      res.json({ message: 'Wizard state saved' });
-    } catch (error) {
-      log.error('Error saving wizard state:', error);
-      res.status(500).json({ message: 'Failed to save wizard state' });
-    }
-  });
-
-  // CRMX-014: durable, per-tenant + per-user "Getting Started" checklist state
-  // (resumable across restarts, unlike the in-memory wizard-state above).
-  const GETTING_STARTED_FLOW = 'getting_started';
-
-  app.get('/api/onboarding/getting-started', async (req: Request, res: Response) => {
-    try {
-      const userId = getUserId(req);
-      const tenantId = getTenantId(req);
-      if (!userId || !tenantId) {
-        return res.status(401).json({ message: 'Authentication required' });
-      }
-      const [row] = await db
-        .select()
-        .from(onboardingProgress)
-        .where(
-          and(
-            eq(onboardingProgress.tenantId, tenantId),
-            eq(onboardingProgress.userId, userId),
-            eq(onboardingProgress.flowType, GETTING_STARTED_FLOW),
-          ),
-        )
-        .limit(1);
-      res.json({
-        completedSteps: (row?.completedSteps as string[]) ?? [],
-        isComplete: row?.isComplete ?? false,
-      });
-    } catch (error) {
-      log.error('Error fetching getting-started state:', error);
-      res.status(500).json({ message: 'Failed to fetch getting-started state' });
-    }
-  });
-
-  app.post('/api/onboarding/getting-started', async (req: Request, res: Response) => {
-    try {
-      const userId = getUserId(req);
-      const tenantId = getTenantId(req);
-      if (!userId || !tenantId) {
-        return res.status(401).json({ message: 'Authentication required' });
-      }
-      const bodySchema = z.object({
-        completedSteps: z.array(z.string()),
-        isComplete: z.boolean().optional(),
-      });
-      const parsed = bodySchema.safeParse(req.body);
-      if (!parsed.success) {
-        return res.status(400).json({ message: 'Validation failed', errors: parsed.error.errors });
-      }
-      const completedSteps = Array.from(new Set(parsed.data.completedSteps));
-      const isComplete = parsed.data.isComplete ?? false;
-
-      const [existing] = await db
-        .select({ id: onboardingProgress.id })
-        .from(onboardingProgress)
-        .where(
-          and(
-            eq(onboardingProgress.tenantId, tenantId),
-            eq(onboardingProgress.userId, userId),
-            eq(onboardingProgress.flowType, GETTING_STARTED_FLOW),
-          ),
-        )
-        .limit(1);
-
-      if (existing) {
-        await db
-          .update(onboardingProgress)
-          .set({
-            completedSteps,
-            isComplete,
-            completedAt: isComplete ? new Date() : null,
-            updatedAt: new Date(),
-          })
-          .where(eq(onboardingProgress.id, existing.id));
-      } else {
-        await db.insert(onboardingProgress).values({
-          tenantId,
-          userId,
-          flowType: GETTING_STARTED_FLOW,
-          completedSteps,
-          isComplete,
-          completedAt: isComplete ? new Date() : null,
-        });
-      }
-      res.json({ completedSteps, isComplete });
-    } catch (error) {
-      log.error('Error saving getting-started state:', error);
-      res.status(500).json({ message: 'Failed to save getting-started state' });
-    }
-  });
+  // ─── Setup Wizard + Getting Started progress ─────────────────────
+  //
+  // ROUND 133: both moved to supabase/functions/onboarding/, and both paths are
+  // in crmProxies now, so dev runs what production runs. They were Express-only
+  // on an unproxied prefix, so GettingStarted.tsx and SetupWizard.tsx - the
+  // first two screens a new tenant sees - 404'd for every deployed user.
+  //
+  // The wizard's store here was `new Map()` in module scope: progress did not
+  // survive a restart in dev either, and would have been per-instance under any
+  // real deployment. Both flows are one row in `onboarding_progress`, which
+  // already carries flow_type, current_step, completed_steps and is_complete.
 }

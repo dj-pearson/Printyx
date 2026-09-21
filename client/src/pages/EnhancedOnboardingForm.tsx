@@ -37,6 +37,7 @@ import {
 } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
+import { fetchAuthedBlob, triggerBlobDownload } from '@/lib/invoice-pdf';
 import {
   Building2,
   User,
@@ -905,22 +906,49 @@ export default function EnhancedOnboardingForm() {
     form.setValue('equipment', updatedItems);
   };
 
-  // Export functions
-  const handleExport = (format: 'pdf' | 'excel' | 'csv') => {
+  // ROUND 133: this built `/api/onboarding/export/:id/:format` into an
+  // `<a download>` - a plain navigation with no Bearer token, so it cannot
+  // reach an edge function, and in production a relative href resolves against
+  // the static origin where Cloudflare Pages answers the SPA shell. The three
+  // Express endpoints behind it also 404'd in production, and two of them
+  // declared a type they did not produce (HTML as application/pdf, JSON as
+  // xlsx). Excel is gone rather than faked; see shared/onboarding-export.ts.
+  const handleExportCsv = async () => {
     if (!createdChecklistId) return;
+    try {
+      const blob = await fetchAuthedBlob(
+        `/api/onboarding/checklists/${createdChecklistId}/export`,
+        'Failed to export the checklist',
+      );
+      triggerBlobDownload(blob, `checklist-${createdChecklistId}.csv`);
+    } catch (error) {
+      toast({
+        title: 'Export failed',
+        description: error instanceof Error ? error.message : 'Could not export the checklist.',
+        variant: 'destructive',
+      });
+    }
+  };
 
-    const exportUrl = `/api/onboarding/export/${createdChecklistId}/${format}`;
-    const link = document.createElement('a');
-    link.href = exportUrl;
-    link.download = `checklist-${createdChecklistId}.${format === 'excel' ? 'xlsx' : format}`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    toast({
-      title: 'Export Started',
-      description: `Your ${format.toUpperCase()} export is downloading...`,
-    });
+  // The PDF is the function's own `generate-pdf` branch, which renders a real
+  // PDF with pdf-lib and answers a signed, time-limited link. A second PDF
+  // implementation is how the two drift.
+  const handleExportPdf = async () => {
+    if (!createdChecklistId) return;
+    try {
+      const result = await apiRequest<{ url?: string }>(
+        `/api/onboarding/checklists/${createdChecklistId}/generate-pdf`,
+        'POST',
+      );
+      if (!result?.url) throw new Error('The server did not return a link to the PDF.');
+      window.open(result.url, '_blank', 'noopener,noreferrer');
+    } catch (error) {
+      toast({
+        title: 'Export failed',
+        description: error instanceof Error ? error.message : 'Could not build the PDF.',
+        variant: 'destructive',
+      });
+    }
   };
 
   /**
@@ -2579,7 +2607,7 @@ export default function EnhancedOnboardingForm() {
               <div className="space-y-4">
                 <div className="grid grid-cols-1 gap-3">
                   <Button
-                    onClick={() => handleExport('pdf')}
+                    onClick={handleExportPdf}
                     variant="outline"
                     className="flex items-center gap-2"
                   >
@@ -2587,15 +2615,7 @@ export default function EnhancedOnboardingForm() {
                     Export as PDF
                   </Button>
                   <Button
-                    onClick={() => handleExport('excel')}
-                    variant="outline"
-                    className="flex items-center gap-2"
-                  >
-                    <FileSpreadsheet className="h-4 w-4" />
-                    Export as Excel
-                  </Button>
-                  <Button
-                    onClick={() => handleExport('csv')}
+                    onClick={handleExportCsv}
                     variant="outline"
                     className="flex items-center gap-2"
                   >

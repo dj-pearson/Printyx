@@ -1023,6 +1023,18 @@ export function registerEdgeFunctionProxy(app: any) {
     // so this wins for this one path and nothing else changes.
     '/api/admin/system-health': { fn: 'admin', pathPrefix: '/system-health' },
 
+    // ROUND 133. TWO SCOPED ENTRIES, not the whole prefix: Express still owns
+    // PUT/DELETE /api/onboarding/sections/:id and /tasks/:id, which the edge
+    // function does not serve, so a bare '/api/onboarding' entry would take
+    // those from working-in-dev to 404-in-dev (they already 404 in production).
+    //
+    // These two were Express-only, so the routed pages behind them -
+    // GettingStarted.tsx and SetupWizard.tsx, the first two screens a new
+    // tenant sees - 404'd for every deployed user. The proxy makes dev run what
+    // production runs; the Express handlers are deleted rather than shadowed.
+    '/api/onboarding/getting-started': { fn: 'onboarding', pathPrefix: '/getting-started' },
+    '/api/onboarding/wizard-state': { fn: 'onboarding', pathPrefix: '/wizard-state' },
+
     // WF-R-08. Same reasoning, four more paths, and they close a DEV-ONLY 404
     // rather than opening one: /admin/user-management is a routed page calling
     // /api/admin/users, and no Express router owns that prefix - routes-registry

@@ -46,6 +46,35 @@ export async function fetchInvoicePdfBlob(invoiceId: string): Promise<Blob> {
   return res.blob();
 }
 
+/**
+ * An authenticated binary GET against any edge-served path (round 133).
+ *
+ * `document.createElement('a').href = '/api/...'` is a plain navigation with no
+ * Bearer token, so it cannot work against an edge function - and in production
+ * a relative href resolves against the static origin, where Cloudflare Pages
+ * answers with the SPA shell. The onboarding export used exactly that shape.
+ */
+export async function fetchAuthedBlob(path: string, fallbackMessage: string): Promise<Blob> {
+  const token = await getAccessToken();
+  const tid = tenantIdForHeaders();
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  if (tid) headers['x-tenant-id'] = tid;
+
+  const res = await fetch(getApiUrl(path), { method: 'GET', headers, credentials: 'include' });
+  if (!res.ok) {
+    let msg = fallbackMessage;
+    try {
+      const j = await res.json();
+      if (j?.error || j?.message) msg = j.message || j.error;
+    } catch {
+      /* non-JSON error body */
+    }
+    throw new Error(msg);
+  }
+  return res.blob();
+}
+
 export function triggerBlobDownload(blob: Blob, filename: string): void {
   const url = window.URL.createObjectURL(blob);
   const link = document.createElement('a');

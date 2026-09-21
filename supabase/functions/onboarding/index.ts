@@ -8,7 +8,7 @@ import {
   PRINT_FIELDS_WITHOUT_COLUMNS,
   unpersistedFields,
 } from '../_shared/onboarding-config.ts';
-import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { handleCors, createCorsResponse, getCorsHeaders } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 import {
@@ -23,6 +23,11 @@ import {
   type OidMappingRow,
 } from '../../../shared/onboarding-readiness.ts';
 import { fetchAllRows } from '../_shared/paged-select.ts';
+import { toCsv } from '../_shared/csv.ts';
+import {
+  ONBOARDING_EXPORT_HEADERS,
+  buildChecklistExportRows,
+} from '../../../shared/onboarding-export.ts';
 
 /**
  * A wizard step sends what is on screen; a caller can send anything. Both caps
@@ -1049,6 +1054,179 @@ export default async function handler(req: Request) {
       }
 
       return createCorsResponse({ success: true, message: 'Checklist deleted' }, 200, req);
+    }
+
+    // ─── Getting Started + Setup Wizard progress ──────────────────────────
+    //
+    // Round 133: both were Express-only on an unproxied prefix, so the routed
+    // pages behind them (GettingStarted.tsx, SetupWizard.tsx) 404'd for every
+    // deployed user - the first two screens a new tenant sees, and the ones
+    // LAUNCH-008 made reachable when self-service signup started working.
+    //
+    // The wizard's Express store was `new Map()` in module scope, so its
+    // progress did not survive a restart in dev either and would have been
+    // per-instance under any real deployment. Both flows are one row in
+    // `onboarding_progress`, which already carries flow_type, current_step,
+    // completed_steps and is_complete - so this is durable rather than ported.
+    const progressFlow =
+      pathParts[0] === 'getting-started'
+        ? 'getting_started'
+        : pathParts[0] === 'wizard-state'
+          ? 'setup_wizard'
+          : null;
+
+    if (progressFlow && !checklistId) {
+      if (!user?.id) {
+        return createCorsResponse({ error: 'Authentication required' }, 401, req);
+      }
+
+      if (req.method === 'GET') {
+        // Ordered and limited rather than `.maybeSingle()`: there is NO unique
+        // constraint on (tenant_id, user_id, flow_type) - checked against
+        // migration 0000, which indexes tenant_id and user_id separately and
+        // nothing else - so two concurrent saves can leave two rows, and a
+        // reader that does not tie-break answers arbitrarily (round 91).
+        const { data: rows, error } = await admin
+          .from('onboarding_progress')
+          .select('current_step, completed_steps, is_complete')
+          .eq('tenant_id', tenantId)
+          .eq('user_id', user.id)
+          .eq('flow_type', progressFlow)
+          .order('updated_at', { ascending: false })
+          .limit(1);
+        const row = rows?.[0];
+
+        if (error) {
+          console.error('Error reading onboarding progress:', error);
+          return createCorsResponse({ error: 'Failed to read onboarding progress' }, 500, req);
+        }
+
+        const completedSteps = Array.isArray(row?.completed_steps) ? row.completed_steps : [];
+        // Two shapes for two callers, from one row: the wizard reads
+        // currentStep/completed, the checklist reads completedSteps/isComplete.
+        return createCorsResponse(
+          progressFlow === 'setup_wizard'
+            ? {
+                currentStep: Number(row?.current_step ?? 0),
+                completedSteps,
+                completed: row?.is_complete ?? false,
+              }
+            : { completedSteps, isComplete: row?.is_complete ?? false },
+          200,
+          req,
+        );
+      }
+
+      if (req.method === 'POST' || req.method === 'PUT') {
+        const body = await req.json().catch(() => ({}));
+        const rawSteps = Array.isArray(body.completedSteps) ? body.completedSteps : [];
+        // De-duplicated, because the callers append on every tick and a step
+        // ticked twice must not read as two steps done.
+        const completedSteps = [...new Set(rawSteps.map((step: unknown) => String(step)))];
+        const isComplete = Boolean(body.isComplete ?? body.completed ?? false);
+        const currentStep =
+          body.currentStep === undefined || body.currentStep === null
+            ? null
+            : String(body.currentStep);
+
+        // NOT an upsert: PostgREST resolves `on_conflict` against a unique
+        // index, and there is none on (tenant_id, user_id, flow_type) - the
+        // request would be a 42P10 on every database. Read then write, which is
+        // what the Express handler did, with the same race it had.
+        const { data: existingRows, error: findError } = await admin
+          .from('onboarding_progress')
+          .select('id')
+          .eq('tenant_id', tenantId)
+          .eq('user_id', user.id)
+          .eq('flow_type', progressFlow)
+          .order('updated_at', { ascending: false })
+          .limit(1);
+
+        if (findError) {
+          console.error('Error reading onboarding progress:', findError);
+          return createCorsResponse({ error: 'Failed to save onboarding progress' }, 500, req);
+        }
+
+        const values = {
+          current_step: currentStep,
+          completed_steps: completedSteps,
+          is_complete: isComplete,
+          completed_at: isComplete ? new Date().toISOString() : null,
+          updated_at: new Date().toISOString(),
+        };
+
+        const { error } = existingRows?.[0]
+          ? await admin.from('onboarding_progress').update(values).eq('id', existingRows[0].id)
+          : await admin.from('onboarding_progress').insert({
+              tenant_id: tenantId,
+              user_id: user.id,
+              flow_type: progressFlow,
+              ...values,
+            });
+
+        if (error) {
+          console.error('Error saving onboarding progress:', error);
+          return createCorsResponse({ error: 'Failed to save onboarding progress' }, 500, req);
+        }
+
+        return createCorsResponse(
+          progressFlow === 'setup_wizard'
+            ? { currentStep: Number(currentStep ?? 0), completedSteps, completed: isComplete }
+            : { completedSteps, isComplete },
+          200,
+          req,
+        );
+      }
+
+      return createCorsResponse({ error: 'Method not allowed' }, 405, req);
+    }
+
+    // GET /onboarding/checklists/:id/export - CSV of the checklist + equipment
+    //
+    // ONE FORMAT, because it is the only one this tree can actually produce.
+    // The Express endpoints this replaces sent HTML under application/pdf and
+    // JSON under a spreadsheet content type; see shared/onboarding-export.ts.
+    if (req.method === 'GET' && checklistId && subResource === 'export') {
+      const { data: checklist, error: checklistError } = await admin
+        .from('equipment_onboarding_checklists')
+        .select('*')
+        .eq('id', checklistId)
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+
+      if (checklistError) {
+        console.error('Error reading checklist for export:', checklistError);
+        return createCorsResponse({ error: 'Failed to build export' }, 500, req);
+      }
+      if (!checklist) {
+        return createCorsResponse({ error: 'Checklist not found' }, 404, req);
+      }
+
+      const { data: equipment, error: equipmentError } = await admin
+        .from('onboarding_equipment')
+        .select('*')
+        .eq('checklist_id', checklistId)
+        .eq('tenant_id', tenantId)
+        .order('created_at', { ascending: true });
+
+      if (equipmentError) {
+        console.error('Error reading equipment for export:', equipmentError);
+        return createCorsResponse({ error: 'Failed to build export' }, 500, req);
+      }
+
+      const body = toCsv([
+        [...ONBOARDING_EXPORT_HEADERS],
+        ...buildChecklistExportRows(checklist as Record<string, unknown>, equipment ?? []),
+      ]);
+
+      return new Response(body, {
+        status: 200,
+        headers: {
+          ...getCorsHeaders(req.headers.get('Origin')),
+          'Content-Type': 'text/csv; charset=utf-8',
+          'Content-Disposition': `attachment; filename="checklist-${checklistId}.csv"`,
+        },
+      });
     }
 
     return createCorsResponse({ error: 'Invalid onboarding endpoint' }, 400, req);

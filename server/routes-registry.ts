@@ -127,13 +127,7 @@ import {
 
 import { registerSeoCoreRoutes, seoRoutes, googleIndexingRoutes } from './domains/content';
 
-import {
-  registerOnboardingRoutes,
-  exportChecklistPDF,
-  exportChecklistExcel,
-  exportChecklistCSV,
-  accessibilityRoutes,
-} from './domains/onboarding';
+import { registerOnboardingRoutes, accessibilityRoutes } from './domains/onboarding';
 
 import { emailParserRoutes } from './domains/notifications';
 
@@ -684,9 +678,15 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   registerTodayDashboardRoutes(app);
   registerOnboardingRoutes(app);
 
-  app.get('/api/onboarding/export/:id/pdf', exportChecklistPDF);
-  app.get('/api/onboarding/export/:id/excel', exportChecklistExcel);
-  app.get('/api/onboarding/export/:id/csv', exportChecklistCSV);
+  // ROUND 133: the three /api/onboarding/export/:id/:format handlers are gone
+  // with server/routes-export.ts. Two of them declared a content type they did
+  // not produce - HTML under application/pdf, JSON.stringify under the xlsx
+  // type - and all three 404'd in production on this unproxied prefix. The CSV
+  // is now GET /api/onboarding/checklists/:id/export in the edge function, over
+  // columns that exist (the old one named equipmentType and location, neither
+  // of which is on onboarding_equipment), and the PDF is that function's own
+  // generate-pdf branch. There is no xlsx writer in this tree, so Excel is not
+  // offered rather than faked.
 
   // ─── Notifications ──────────────────────────────────────────────────
   // routes-notifications.ts retired (PROD-008b). supabase/functions/notifications/

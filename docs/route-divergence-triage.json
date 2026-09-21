@@ -98,8 +98,8 @@
       "reason": "Round 113/114. /time-tracking and /service-tickets/:id/status were Express-only and 404'd in production; they are ported and carry SCOPED crmProxies entries. /mobile/dashboard is deliberately NOT proxied - MobileServiceApp.tsx dereferences a fixture's shape with no guard, so wiring it would turn a dev-only fixture into a crash. See AUDIT-033."
     },
     "onboarding": {
-      "verdict": "unexamined",
-      "reason": "WF-L-11 fixed six blank wizard steps and the network-config write path. Which host serves the checklist endpoints is not examined."
+      "verdict": "divergent",
+      "reason": "Round 133, partly resolved. /api/onboarding is not proxied, so its two progress endpoints - getting-started and wizard-state - were Express-only and 404'd in production for GettingStarted.tsx and SetupWizard.tsx, the first two screens a new tenant sees; the wizard's Express store was a module-scope Map, so it did not survive a restart in dev either. Both now live in supabase/functions/onboarding/ over onboarding_progress and carry SCOPED crmProxies entries, so dev runs what production runs. The three /api/onboarding/export/:id/:format handlers are deleted (two declared a content type they did not produce) and the CSV is GET /checklists/:id/export in the edge function. STILL DIVERGENT: Express owns PUT/DELETE /api/onboarding/sections/:id and /tasks/:id, which the edge function does not serve and which therefore 404 in production - no client tree calls them today, so nothing is broken, but a bare '/api/onboarding' proxy entry would take them from working-in-dev to 404-in-dev. Port those four before converging the whole prefix. The checklists CRUD is served by both hosts and has not been compared field by field."
     },
     "parts-orders": {
       "verdict": "unexamined",
