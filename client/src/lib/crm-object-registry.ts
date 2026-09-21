@@ -128,7 +128,14 @@ const dealsConfig: CrmObjectConfig = {
       field: 'stage',
       label: 'Stage',
       type: 'select',
-      sortable: true,
+      // COP-I01 AC4: NOT sortable, and the reason is that there is nothing to
+      // sort by. `deals` stores `stage_id`, a uuid, so a server sort would
+      // order the board by an opaque identifier; the stage's own name and
+      // position live on the embedded pipeline_stages row, and PostgREST
+      // cannot order a parent by an embedded column. This was `sortable: true`
+      // against a spec with no `stage` entry, so the header silently fell back
+      // to the default sort - a control that appears to work.
+      sortable: false,
       editable: true,
       width: 'min-w-[150px]',
     },
@@ -348,7 +355,11 @@ const leadsConfig: CrmObjectConfig = {
       field: 'primaryContactName',
       label: 'Contact',
       type: 'text',
-      sortable: true,
+      // COP-I01 AC4: derived from the embedded company_contacts relation,
+      // which PostgREST cannot order the parent by - so there is no column
+      // to whitelist and this header could only ever fall back to the
+      // default sort.
+      sortable: false,
       editable: true,
       width: 'min-w-[180px]',
     },
@@ -356,7 +367,11 @@ const leadsConfig: CrmObjectConfig = {
       field: 'primaryContactEmail',
       label: 'Email',
       type: 'email',
-      sortable: true,
+      // COP-I01 AC4: derived from the embedded company_contacts relation,
+      // which PostgREST cannot order the parent by - so there is no column
+      // to whitelist and this header could only ever fall back to the
+      // default sort.
+      sortable: false,
       width: 'min-w-[200px]',
     },
     {

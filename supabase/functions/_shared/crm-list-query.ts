@@ -109,6 +109,56 @@ export const COMPANY_LIST_SPEC: CrmListSpec = {
 };
 
 /**
+ * Leads, served by `business-records` (COP-I01 AC4, round 107).
+ *
+ * THIS SPEC EXISTS BECAUSE THE LEADS INDEX HAD NO SERVER SORT AT ALL. The CRM
+ * shell sends `sortBy` and `sortOrder` on every request; that handler read
+ * neither and issued a hardcoded `.order('created_at', { ascending: false })`,
+ * so all seven column headers the leads registry marks sortable did nothing.
+ * The arrow flipped, a request went out, and the same page came back - a control
+ * that appears to work, which beats a missing one for damage.
+ *
+ * WHY IT IS NOT COMPANY_LIST_SPEC, even though both handlers read `companies`.
+ * The field names here are the ones the BUSINESS-RECORDS MAPPER emits, not the
+ * ones the companies mapper emits, and they differ on three of five:
+ * `companyName` (not businessName), `status` (not activity), `city` (not
+ * billingCity). Reusing the companies spec would silently fall back to the
+ * default sort on exactly those three, which is the defect wearing a fix's
+ * clothes. This is COP-M01's contract-between-three-strings - the registry, the
+ * mapper and the write path - with a fourth string, the sort whitelist, joining
+ * it.
+ *
+ * WHAT IS DELIBERATELY ABSENT: `primaryContactName` and `primaryContactEmail`.
+ * Both are derived from the embedded `company_contacts` relation, and PostgREST
+ * cannot order a parent by an embedded column - so there is no column to
+ * whitelist. They are marked `sortable: false` in the registry rather than
+ * listed here, because a whitelist entry pointing at nothing is how the silent
+ * fallback got in.
+ */
+export const LEAD_LIST_SPEC: CrmListSpec = {
+  sortFields: {
+    companyName: 'business_name',
+    customerNumber: 'customer_number',
+    status: 'activity',
+    recordType: 'business_record_type',
+    industry: 'industry',
+    phone: 'phone',
+    website: 'website',
+    city: 'billing_city',
+    state: 'billing_state',
+    employees: 'employees',
+    annualRevenue: 'annual_revenue',
+    createdAt: 'created_at',
+    updatedAt: 'updated_at',
+  },
+  defaultSortField: 'createdAt',
+  defaultLimit: 100,
+  searchColumns: ['business_name', 'phone', 'customer_number', 'industry', 'billing_city'],
+  searchFields: ['companyName', 'phone', 'customerNumber', 'industry', 'city'],
+  filterKeys: ['status', 'recordType', 'industry', 'ownerId'],
+};
+
+/**
  * Deals.
  *
  * The names here are the ones migration 0000 actually created. The deals edge
