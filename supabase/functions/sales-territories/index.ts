@@ -8,6 +8,8 @@ import { fetchAllRows } from '../_shared/paged-select.ts';
 import { buildTerritoryIndex, territoryCoverage } from '../_shared/territory.ts';
 import { territoryMembership } from '../../../shared/territory-membership.ts';
 import { ROLE_LEVEL, RbacError, requireRoleLevel } from '../_shared/rbac.ts';
+import { writeAuditLog } from '../_shared/audit-log.ts';
+import { territoryChange, territorySnapshot } from '../../../shared/territory-audit.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -280,6 +282,24 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to create territory' }, 500, req);
       }
 
+      await writeAuditLog(
+        admin,
+        {
+          tenantId,
+          userId: user.id,
+          action: 'CREATE_TERRITORY',
+          resource: 'sales_territories',
+          resourceId: String(territory.id),
+          oldValues: null,
+          newValues: territorySnapshot(territory),
+          // A new territory CLAIMS every account already naming it, because
+          // matching is read-time - so creating one reassigns accounts just as
+          // surely as renaming one does.
+          additionalContext: { reassigns: true, reason: 'territory_created' },
+        },
+        req,
+      );
+
       return createCorsResponse(territory, 201, req);
     }
 
@@ -309,6 +329,22 @@ export default async function handler(req: Request) {
       set('manager_id', body.managerId, body.manager_id);
       set('monthly_quota', body.monthlyQuota, body.monthly_quota);
 
+      // AC6: the row as it was, BEFORE the write. Without this there is nothing
+      // to diff against and the trail can only say that something changed - and
+      // on a read-time matcher, WHICH field changed is the whole question, since
+      // a rename moves accounts and a description does not.
+      const { data: before } = await admin
+        .from('sales_territories')
+        .select(TERRITORY_COLUMNS)
+        .eq('id', territoryId)
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+
+      if (!before) {
+        // 404 rather than letting the update match nothing and report success.
+        return createCorsResponse({ error: 'Territory not found' }, 404, req);
+      }
+
       const { data: territory, error } = await admin
         .from('sales_territories')
         .update(patch)
@@ -322,6 +358,31 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to update territory' }, 500, req);
       }
 
+      const change = territoryChange(before, patch);
+      await writeAuditLog(
+        admin,
+        {
+          tenantId,
+          userId: user.id,
+          action: 'UPDATE_TERRITORY',
+          resource: 'sales_territories',
+          resourceId: String(territoryId),
+          oldValues: territorySnapshot(before),
+          newValues: territorySnapshot(territory),
+          // A change that moves accounts or a rep's book is the one an auditor
+          // is looking for, so it is marked rather than left to be inferred
+          // from a field-by-field diff.
+          severity: change.reassigns ? 'high' : 'medium',
+          additionalContext: {
+            changedFields: Object.keys(change.changed),
+            matchKeysChanged: change.matchKeysChanged,
+            ownershipChanged: change.ownershipChanged,
+            reassigns: change.reassigns,
+          },
+        },
+        req,
+      );
+
       return createCorsResponse(territory, 200, req);
     }
 
@@ -332,6 +393,24 @@ export default async function handler(req: Request) {
       } catch (err) {
         return denyManager(err);
       }
+      // PostgREST's delete matches nothing and reports no error, so this
+      // answered "Territory deleted" for an id that was never there - a
+      // fabricated write outcome, which three fabrication guards all miss
+      // because they watch reads. And the row has to be read anyway: a delete
+      // with no record of WHAT was deleted is the least useful entry in the
+      // log, since the name is exactly what says which accounts just lost their
+      // territory.
+      const { data: before } = await admin
+        .from('sales_territories')
+        .select(TERRITORY_COLUMNS)
+        .eq('id', territoryId)
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+
+      if (!before) {
+        return createCorsResponse({ error: 'Territory not found' }, 404, req);
+      }
+
       const { error } = await admin
         .from('sales_territories')
         .delete()
@@ -341,6 +420,30 @@ export default async function handler(req: Request) {
       if (error) {
         return createCorsResponse({ error: 'Failed to delete territory' }, 500, req);
       }
+
+      await writeAuditLog(
+        admin,
+        {
+          tenantId,
+          userId: user.id,
+          action: 'DELETE_TERRITORY',
+          resource: 'sales_territories',
+          resourceId: String(territoryId),
+          oldValues: territorySnapshot(before),
+          newValues: null,
+          // Always high: the accounts naming this territory now land in the
+          // coverage report's UNASSIGNED bucket, which reads as "nobody has
+          // assigned these yet" rather than "their territory was removed".
+          severity: 'high',
+          additionalContext: {
+            reassigns: true,
+            reason: 'territory_deleted',
+            territoryName: before.territory_name ?? null,
+            territoryCode: before.territory_code ?? null,
+          },
+        },
+        req,
+      );
 
       return createCorsResponse({ success: true, message: 'Territory deleted' }, 200, req);
     }
