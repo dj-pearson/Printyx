@@ -5,6 +5,8 @@ import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { applyUserScope, resolveScope } from '../_shared/scope.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { type AuthContext, RbacError, ROLE_LEVEL, requireRoleLevel } from '../_shared/rbac.ts';
+import { buildMeterReadingUpdate } from '../_shared/meter-reading-write.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -35,6 +37,50 @@ export default async function handler(req: Request) {
     if (!tenantId) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
     }
+
+    /**
+     * A meter reading IS the billing record: this table carries `invoice_id`,
+     * `invoice_number`, `billing_status` and `billing_amount` beside the
+     * counters, and `shared/fleet-assessment.ts` derives every volume and
+     * cost-per-page figure from consecutive readings. So SUBMITTING one is a
+     * technician's daily job and stays open - `/meter-readings` has no minLevel
+     * in navigation-permissions.ts, only service.equipment.view, and gating the
+     * function would take the feature from the people it is for. AMENDING or
+     * DELETING one is a billing correction, and deleting is the worse of the
+     * two: it removes the evidence and silently changes every derived volume
+     * after it, with nothing on any screen saying a reading used to be there.
+     *
+     * Round 121 found this function had ZERO role checks while its Express twin
+     * in routes-products-crud.ts checked a permission nobody reaches, because
+     * production serves `/api/meter-readings` here.
+     */
+    const requireSupervisor = () =>
+      requireRoleLevel(
+        {
+          userId: user.id,
+          tenantId,
+          email: user.email,
+          jwt: jwt ?? '',
+          supabaseUser: user,
+        } as AuthContext,
+        ROLE_LEVEL.SUPERVISOR,
+      );
+    const denySupervisor = (err: unknown) => {
+      // Only an RbacError is a role refusal; anything else is rethrown, or a
+      // database outage reads as "your role is too low".
+      if (err instanceof RbacError) {
+        return createCorsResponse(
+          {
+            error: 'Amending or deleting a meter reading requires a supervisor role',
+            code: 'INSUFFICIENT_ROLE',
+            details: err.details,
+          },
+          403,
+          req,
+        );
+      }
+      throw err;
+    };
 
     const url = new URL(req.url);
     // server.ts strips the function-name segment before invoking this handler,
@@ -225,31 +271,58 @@ export default async function handler(req: Request) {
 
     // PATCH /meter-readings/:id - Update reading
     if ((req.method === 'PATCH' || req.method === 'PUT') && readingId) {
+      try {
+        requireSupervisor();
+      } catch (err) {
+        return denySupervisor(err);
+      }
+
       const body = await req.json();
 
-      const updateData: Record<string, any> = {
-        updated_at: new Date().toISOString(),
-      };
+      // The stored row is read FIRST, for two reasons. A delta cannot be
+      // recomputed from a partial body - amending only the counter leaves the
+      // previous reading in the row - and a refusal that runs after the write
+      // is not a refusal, so the tenant check happens here rather than being
+      // left to the update's own filter.
+      const { data: existing, error: readError } = await admin
+        .from('meter_readings')
+        .select('*')
+        .eq('id', readingId)
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
 
-      const fieldMap: Record<string, string> = {
-        readingDate: 'reading_date',
-        blackCount: 'black_count',
-        colorCount: 'color_count',
-        blackUsage: 'black_usage',
-        colorUsage: 'color_usage',
-        readingType: 'reading_type',
-        notes: 'notes',
-      };
+      if (readError) {
+        console.error('Error reading meter reading:', readError);
+        return createCorsResponse({ error: 'Failed to read meter reading' }, 500, req);
+      }
+      if (!existing) {
+        return createCorsResponse({ error: 'Meter reading not found' }, 404, req);
+      }
 
-      for (const [camelKey, snakeKey] of Object.entries(fieldMap)) {
-        if (body[camelKey] !== undefined || body[snakeKey] !== undefined) {
-          updateData[snakeKey] = body[camelKey] !== undefined ? body[camelKey] : body[snakeKey];
-        }
+      const { plan, ignoredFields, refusedFields, derivationWarnings } = buildMeterReadingUpdate(
+        body,
+        existing as Record<string, unknown>,
+      );
+
+      // An empty plan is a 400, never a 200 that bumps updated_at and reports
+      // success - COP-M01's rule, because the caller has to learn that the
+      // field they sent is not one this endpoint can store.
+      if (Object.keys(plan).length === 0) {
+        return createCorsResponse(
+          {
+            error: 'Nothing to update',
+            code: 'NO_WRITABLE_FIELDS',
+            ignoredFields,
+            refusedFields,
+          },
+          400,
+          req,
+        );
       }
 
       const { data: reading, error } = await admin
         .from('meter_readings')
-        .update(updateData)
+        .update({ ...plan, updated_at: new Date().toISOString() })
         .eq('id', readingId)
         .eq('tenant_id', tenantId)
         .select()
@@ -260,11 +333,21 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to update meter reading' }, 500, req);
       }
 
-      return createCorsResponse(reading, 200, req);
+      return createCorsResponse(
+        { ...reading, ignoredFields, refusedFields, derivationWarnings },
+        200,
+        req,
+      );
     }
 
     // DELETE /meter-readings/:id - Delete reading
     if (req.method === 'DELETE' && readingId) {
+      try {
+        requireSupervisor();
+      } catch (err) {
+        return denySupervisor(err);
+      }
+
       const { error } = await admin
         .from('meter_readings')
         .delete()
