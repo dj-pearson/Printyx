@@ -25,6 +25,7 @@ export type MyDayCardId =
   | 'due-today'
   | 'stalled-deals'
   | 'meetings-followup'
+  | 'upcoming'
   | 'awaiting-signature'
   | 'suggested-tasks'
   | 'hot-leads'
@@ -56,6 +57,12 @@ export const MY_DAY_CARDS: readonly MyDayCard[] = [
   // rather than only on a page they have to remember to open.
   { id: 'installed-base-radar', title: 'Installed-base plays' },
   { id: 'meetings-followup', title: 'Meetings needing follow-up' },
+  // COP-B01 round 105: the slot above used to render THIS - upcoming
+  // activities, headed "Coming Up" - so the card AC1 names had never been
+  // built and a useful card was wearing its id. Separated rather than
+  // dropped: preparing for a meeting and chasing one that already happened
+  // are different jobs, and a rep wants both.
+  { id: 'upcoming', title: 'Coming up' },
   { id: 'hot-leads', title: 'Hot leads' },
   { id: 'recent-wins', title: 'Recent wins' },
   // AC6: managers additionally see team roll-ups. MANAGER is level 4.

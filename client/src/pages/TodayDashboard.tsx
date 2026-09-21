@@ -85,6 +85,15 @@ interface AwaitingSignature {
   sentAt: string | null;
 }
 
+interface MeetingFollowUp {
+  id: string;
+  subject: string;
+  businessRecordId: string;
+  accountName: string | null;
+  metAt: string;
+  daysSince: number;
+}
+
 interface TodayViewData {
   overdue: Activity[];
   today: Activity[];
@@ -93,6 +102,17 @@ interface TodayViewData {
   pipelineAlerts: Deal[];
   recentWins: Deal[];
   awaitingSignature?: AwaitingSignature[];
+  /**
+   * Null when the derivation failed, [] when nothing is waiting. The card
+   * renders nothing for null and an honest empty state for [] - "no meetings
+   * are waiting on you" and "we could not look" are different answers.
+   */
+  meetingsNeedingFollowUp?: MeetingFollowUp[] | null;
+  /** Meetings with no account, so no follow-up could be looked for. */
+  unlinkedMeetings?: number | null;
+  /** COP-I06: printed when the list was narrowed, so a short list is explicable. */
+  scopeTier?: string;
+  scopeDegradedFrom?: string | null;
   stats: {
     // Nullable on purpose. Both are a SUM over the tenant's whole deals table,
     // which the production backend cannot compute without either truncating
@@ -193,6 +213,10 @@ export default function TodayDashboard() {
     awaitingSignature = [],
     pipelineAlerts = [],
     recentWins = [],
+    meetingsNeedingFollowUp = null,
+    unlinkedMeetings = null,
+    scopeTier,
+    scopeDegradedFrom = null,
     stats = {
       // null, not 0, for the two the backend may not be able to compute: a zero
       // here is indistinguishable from an empty pipeline.
@@ -213,6 +237,43 @@ export default function TodayDashboard() {
    * exists to prevent.
    */
   const cardSlots: Record<string, ReactNode> = {
+    overdue:
+      overdue.length === 0 ? null : (
+        <Card className="border-red-200 bg-red-50">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-red-600" />
+              <CardTitle className="text-red-900">
+                {overdue.length} Overdue {overdue.length === 1 ? 'Task' : 'Tasks'}
+              </CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {overdue.slice(0, 3).map((activity) => (
+                <ActivityItem
+                  key={activity.id}
+                  activity={activity}
+                  onComplete={handleCompleteActivity}
+                  onNavigate={handleCallCustomer}
+                  isOverdue
+                />
+              ))}
+              {overdue.length > 3 && (
+                /* UI-DEAD-BUTTONS-001: this was a <Button variant="link"> with
+                   no handler at all, on the page's most prominent alert - the
+                   one control a rep with a backlog reaches for. TaskHub is the
+                   list; it takes no overdue filter, so this links there rather
+                   than to a query parameter nothing reads (AUDIT-014 found nine
+                   of those). */
+                <Button variant="link" className="h-auto p-0 text-red-600" asChild>
+                  <Link href="/tasks">View all {overdue.length} overdue tasks &rarr;</Link>
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      ),
     'due-today': (
       <Card>
         <CardHeader>
@@ -372,6 +433,73 @@ export default function TodayDashboard() {
       </Card>
     ),
     'meetings-followup':
+      meetingsNeedingFollowUp === null ? null : (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-amber-600" />
+              <CardTitle>Meetings needing follow-up</CardTitle>
+              {meetingsNeedingFollowUp.length > 0 && (
+                <Badge variant="secondary">{meetingsNeedingFollowUp.length}</Badge>
+              )}
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Met in the last 14 days with nothing logged since
+            </p>
+          </CardHeader>
+          <CardContent>
+            {meetingsNeedingFollowUp.length === 0 ? (
+              /* An honest empty state, not a hidden card. The slot used to
+                 render null when its list was empty, and a null slot inside
+                 MyDayCardBoundary is a blank card a rep reads as a quiet week. */
+              <div className="py-8 text-center text-muted-foreground">
+                <CheckCircle2 className="mx-auto mb-3 h-10 w-10 text-green-500" />
+                <p className="font-medium">Every meeting followed up</p>
+                <p className="text-sm">Nothing from the last 14 days is waiting on you.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {meetingsNeedingFollowUp.map((meeting) => (
+                  /* AC3 wants every card actionable in place. This row is a
+                     LINK to the account, which is where the activity composer
+                     CRM-008 built lives - the one place a follow-up can be
+                     logged. What it replaced had hover styling and no handler,
+                     which promises an action and is worse than a plain row. */
+                  <Link
+                    key={meeting.id}
+                    href={`/customers/${meeting.businessRecordId}`}
+                    className="flex items-start gap-3 rounded-md p-2 transition-colors hover:bg-amber-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <Clock className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium">{meeting.subject}</p>
+                      {meeting.accountName && (
+                        <p className="truncate text-xs text-muted-foreground">
+                          {meeting.accountName}
+                        </p>
+                      )}
+                      <p className="text-xs text-muted-foreground">
+                        {meeting.daysSince === 0
+                          ? 'Earlier today'
+                          : `${meeting.daysSince} day${meeting.daysSince === 1 ? '' : 's'} ago`}
+                      </p>
+                    </div>
+                  </Link>
+                ))}
+                {unlinkedMeetings !== null && unlinkedMeetings > 0 && (
+                  /* Named rather than folded into the count: these carry no
+                     account, so nothing could be looked for on them. */
+                  <p className="pt-1 text-xs text-muted-foreground">
+                    {unlinkedMeetings} meeting{unlinkedMeetings === 1 ? '' : 's'} not linked to an
+                    account, so follow-up could not be checked.
+                  </p>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      ),
+    upcoming:
       upcoming.length > 0 ? (
         <Card>
           <CardHeader>
@@ -423,38 +551,6 @@ export default function TodayDashboard() {
       description={`Good ${getTimeOfDay()}, ${user?.firstName || 'there'}! Here's your day at a glance.`}
     >
       <div className="space-y-6">
-        {/* Overdue Alert Banner */}
-        {overdue.length > 0 && (
-          <Card className="border-red-200 bg-red-50">
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-2">
-                <AlertCircle className="h-5 w-5 text-red-600" />
-                <CardTitle className="text-red-900">
-                  {overdue.length} Overdue {overdue.length === 1 ? 'Task' : 'Tasks'}
-                </CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {overdue.slice(0, 3).map((activity) => (
-                  <ActivityItem
-                    key={activity.id}
-                    activity={activity}
-                    onComplete={handleCompleteActivity}
-                    onNavigate={handleCallCustomer}
-                    isOverdue
-                  />
-                ))}
-                {overdue.length > 3 && (
-                  <Button variant="link" className="text-red-600 p-0 h-auto">
-                    View all {overdue.length} overdue tasks →
-                  </Button>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
         {/* Quick Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
@@ -502,6 +598,17 @@ export default function TodayDashboard() {
           {usingDefaultLayout && (
             <p className="text-xs text-muted-foreground">
               Showing the default cards - your saved layout could not be loaded.
+            </p>
+          )}
+          {/* COP-I06: a narrowed list that does not say it was narrowed is a
+              wrong answer, not a safe one. Only shown when the tier DEGRADED -
+              a rep correctly seeing their own work needs no explanation, while
+              a manager seeing only theirs because the org structure could not
+              resolve a team does. */}
+          {scopeDegradedFrom && scopeTier && (
+            <p className="text-xs text-muted-foreground">
+              Showing your own work only - we could not resolve your {scopeDegradedFrom} team, so
+              these cards are narrowed to you.
             </p>
           )}
           <MyDayCustomizer layout={layout} onSave={save} isSaving={isSaving} />

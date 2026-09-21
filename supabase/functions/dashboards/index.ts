@@ -14,6 +14,12 @@ import {
   type BusinessRecordRow,
 } from '../_shared/today-dashboard-view.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { startOfUtcDay, startOfNextUtcDay } from '../_shared/date-months.ts';
+import { applyUserScope, resolveScope } from '../_shared/scope.ts';
+import {
+  meetingsNeedingFollowUp,
+  type FollowUpActivityRow,
+} from '../../../shared/meetings-followup.ts';
 
 /**
  * Total of a set of deal amounts.
@@ -241,6 +247,21 @@ export default async function handler(req: Request) {
     // Every read below is bounded by a limit or answered by a server-side count,
     // so nothing here can be silently truncated by db-max-rows. The two stats
     // that would need a SUM are returned as null - see TodayStats.
+    //
+    // COP-B01 AC6: EVERY READ IN THIS BRANCH WAS FILTERED ON tenant_id ALONE, on
+    // a page headed "Good morning, {firstName}! Here's your day at a glance."
+    // So a rep's own day listed every other rep's overdue tasks, today's
+    // schedule and upcoming meetings - a real list of the wrong set, which is
+    // harder to spot than an invented one because every row on it is true of
+    // somebody. The team roll-up cards were built with resolveScope from the
+    // start, so the AC read as satisfied from the half that had it.
+    //
+    // `business_record_activities` has ONE ownership column - `created_by`, NOT
+    // NULL - and no assigned_to, so that is what the scope applies to; scoping a
+    // table on a column it lacks filters nothing and reads as protected. The
+    // deal cards keep the tenant view deliberately: `deals` here is read for
+    // stalled and recently-won work that a rep is expected to see across the
+    // board, and narrowing it is COP-I06's separate question.
     if (req.method === 'GET' && dashboardType === 'today') {
       const now = new Date();
       const w = todayWindows(now);
@@ -250,6 +271,15 @@ export default async function handler(req: Request) {
       const activityCols =
         'id, subject, activity_type, scheduled_date, due_date, completed_date, description, business_record_id';
 
+      // Resolved once and applied to every activity read, so a card cannot be
+      // added later on the tenant-wide default by accident.
+      const scope = await resolveScope(admin, {
+        userId: user.id,
+        tenantId,
+        appMetadata: user.app_metadata ?? null,
+        requestedScope: url.searchParams.get('scope'),
+      });
+
       const [
         { data: overdueRows },
         { data: todayRows },
@@ -258,34 +288,46 @@ export default async function handler(req: Request) {
         { data: staleRows },
         { data: wonRows },
       ] = await Promise.all([
-        admin
-          .from('business_record_activities')
-          .select(activityCols)
-          .eq('tenant_id', tenantId)
-          .is('completed_date', null)
-          .or(
-            `due_date.lte.${w.startOfDay.toISOString()},scheduled_date.lte.${w.yesterday.toISOString()}`,
-          )
-          .order('due_date', { ascending: true })
-          .limit(10),
-        admin
-          .from('business_record_activities')
-          .select(activityCols)
-          .eq('tenant_id', tenantId)
-          .is('completed_date', null)
-          .gte('scheduled_date', w.startOfDay.toISOString())
-          .lte('scheduled_date', w.endOfDay.toISOString())
-          .order('scheduled_date', { ascending: true })
-          .limit(20),
-        admin
-          .from('business_record_activities')
-          .select(activityCols)
-          .eq('tenant_id', tenantId)
-          .is('completed_date', null)
-          .gte('scheduled_date', w.upcomingFrom.toISOString())
-          .lte('scheduled_date', w.upcomingTo.toISOString())
-          .order('scheduled_date', { ascending: true })
-          .limit(10),
+        applyUserScope(
+          admin
+            .from('business_record_activities')
+            .select(activityCols)
+            .eq('tenant_id', tenantId)
+            .is('completed_date', null)
+            .or(
+              `due_date.lte.${w.startOfDay.toISOString()},scheduled_date.lte.${w.yesterday.toISOString()}`,
+            )
+            .order('due_date', { ascending: true })
+            .limit(10),
+          'created_by',
+          scope,
+        ),
+        applyUserScope(
+          admin
+            .from('business_record_activities')
+            .select(activityCols)
+            .eq('tenant_id', tenantId)
+            .is('completed_date', null)
+            .gte('scheduled_date', w.startOfDay.toISOString())
+            .lte('scheduled_date', w.endOfDay.toISOString())
+            .order('scheduled_date', { ascending: true })
+            .limit(20),
+          'created_by',
+          scope,
+        ),
+        applyUserScope(
+          admin
+            .from('business_record_activities')
+            .select(activityCols)
+            .eq('tenant_id', tenantId)
+            .is('completed_date', null)
+            .gte('scheduled_date', w.upcomingFrom.toISOString())
+            .lte('scheduled_date', w.upcomingTo.toISOString())
+            .order('scheduled_date', { ascending: true })
+            .limit(10),
+          'created_by',
+          scope,
+        ),
         admin
           .from('lead_score_calculations')
           .select('id, lead_id, total_score, lead_grade, lead_tier')
@@ -315,6 +357,77 @@ export default async function handler(req: Request) {
       ]);
 
       const activities = [...(overdueRows ?? []), ...(todayRows ?? []), ...(upcomingRows ?? [])];
+
+      // COP-B01 AC1's "Meetings needing follow-up" card. The slot with that id
+      // rendered `upcoming` under the heading "Coming Up" - a different and
+      // still useful card, which keeps its own catalogue entry - so the one the
+      // AC names had never been built.
+      //
+      // Two reads and a pure derivation, because PostgREST has no anti-join:
+      // the past meetings in the window, then every activity on those accounts
+      // so shared/meetings-followup.ts can ask which of them had nothing after.
+      // Scoped like every other activity read here; failing INDEPENDENTLY of
+      // them, because one card that cannot load must not blank the page.
+      let meetingsFollowUp: ReturnType<typeof meetingsNeedingFollowUp> | null = null;
+      try {
+        const { data: metRows, error: metError } = await applyUserScope(
+          admin
+            .from('business_record_activities')
+            .select(activityCols)
+            .eq('tenant_id', tenantId)
+            .eq('activity_type', 'meeting')
+            // DATE-LOCAL-002: both bounds snapped to a day boundary. The upper
+            // one is deliberately COARSER than "before now" - the exact "has it
+            // happened" cut lives in shared/meetings-followup.ts, which compares
+            // the real timestamp, so widening the SQL to the end of today makes
+            // the two agree by construction rather than by coincidence. A bound
+            // carrying a time of day against a column that may hold midnight is
+            // off by a day in whichever direction the operator points.
+            .gte('scheduled_date', startOfUtcDay(w.followUpFrom).toISOString())
+            .lt('scheduled_date', startOfNextUtcDay(now).toISOString())
+            .order('scheduled_date', { ascending: true })
+            .limit(25),
+          'created_by',
+          scope,
+        );
+        if (metError) throw metError;
+
+        const meetingRows = (metRows ?? []) as FollowUpActivityRow[];
+        const meetingRecordIds = [
+          ...new Set(
+            meetingRows
+              .map((m) => m.business_record_id)
+              .filter((id): id is string => typeof id === 'string' && id.length > 0),
+          ),
+        ];
+
+        // A follow-up is anything on the account, whoever logged it - a
+        // colleague covering the territory closes the loop just as well - so
+        // this read is deliberately NOT user-scoped. PostgREST rejects an
+        // .in() with no values, so an empty set short-circuits.
+        const sinceRows = meetingRecordIds.length
+          ? ((
+              await admin
+                .from('business_record_activities')
+                .select('id, scheduled_date, completed_date, business_record_id')
+                .eq('tenant_id', tenantId)
+                .in('business_record_id', meetingRecordIds)
+                .gte('scheduled_date', startOfUtcDay(w.followUpFrom).toISOString())
+                .limit(500)
+            ).data ?? [])
+          : [];
+
+        meetingsFollowUp = meetingsNeedingFollowUp(
+          meetingRows,
+          sinceRows as FollowUpActivityRow[],
+          now,
+        );
+      } catch (err) {
+        // Null, never []: "no meetings are waiting on you" and "we could not
+        // look" must not render the same on a worklist.
+        console.error('Error deriving meetings needing follow-up:', err);
+      }
+
       const recordIds = [
         ...new Set(
           [
@@ -359,12 +472,19 @@ export default async function handler(req: Request) {
             .select('id', { count: 'exact', head: true })
             .eq('tenant_id', tenantId)
             .eq('record_type', 'customer'),
-          admin
-            .from('business_record_activities')
-            .select('id', { count: 'exact', head: true })
-            .eq('tenant_id', tenantId)
-            .not('completed_date', 'is', null)
-            .gte('completed_date', w.startOfDay.toISOString()),
+          // "Tasks completed" sits on a personal stat card, so it is the
+          // caller's count, not the tenant's - the sixth activity read in this
+          // branch and the one a scan for the list queries misses.
+          applyUserScope(
+            admin
+              .from('business_record_activities')
+              .select('id', { count: 'exact', head: true })
+              .eq('tenant_id', tenantId)
+              .not('completed_date', 'is', null)
+              .gte('completed_date', w.startOfDay.toISOString()),
+            'created_by',
+            scope,
+          ),
         ]);
 
       const companyNames = new Map<string, string | null>(
@@ -437,6 +557,18 @@ export default async function handler(req: Request) {
           pipelineAlerts: (staleRows ?? []).map((d) => toStaleDealView(d, stageNames, now)),
           recentWins: (wonRows ?? []).map(toWonDealView),
           awaitingSignature,
+          // Null when the derivation failed; the card renders nothing rather
+          // than an empty list that reads as "nobody is waiting on you".
+          meetingsNeedingFollowUp: meetingsFollowUp?.meetings ?? null,
+          // Meetings with no account to check. Named rather than folded into
+          // either answer (shared/meetings-followup.ts explains why).
+          unlinkedMeetings: meetingsFollowUp?.unlinkedMeetings ?? null,
+          // COP-I06: a narrowed list that does not say it was narrowed is a
+          // wrong answer, not a safe one. The page prints this when a manager
+          // is seeing their own rows because the org structure could not
+          // resolve a team.
+          scopeTier: scope.tier,
+          scopeDegradedFrom: scope.degradedFrom,
           stats: {
             pipelineValue: null,
             quotaAttainment: null,
