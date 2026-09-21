@@ -1,11 +1,35 @@
-// Meeting scheduling — /meetings/schedule-request, /schedule/:id, /meetings, /meetings/:id,
+// Meeting scheduling - /meetings/schedule-request, /schedule/:id, /meetings, /meetings/:id,
 //                       /types, /rooms, /analytics, /optimize-schedule.
-// Replaces server/routes/meeting-scheduling-routes.ts.
+// Replaced server/routes/meeting-scheduling-routes.ts, which MEETINGS-READS-001
+// deleted along with its service (775 lines that imported `db` and never
+// queried anything).
 //
-// No dedicated meetings/meeting_types/meeting_rooms tables in migrations on
-// disk — the Express service returned mock data with embedded Claude prompts
-// for scheduling suggestions. We preserve the same response shape and wire
-// the real Claude call for schedule-request.
+// FOUR OF THESE ANSWER 410 OR 501 NOW, and which one says something different.
+//
+// `GET /meetings` and `GET /meetings/:id` were mocks - a single "Weekly Team
+// Sync" for the list, and THE SAME "Scheduled Meeting" object for every id, so
+// no two requests could disagree and nothing could be caught by comparison.
+// They are 410 rather than 501 because the capability is not missing: the real
+// meetings read is `GET /meetings/calendar/events?start=&end=`, which serves
+// `calendar_events` with provider propagation and has a live caller in
+// CalendarProvider.tsx. A second reader of the same concept is the duplicate
+// this repo keeps paying for, so the withdrawal names the replacement.
+//
+// `/types` and `/rooms` are 501: there is no meeting_types or meeting_rooms
+// table in any schema or migration, so a list of three types and two rooms was
+// a claim about a dealer's configuration that nothing could have made.
+//
+// `POST /schedule/:requestId` is 501, and it was the worst of them - it
+// answered **201 Created** with a meeting id for a row it never stored, so a
+// caller booked a meeting, got an identifier back, and nothing existed. A
+// fabricated write outcome is harder to catch than a fabricated read, because
+// the success is the evidence. `calendar_events` is where a real
+// implementation would write (COP-B12 established it as this product's meeting
+// entity); that is a create path with no caller and belongs to its own story.
+//
+// WHAT STAYS REAL: `/analytics` counts `calendar_events` (AUDIT-020),
+// `/schedule-request` runs a genuine Claude call and stores nothing it claims
+// to store, and `/optimize-schedule` is untouched.
 
 import { errorResponse, jsonResponse } from '../../_shared/http.ts';
 import type { HandlerCtx } from '../_context.ts';
@@ -13,53 +37,6 @@ import { generateCompletion } from '../../_shared/anthropic.ts';
 import { createLogger } from '../../_shared/logger.ts';
 
 const log = createLogger('meetings-scheduling');
-
-const MOCK_MEETING_TYPES = [
-  {
-    id: 'type-1',
-    name: 'Team Standup',
-    defaultDurationMinutes: 15,
-    bufferTimeMinutes: 5,
-    maxParticipants: 12,
-    requiresRoom: false,
-    aiSchedulingPriority: 8,
-  },
-  {
-    id: 'type-2',
-    name: 'Sales Call',
-    defaultDurationMinutes: 30,
-    bufferTimeMinutes: 10,
-    maxParticipants: 5,
-    requiresRoom: false,
-    aiSchedulingPriority: 9,
-  },
-  {
-    id: 'type-3',
-    name: 'Strategic Planning',
-    defaultDurationMinutes: 90,
-    bufferTimeMinutes: 15,
-    maxParticipants: 8,
-    requiresRoom: true,
-    aiSchedulingPriority: 7,
-  },
-];
-
-const MOCK_ROOMS = [
-  {
-    id: 'room-1',
-    name: 'Conference Room A',
-    capacity: 10,
-    equipment: ['projector', 'whiteboard', 'video_conference'],
-    isBookable: true,
-  },
-  {
-    id: 'room-2',
-    name: 'Huddle Room',
-    capacity: 4,
-    equipment: ['tv_display', 'video_conference'],
-    isBookable: true,
-  },
-];
 
 export async function handleSchedulingRequest(
   req: Request,
@@ -153,82 +130,35 @@ export async function handleSchedulingRequest(
     );
   }
 
-  // POST /schedule/:requestId
+  // POST /schedule/:requestId - 501. See the header: this returned 201 with a
+  // meeting id for a row it never wrote.
   if (method === 'POST' && pathParts[0] === 'schedule' && pathParts[1]) {
-    let body: { selectedSuggestion?: Record<string, unknown>; roomId?: string } = {};
-    try {
-      body = await req.json();
-    } catch {
-      return errorResponse(400, 'Invalid JSON body', req, {
-        code: 'INVALID_JSON',
-        requestId,
-      });
-    }
-    if (!body.selectedSuggestion) {
-      return errorResponse(400, 'Selected suggestion is required', req, {
-        code: 'VALIDATION',
-        requestId,
-      });
-    }
-
-    const meeting = {
-      id: `meeting-${Date.now()}`,
-      tenantId: auth.tenantId,
-      organizerId: auth.userId,
-      title: body.selectedSuggestion.title ?? 'Scheduled Meeting',
-      startTime: body.selectedSuggestion.startTime,
-      endTime: body.selectedSuggestion.endTime,
-      roomId: body.roomId ?? null,
-      status: 'scheduled',
-      priority: 'medium',
-      createdAt: new Date().toISOString(),
-    };
-    return jsonResponse(meeting, 201, req, requestId);
+    return errorResponse(501, 'Booking a suggested slot is not implemented', req, {
+      code: 'NOT_IMPLEMENTED',
+      details:
+        'This answered 201 with an id for a meeting it never stored. Create the event ' +
+        'through POST /meetings/calendar/events, which writes calendar_events and ' +
+        'propagates to the connected provider.',
+      requestId,
+    });
   }
 
   return null;
 }
 
 export async function handleMeetings(req: Request, ctx: HandlerCtx): Promise<Response | null> {
-  const { method, auth, requestId, pathParts } = ctx;
+  const { method, requestId, pathParts } = ctx;
   if (pathParts[0] !== 'meetings') return null;
-  const meetingId = pathParts[1];
 
-  // GET /meetings — mock (table not in migrations/)
-  if (method === 'GET' && !meetingId) {
-    return jsonResponse(
-      [
-        {
-          id: 'meeting-1',
-          tenantId: auth.tenantId,
-          title: 'Weekly Team Sync',
-          startTime: new Date(Date.now() + 86_400_000).toISOString(),
-          endTime: new Date(Date.now() + 86_400_000 + 3600_000).toISOString(),
-          status: 'scheduled',
-          priority: 'medium',
-        },
-      ],
-      200,
-      req,
+  if (method === 'GET') {
+    return errorResponse(410, 'Use GET /meetings/calendar/events', req, {
+      code: 'USE_CALENDAR_EVENTS',
+      details:
+        'This returned one invented meeting for the list and the same object for every id. ' +
+        'GET /meetings/calendar/events?start=&end= reads calendar_events, which is this ' +
+        "product's meeting entity.",
       requestId,
-    );
-  }
-
-  // GET /meetings/:id
-  if (method === 'GET' && meetingId) {
-    return jsonResponse(
-      {
-        id: meetingId,
-        tenantId: auth.tenantId,
-        title: 'Scheduled Meeting',
-        status: 'scheduled',
-        participants: [],
-        agenda: [],
-      },
-      200,
-      req,
-      requestId,
-    );
+    });
   }
 
   return null;
@@ -237,13 +167,25 @@ export async function handleMeetings(req: Request, ctx: HandlerCtx): Promise<Res
 export async function handleTypes(req: Request, ctx: HandlerCtx): Promise<Response | null> {
   const { method, requestId, pathParts } = ctx;
   if (method !== 'GET' || pathParts[0] !== 'types') return null;
-  return jsonResponse(MOCK_MEETING_TYPES, 200, req, requestId);
+  return errorResponse(501, 'Meeting types are not configurable', req, {
+    code: 'NO_MEETING_TYPES_TABLE',
+    details:
+      'There is no meeting_types table in any schema or migration. This listed three ' +
+      "invented types as though they were the dealer's configuration.",
+    requestId,
+  });
 }
 
 export async function handleRooms(req: Request, ctx: HandlerCtx): Promise<Response | null> {
   const { method, requestId, pathParts } = ctx;
   if (method !== 'GET' || pathParts[0] !== 'rooms') return null;
-  return jsonResponse(MOCK_ROOMS, 200, req, requestId);
+  return errorResponse(501, 'Meeting rooms are not configurable', req, {
+    code: 'NO_MEETING_ROOMS_TABLE',
+    details:
+      'There is no meeting_rooms table in any schema or migration. This listed two ' +
+      'invented rooms with capacities and equipment.',
+    requestId,
+  });
 }
 
 export async function handleAnalytics(req: Request, ctx: HandlerCtx): Promise<Response | null> {

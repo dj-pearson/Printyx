@@ -24,7 +24,6 @@
     "server/routes/geofence-alerts-routes.ts": 64,
     "server/routes/gps-tracking-routes.ts": 117,
     "server/routes/lead-intelligence-routes.ts": 16,
-    "server/routes/meeting-scheduling-routes.ts": 5,
     "server/routes/mileage-routes.ts": 60,
     "server/routes/route-optimization-routes.ts": 16,
     "server/routes/signature-routes.ts": 69,

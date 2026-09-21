@@ -615,7 +615,19 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   // Async routes mounted at /api root
   const asyncRootApiMounts: string[] = [
     './routes/team-collaboration-routes',
-    './routes/meeting-scheduling-routes',
+    // meeting-scheduling-routes retired (MEETINGS-READS-001). Its four read
+    // handlers already answered 501, and reading the file settled the other
+    // half: server/services/meeting-scheduling-service.ts was 775 lines that
+    // IMPORTED `db` and never used it - zero `.select(`, zero `.from(` - so
+    // the four handlers the story called "real, db-backed" touched no table
+    // either. Nothing in any of the eight client trees called /api/meetings
+    // (only /api/meetings/calendar/*, which is proxied), /api/types,
+    // /api/rooms, /api/schedule-request, /api/schedule/:id or
+    // /api/optimize-schedule, and production resolves /api/meetings to
+    // supabase/functions/meetings/ regardless, so this router only ever ran
+    // in dev. Deleting it also frees the generic root names /api/types,
+    // /api/rooms and /api/analytics, which it owned by accident of being
+    // mounted at the /api root.
     // meeting-transcription-routes retired (iteration 10). Its nine endpoints and
     // the 828-line service beneath them are covered one for one by
     // supabase/functions/meeting-transcription/, whose own header names both files

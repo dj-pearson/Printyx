@@ -1,6 +1,6 @@
 {
   "note": "Express /api domains no client tree calls. A WORKLIST, not settled debt: some are features nobody wired, some are deletable, and this guard cannot tell them apart. Shrink-only — see scripts/check-uncalled-express-routes.mjs for why five other guards miss these.",
-  "count": 79,
+  "count": 74,
   "domains": [
     {
       "domain": "accessibility",
@@ -175,10 +175,6 @@
       "class": "no-edge"
     },
     {
-      "domain": "optimize-schedule",
-      "class": "no-edge"
-    },
-    {
       "domain": "phone-tickets",
       "class": "no-edge"
     },
@@ -203,10 +199,6 @@
       "class": "no-edge"
     },
     {
-      "domain": "rooms",
-      "class": "no-edge"
-    },
-    {
       "domain": "sales-forecasting-rules",
       "class": "no-edge"
     },
@@ -220,14 +212,6 @@
     },
     {
       "domain": "salesforce",
-      "class": "no-edge"
-    },
-    {
-      "domain": "schedule",
-      "class": "no-edge"
-    },
-    {
-      "domain": "schedule-request",
       "class": "no-edge"
     },
     {
@@ -280,10 +264,6 @@
     },
     {
       "domain": "triggers",
-      "class": "no-edge"
-    },
-    {
-      "domain": "types",
       "class": "no-edge"
     },
     {

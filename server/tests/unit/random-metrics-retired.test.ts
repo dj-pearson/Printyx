@@ -15,7 +15,7 @@
  * them.
  */
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
 const repo = join(__dirname, '../../..');
@@ -26,7 +26,6 @@ const stripComments = (s: string) =>
   s.replace(/^\s*\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
 
 const team = read('server/services/team-collaboration-service.ts');
-const meetings = read('server/services/meeting-scheduling-service.ts');
 
 describe('the ratchet is a gate, not a backlog', () => {
   it('has an empty baseline', () => {
@@ -90,34 +89,65 @@ describe('team capacity is counted', () => {
   });
 });
 
-describe('meeting availability says nothing rather than something invented', () => {
-  it('scores neither fatigue nor flexibility', () => {
-    const code = stripComments(meetings);
-    expect(code).toMatch(/meetingFatigueRisk: null/);
-    expect(code).toMatch(/flexibility: null/);
-    expect(code).not.toMatch(/Math\.random/);
+/**
+ * MEETINGS-READS-001 deleted server/services/meeting-scheduling-service.ts, so
+ * the four assertions that used to read it by name have nowhere to point.
+ *
+ * Deleting a file a test names is an invitation to WIDEN the test, not to drop
+ * the property: these phrases were invented availability - a fatigue score, a
+ * flexibility score, a 30%-chance participant conflict, a confident "9 AM
+ * tomorrow" free slot - and an invitation sent to a time somebody is busy is
+ * the damage. The property is that none of them comes back ANYWHERE, so it is
+ * asserted over every service and edge handler rather than over one path.
+ *
+ * The corpus floor is what stops a walk that silently matches nothing from
+ * passing (the vacuity trap every guard here carries).
+ */
+describe('invented meeting availability stays gone, everywhere', () => {
+  const roots = ['server/services', 'supabase/functions'];
+  const files: { path: string; code: string }[] = [];
+  const visit = (dir: string) => {
+    let entries: string[];
+    try {
+      entries = readdirSync(join(repo, dir));
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      if (entry === 'node_modules' || entry.startsWith('.')) continue;
+      const rel = `${dir}/${entry}`;
+      if (statSync(join(repo, rel)).isDirectory()) visit(rel);
+      else if (/\.tsx?$/.test(entry)) files.push({ path: rel, code: stripComments(read(rel)) });
+    }
+  };
+  for (const root of roots) visit(root);
+
+  it('there are files to check, so this cannot pass vacuously', () => {
+    expect(files.length).toBeGreaterThan(400);
   });
 
-  it('raises no conflict against a person from an unmeasured score', () => {
-    const code = stripComments(meetings);
-    expect(code).not.toMatch(/High meeting fatigue risk/);
-    expect(code).not.toMatch(/Limited scheduling flexibility/);
+  it('no file scores meeting fatigue or scheduling flexibility', () => {
+    const offenders = files
+      .filter((f) => /High meeting fatigue risk|Limited scheduling flexibility/.test(f.code))
+      .map((f) => f.path);
+    expect(offenders).toEqual([]);
   });
 
-  it('does not invent a participant conflict', () => {
-    // "Random conflict for demo": a 30% chance of telling a user that somebody
-    // has a clash. check:no-random-metrics excludes jitter inside an `if`, so
-    // this survived the sweep that emptied its baseline.
-    const code = stripComments(meetings);
-    expect(code).not.toMatch(/participant_conflict/);
-    expect(code).not.toMatch(/potential scheduling conflict/);
+  it('no file invents a participant conflict', () => {
+    const offenders = files
+      .filter((f) => /participant_conflict|potential scheduling conflict/.test(f.code))
+      .map((f) => f.path);
+    expect(offenders).toEqual([]);
   });
 
-  it('offers no invented free slot', () => {
-    // A confident window gets a real invitation sent to a time somebody is busy.
-    const code = stripComments(meetings);
-    expect(code).not.toMatch(/9 AM tomorrow|Lunch break/);
-    expect(code).not.toMatch(/bestProductivityHours: \['9 AM'/);
-    expect(meetings).toMatch(/UNBACKED_AVAILABILITY_FIELDS/);
+  it('no file offers an invented free slot', () => {
+    const offenders = files
+      .filter((f) => /9 AM tomorrow|Lunch break|bestProductivityHours: \['9 AM'/.test(f.code))
+      .map((f) => f.path);
+    expect(offenders).toEqual([]);
+  });
+
+  it('the service that carried all four is gone', () => {
+    expect(existsSync(join(repo, 'server/services/meeting-scheduling-service.ts'))).toBe(false);
   });
 });
