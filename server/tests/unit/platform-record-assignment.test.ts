@@ -152,12 +152,41 @@ describe('the engagement signal the health score reads has a writer', () => {
   });
 
   it('and both read sites go through one resolver that prefers it', () => {
-    expect(CS).toContain('function lastActivityAt(');
-    expect(CS).toMatch(/row\.last_contact_date, row\.last_engagement_date/);
+    // ROUND 142: this pinned `function lastActivityAt(` as a LOCAL declaration
+    // in platform-cs. The resolver moved into shared/platform-health-score.ts
+    // so the sweep and the button cannot disagree, which is strictly better and
+    // broke the spelling - the fifth time here a test has had to be rebound
+    // from a spelling to the property it was always about. The property is that
+    // ONE resolver answers both sites and prefers last_contact_date; where it
+    // is declared is not the property.
+    expect(CS).toMatch(
+      // UNALIASED: `lastActivityAt as _x` keeps the identifier inside the
+      // import block while breaking every call below it, so a bare \b match
+      // on the block let that mutant live. check:edge-undef does catch it as
+      // the ReferenceError it is; this makes the test stand on its own.
+      /import\s*\{[^}]*\blastActivityAt\b(?!\s+as\b)[^}]*\}\s*from\s*'[^']*platform-health-score\.ts'/s,
+    );
+    const resolver = stripComments(read('shared/platform-health-score.ts'));
+    expect(resolver).toContain('export function lastActivityAt(');
+    expect(resolver).toMatch(/row\.last_contact_date, row\.last_engagement_date/);
     // Bound to the reads, not to a count: the bare column must not survive at
     // either site.
     expect(CS).not.toMatch(/new Date\(br\.last_engagement_date\)/);
-    expect(CS.match(/lastActivityAt\(br\)/g) ?? []).toHaveLength(2);
+    // NOT a count of call sites: the health-score path now resolves inside
+    // scoreTenantHealth, so one of the two former call sites moved into the
+    // shared module and a `toHaveLength(2)` was a tally standing in for the
+    // property. The property is that NO site reads the dead column bare -
+    // asserted over every occurrence below - and that the resolver is reached
+    // from both paths.
+    expect(CS).toMatch(/lastActivityAt\(br\)/); // churn prediction, directly
+    expect(resolver).toMatch(/lastActivityAt\(row\)/); // health score, via the scorer
+    for (const m of CS.matchAll(/last_engagement_date/g)) {
+      const line = CS.slice(CS.lastIndexOf('\n', m.index!) + 1, CS.indexOf('\n', m.index!));
+      // the only permitted mention is inside a select list, never a read
+      expect(line, line.trim()).toMatch(/select\(|'\*'|,\s*$/);
+    }
+    // and platform-cs keeps no second copy of the resolver
+    expect(CS).not.toContain('function lastActivityAt(');
   });
 });
 

@@ -10,30 +10,111 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { cachedRoleLookup } from '../_shared/auth-cache.ts';
+import { isCronRequest } from '../_shared/cron-auth.ts';
+import { fetchAllRows } from '../_shared/paged-select.ts';
+import {
+  churnRiskFor,
+  lastActivityAt,
+  scoreTenantHealth,
+  type PlatformRecordRow,
+} from '../../../shared/platform-health-score.ts';
 
 /**
- * When something last happened on this account.
+ * `lastActivityAt` now lives in shared/platform-health-score.ts, imported above.
  *
- * ROUND 130: both sites below read `last_engagement_date`, and NOTHING in the
- * tree writes that column - the one writer of `platform_business_records`
- * (`platform-activities`' counter bump) stamps `last_contact_date` on every
- * activity. So the health score's engagement component fell to the `: 999`
- * branch for every tenant, costing all of them 20 points of a score nobody
- * could raise, and the churn model's dormancy term never fired at all, both in
- * the flattering direction.
- *
- * The most recent of the two is taken rather than one or the other, because
- * that is correct whichever column a future writer maintains.
+ * ROUND 130 found both sites here reading `last_engagement_date`, which NOTHING
+ * writes - the one writer of `platform_business_records` (`platform-activities`'
+ * counter bump) stamps `last_contact_date`. It takes the most recent of the two,
+ * which stays correct whichever column a future writer maintains, and it moved
+ * into the scorer because the sweep and the button both need the same answer.
  */
-function lastActivityAt(row: {
-  last_contact_date?: string | null;
-  last_engagement_date?: string | null;
-}): Date | null {
-  const times = [row.last_contact_date, row.last_engagement_date]
-    .filter((v): v is string => typeof v === 'string' && v.length > 0)
-    .map((v) => new Date(v).getTime())
-    .filter((t) => Number.isFinite(t));
-  return times.length > 0 ? new Date(Math.max(...times)) : null;
+
+/**
+ * Score one account and store the row. THE one implementation: the on-demand
+ * button and the nightly sweep both call this, so they cannot drift (COP-B04).
+ *
+ * `calculatedBy` is null for the sweep - the column is nullable and a schedule
+ * has no user, so naming one would put a person's id on a row they did not ask
+ * for. That is the same reason the cron branch does not fall back to a JWT.
+ */
+async function scoreAndStore(
+  admin: ReturnType<typeof createSupabaseServiceClient>,
+  br: PlatformRecordRow,
+  calculatedBy: string | null,
+): Promise<
+  | { kind: 'stored'; row: Record<string, unknown>; result: ReturnType<typeof scoreTenantHealth> }
+  | { kind: 'skipped'; reason: string; result: ReturnType<typeof scoreTenantHealth> }
+  | { kind: 'failed'; error: unknown; result: ReturnType<typeof scoreTenantHealth> }
+> {
+  const result = scoreTenantHealth(br);
+  if (result.overallScore === null || result.healthStatus === null) {
+    return { kind: 'skipped', reason: result.skipped || 'Not enough is measured.', result };
+  }
+
+  const byKey = Object.fromEntries(result.factors.map((f) => [f.key, f.score]));
+  const row = {
+    business_record_id: br.id,
+    tenant_id: br.tenant_id || null,
+    overall_score: result.overallScore,
+    health_status: result.healthStatus,
+    trend: null as string | null,
+    // An unmeasured factor stores NULL rather than the old literal. The columns
+    // default to 0, and a stored 0 is a measurement saying the tenant scores
+    // nothing on it - which is exactly the claim this rewrite removes.
+    usage_score: byKey.productUsage,
+    engagement_score: byKey.outreachRecency,
+    adoption_score: byKey.adoption,
+    support_score: byKey.support,
+    payment_score: byKey.payment,
+    satisfaction_score: byKey.satisfaction,
+    days_since_last_login: null as number | null,
+    nps_score: br.nps_score ?? null,
+    csat_score: (br.csat_score as number | null) ?? null,
+    risk_factors: result.riskFactors,
+    strength_factors: result.strengthFactors,
+    recommendations: result.recommendations,
+    calculated_at: new Date().toISOString(),
+    calculated_by: calculatedBy,
+    next_calculation_due: new Date(Date.now() + 7 * 86400000).toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+
+  // `days_since_last_login` stays NULL deliberately: nothing at the platform
+  // level records a tenant login, and the old code stored our OUTREACH recency
+  // under that name, which is a different fact about a different actor.
+
+  const { data: prev } = await admin
+    .from('platform_health_scores')
+    .select('overall_score')
+    .eq('business_record_id', br.id)
+    .maybeSingle();
+  if (prev && typeof prev.overall_score === 'number') {
+    if (result.overallScore > prev.overall_score + 5) row.trend = 'improving';
+    else if (result.overallScore < prev.overall_score - 5) row.trend = 'declining';
+    else row.trend = 'stable';
+  }
+
+  // `business_record_id` is UNIQUE on this table (checked in migration 0000,
+  // not assumed - round 133's onConflict needs a real index or it is 42P10).
+  const { data: stored, error } = await admin
+    .from('platform_health_scores')
+    .upsert(row, { onConflict: 'business_record_id' })
+    .select()
+    .single();
+  if (error) return { kind: 'failed', error, result };
+
+  const churnRisk = churnRiskFor(result.healthStatus);
+  if (churnRisk) {
+    const { error: brError } = await admin
+      .from('platform_business_records')
+      .update({ churn_risk: churnRisk, updated_at: new Date().toISOString() })
+      .eq('id', br.id);
+    // Not fatal - the score IS stored by this point, and failing the whole
+    // call would make the caller retry a write that already landed.
+    if (brError) console.error('Failed to propagate churn_risk:', brError);
+  }
+
+  return { kind: 'stored', row: stored as Record<string, unknown>, result };
 }
 
 export default async function handler(req: Request) {
@@ -41,6 +122,77 @@ export default async function handler(req: Request) {
   if (corsResponse) return corsResponse;
 
   try {
+    /**
+     * POST /platform-cs/health-scores/calculate-all - the nightly sweep.
+     *
+     * This sits ABOVE auth.getUser because pg_cron carries the internal cron
+     * token and no user JWT, and `isCronRequest` is the WHOLE authentication
+     * with no user fallback, deliberately: rescoring every account on the
+     * platform is not a user action. A root admin rescores one account through
+     * POST /health-scores/calculate.
+     *
+     * Until this existed, NOTHING fired the scorer - no client tree, no cron
+     * file - so `platform_health_scores` had never held a row and
+     * PlatformCustomerSuccess showed an empty table with zeroed headline cards
+     * for every platform admin since it shipped (COP-B04: ask what FIRES a
+     * sweep; if the answer is a button, the feature is a report - and here it
+     * was not even a button).
+     */
+    {
+      const cronUrl = new URL(req.url);
+      const { parts: cronParts } = normalizePath(cronUrl.pathname, 'platform-cs');
+      if (
+        req.method === 'POST' &&
+        cronParts[0] === 'health-scores' &&
+        cronParts[1] === 'calculate-all'
+      ) {
+        if (!isCronRequest(req)) {
+          return createCorsResponse(
+            { error: 'This endpoint is for the scheduler', code: 'CRON_ONLY' },
+            403,
+            req,
+          );
+        }
+        const cronAdmin = createSupabaseServiceClient();
+        // Paged, not capped: a flat limit on a schedule re-finds the same first
+        // page every night and the tail is never scored (COP-B04).
+        const records = await fetchAllRows<PlatformRecordRow>(() =>
+          cronAdmin
+            .from('platform_business_records')
+            .select('*')
+            .eq('record_type', 'tenant')
+            .is('deleted_at', null),
+        );
+
+        let scored = 0;
+        let skipped = 0;
+        const failures: { id: string; error: string }[] = [];
+        // SEQUENTIALLY: each account is two or three round trips and the whole
+        // platform runs through here, so a fan-out would hammer PostgREST for
+        // no deadline anybody is waiting on.
+        for (const br of records) {
+          try {
+            const outcome = await scoreAndStore(cronAdmin, br, null);
+            if (outcome.kind === 'stored') scored += 1;
+            else if (outcome.kind === 'skipped') skipped += 1;
+            else failures.push({ id: String(br.id), error: String(outcome.error) });
+          } catch (err) {
+            // Recorded and stepped over: one bad account must not abort the
+            // rest of the platform's sweep.
+            failures.push({ id: String(br.id), error: (err as Error)?.message || 'unknown' });
+          }
+        }
+
+        // An all-failed sweep answers 500 rather than a 200 nobody reads.
+        const allFailed = records.length > 0 && failures.length === records.length;
+        return createCorsResponse(
+          { examined: records.length, scored, skipped, failed: failures.length, failures },
+          allFailed ? 500 : 200,
+          req,
+        );
+      }
+    }
+
     const authHeader = req.headers.get('Authorization');
     const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
 
@@ -165,15 +317,28 @@ export default async function handler(req: Request) {
         .from('platform_business_records')
         .select('assigned_csm')
         .not('assigned_csm', 'is', null);
-      const seen = new Set<string>();
-      const csms: { id: string; name: string }[] = [];
-      for (const r of rows || []) {
-        const id = (r as any).assigned_csm;
-        if (id && !seen.has(id)) {
-          seen.add(id);
-          csms.push({ id, name: id });
-        }
-      }
+      const ids = [...new Set((rows || []).map((r: any) => r.assigned_csm).filter(Boolean))];
+      if (ids.length === 0) return createCorsResponse([], 200, req);
+
+      // `assigned_csm` holds a USER ID, and this list is a picker label - it
+      // used to answer `{ id, name: id }`, so the filter on
+      // /platform-customer-success offered raw uuids as people's names. Same
+      // fix as round 130's GET /platform-crm/managers: resolve them against
+      // `users`, whose real columns are first_name/last_name (NOT `name` or
+      // `full_name` - COP-M01).
+      const { data: people } = await admin
+        .from('users')
+        .select('id, first_name, last_name, email')
+        .in('id', ids);
+      const byId = new Map((people || []).map((u: any) => [u.id, u]));
+      const csms = ids.map((id) => {
+        const u = byId.get(id);
+        const full = `${u?.first_name ?? ''} ${u?.last_name ?? ''}`.trim();
+        // An id we cannot resolve keeps the id as its label rather than
+        // rendering blank: the filter still has to work for a CSM whose user
+        // row was removed, and an empty option is unpickable.
+        return { id, name: full || u?.email || id, resolved: Boolean(full || u?.email) };
+      });
       return createCorsResponse(csms, 200, req);
     }
 
@@ -181,7 +346,12 @@ export default async function handler(req: Request) {
     // HEALTH SCORES
     // ----------------------------------------------------------------------
     if (resource === 'health-scores') {
-      // POST /health-scores/calculate
+      // POST /health-scores/calculate - one account, on demand.
+      //
+      // The arithmetic lives in shared/platform-health-score.ts so this branch
+      // and the nightly sweep cannot disagree (COP-B04). Read that module's
+      // header before changing a weight: four of the six original factors were
+      // constants over columns nothing writes.
       if (req.method === 'POST' && sub === 'calculate') {
         const body = await req.json().catch(() => ({}));
         const businessRecordId = body.businessRecordId;
@@ -198,117 +368,38 @@ export default async function handler(req: Request) {
           return createCorsResponse({ error: 'Health scores are only for tenants' }, 400, req);
         }
 
-        const usageScore = Math.min(100, br.engagement_score || 0);
-        const lastActivity = lastActivityAt(br);
-        const daysSinceLastActivity = lastActivity
-          ? Math.floor((Date.now() - lastActivity.getTime()) / 86400000)
-          : 999;
-        const engagementScore = Math.max(0, 100 - daysSinceLastActivity * 2);
-        const adoptionScore = 70;
-        const supportScore = 85;
-        const paymentScore = br.current_mrr ? 100 : 50;
-        const satisfactionScore = br.nps_score
-          ? Math.max(0, Math.min(100, (br.nps_score + 100) / 2))
-          : 50;
-
-        const overallScore = Math.round(
-          usageScore * 0.2 +
-            engagementScore * 0.2 +
-            adoptionScore * 0.15 +
-            supportScore * 0.15 +
-            paymentScore * 0.2 +
-            satisfactionScore * 0.1,
-        );
-
-        let healthStatus: string;
-        if (overallScore >= 90) healthStatus = 'excellent';
-        else if (overallScore >= 70) healthStatus = 'healthy';
-        else if (overallScore >= 50) healthStatus = 'at_risk';
-        else healthStatus = 'critical';
-
-        const { data: prev } = await admin
-          .from('platform_health_scores')
-          .select('overall_score')
-          .eq('business_record_id', businessRecordId)
-          .single();
-        let trend: string | null = null;
-        if (prev) {
-          if (overallScore > prev.overall_score + 5) trend = 'improving';
-          else if (overallScore < prev.overall_score - 5) trend = 'declining';
-          else trend = 'stable';
+        const outcome = await scoreAndStore(admin, br as PlatformRecordRow, user.id);
+        if (outcome.kind === 'skipped') {
+          // Not an error: the account is real and too little about it is
+          // measured to store a score honestly. Both NOT NULL columns would
+          // need a value invented to write this row.
+          return createCorsResponse(
+            {
+              stored: false,
+              reason: outcome.reason,
+              coverage: outcome.result.coverage,
+              unmeasured: outcome.result.unmeasured,
+              factors: outcome.result.factors,
+            },
+            200,
+            req,
+          );
         }
-
-        const riskFactors: string[] = [];
-        if (usageScore < 50) riskFactors.push('Low usage');
-        if (engagementScore < 50) riskFactors.push('Low engagement');
-        if (daysSinceLastActivity > 30) riskFactors.push('No recent activity');
-        if (!br.current_mrr) riskFactors.push('No active subscription');
-        if (br.nps_score && br.nps_score < 0) riskFactors.push('Negative NPS');
-
-        const strengthFactors: string[] = [];
-        if (usageScore >= 80) strengthFactors.push('High usage');
-        if (engagementScore >= 80) strengthFactors.push('High engagement');
-        if (br.nps_score && br.nps_score > 50) strengthFactors.push('High NPS');
-        if (br.current_mrr && Number(br.current_mrr) > 1000)
-          strengthFactors.push('High-value customer');
-
-        const recommendations: string[] = [];
-        if (overallScore < 70) {
-          recommendations.push('Schedule check-in call');
-          if (engagementScore < 50) recommendations.push('Send re-engagement campaign');
-          if (usageScore < 50) recommendations.push('Offer training session');
-        }
-
-        const row = {
-          business_record_id: businessRecordId,
-          tenant_id: br.tenant_id || null,
-          overall_score: overallScore,
-          health_status: healthStatus,
-          trend,
-          usage_score: usageScore,
-          engagement_score: engagementScore,
-          adoption_score: adoptionScore,
-          support_score: supportScore,
-          payment_score: paymentScore,
-          satisfaction_score: satisfactionScore,
-          days_since_last_login: daysSinceLastActivity,
-          nps_score: br.nps_score ?? null,
-          csat_score: br.csat_score ?? null,
-          risk_factors: riskFactors,
-          strength_factors: strengthFactors,
-          recommendations,
-          calculated_at: new Date().toISOString(),
-          calculated_by: user.id,
-          next_calculation_due: new Date(Date.now() + 7 * 86400000).toISOString(),
-          updated_at: new Date().toISOString(),
-        };
-
-        const { data: healthScore, error } = await admin
-          .from('platform_health_scores')
-          .upsert(row, { onConflict: 'business_record_id' })
-          .select()
-          .single();
-        if (error) {
-          console.error('Error calculating health score:', error);
+        if (outcome.kind === 'failed') {
+          console.error('Error calculating health score:', outcome.error);
           return createCorsResponse({ error: 'Failed to calculate health score' }, 500, req);
         }
-
-        await admin
-          .from('platform_business_records')
-          .update({
-            churn_risk:
-              healthStatus === 'critical'
-                ? 'critical'
-                : healthStatus === 'at_risk'
-                  ? 'high'
-                  : healthStatus === 'healthy'
-                    ? 'low'
-                    : 'very_low',
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', businessRecordId);
-
-        return createCorsResponse(healthScore, 200, req);
+        return createCorsResponse(
+          {
+            ...outcome.row,
+            stored: true,
+            coverage: outcome.result.coverage,
+            unmeasured: outcome.result.unmeasured,
+            factors: outcome.result.factors,
+          },
+          200,
+          req,
+        );
       }
 
       // GET /health-scores/:businessRecordId

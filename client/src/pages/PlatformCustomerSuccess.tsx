@@ -33,7 +33,6 @@ import {
   Activity,
   BarChart3,
   ArrowRight,
-  Zap,
 } from 'lucide-react';
 import { Link } from 'wouter';
 
@@ -48,10 +47,14 @@ interface TenantHealth {
 
   // Engagement metrics
   lastLoginDate?: string;
-  activeUsers: number;
-  totalUsers: number;
-  loginFrequency: number;
-  featureAdoption: number;
+  // null means nothing measures it, which must not render the same as 0.
+  activeUsers: number | null;
+  totalUsers: number | null;
+  loginFrequency: number | null;
+  featureAdoption: number | null;
+  /** The score's outreach-recency factor, 0-100, or null when unmeasured. */
+  outreachScore: number | null;
+  riskFactors: string[];
 
   // Financial metrics
   mrr: string;
@@ -65,8 +68,6 @@ interface TenantHealth {
   satisfactionScore?: number;
 
   // Onboarding
-  onboardingStatus: 'not_started' | 'in_progress' | 'completed';
-  onboardingProgress: number;
 
   // CSM assignment
   csmId?: string;
@@ -117,9 +118,16 @@ const CHURN_RISK_CONFIG = {
 // The /platform-cs/health-scores endpoint returns
 //   { healthScores: [{ ...snake_case health-score cols, businessRecord }], pagination }
 // but this page was built against a camelCase TenantHealth[] mock. Map the real
-// response to the shape the UI renders; fields the backend does not track
-// (per-user counts, onboarding, login history) fall back to safe defaults
-// instead of fabricated numbers.
+// response to the shape the UI renders.
+//
+// CORRECTED round 142: this used to say the untracked fields "fall back to safe
+// defaults instead of fabricated numbers", and a default that RENDERS as a
+// measurement is not safe. `onboardingStatus: 'completed'` put "Active" against
+// every tenant on the platform and made the Onboarding tab permanently 0, while
+// activeUsers/totalUsers/featureAdoption rendered "0/0 users" and "0% adoption"
+// - three claims about tenants nothing in this product measures. They are gone
+// rather than zeroed (AUDIT-019), and the columns that replace them read the
+// score's own measured factors.
 
 function gradeFromScore(score: number): TenantHealth['healthGrade'] {
   if (score >= 90) return 'excellent';
@@ -171,10 +179,16 @@ function mapTenants(raw: any): TenantHealth[] {
           ? Number(br.churn_probability)
           : Math.max(0, Math.min(1, (100 - overall) / 100)),
       lastLoginDate: undefined,
-      activeUsers: 0,
-      totalUsers: 0,
-      loginFrequency: 0,
-      featureAdoption: Math.round(percentOfOr(featuresAdopted, totalFeatures)),
+      // Nothing at the platform level records a tenant login or which features
+      // they use, so these are null rather than 0 - the difference is whether
+      // the rows were looked for.
+      activeUsers: null,
+      totalUsers: null,
+      loginFrequency: null,
+      featureAdoption:
+        totalFeatures > 0 ? Math.round(percentOfOr(featuresAdopted, totalFeatures)) : null,
+      outreachScore: s.engagement_score != null ? Number(s.engagement_score) : null,
+      riskFactors: Array.isArray(s.risk_factors) ? s.risk_factors.map(String) : [],
       mrr: br.current_mrr != null ? String(br.current_mrr) : '0',
       contractValue: br.current_mrr != null ? String(Number(br.current_mrr) * 12) : '0',
       contractEndDate: endDate ?? undefined,
@@ -183,8 +197,6 @@ function mapTenants(raw: any): TenantHealth[] {
       avgResponseTime:
         s.avg_ticket_resolution_days != null ? Number(s.avg_ticket_resolution_days) : undefined,
       satisfactionScore,
-      onboardingStatus: 'completed',
-      onboardingProgress: 100,
       csmId: csm,
       csmName: csm,
       createdAt: s.created_at ?? '',
@@ -248,6 +260,10 @@ export default function PlatformCustomerSuccess() {
     queryKey: ['/api/platform-cs/csms'],
   });
 
+  // `assigned_csm` stores a user id. The endpoint resolves it to a name now,
+  // and the row mapper only has the id, so the column reads the name from here.
+  const csmNameById = new Map(csms.map((c) => [c.id, c.name]));
+
   // Filter tenants
   const filteredTenants = tenants.filter((tenant) => {
     const matchesFilter =
@@ -256,7 +272,6 @@ export default function PlatformCustomerSuccess() {
         (tenant.churnRisk === 'high' || tenant.churnRisk === 'critical')) ||
       (selectedFilter === 'healthy' &&
         (tenant.healthGrade === 'excellent' || tenant.healthGrade === 'good')) ||
-      (selectedFilter === 'onboarding' && tenant.onboardingStatus !== 'completed') ||
       (selectedFilter === 'renewal' && tenant.daysUntilRenewal && tenant.daysUntilRenewal <= 60);
 
     const matchesCSM = !selectedCSM || tenant.csmId === selectedCSM;
@@ -270,7 +285,6 @@ export default function PlatformCustomerSuccess() {
     healthy: tenants.filter((t) => t.healthGrade === 'excellent' || t.healthGrade === 'good')
       .length,
     at_risk: tenants.filter((t) => t.churnRisk === 'high' || t.churnRisk === 'critical').length,
-    onboarding: tenants.filter((t) => t.onboardingStatus !== 'completed').length,
     renewal: tenants.filter((t) => t.daysUntilRenewal && t.daysUntilRenewal <= 60).length,
   };
 
@@ -425,7 +439,6 @@ export default function PlatformCustomerSuccess() {
               <TabsTrigger value="all">All ({filterCounts.all})</TabsTrigger>
               <TabsTrigger value="healthy">Healthy ({filterCounts.healthy})</TabsTrigger>
               <TabsTrigger value="at_risk">At Risk ({filterCounts.at_risk})</TabsTrigger>
-              <TabsTrigger value="onboarding">Onboarding ({filterCounts.onboarding})</TabsTrigger>
               <TabsTrigger value="renewal">Renewal ({filterCounts.renewal})</TabsTrigger>
             </TabsList>
 
@@ -436,10 +449,9 @@ export default function PlatformCustomerSuccess() {
                     <TableHead>Tenant</TableHead>
                     <TableHead>Health</TableHead>
                     <TableHead>Churn Risk</TableHead>
-                    <TableHead>Engagement</TableHead>
+                    <TableHead>Outreach</TableHead>
                     <TableHead>MRR</TableHead>
                     <TableHead>CSM</TableHead>
-                    <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -501,23 +513,31 @@ export default function PlatformCustomerSuccess() {
                             </div>
                           </TableCell>
                           <TableCell>
+                            {/* Our OUTREACH recency, not their engagement: the
+                                underlying column is bumped when our team logs a
+                                call or an email. Naming it engagement is how a
+                                CSM reads their own diligence back as the
+                                customer's health. */}
                             <div className="space-y-1">
-                              <div className="flex items-center gap-2 text-sm">
-                                <Users className="h-3 w-3" />
-                                <span>
-                                  {tenant.activeUsers}/{tenant.totalUsers} users
+                              {tenant.outreachScore === null ? (
+                                <span className="text-sm text-muted-foreground">
+                                  No activity logged
                                 </span>
-                              </div>
-                              <div className="flex items-center gap-2 text-sm">
-                                <Zap className="h-3 w-3" />
-                                <span>{tenant.featureAdoption}% adoption</span>
-                              </div>
-                              {tenant.lastLoginDate && (
-                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              ) : (
+                                <div className="flex items-center gap-2 text-sm">
                                   <Clock className="h-3 w-3" />
-                                  <span>{new Date(tenant.lastLoginDate).toLocaleDateString()}</span>
+                                  <span>{tenant.outreachScore}/100</span>
                                 </div>
                               )}
+                              {tenant.riskFactors.slice(0, 2).map((rf) => (
+                                <div
+                                  key={rf}
+                                  className="flex items-center gap-2 text-xs text-muted-foreground"
+                                >
+                                  <AlertTriangle className="h-3 w-3" />
+                                  <span>{rf}</span>
+                                </div>
+                              ))}
                             </div>
                           </TableCell>
                           <TableCell>
@@ -533,18 +553,10 @@ export default function PlatformCustomerSuccess() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            {tenant.csmName || (
-                              <span className="text-muted-foreground">Unassigned</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {tenant.onboardingStatus === 'completed' ? (
-                              <Badge variant="outline">Active</Badge>
+                            {tenant.csmId ? (
+                              (csmNameById.get(tenant.csmId) ?? tenant.csmId)
                             ) : (
-                              <div>
-                                <Badge variant="secondary">Onboarding</Badge>
-                                <Progress value={tenant.onboardingProgress} className="mt-1 w-20" />
-                              </div>
+                              <span className="text-muted-foreground">Unassigned</span>
                             )}
                           </TableCell>
                           <TableCell className="text-right">
