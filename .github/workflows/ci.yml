@@ -95,6 +95,8 @@ jobs:
         run: npm run check:error-shape
       - name: Enum values a migration writes but its type lacks (PA-032)
         run: npm run check:migration-enums
+      - name: Check for path lists compared against a stripped req.path
+        run: npm run check:mounted-path-lists
       - name: Passing stories naming an unreachable deliverable (WF-G-03)
         run: npm run check:story-orphans
       - name: Fabricated-fallback ratchet (AUDIT-019)

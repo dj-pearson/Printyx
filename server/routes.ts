@@ -21,13 +21,13 @@ import { csrfProtection, csrfTokenHandler } from './middleware/csrf-protection';
 import connectPg from 'connect-pg-simple';
 import { globalTieredRateLimit } from './middleware/user-rate-limit';
 import { setupAuth, requireAuth } from './replitAuth';
-import { blockRegistrations } from './middleware/registration-lock';
 import { apiVersioning, legacyRouteSupport, apiVersionInfo } from './middleware/api-versioning';
 import { resolveTenant } from './middleware/tenancy';
 import { storage } from './storage';
 
 // ─── Route Registry ───────────────────────────────────────────────────
 import { registerAllRouteModules } from './routes-registry';
+import { fullApiPath, isPublicApiPath } from './lib/public-api-paths';
 
 import { getUserId, getTenantId } from './utils/auth-helpers';
 import { createModuleLogger } from './lib/logger';
@@ -141,22 +141,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api', resolveTenant as any);
   const { trackApiCall } = await import('./middleware/subscription');
   app.use('/api', trackApiCall);
-  app.use('/api', blockRegistrations);
+  // blockRegistrations was unmounted here: its path list was written as
+  // `/api/signup`, `/api/auth/register` and friends while a middleware mounted
+  // at `/api` sees those with the prefix STRIPPED, so `blockedPaths.includes`
+  // was false for every request it ever saw and the lock never fired once on
+  // any host. See server/tests/unit/public-api-paths.test.ts for what that
+  // leaves open and where a real registration kill switch would have to live.
 
   // Require authentication (except public paths)
   app.use('/api', async (req: any, res, next) => {
-    const publicPaths = [
-      '/api/auth',
-      '/api/health',
-      '/api/csrf-token',
-      '/api/trial',
-      '/api/knowledge-base',
-      '/api/signup-crm',
-      '/api/webhooks', // Webhooks use provider-specific signature verification, not JWT
-    ];
-    // Match exact path or a proper sub-path (segment boundary) so that e.g.
-    // "/api/authx" or "/api/health-internal" are NOT treated as public (CR-014).
-    if (publicPaths.some((p) => req.path === p || req.path.startsWith(p + '/'))) return next();
+    // The FULL path, because `req.path` under this mount has `/api` stripped
+    // and the list is written in full form. Comparing the two is what made
+    // every public path 401 (LAUNCH-008).
+    if (isPublicApiPath(fullApiPath(req))) return next();
     const userId = getUserId(req);
     if (!userId) {
       return res.status(401).json({ message: 'Authentication required', code: 'UNAUTHORIZED' });

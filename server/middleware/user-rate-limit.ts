@@ -13,6 +13,7 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
+import { fullApiPath } from '../lib/public-api-paths';
 import { getUserId, isAuthenticated } from '../utils/auth-helpers';
 import { createModuleLogger } from '../lib/logger';
 import { config } from '../config';
@@ -394,7 +395,14 @@ export const readLimiter = userRateLimit('read');
  * Routes through auth → billing → mutation/read based on path and method.
  */
 export function globalTieredRateLimit(req: Request, res: Response, next: NextFunction) {
-  const path = req.path.toLowerCase();
+  // The FULL path. This middleware is mounted at `app.use('/api/', ...)`, and
+  // Express strips the mount prefix from `req.path` - so `/api/billing/invoices`
+  // arrived here as `/billing/invoices` and every `startsWith('/api/billing')`
+  // below was false. The billing tier is configured, mounted and documented at
+  // 20/min, and had never once been selected: billing traffic fell through to
+  // the mutation and read limiters at 100 and 200/min. The auth branch below
+  // survived only because `includes` does not care where the prefix went.
+  const path = fullApiPath(req).toLowerCase();
   const method = req.method.toUpperCase();
 
   // Auth routes get strictest limits

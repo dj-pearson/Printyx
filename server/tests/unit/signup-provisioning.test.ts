@@ -30,6 +30,8 @@
  * and writes rows and sends email - so the throttle ships in the same commit.
  */
 import { describe, expect, it } from 'vitest';
+import express from 'express';
+import type { AddressInfo } from 'node:net';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -115,13 +117,30 @@ describe('the signup page reaches the handler that provisions a tenant', () => {
     expect(stripComments(PROXY)).toMatch(/'\/api\/signup':\s*'signup'/);
   });
 
-  it('the proxy entry cannot capture /api/signup-crm', () => {
-    // app.use matches on segment boundaries. Proven by running express rather
-    // than by remembering, because this is the collision that would take a
-    // working prefix off Express.
+  it('the proxy entry cannot capture /api/signup-crm', async () => {
+    // app.use matches on segment boundaries, so '/api/signup' does not mount
+    // over '/api/signup-crm'. Proven by RUNNING express rather than by
+    // remembering: this is the collision that would take a working prefix off
+    // Express, and the first cut of this assertion pinned where the sibling
+    // prefix happened to be WRITTEN, which broke the moment that list moved
+    // into a module of its own.
     expect(stripComments(PROXY)).not.toMatch(/'\/api\/signup\/'/);
-    // A separate prefix exists and stays separate.
-    expect(read('server/routes.ts')).toMatch(/'\/api\/signup-crm'/);
+
+    const app = express();
+    app.use('/api/signup', (_req, res) => res.json({ hit: 'signup' }));
+    app.use('/api/signup-crm', (_req, res) => res.json({ hit: 'crm' }));
+    app.use((_req, res) => res.json({ hit: 'neither' }));
+    const server = app.listen(0);
+    try {
+      const { port } = server.address() as AddressInfo;
+      const hit = async (u: string) =>
+        (await (await fetch(`http://127.0.0.1:${port}${u}`, { method: 'POST' })).json()).hit;
+      expect(await hit('/api/signup')).toBe('signup');
+      expect(await hit('/api/signup-crm')).toBe('crm');
+      expect(await hit('/api/signupx')).toBe('neither');
+    } finally {
+      server.close();
+    }
   });
 });
 

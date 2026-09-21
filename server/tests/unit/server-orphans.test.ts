@@ -129,7 +129,12 @@ describe('the three unmountable security controls are retired (AUDIT-034)', () =
       encoding: 'utf8',
     })
       .split('\n')
-      .filter((f) => f && !f.startsWith('server/tests/'));
+      // `git ls-files` reads the INDEX, which can still name a file that has
+      // been deleted from disk but not yet staged - readFileSync then throws
+      // ENOENT and the walk fails for a reason that has nothing to do with the
+      // property. Skip what is not there; the floor below stops that from
+      // becoming a way to pass by skipping everything.
+      .filter((f) => f && !f.startsWith('server/tests/') && existsSync(join(repo, f)));
 
     // A walk that stops matching must fail rather than pass in silence.
     expect(files.length).toBeGreaterThan(200);
