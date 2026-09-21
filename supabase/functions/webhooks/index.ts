@@ -1,6 +1,7 @@
 // Webhooks Edge Function
 // Handles webhook configuration and event dispatching
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
+import { SSRFError, safeFetch } from '../_shared/safe-fetch.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { toWebhookView, toWebhookViews } from '../_shared/webhook-view.ts';
@@ -247,7 +248,14 @@ export default async function handler(req: Request) {
       };
 
       try {
-        const response = await fetch(webhook.url, {
+        // SEC-002: the URL is chosen by whoever created the webhook, and this
+        // branch stores `response_body` in webhook_logs and returns the status
+        // to the caller - so an unchecked request is a read primitive pointed
+        // at anything the cluster can reach, with the answer written somewhere
+        // the caller can read it. The SUPERVISOR gate on this function limits
+        // WHO can do it and is not a substitute: a role check says nothing
+        // about where the request goes.
+        const response = await safeFetch(webhook.url, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -292,7 +300,14 @@ export default async function handler(req: Request) {
         return createCorsResponse(
           {
             success: false,
-            message: 'Failed to reach webhook URL',
+            // Refused and unreachable are different answers, and the operator
+            // needs to know which: one means fix the URL, the other means the
+            // URL points somewhere this product will not send their data.
+            message:
+              error instanceof SSRFError
+                ? 'Refused: that URL resolves to a private or reserved address'
+                : 'Failed to reach webhook URL',
+            code: error instanceof SSRFError ? 'BLOCKED_URL' : undefined,
             error: error instanceof Error ? error.message : 'Unknown error',
           },
           200,

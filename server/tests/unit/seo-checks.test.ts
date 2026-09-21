@@ -264,10 +264,13 @@ describe('both hosts serve the three endpoints from the one module', () => {
     // left the import line untouched and passed.
     expect(EDGE).toContain("from '../../../shared/seo-checks.ts'");
     expect(EDGE).toContain('evaluateSecurityHeaders(');
-    expect(EDGE).toContain('summariseRedirectChain(steps, { loop, truncated })');
+    // The CALL, not one spelling of its argument list: SEC-002 added a
+    // `blockedAt` outcome and a pin on the old object literal failed a change
+    // that strictly improves what the call reports.
+    expect(EDGE).toMatch(/summariseRedirectChain\(steps, \{ loop, truncated/);
     expect(SERVICE).toContain("from '@shared/seo-checks'");
     expect(SERVICE).toContain('return evaluateSecurityHeaders(url, entries, httpsRedirect);');
-    expect(SERVICE).toContain('return summariseRedirectChain(steps, { loop, truncated });');
+    expect(SERVICE).toMatch(/return summariseRedirectChain\(steps, \{ loop, truncated/);
   });
 });
 

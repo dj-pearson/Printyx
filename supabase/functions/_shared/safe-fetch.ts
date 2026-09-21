@@ -64,6 +64,28 @@ async function validateDnsResolution(hostname: string): Promise<void> {
   }
 }
 
+/**
+ * Controls 1 and 2 on their own, for a caller that must handle redirects itself.
+ *
+ * SEC-002. `safeFetch` below FOLLOWS redirects (re-validating each hop), which
+ * is right for "fetch this page" and wrong for a caller whose whole job is to
+ * OBSERVE a redirect - the SEO https probe and the redirect-chain walker both
+ * need the 3xx and its Location, so a client that resolves them returns the
+ * wrong answer. They validate every URL they are about to request with this
+ * instead, which keeps the scheme check, the private-range check and the DNS
+ * resolution in one place rather than growing a second, weaker copy.
+ *
+ * Throws SSRFError, so a caller can answer 400 with the reason rather than
+ * reporting an unreachable host.
+ */
+export async function assertSafeUrl(url: string): Promise<void> {
+  const validation = validateUrl(url);
+  if (!validation.valid) {
+    throw new SSRFError(`SSRF protection blocked request to ${url}: ${validation.reason}`);
+  }
+  await validateDnsResolution(new URL(url).hostname);
+}
+
 export interface SafeFetchOptions extends RequestInit {
   timeoutMs?: number;
   maxRedirects?: number;
@@ -73,12 +95,7 @@ export async function safeFetch(url: string, options?: SafeFetchOptions): Promis
   const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const maxRedirects = options?.maxRedirects ?? MAX_REDIRECTS;
 
-  const validation = validateUrl(url);
-  if (!validation.valid) {
-    throw new SSRFError(`SSRF protection blocked request to ${url}: ${validation.reason}`);
-  }
-
-  await validateDnsResolution(new URL(url).hostname);
+  await assertSafeUrl(url);
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -108,14 +125,9 @@ export async function safeFetch(url: string, options?: SafeFetchOptions): Promis
 
       const redirectUrl = new URL(location, currentUrl).toString();
 
-      const redirectValidation = validateUrl(redirectUrl);
-      if (!redirectValidation.valid) {
-        throw new SSRFError(
-          `SSRF protection blocked redirect to ${redirectUrl}: ${redirectValidation.reason}`,
-        );
-      }
-
-      await validateDnsResolution(new URL(redirectUrl).hostname);
+      // Every hop, not just the first: following a redirect blindly is how the
+      // scheme and private-range checks get walked around.
+      await assertSafeUrl(redirectUrl);
       currentUrl = redirectUrl;
     }
   } catch (error) {

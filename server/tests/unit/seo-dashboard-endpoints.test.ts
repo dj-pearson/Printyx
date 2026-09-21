@@ -110,15 +110,48 @@ describe('SEO-004 second tranche: shapes match the real columns', () => {
     return [...body.matchAll(/^\s{2}(\w+)\??:/gm)].map((m) => m[1]);
   }
 
+  /**
+   * Keys the RESPONSE carries that the table does not store.
+   *
+   * The rule here is "a field the page reads has something behind it", and a
+   * column is one way to have something behind it - not the only way. SEC-002
+   * added `blockedAt` and `truncated` to the redirect-chain RESULT, and an
+   * incomplete chain is deliberately not stored at all (`destination_url` is
+   * NOT NULL, so the table cannot represent one), so neither will ever be a
+   * column. Derived from shared/seo-checks.ts rather than listed, so a field
+   * invented on the page still fails.
+   */
+  function resultKeys(typeName: string): Set<string> {
+    const src = readFileSync(join(root, 'shared/seo-checks.ts'), 'utf8');
+    const start = src.indexOf(`export interface ${typeName} {`);
+    if (start === -1) return new Set();
+    const body = src.slice(start, src.indexOf('\n}', start));
+    return new Set([...body.matchAll(/^\s{2}(\w+)\??:/gm)].map((m) => m[1]));
+  }
+
+  const RESULT_TYPE: Record<string, string> = { RedirectChain: 'RedirectChainResult' };
+
   it.each([
     ['ImageAnalysis', 'seoImageAnalysis'],
     ['BrokenLink', 'seoLinkAnalysis'],
     ['RedirectChain', 'seoRedirectAnalysis'],
     ['StructuredDataResult', 'seoStructuredData'],
-  ])('%s names only columns %s has', (iface, table) => {
+  ])('%s names only columns %s has, or keys its endpoint returns', (iface, table) => {
     const columns = columnsOf(table);
-    const phantom = fieldsOf(iface).filter((f) => !columns.has(f));
+    const derived = resultKeys(RESULT_TYPE[iface] ?? '');
+    const phantom = fieldsOf(iface).filter((f) => !columns.has(f) && !derived.has(f));
     expect(phantom).toEqual([]);
+  });
+
+  it('the derived allowance is real, not a way to wave a field through', () => {
+    // If shared/seo-checks.ts stops declaring them, they go back to being
+    // phantom fields and the assertion above bites again.
+    const derived = resultKeys('RedirectChainResult');
+    expect(derived.has('blockedAt')).toBe(true);
+    expect(derived.has('truncated')).toBe(true);
+    expect(derived.has('destinationUrl')).toBe(true);
+    // And it does not cover a name nobody declared.
+    expect(derived.has('somethingInvented')).toBe(false);
   });
 
   it('reads the bare arrays these endpoints return, not a wrapper key', () => {

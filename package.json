@@ -215,6 +215,7 @@
     "check:percent-math": "node scripts/check-percent-math.mjs",
     "check:browser-dialogs": "node scripts/check-browser-dialogs.mjs",
     "check:dead-buttons": "node scripts/check-dead-buttons.mjs",
+    "check:ssrf-fetch": "node scripts/check-ssrf-fetch.mjs",
     "check:mounted-path-lists": "node scripts/check-mounted-path-lists.mjs",
     "check:migration-enums": "node scripts/check-migration-enum-values.mjs"
   },

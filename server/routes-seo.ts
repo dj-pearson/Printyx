@@ -887,12 +887,36 @@ router.post('/api/seo/detect/redirect-chains', async (req: any, res) => {
 
     const redirects = await detectRedirectChains(sourceUrl);
 
+    // SEC-002: `destination_url` is NOT NULL, so this table cannot represent a
+    // chain that did not reach an end - truncated, or stopped at a private
+    // address. Storing the last hop as the destination is the claim
+    // summariseRedirectChain refuses to make; the row is withheld instead and
+    // the caller still gets the result. The spread also carried `blockedAt`,
+    // which has no column: drizzle drops an unknown key silently, so an
+    // explicit value list is what keeps that visible.
+    if (redirects.destinationUrl === null) {
+      return res.json({
+        ...redirects,
+        stored: false,
+        unstoredReason: redirects.blockedAt
+          ? 'The chain was stopped at a private or reserved address, so it has no destination to record'
+          : 'The chain hit the hop limit, so it has no destination to record',
+      });
+    }
+
     const [stored] = await db
       .insert(seoRedirectAnalysis)
       .values({
         tenantId,
         sourceUrl,
-        ...redirects,
+        destinationUrl: redirects.destinationUrl,
+        redirectChain: redirects.redirectChain,
+        chainLength: redirects.chainLength,
+        statusCode: redirects.statusCode,
+        redirectType: redirects.redirectType,
+        hasRedirectLoop: redirects.hasRedirectLoop,
+        hasMultipleRedirects: redirects.hasMultipleRedirects,
+        issues: redirects.issues,
         checkedAt: new Date(),
       })
       .returning();

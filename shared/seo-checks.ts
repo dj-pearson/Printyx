@@ -125,7 +125,15 @@ export interface RedirectStep {
 }
 
 export interface RedirectChainResult {
-  destinationUrl: string;
+  /**
+   * Where the chain ends, or NULL when the walk did not reach an end.
+   *
+   * Null when the hop limit was hit and null when a hop was refused (SEC-002),
+   * because in both cases the last URL observed is a place the chain passed
+   * THROUGH. The comment below has said since this module was written that
+   * returning it is a claim the data does not support; it now does not.
+   */
+  destinationUrl: string | null;
   redirectChain: RedirectStep[];
   chainLength: number;
   statusCode: number;
@@ -134,6 +142,13 @@ export interface RedirectChainResult {
   hasMultipleRedirects: boolean;
   /** True when the walk stopped at the hop limit, so the chain may be longer. */
   truncated: boolean;
+  /**
+   * The hop that was refused, when SSRF validation stopped the walk.
+   *
+   * Reported rather than swallowed: a chain cut short at a private address that
+   * summarises as a normal terminus tells an operator their redirect is fine.
+   */
+  blockedAt: string | null;
   issues: string[];
 }
 
@@ -148,22 +163,32 @@ export const MAX_REDIRECTS = 10;
  */
 export function summariseRedirectChain(
   steps: RedirectStep[],
-  outcome: { loop?: boolean; truncated?: boolean } = {},
+  outcome: { loop?: boolean; truncated?: boolean; blockedAt?: string | null } = {},
 ): RedirectChainResult {
   if (steps.length === 0) {
     throw new Error('summariseRedirectChain needs at least the first request');
   }
   const last = steps[steps.length - 1];
+  const blockedAt = outcome.blockedAt ?? null;
   const issues: string[] = [];
   if (outcome.loop) issues.push('Redirect loop detected');
   if (outcome.truncated)
     issues.push(`Stopped after ${MAX_REDIRECTS} redirects; chain may be longer`);
-  if (!outcome.loop && !outcome.truncated && steps.length > 2) {
+  if (blockedAt) {
+    issues.push(`Chain stopped at ${blockedAt}: it resolves to a private or reserved address`);
+  }
+  if (!outcome.loop && !outcome.truncated && !blockedAt && steps.length > 2) {
     issues.push('Multiple redirects in chain');
   }
 
+  // A loop HAS an end - the URL it comes back to - so it keeps a destination.
+  // Truncation and a refusal do not: the last hop observed is somewhere the
+  // chain passed through, and naming it as the destination is the exact claim
+  // this function's header says it must not make.
+  const incomplete = Boolean(outcome.truncated) || Boolean(blockedAt);
+
   return {
-    destinationUrl: outcome.loop ? (last.location ?? last.url) : last.url,
+    destinationUrl: outcome.loop ? (last.location ?? last.url) : incomplete ? null : last.url,
     redirectChain: steps,
     chainLength: steps.length,
     statusCode: last.statusCode,
@@ -171,6 +196,7 @@ export function summariseRedirectChain(
     hasRedirectLoop: Boolean(outcome.loop),
     hasMultipleRedirects: steps.length > 2,
     truncated: Boolean(outcome.truncated),
+    blockedAt,
     issues,
   };
 }

@@ -93,9 +93,32 @@ describe('the edge copy still validates redirect targets', () => {
 
   it('re-runs URL validation and DNS on every hop', () => {
     // Following a redirect without re-checking is how steps 1 and 2 get bypassed.
+    //
+    // Bound to the PROPERTY rather than to two spellings. This used to pin
+    // `validateUrl(redirectUrl)` and `validateDnsResolution(...)` as literal
+    // calls, so extracting both into one exported `assertSafeUrl` - which the
+    // SEO redirect walker needs, and which removes a second inline copy - broke
+    // a test on a change that strictly improves the thing it guards.
     expect(fetchSrc).toContain("redirect: 'manual'");
-    expect(fetchSrc).toMatch(/validateUrl\(redirectUrl\)/);
-    expect(fetchSrc).toMatch(/validateDnsResolution\(new URL\(redirectUrl\)\.hostname\)/);
+    expect(fetchSrc).toMatch(/await assertSafeUrl\(redirectUrl\);/);
+
+    // ...and assertSafeUrl is what performs both checks.
+    const at = fetchSrc.indexOf('export async function assertSafeUrl');
+    expect(at).toBeGreaterThan(-1);
+    const body = fetchSrc.slice(at, fetchSrc.indexOf('\n}', at));
+    expect(body).toMatch(/validateUrl\(url\)/);
+    expect(body).toMatch(/validateDnsResolution\(new URL\(url\)\.hostname\)/);
+    expect(body).toMatch(/throw new SSRFError/);
+  });
+
+  it('the entry point runs the same two checks before the first request', () => {
+    const at = fetchSrc.indexOf('export async function safeFetch');
+    expect(at).toBeGreaterThan(-1);
+    const body = fetchSrc.slice(at, fetchSrc.indexOf('\n}', at));
+    const guard = body.indexOf('await assertSafeUrl(url);');
+    const firstFetch = body.indexOf('await fetch(');
+    expect(guard).toBeGreaterThan(-1);
+    expect(firstFetch).toBeGreaterThan(guard);
   });
 
   it('treats a DNS permission failure as a refusal, not as no records', () => {

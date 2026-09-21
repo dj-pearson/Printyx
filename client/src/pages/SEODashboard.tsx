@@ -229,7 +229,11 @@ interface BrokenLink {
 
 interface RedirectChain {
   sourceUrl: string;
-  destinationUrl: string;
+  /** Null when the walk did not reach an end - truncated, or a hop refused. */
+  destinationUrl: string | null;
+  /** The hop SSRF validation refused, when one was (SEC-002). */
+  blockedAt?: string | null;
+  truncated?: boolean | null;
   /** One entry per hop, in order. */
   redirectChain?: Array<{ url: string; statusCode: number }> | null;
   chainLength?: number | null;
@@ -527,7 +531,9 @@ export default function SEODashboard() {
       toast({
         title: 'Check complete',
         description: chains.length
-          ? `${data?.chainLength ?? 0} redirect(s) to ${data?.destinationUrl ?? 'the final URL'}`
+          ? data?.destinationUrl
+            ? `${data?.chainLength ?? 0} redirect(s) to ${data.destinationUrl}`
+            : `${data?.chainLength ?? 0} redirect(s); the chain did not reach an end`
           : 'No redirects found',
       });
     },
@@ -1977,9 +1983,21 @@ export default function SEODashboard() {
                                       </div>
                                     ))}
                                   </div>
-                                  <p className="text-xs font-medium">
-                                    Final: {chain.destinationUrl}
-                                  </p>
+                                  {/* No destination is a real answer here:
+                                      the walk was truncated or a hop was
+                                      refused, so the last URL observed is
+                                      somewhere the chain passed through. */}
+                                  {chain.destinationUrl ? (
+                                    <p className="text-xs font-medium">
+                                      Final: {chain.destinationUrl}
+                                    </p>
+                                  ) : (
+                                    <p className="text-xs font-medium text-destructive">
+                                      {chain.blockedAt
+                                        ? `Stopped at ${chain.blockedAt} - it resolves to a private or reserved address`
+                                        : 'The chain did not reach an end'}
+                                    </p>
+                                  )}
                                 </div>
                               </CardContent>
                             </Card>

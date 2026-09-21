@@ -40,7 +40,21 @@ const MOUNT_FILES = ['server/routes.ts', 'server/routes-registry.ts', 'server/in
 
 const read = (p) => readFileSync(join(REPO, p), 'utf8');
 const stripComments = (src) =>
-  src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+  // LINE COMMENTS FIRST. A line comment ending in `/*` - which any prose
+  // mentioning a glob does - is read as a block opener by a block-first pass,
+  // and everything up to the next `*/` is blanked. That cost this guard its
+  // first run: ai-gpt5's OPENAI_RESPONSES_URL constant vanished and the fetch
+  // beside it reported as a caller-supplied URL. CLAUDE.md records the same
+  // failure in check:shared-helper-imports. The lookbehind keeps `https://`
+  // intact, which is the mirror-image bug.
+  //
+  // Block comments are blanked to spaces rather than removed, so line numbers
+  // stay honest in the report.
+  src
+    .split('\n')
+    .map((l) => l.replace(/(?<![:/])\/\/.*$/, ''))
+    .join('\n')
+    .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '));
 
 /** Resolve a relative import specifier to a file under the repo. */
 function resolveModule(fromFile, spec) {

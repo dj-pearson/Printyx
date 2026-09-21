@@ -1,6 +1,7 @@
 // SEO Edge Function
 // Handles SEO settings, pages, analytics, sitemaps, and redirects
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
+import { SSRFError, assertSafeUrl, safeFetch } from '../_shared/safe-fetch.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import {
@@ -628,10 +629,22 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'URL is required' }, 400, req);
       }
 
+      // SEC-002: the URL comes straight off the request body and this endpoint
+      // returns the response headers to the caller, so an unchecked fetch here
+      // is a read primitive pointed at anything the cluster can reach - the
+      // link-local metadata address included. safeFetch validates the scheme,
+      // the literal address AND where the hostname resolves, then re-runs all
+      // three on every redirect hop.
       let response: Response;
       try {
-        response = await fetch(targetUrl);
+        response = await safeFetch(targetUrl);
       } catch (err) {
+        if (err instanceof SSRFError) {
+          // 400, not 502: the request is refused, not unreachable. Saying
+          // "could not reach" about an address we declined to ask would be a
+          // measurement we never took.
+          return createCorsResponse({ error: err.message, code: 'BLOCKED_URL' }, 400, req);
+        }
         return createCorsResponse(
           { error: `Could not reach ${targetUrl}: ${err instanceof Error ? err.message : err}` },
           502,
@@ -646,6 +659,10 @@ export default async function handler(req: Request) {
       try {
         const insecure = new URL(targetUrl);
         insecure.protocol = 'http:';
+        // assertSafeUrl rather than safeFetch: this probe exists to SEE the 3xx
+        // and its Location, and a client that resolves redirects returns the
+        // destination instead of the answer we are measuring.
+        await assertSafeUrl(insecure.href);
         const probe = await fetch(insecure.href, { redirect: 'manual' });
         const location = probe.headers.get('location');
         httpsRedirect =
@@ -701,9 +718,14 @@ export default async function handler(req: Request) {
       let currentUrl = sourceUrl;
       let loop = false;
       let truncated = false;
+      let blockedAt: string | null = null;
 
       try {
         for (let hop = 0; ; hop += 1) {
+          // Every hop, including the first: the Location header of hop N is
+          // chosen by whoever controls hop N, so validating only the URL the
+          // caller supplied checks the one address an attacker does not need.
+          await assertSafeUrl(currentUrl);
           const hopResponse = await fetch(currentUrl, { redirect: 'manual' });
           const location = hopResponse.headers.get('location');
           steps.push({ url: currentUrl, statusCode: hopResponse.status, location });
@@ -726,7 +748,18 @@ export default async function handler(req: Request) {
           currentUrl = next;
         }
       } catch (err) {
-        if (steps.length === 0) {
+        if (err instanceof SSRFError) {
+          if (steps.length === 0) {
+            // Refused, not unreachable. A 502 here would report a measurement
+            // that was never taken.
+            return createCorsResponse({ error: err.message, code: 'BLOCKED_URL' }, 400, req);
+          }
+          // A LATER hop pointed somewhere we will not follow. This used to fall
+          // into the `steps.length === 0` test, miss it, and be swallowed - so
+          // a chain cut short at a private address summarised as a normal
+          // terminus and told an operator their redirect was fine.
+          blockedAt = currentUrl;
+        } else if (steps.length === 0) {
           return createCorsResponse(
             { error: `Could not reach ${sourceUrl}: ${err instanceof Error ? err.message : err}` },
             502,
@@ -735,7 +768,29 @@ export default async function handler(req: Request) {
         }
       }
 
-      const result = summariseRedirectChain(steps, { loop, truncated });
+      const result = summariseRedirectChain(steps, { loop, truncated, blockedAt });
+
+      // `seo_redirect_analysis.destination_url` is NOT NULL, so the table cannot
+      // represent "the walk did not reach an end". An incomplete chain is NOT
+      // STORED rather than stored with the last hop standing in as the
+      // destination: that column is what an analyst reads as where the redirect
+      // goes, and filling it with somewhere the chain merely passed through is
+      // the claim summariseRedirectChain refuses to make one layer up. The
+      // caller still gets the whole result; only the history row is withheld,
+      // and the response says so.
+      if (result.destinationUrl === null) {
+        return createCorsResponse(
+          {
+            ...result,
+            stored: false,
+            unstoredReason: blockedAt
+              ? 'The chain was stopped at a private or reserved address, so it has no destination to record'
+              : 'The chain hit the hop limit, so it has no destination to record',
+          },
+          200,
+          req,
+        );
+      }
 
       const { error: insertError } = await admin.from('seo_redirect_analysis').insert({
         tenant_id: tenantId,
