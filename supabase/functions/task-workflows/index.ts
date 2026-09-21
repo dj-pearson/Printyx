@@ -37,10 +37,14 @@
 // working-in-dev to 404-in-dev). /parse therefore still 404s in prod — see the
 // EDGE-024 notes.
 //
-// THE STATE MACHINE IS A REPLICA — KEEP IT IN SYNC. shared/task-workflow-state.ts
-// is canonical and is imported by server/services/task-workflow/engine.ts; Deno
-// cannot import from shared/, so the stage math is duplicated below. The
-// transitions are pinned by server/tests/unit/task-workflow-state.test.ts.
+// THE STATE MACHINE IS IMPORTED, NOT REPLICATED. shared/task-workflow-state.ts
+// is canonical and both hosts call it: the Express engine through @shared, this
+// function through a relative specifier. It used to be duplicated here under a
+// note saying Deno could not import from shared/, which was never true - a
+// dozen edge functions do it - so the two copies drifted with nothing able to
+// notice, and server/tests/unit/task-workflow-state.test.ts pinned a third copy
+// neither host ran. server/tests/unit/task-workflow-shared-state.test.ts now
+// asserts that neither host redeclares the transitions locally.
 //
 // NOTIFICATIONS: email + an in-app user_notifications row, matching
 // services/task-workflow/notifier.ts. The Node notifier ALSO calls
@@ -59,47 +63,20 @@ import { toCamelShallow } from '../_shared/case.ts';
 import { sendEmail } from '../email-marketing/_sendgrid.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 
-// ── Replica of shared/task-workflow-state.ts — keep in sync (see header) ────
-const TERMINAL_STEP_STATUSES = new Set(['completed', 'skipped']);
-interface StateStep {
-  id: string;
-  stageIndex: number;
-  status: string;
-}
-const isTerminal = (status: string) => TERMINAL_STEP_STATUSES.has(status);
-
-function stepsInStage<T extends StateStep>(steps: T[], stageIndex: number): T[] {
-  return steps.filter((s) => s.stageIndex === stageIndex);
-}
-
-function computeCurrentStageIndex<T extends StateStep>(steps: T[]): number {
-  const incomplete = steps.filter((s) => !isTerminal(s.status));
-  if (incomplete.length === 0) return -1;
-  return Math.min(...incomplete.map((s) => s.stageIndex));
-}
-
-function isStageComplete<T extends StateStep>(steps: T[], stageIndex: number): boolean {
-  return stepsInStage(steps, stageIndex).every((s) => isTerminal(s.status));
-}
-
-function applyStepCompletion<T extends StateStep>(steps: T[], stepId: string): T[] {
-  return steps.map((s) => (s.id === stepId ? { ...s, status: 'completed' } : s));
-}
-
-function applyStageSkip<T extends StateStep>(steps: T[], stageIndex: number): T[] {
-  return steps.map((s) =>
-    s.stageIndex === stageIndex && !isTerminal(s.status) ? { ...s, status: 'skipped' } : s,
-  );
-}
-
-function applyRegress<T extends StateStep>(steps: T[], toStageIndex: number): T[] {
-  return steps.map((s) => (s.stageIndex >= toStageIndex ? { ...s, status: 'pending' } : s));
-}
-
-function stepsToActivate<T extends StateStep>(steps: T[], stageIndex: number): T[] {
-  return stepsInStage(steps, stageIndex).filter((s) => !isTerminal(s.status));
-}
-// ── end replica ─────────────────────────────────────────────────────────────
+// The stage math is IMPORTED, not replicated. Deno resolves a relative
+// specifier into shared/ the same way a dozen other edge functions already do
+// (catalog, crm, deals, invoices, public-booking, ...), so the Express engine
+// and this function run the SAME transitions and
+// server/tests/unit/task-workflow-state.test.ts pins what both of them do.
+import {
+  type StateStep,
+  applyRegress,
+  applyStageSkip,
+  applyStepCompletion,
+  completionOutcome,
+  computeCurrentStageIndex,
+  stepsToActivate,
+} from '../../../shared/task-workflow-state.ts';
 
 // deno-lint-ignore no-explicit-any
 type Row = any;
@@ -692,10 +669,15 @@ async function completeStep(ctx: Ctx, id: string, stepId: string, body: Row): Pr
     note: body?.note ?? null,
   });
 
-  const updated = applyStepCompletion(steps.map(asStateStep), stepId);
-  if (isStageComplete(updated, step.stage_index)) {
-    const nextStage = computeCurrentStageIndex(updated);
-    if (nextStage >= 0) {
+  const state = steps.map(asStateStep);
+  const updated = applyStepCompletion(state, stepId);
+  // completionOutcome is the SHARED decision about whether this completion
+  // cascades into an advance or finishes the workflow; the Express engine asks
+  // the same function, so the two hosts cannot answer differently.
+  const outcome = completionOutcome(state, stepId);
+  if (outcome.stageAdvanced) {
+    const nextStage = outcome.nextStage;
+    if (!outcome.workflowDone) {
       await setCurrentStage(ctx, id, nextStage);
       await recordEvent(ctx, {
         workflowId: id,

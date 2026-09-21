@@ -9,6 +9,7 @@
  * is complete.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { describeApiError } from '@/lib/api-error';
 import { useLocation, useRoute } from 'wouter';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiRequest, apiFormRequest } from '@/lib/queryClient';
@@ -177,8 +178,20 @@ export default function WorkflowBuilderPage() {
         title: 'File parsed',
         description: `${draft.steps.length} step(s) extracted. Review the assignees before saving.`,
       });
-    } catch (err: any) {
-      toast({ title: 'Parse failed', description: err.message, variant: 'destructive' });
+    } catch (err) {
+      // The edge function serves no /parse branch (exceljs has no Deno
+      // equivalent, so the parser stays Express-only - see the EDGE-024 header
+      // in supabase/functions/task-workflows/index.ts). PRODUCTION therefore
+      // answers 501 here on every upload, and without this the user was shown
+      // the server's sentence wrapped in the JSON it arrived in, titled
+      // "Parse failed" in red - which reads as a broken feature rather than one
+      // this backend does not run.
+      const info = describeApiError(err);
+      toast({
+        title: info.notImplemented ? 'Upload not available here' : 'Parse failed',
+        description: info.message,
+        variant: info.notImplemented ? 'default' : 'destructive',
+      });
     } finally {
       setParsing(false);
       if (fileRef.current) fileRef.current.value = '';

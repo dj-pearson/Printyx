@@ -38,8 +38,8 @@
       "reason": "SEC-EDGE-001 gated PUT /settings (the gp_floor_pct guardrail) edge-side. server/routes-deal-desk-copilot.ts carries a TODO(rbac) comment and no gate; the two have not been compared."
     },
     "deal-stages": {
-      "verdict": "unexamined",
-      "reason": "COP-M07 records deals.stage_id as a LEGACY deal_stages.id bridged by pipeline_stages.legacy_stage_id. Which host serves the vocabulary has not been compared."
+      "verdict": "express-only-capability",
+      "reason": "Round 138. One client path: LeadDeals.tsx GETs /api/deal-stages for the stage dropdown. Both hosts read deal_stages scoped to tenant_id ordered by sort_order and answer a bare array; the edge function layers sortOrder/isActive camel aliases over the snake row and Express returns the Drizzle row, and the page reads through extractRecords, so the live path is at parity. Express additionally has POST /api/deal-stages and POST /api/deal-stages/initialize (routes-workflow-mobile.ts:552, :571) with NO caller in any of the seven client trees - the edge function is GET-only. Note deal_stages is the LEGACY stage model (deals.stage_id holds a deal_stages.id; pipeline_stages.legacy_stage_id is CRMX-005's bridge), so a second write path into it is not work worth porting, and server/lib/pipeline-stage-mirror.ts already records those two endpoints as legacy creators. Nothing is broken on either host."
     },
     "equipment": {
       "verdict": "parity",
@@ -86,8 +86,8 @@
       "reason": "Round 122. The edge function had zero role checks while routes-products-crud.ts guarded a permission nobody reaches, and its PATCH field map named five columns that do not exist. PATCH and DELETE now require a supervisor and the write goes through _shared/meter-reading-write.ts."
     },
     "parts-orders": {
-      "verdict": "unexamined",
-      "reason": "SEC-EDGE-001 batch 13 fixed two phantom embeds in the edge function. The Express twin in routes-service-analysis.ts is not examined."
+      "verdict": "divergent",
+      "reason": "Round 138. One live path: ServiceTicketAnalysis.tsx POSTs /api/parts-orders/:id/items, and COP-M01 already fixed the edge function's column map for it (part_number/part_name, part_description, quantity_ordered, unit_price, line_total - the flat part_id/description/quantity/unit_cost/total_cost names do not exist) and set tenant_id, which Express's insert does too. THE NAMED DIFFERENCE IS LATENT: GET /api/parts-orders/:id/items returns raw snake_case from the edge function and camelCase Drizzle rows from Express, so a component reading camelCase would render blank cells in production only - nothing calls that GET on either host today, so it is a trap for whoever wires the first caller rather than a live defect. PATCH /api/parts-orders/:orderId is Express-only and also uncalled. The edge function's ownedOrder() check is the half that matters and is present: parts_order_items is reached only through its parent, so an unscoped :id would let one tenant read another's line items."
     },
     "pricing": {
       "verdict": "unexamined",
@@ -150,8 +150,8 @@
       "reason": "SEC-EDGE-001's catalogue family. The Express twin in routes-products-crud.ts / routes-product-models.ts checks a permission nobody reaches; the edge function carries the equivalent gate on operations.inventory.manage. Verified round 121 by counting gate calls in each function. The Express handlers are redundant rather than load-bearing."
     },
     "task-workflows": {
-      "verdict": "unexamined",
-      "reason": "server/routes-task-workflows.ts registers it; supabase/functions/task-workflows/ serves it in production. CRMX-008 records the workflow runtime as genuinely live via the edge seams, so this domain is worth separating from that; nobody has."
+      "verdict": "divergent",
+      "reason": "Round 138. Four routed pages (WorkflowsListPage, WorkflowBuilderPage, WorkflowDetailPage, WorkflowStepPage) drive 11 paths; supabase/functions/task-workflows/ serves ten of them and server/routes-task-workflows.ts serves all eleven. THE NAMED DIFFERENCE IS POST /parse: uploading an image/CSV/XLSX and having it parsed into a draft needs multipart plus exceljs and the Anthropic SDK, so it is deliberately Express-only and the edge function answers 501 - which is why the prefix is not proxied (an entry would take /parse from working-in-dev to 404-in-dev). Round 138 made that refusal readable: the page toasted the server's sentence wrapped in the JSON it arrived in, titled 'Parse failed' in red, so a backend that does not do this read as a broken feature; it now says 'Upload not available here' with the reason, via client/src/lib/api-error.ts. THE STATE MACHINE WAS THE REAL RISK AND IS CLOSED: the edge function carried a 40-line replica of shared/task-workflow-state.ts under a note claiming Deno could not import from shared/ (it can), while the engine imported three of ten exports and hand-inlined the rest - so three implementations of the advance/regress/completion math existed and server/tests/unit/task-workflow-state.test.ts pinned the one neither host ran. Both hosts now import and call the one module, and server/tests/unit/task-workflow-shared-state.test.ts fails if either grows its own copy. Everything else was compared and agrees: routing, the notification pair (email + user_notifications; the Node WebSocket broadcast has no prod consumer per PA-030), and the task_workflow_event_type vocabulary, whose 12 values are all in migration 0009's CREATE TYPE."
     },
     "technician-management": {
       "verdict": "resolved",

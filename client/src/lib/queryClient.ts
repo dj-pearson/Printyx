@@ -1,4 +1,5 @@
 import { QueryClient, QueryCache, QueryFunction } from '@tanstack/react-query';
+import { attachApiErrorDetail } from './api-error';
 import { toast } from '@/hooks/use-toast';
 import { getApiUrl } from '@/lib/config';
 import { getAccessToken, refreshSession } from '@/lib/supabase';
@@ -64,7 +65,23 @@ function getTenantIdForHeaders(): string | undefined {
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
-    throw new Error(`${res.status}: ${text}`);
+    // The `<status>: <body>` message shape is LOAD-BEARING - this file and
+    // rbacQueryClient branch on `message.includes('403')` and
+    // `startsWith('404')` for retry and returnNull behaviour - so it is kept
+    // verbatim and the parsed response is ATTACHED alongside it. Pages should
+    // read it with describeApiError rather than toasting the raw blob; see
+    // client/src/lib/api-error.ts for why that blob is what users see today.
+    let body: unknown = null;
+    try {
+      body = JSON.parse(text);
+    } catch {
+      body = null;
+    }
+    throw attachApiErrorDetail(new Error(`${res.status}: ${text}`), {
+      status: res.status,
+      body,
+      rawBody: text,
+    });
   }
 }
 
