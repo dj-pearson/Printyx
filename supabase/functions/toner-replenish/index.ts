@@ -26,6 +26,29 @@
  *   GET  /machines/:machineId/settings         per-machine settings (getOrCreate)
  *   PUT  /machines/:machineId/settings         update per-machine settings
  *
+ * WHICH TABLE AN ORDER BELONGS TO (WF-V-06). A dealer orders toner three ways
+ * and this product keeps them in three tables, on purpose - they are different
+ * objects with different writers, not one thing split three ways:
+ *
+ *   supply_orders           THIS function. One row per MACHINE and COLOUR,
+ *                           raised by the depletion prediction below rather
+ *                           than by a person. Status vocabulary defaults to
+ *                           `pending_approval`.
+ *   device_supply_orders    supabase/functions/device-monitoring. A coordinator
+ *                           ordering against a monitored DEVICE from the fleet
+ *                           screens, with an approval step. Defaults to
+ *                           `pending`.
+ *   customer_supply_orders  supabase/functions/customer-portal. The CUSTOMER's
+ *                           own basket, with an order number, a delivery
+ *                           address and line items in a sibling table. A
+ *                           postgres ENUM defaulting to `draft`.
+ *
+ * So "pending" is a different word in all three, which is why
+ * shared/supply-order-union.ts maps them onto one lifecycle EXPLICITLY and
+ * counts what it coerced. `GET /device-monitoring/supply-orders?sources=all`
+ * is the read-only union; each table keeps its own write path, because an
+ * Approve button that works on one of three lifecycles is worse than none.
+ *
  * THIS PIPELINE SPENDS MONEY WITHOUT A HUMAN — an auto_ship order becomes a
  * cartridge on a truck — so the suppressions are the point, not decoration, and
  * are preserved exactly (see isSuppressed / orderStatusFor in replenish.ts):

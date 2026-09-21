@@ -15,7 +15,7 @@
       "why": "One progress write per workflow STEP, and the steps are the workflow definition, not tenant rows. Each write records which step is running and has to land before that step does, so it is sequential by intent."
     },
     {
-      "loop": "auto-supply-replenishment/index.ts:327",
+      "loop": "auto-supply-replenishment/index.ts:357",
       "table": "supply_usage_history",
       "verdict": "scales-dominated",
       "why": "One usage-history read per monitored supply, and one generateCompletion per supply in the same iteration. The model call is the wall clock; hoisting the read halves the DB hops and changes nothing a user could perceive. Worth doing when the loop stops calling a model, not before."

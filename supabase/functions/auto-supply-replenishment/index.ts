@@ -1,3 +1,33 @@
+/**
+ * WF-V-06 AC3 - THE DECISION IS RECORDED HERE AND IS STILL OPEN, with the
+ * evidence, because retiring a routed page is a product call and not a cleanup.
+ *
+ * THE STATE, verified 2026-09-21 rather than quoted: this function reads
+ * `supply_monitoring`, `supply_replenishment_analytics` and
+ * `supply_usage_history`, all three of which are in
+ * docs/unwritten-tables-baseline.json - nothing anywhere inserts a row. Its own
+ * writes go to `auto_supply_orders` and its rules table, not to those inputs.
+ * `AutoSupplyReplenishmentDashboard.tsx` is routed and calls three of its
+ * endpoints, so a user reaches a dashboard whose inputs are empty by
+ * construction.
+ *
+ * WHAT CHANGED SINCE THE STORY WAS FILED, and why this is now a real question
+ * rather than a symptom: AUDIT-032 (migration 0062) and AUDIT-036 (0063) found
+ * these three had `tenant_id` and foreign keys declared INTEGER against uuid
+ * targets, so nothing COULD have written them. Both are fixed. The tables are
+ * writable now; the pipeline that would fill them is what does not exist.
+ *
+ * THE TWO OPTIONS, neither of which this story takes unilaterally:
+ *   - Give it a writer: a capture job on the toner-replenish model, which
+ *     already regresses meter history into a depletion date. That is a feature.
+ *   - Retire it: the page, this function and the three tables go TOGETHER, per
+ *     the story's own AC3 - removing the function while leaving a routed page
+ *     is how a 404 becomes the user's problem.
+ *
+ * server/tests/unit/supply-order-union.test.ts asserts this state and FAILS the
+ * day one of the three gains a writer, so the note cannot go stale the way six
+ * of them did in one session.
+ */
 // Auto Supply Replenishment Edge Function
 // Handles automatic supply ordering based on thresholds
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';

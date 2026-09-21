@@ -47,6 +47,84 @@ import {
   OPEN_ALERT_STATUSES,
 } from '../_shared/device-monitoring-shape.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import {
+  OUTSTANDING,
+  unifySupplyOrders,
+  type SupplyLifecycle,
+} from '../../../shared/supply-order-union.ts';
+
+/**
+ * WF-V-06: the three supply-order tables, read together.
+ *
+ * Each is read INDEPENDENTLY and a failure is reported per source rather than
+ * failing the whole view: one missing relation must not blank an operations
+ * queue, and a source that could not be read is named in `degraded` rather than
+ * counted as having nothing outstanding.
+ */
+async function unifiedSupplyOrders(
+  req: Request,
+  admin: ReturnType<typeof createSupabaseServiceClient>,
+  tenantId: string,
+  statuses: string[],
+) {
+  const [toner, device, portal] = await Promise.all([
+    admin
+      .from('supply_orders')
+      .select(
+        'id, status, part_number, supply_name, color, quantity, total_cost, tracking_number, carrier, created_at',
+      )
+      .eq('tenant_id', tenantId)
+      .order('created_at', { ascending: false })
+      .limit(500),
+    admin
+      .from('device_supply_orders')
+      .select(
+        'id, status, product_sku, product_name, supply_type, quantity, total_price, customer_id, created_at',
+      )
+      .eq('tenant_id', tenantId)
+      .order('created_at', { ascending: false })
+      .limit(500),
+    admin
+      .from('customer_supply_orders')
+      .select('id, status, order_number, total, customer_id, tracking_number, carrier, created_at')
+      .eq('tenant_id', tenantId)
+      .order('created_at', { ascending: false })
+      .limit(500),
+  ]);
+
+  const degraded: string[] = [];
+  if (toner.error) degraded.push('supply_orders');
+  if (device.error) degraded.push('device_supply_orders');
+  if (portal.error) degraded.push('customer_supply_orders');
+
+  const result = unifySupplyOrders({
+    toner: toner.error ? null : (toner.data ?? []),
+    device: device.error ? null : (device.data ?? []),
+    portal: portal.error ? null : (portal.data ?? []),
+  });
+
+  // The status filter is applied to the MAPPED lifecycle, not to each table's
+  // own word: that is the whole point of the union, and filtering on the raw
+  // values would mean asking for "pending" and getting one table's rows.
+  const wanted = new Set(statuses as SupplyLifecycle[]);
+  const orders =
+    wanted.size > 0 ? result.orders.filter((o) => wanted.has(o.status)) : result.orders;
+
+  return createCorsResponse(
+    {
+      orders,
+      total: orders.length,
+      outstandingCount: result.outstandingCount,
+      outstandingValue: result.outstandingValue,
+      coercions: result.coercions,
+      degraded,
+      sources: ['supply_orders', 'device_supply_orders', 'customer_supply_orders'],
+      outstandingStatuses: [...OUTSTANDING],
+    },
+    200,
+    req,
+  );
+}
 
 const REGISTRATION_FIELDS = 'serial_number, ip_address, device_name, model';
 
@@ -251,15 +329,45 @@ export default async function handler(req: Request) {
     }
 
     // ─── GET /supply-orders ─────────────────────────────────────────────────
+    //
+    // WF-V-06. Two defects and one addition.
+    //
+    // `?status=` IS A COMMA LIST AND WAS READ AS ONE VALUE. SupplyOrders.tsx
+    // sends `pending,approved,ordered,shipped` for its Open filter and
+    // `delivered,cancelled` for Closed, and this did
+    // `.eq('status', 'pending,approved,ordered,shipped')` - a literal no row
+    // has ever held. Two of the page's four filters therefore returned nothing,
+    // which on an operations queue reads as "nothing outstanding" rather than
+    // as a broken filter.
+    //
+    // `?sources=all` unions the three supply-order tables a dealer actually
+    // uses. It is OPT-IN so the existing shape is untouched, and it is a query
+    // parameter rather than a `/supply-orders/all` segment because `parts[1]`
+    // is an order id here - a path segment would be shadowed by an order
+    // called "all" (SUPA-024).
     if (method === 'GET' && resource === 'supply-orders' && !parts[1]) {
       const status = url.searchParams.get('status');
+      const statuses = status
+        ? status
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : [];
+
+      if (url.searchParams.get('sources') === 'all') {
+        return await unifiedSupplyOrders(req, admin, tenantId, statuses);
+      }
+
       let query = admin
         .from('device_supply_orders')
         .select(`*, device_registrations(${REGISTRATION_FIELDS})`)
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false })
         .limit(500);
-      if (status) query = query.eq('status', status);
+      // PostgREST rejects an .in() with no values, so an absent filter does not
+      // reach it at all.
+      if (statuses.length === 1) query = query.eq('status', statuses[0]);
+      else if (statuses.length > 1) query = query.in('status', statuses);
 
       const { data, error } = await query;
       if (error) return dbError(req, 'Failed to fetch supply orders', error);
