@@ -22,7 +22,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { invalidateApiPath } from '@/lib/queryClient';
+import { apiRequest, invalidateApiPath } from '@/lib/queryClient';
 
 /**
  * Contract Renewal Autopilot Dashboard
@@ -73,12 +73,9 @@ export default function ContractRenewalDashboard() {
   // Analyze all contracts mutation
   const analyzeAllMutation = useMutation({
     mutationFn: async () => {
-      const response = await fetch('/api/contract-renewal/analyze-all', {
-        method: 'POST',
-        credentials: 'include',
-      });
-      if (!response.ok) throw new Error('Analysis failed');
-      return response.json();
+      // PROD-013: see AutoSupplyReplenishmentDashboard - same shape, and
+      // supabase/functions/contract-renewal/ has served this since it shipped.
+      return apiRequest('/api/contract-renewal/analyze-all', { method: 'POST' });
     },
     onSuccess: (data) => {
       toast({

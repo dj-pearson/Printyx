@@ -382,12 +382,14 @@ export default function ProposalBuilder() {
     // DoD Validation: Check if proposal is ready for contract generation
     if (selectedQuote) {
       try {
-        const validation = await fetch(`/api/validate/proposal-to-contract/${selectedQuote}`, {
-          headers: {
-            'x-tenant-id': localStorage.getItem('currentTenantId') || '',
-          },
-        });
-        const validationResult = await validation.json();
+        // PROD-013 + AUDIT-001: the bare fetch never reached the edge
+        // function, and the x-tenant-id it sent came from localStorage - a
+        // tenant of the caller's choosing. apiRequest carries the Bearer JWT
+        // and resolveTenantId reads app_metadata first, so dropping the
+        // header is both the fix and the safer shape.
+        const validationResult = await apiRequest(
+          `/api/validate/proposal-to-contract/${selectedQuote}`,
+        );
 
         if (!validationResult.valid) {
           // Show error toast with validation issues

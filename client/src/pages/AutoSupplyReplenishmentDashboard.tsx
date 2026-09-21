@@ -15,6 +15,7 @@ import {
 import { Progress } from '@/components/ui/progress';
 import { Package, AlertCircle, TrendingUp, Clock, CheckCircle, RefreshCw } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { apiRequest } from '@/lib/queryClient';
 
 /**
  * Auto-Supply Replenishment Dashboard
@@ -59,12 +60,10 @@ export default function AutoSupplyReplenishmentDashboard() {
   // Analyze all supplies mutation
   const analyzeAllMutation = useMutation({
     mutationFn: async () => {
-      const response = await fetch('/api/auto-supply-replenishment/analyze-all', {
-        method: 'POST',
-        credentials: 'include',
-      });
-      if (!response.ok) throw new Error('Analysis failed');
-      return response.json();
+      // PROD-013: a bare fetch skips getApiUrl, so in production it resolved
+      // against the static origin and sent cookies where the edge function
+      // wants a Bearer JWT. The branch it needs has existed all along.
+      return apiRequest('/api/auto-supply-replenishment/analyze-all', { method: 'POST' });
     },
     onSuccess: (data) => {
       toast({

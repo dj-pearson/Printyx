@@ -1,14 +1,17 @@
 {
-  "note": "PROD-013 raw-fetch ratchet. scripts/check-raw-api-fetch.mjs fails CI when a NEW bare fetch(\"/api/...\") is added to a file reachable from App.tsx. Such a call skips getApiUrl (so it hits the static origin in production, not the edge function) and sends cookies instead of a Bearer JWT. Use apiRequest() from lib/queryClient, or a helper modelled on lib/invoice-pdf.ts for blob downloads. Shrink this list, never grow it: node scripts/check-raw-api-fetch.mjs --update-baseline",
+  "note": "PROD-013 raw-fetch ratchet. scripts/check-raw-api-fetch.mjs fails CI when a NEW bare fetch(\"/api/...\") is added to a file reachable from App.tsx. Such a call skips getApiUrl (so it hits the static origin in production, not the edge function) and sends cookies instead of a Bearer JWT. Use apiRequest() from lib/queryClient, or a helper modelled on lib/invoice-pdf.ts for blob downloads. Shrink this list, never grow it: node scripts/check-raw-api-fetch.mjs --update-baseline  EVERY ENTRY HERE IS ON A ROUTED PAGE AND IS BROKEN IN PRODUCTION - this is not a list of harmless leftovers. Round 128 read that wrongly off the guard's own summary line (which printed the baselined count beside an unrelated dead-file count, both 9 at the time) and CLAUDE.md had recorded \"no reachable page makes one\". Four were converted once their endpoint was checked on the host production sends them to; the five below each name why a conversion would swap silence for a 404 rather than fix anything, which is SEO-TRANSPORT-001's rule: converting a page's transport sends the bill to the other host.",
   "allowed": [
     "client/src/lib/validations.ts:/api/auth/check-disposable-email",
-    "client/src/pages/AutoSupplyReplenishmentDashboard.tsx:/api/auto-supply-replenishment/analyze-all",
-    "client/src/pages/ContractRenewalDashboard.tsx:/api/contract-renewal/analyze-all",
     "client/src/pages/IntegrationHub.tsx:/api/integrations/oauth/init",
     "client/src/pages/LeadMapViewer.tsx:/api/leads/import-eda",
     "client/src/pages/PlatformBusinessRecords.tsx:/api/platform-crm/business-records/bulk/assign",
-    "client/src/pages/ProposalBuilder.tsx:/api/validate/proposal-to-contract/__DYN__",
-    "client/src/pages/QuoteProposalGeneration.tsx:/api/validate/quote-to-proposal/__DYN__",
     "client/src/pages/admin/TenantManagement.tsx:/api/admin/tenants"
-  ]
+  ],
+  "reasons": {
+    "client/src/lib/validations.ts:/api/auth/check-disposable-email": "No edge directory for /api/auth at all, so production resolves the prefix to nothing. Converting it would make signup validation fail loudly instead of silently. The endpoint needs a home before the caller is pointed at one.",
+    "client/src/pages/IntegrationHub.tsx:/api/integrations/oauth/init": "supabase/functions/integrations/ has no oauth branch - segment1 \"oauth\" is not an integration type, so it falls past every branch to the trailing 404. server/integrations/routes.ts serves it on Express, which only dev reaches. The OAuth init needs porting first.",
+    "client/src/pages/LeadMapViewer.tsx:/api/leads/import-eda": "Express-only by design: CLAUDE.md records that proxying /api/leads would take import-eda from working-in-dev to 404-in-dev. Converting the transport does not change which host answers.",
+    "client/src/pages/PlatformBusinessRecords.tsx:/api/platform-crm/business-records/bulk/assign": "The prefix IS proxied, and supabase/functions/platform-crm/ has no bulk branch - so this is the one entry where the conversion is a one-line change once the branch exists.",
+    "client/src/pages/admin/TenantManagement.tsx:/api/admin/tenants": "The admin function POST branch covers ORG_TABLES (locations, regions, teams) and not tenants, so creating a tenant is unserved in production. Platform-admin surface; needs its own pass."
+  }
 }

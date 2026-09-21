@@ -69,7 +69,6 @@ describe('every baseline writer keeps a note it did not write', () => {
     'check-phantom-columns.ts',
     'check-prd-references.mjs',
     'check-query-states.mjs',
-    'check-raw-api-fetch.mjs',
     'check-route-shadowing.mjs',
     'check-server-fabricated.mjs',
     'check-session-user-auth.mjs',
@@ -127,6 +126,9 @@ describe('every baseline writer keeps a note it did not write', () => {
       'check-insert-tenant-id.mjs',
       'check-unwritten-tables.mjs',
       'check-raw-body-writes.mjs',
+      // Round 128: this one also preserves a per-entry `reasons` map, which is
+      // what makes its baseline a worklist rather than a tally.
+      'check-raw-api-fetch.mjs',
     ]) {
       const src = read(join('scripts', file));
       expect({ file, reads: /existingBaselineNote\(|existingNote\b/.test(src) }).toEqual({

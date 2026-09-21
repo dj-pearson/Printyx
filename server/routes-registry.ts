@@ -557,8 +557,11 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
     // said so - "Mock response for now", "Mock event creation", "Mock event
     // deletion" - and no client tree called /api/calendar. The only reference
     // anywhere was a test NAME inside an archived .backup file. The real
-    // calendar surface is CalendarProvider, which uses a different prefix
-    // entirely (/api/integrations/calendar/*) that neither backend serves.
+    // calendar surface is CalendarProvider, which PA-052 repointed at
+    // /api/meetings/calendar/* - the line that used to sit here, saying it
+    // calls /api/integrations/calendar/* "that neither backend serves", went
+    // stale when that fix landed and was still being read as a live finding
+    // in round 128.
     // ['/api/performance', './routes/performance-routes'] - retired
     // (AUDIT-021). The three endpoints anything calls - /metrics, /alerts,
     // /health - are served by supabase/functions/performance/ from
