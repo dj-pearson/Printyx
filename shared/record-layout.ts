@@ -222,6 +222,20 @@ export const DEFAULT_LAYOUTS: Record<RecordObjectType, LayoutSection[]> = {
       collapsed: false,
       propertyFields: [],
     },
+    // WF-S-09. BANT shipped as a complete back end - five endpoints, two
+    // tables, a qualification-history trail - with no section to render it in
+    // and no importer for the component. Centre column rather than the
+    // sidebar because the form is four accordion panels wide, and NOT
+    // collapsed: the story's whole defect is a feature nobody is sent to, and
+    // a collapsed section is one a rep never discovers.
+    {
+      sectionId: 'lead-qualification',
+      title: 'Qualification (BANT)',
+      position: 'center',
+      order: 2,
+      collapsed: false,
+      propertyFields: [],
+    },
     { sectionId: 'lead-associations', title: 'At a glance', ...side(0) },
   ],
   contacts: [],

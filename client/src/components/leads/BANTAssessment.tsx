@@ -1,14 +1,30 @@
 /**
- * BANT Assessment Component
+ * BANT Assessment (WF-S-09).
  *
- * Provides a form for assessing leads using the BANT framework:
- * - Budget: Is there budget allocated?
- * - Authority: Is this the decision maker?
- * - Need: Is there a clear need?
- * - Timeline: When do they need to make a decision?
+ * Budget, Authority, Need, Timeline - the qualification a rep works through on
+ * a lead. The whole back end for this shipped and nothing rendered the form:
+ * `grep -rn BANTAssessment client/src` returned only this file, so five
+ * endpoints, two tables and a qualification-history trail existed for a screen
+ * nobody could open. `/api/lead-scoring` had even been added to `crmProxies`
+ * with a comment naming this component as its caller.
+ *
+ * It renders inside LeadDetail now, and two defects had to go with it, both of
+ * which would have shipped as "the form loses everything":
+ *
+ *   - Both read paths answered raw snake_case rows while this hydrates with
+ *     `{ ...defaultBANTData, ...bantData }`, so every stored key landed BESIDE
+ *     an untouched default and the form came back blank after a save. Fixed in
+ *     the handler, which now camelises (see its header).
+ *   - The success toast read `data.qualificationStatus.replace(...)`, a
+ *     TypeError on a snake row - so saving threw AFTER the write succeeded.
+ *
+ * THE SCORE PREVIEW AND THE STORED SCORE ARE ONE MODULE. `shared/bant-score.ts`
+ * is imported here and by the edge handler; this file used to carry its own
+ * copy of the same arithmetic, which is the drift that makes a live preview
+ * quietly stop matching what the pipeline gets.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import {
@@ -23,7 +39,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
@@ -40,8 +55,9 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
+import { InlineQueryError } from '@/components/ui/inline-query-error';
+import { scoreBant, statusLabel, statusTone } from '@shared/bant-score';
 import {
   DollarSign,
   UserCheck,
@@ -51,11 +67,8 @@ import {
   RefreshCw,
   CheckCircle,
   XCircle,
-  AlertTriangle,
-  Info,
   Loader2,
   Award,
-  TrendingUp,
 } from 'lucide-react';
 
 interface BANTAssessmentProps {
@@ -132,6 +145,37 @@ const defaultBANTData: BANTData = {
   qualificationStatus: 'unqualified',
 };
 
+/**
+ * The one query for a lead's stored assessment, exported so LeadDetail's
+ * At-a-glance card reads the SAME cache entry rather than issuing a second
+ * request that can disagree with the form beside it.
+ *
+ * A lead with no assessment yet is a 404 from the endpoint and `null` here,
+ * which is not an error: it is the normal state of a lead nobody has qualified.
+ * Anything else propagates, so a real failure renders as one.
+ */
+export function bantQueryKey(leadId: string) {
+  return ['/api/lead-scoring/bant', leadId] as const;
+}
+
+export function useBantAssessment(leadId: string | undefined) {
+  return useQuery<Partial<BANTData> | null>({
+    queryKey: bantQueryKey(leadId ?? ''),
+    enabled: Boolean(leadId),
+    // apiRequest, not fetch: a relative /api/... never passes through
+    // getApiUrl, so in production it went to the static-bundle origin instead
+    // of the functions host and carried no Bearer token either (PROD-013).
+    queryFn: async () => {
+      try {
+        return (await apiRequest(`/api/lead-scoring/bant/${leadId}`)) as Partial<BANTData>;
+      } catch (err) {
+        if (err instanceof Error && err.message.startsWith('404')) return null;
+        throw err;
+      }
+    },
+  });
+}
+
 export default function BANTAssessment({ leadId, onUpdate }: BANTAssessmentProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -139,55 +183,53 @@ export default function BANTAssessment({ leadId, onUpdate }: BANTAssessmentProps
   const [newPainPoint, setNewPainPoint] = useState('');
   const [newBlocker, setNewBlocker] = useState('');
 
-  // Fetch existing BANT data
-  const {
-    data: bantData,
-    isLoading,
-    refetch,
-  } = useQuery({
-    queryKey: ['bant-assessment', leadId],
-    // apiRequest, not fetch: a relative /api/... never passes through getApiUrl,
-    // so in production it went to the static-bundle origin instead of the
-    // functions host and carried no Bearer token either (PROD-013). A lead with
-    // no assessment yet is a 404 from the endpoint, which is not an error here.
-    queryFn: async () => {
-      try {
-        return await apiRequest(`/api/lead-scoring/bant/${leadId}`);
-      } catch (err) {
-        if (err instanceof Error && err.message.startsWith('404')) return null;
-        throw err;
-      }
-    },
-  });
+  const { data: bantData, isLoading, isError, refetch } = useBantAssessment(leadId);
 
-  // Update form when data is loaded
+  /**
+   * Hydrate from the FIRST row to arrive, behind a ref. A plain
+   * `useEffect([bantData])` re-runs on every refetch - a window focus, a
+   * sibling invalidation - and would overwrite whatever the rep has typed
+   * since (the WhiteLabelDashboard lesson, QUALITY-002). Saving deliberately
+   * re-arms it, because the server's scores are what should be on screen
+   * afterwards.
+   */
+  const hydratedFor = useRef<string | null>(null);
   useEffect(() => {
-    if (bantData) {
-      setFormData({
-        ...defaultBANTData,
-        ...bantData,
-        painPoints: bantData.painPoints || [],
-        blockers: bantData.blockers || [],
-      });
-    }
-  }, [bantData]);
+    if (!bantData || hydratedFor.current === leadId) return;
+    hydratedFor.current = leadId;
+    setFormData({
+      ...defaultBANTData,
+      ...bantData,
+      painPoints: bantData.painPoints ?? [],
+      blockers: bantData.blockers ?? [],
+    });
+  }, [bantData, leadId]);
 
   // Save mutation
   const saveMutation = useMutation({
-    mutationFn: (data: BANTData) => apiRequest(`/api/lead-scoring/bant/${leadId}`, 'POST', data),
+    mutationFn: (data: BANTData) =>
+      apiRequest(`/api/lead-scoring/bant/${leadId}`, 'POST', data) as Promise<Partial<BANTData>>,
     onSuccess: (data) => {
       toast({
-        title: 'Assessment Saved',
-        description: `BANT qualification: ${data.qualificationStatus.replace('_', ' ')}`,
+        title: 'Assessment saved',
+        // statusLabel tolerates a missing or unfamiliar status; the previous
+        // `data.qualificationStatus.replace(...)` threw on the snake-case row
+        // the endpoint actually returned.
+        description: `BANT qualification: ${statusLabel(data?.qualificationStatus)}`,
       });
-      queryClient.invalidateQueries({ queryKey: ['bant-assessment', leadId] });
-      queryClient.invalidateQueries({ queryKey: ['lead-intelligence', leadId] });
+      // Let the saved row re-hydrate the form: the server owns the scores and
+      // the status, so what is on screen after a save should be what it stored.
+      hydratedFor.current = null;
+      queryClient.invalidateQueries({ queryKey: bantQueryKey(leadId) });
       onUpdate?.();
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
-        title: 'Save Failed',
-        description: error.message,
+        title: 'Save failed',
+        // apiRequest throws a plain Error, so error.response?.data?.message is
+        // always undefined here and every failure showed a generic fallback
+        // (CRM-008's finding). The server's reason is on .message.
+        description: error instanceof Error ? error.message : 'Unknown error',
         variant: 'destructive',
       });
     },
@@ -197,7 +239,7 @@ export default function BANTAssessment({ leadId, onUpdate }: BANTAssessmentProps
     saveMutation.mutate(formData);
   };
 
-  const updateField = (field: keyof BANTData, value: any) => {
+  const updateField = (field: keyof BANTData, value: BANTData[keyof BANTData]) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -235,50 +277,14 @@ export default function BANTAssessment({ leadId, onUpdate }: BANTAssessmentProps
     }));
   };
 
-  // Calculate estimated scores
-  const calculateEstimatedScore = () => {
-    let budgetScore = 0;
-    let authorityScore = 0;
-    let needScore = 0;
-    let timelineScore = 0;
-
-    if (formData.budgetIdentified) {
-      budgetScore = formData.budgetApproved ? 25 : 15;
-    }
-    if (formData.decisionMakerIdentified) {
-      authorityScore = 25;
-    }
-    if (formData.needIdentified) {
-      if (formData.needUrgency === 'critical') needScore = 25;
-      else if (formData.needUrgency === 'high') needScore = 20;
-      else needScore = 15;
-    }
-    if (formData.timelineIdentified) {
-      if (formData.decisionTimeline === 'immediate') timelineScore = 25;
-      else if (formData.decisionTimeline === '30_days') timelineScore = 20;
-      else timelineScore = 15;
-    }
-
-    return {
-      budgetScore,
-      authorityScore,
-      needScore,
-      timelineScore,
-      total: budgetScore + authorityScore + needScore + timelineScore,
-    };
+  // The live preview is the SERVER's arithmetic, imported rather than copied
+  // (shared/bant-score.ts). A preview that drifts from what gets stored is
+  // worse than no preview: the rep reads it as the answer.
+  const estimatedScores = scoreBant(formData);
+  const qualification = {
+    label: statusLabel(estimatedScores.status),
+    color: statusTone(estimatedScores.status),
   };
-
-  const estimatedScores = calculateEstimatedScore();
-
-  const getQualificationBadge = (total: number) => {
-    if (total >= 75) return { label: 'Highly Qualified', color: 'bg-green-100 text-green-800' };
-    if (total >= 50) return { label: 'Qualified', color: 'bg-blue-100 text-blue-800' };
-    if (total >= 25)
-      return { label: 'Partially Qualified', color: 'bg-yellow-100 text-yellow-800' };
-    return { label: 'Unqualified', color: 'bg-red-100 text-red-800' };
-  };
-
-  const qualification = getQualificationBadge(estimatedScores.total);
 
   if (isLoading) {
     return (
@@ -309,6 +315,17 @@ export default function BANTAssessment({ leadId, onUpdate }: BANTAssessmentProps
         </div>
       </CardHeader>
       <CardContent>
+        {/* CR-033: a failed read left this form sitting at its defaults, which
+            reads as "nobody has qualified this lead yet" - the one thing a rep
+            would act on. Saving over it would then overwrite a real assessment
+            with blanks. */}
+        {isError ? (
+          <InlineQueryError
+            label="this lead's saved assessment"
+            onRetry={() => refetch()}
+            className="mb-4"
+          />
+        ) : null}
         <Accordion type="multiple" defaultValue={['budget', 'authority', 'need', 'timeline']}>
           {/* Budget Section */}
           <AccordionItem value="budget">

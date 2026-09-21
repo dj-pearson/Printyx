@@ -12,6 +12,11 @@
       "reason": "`kind` is the mutation's own variable and takes one of locations, regions or teams, each of which this page queries by exactly that key. Correct at runtime; unresolvable statically because the value comes from the caller."
     },
     {
+      "file": "client/src/components/leads/BANTAssessment.tsx",
+      "key": "bantQueryKey(leadId)",
+      "reason": "WF-S-09. The query and the invalidation call the SAME exported helper, so they cannot disagree by construction - a stronger guarantee than matching two literals, and the reason it is a helper is that LeadDetail's At-a-glance card reads the same cache entry. Inlining the array to satisfy the scanner would reintroduce exactly the drift the helper removes."
+    },
+    {
       "file": "client/src/lib/queryOptimizations.ts",
       "key": "queryKeyToInvalidate",
       "reason": "A generic optimistic-mutation helper: the key is a function PARAMETER (`queryKeyToInvalidate: any[]`), supplied by whoever calls it. There is nothing here to compare against - the obligation belongs to the call sites, which this guard checks on their own terms."

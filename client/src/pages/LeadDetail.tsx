@@ -39,6 +39,8 @@ import { EnrollInSequenceDialog } from '@/components/leads/EnrollInSequenceDialo
 import { BookingLinkPicker } from '@/components/booking/BookingLinkPicker';
 import { LeadQuotes } from '@/components/leads/LeadQuotes';
 import { LeadDeals } from '@/components/leads/LeadDeals';
+import BANTAssessment, { useBantAssessment } from '@/components/leads/BANTAssessment';
+import { statusLabel, statusTone } from '@shared/bant-score';
 import {
   RecordPageLayout,
   RecordStageBar,
@@ -382,6 +384,15 @@ export default function LeadDetailHubspot() {
     enabled: Boolean(id),
   });
 
+  /**
+   * WF-S-09. The same cache entry BANTAssessment reads, so the glance card and
+   * the form below it cannot disagree. Declared with the other queries and
+   * ABOVE the early returns: a hook added beside the JSX it feeds would land
+   * after `if (!lead)` and crash on the render where the record resolves
+   * (CRM-008 round 66 - eslint is the only thing that reports it).
+   */
+  const { data: bant, isError: bantFailed } = useBantAssessment(id);
+
   /** Renders nothing while loading or when the count failed - never a 0. */
   const countBadge = (value: number | null | undefined) =>
     typeof value === 'number' ? (
@@ -489,6 +500,20 @@ export default function LeadDetailHubspot() {
           <Badge variant={lead.leadScore > 70 ? 'default' : 'secondary'}>
             {lead.leadScore ?? 0}/100
           </Badge>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-muted-foreground">BANT</span>
+          {bantFailed ? (
+            // A failed read must not render as "Not assessed": that is the one
+            // reading a rep would act on (CR-033).
+            <span className="text-xs text-destructive">Could not load</span>
+          ) : bant ? (
+            <Badge className={statusTone(bant.qualificationStatus)}>
+              {bant.totalBantScore ?? 0}/100 {statusLabel(bant.qualificationStatus)}
+            </Badge>
+          ) : (
+            <span className="text-xs text-muted-foreground">Not assessed</span>
+          )}
         </div>
         <div className="flex items-center justify-between">
           <span className="text-muted-foreground">Interest</span>
@@ -601,6 +626,7 @@ export default function LeadDetailHubspot() {
           slots={{
             'lead-timeline': timelineSlot,
             'lead-related': relatedSlot,
+            'lead-qualification': <BANTAssessment leadId={lead.id ?? ''} />,
             'lead-associations': glanceSlot,
           }}
         />
