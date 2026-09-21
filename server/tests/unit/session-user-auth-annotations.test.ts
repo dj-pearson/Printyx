@@ -14,6 +14,7 @@
 import { describe, it, expect } from 'vitest';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
+import { execFileSync } from 'node:child_process';
 
 const repo = join(__dirname, '../../..');
 const read = (p: string) => readFileSync(join(repo, p), 'utf8');
@@ -53,22 +54,26 @@ describe('the baselined files are annotated, not just listed', () => {
 
 describe('the guard recognises a fallback written through a cast', () => {
   it('accepts (req as any).user, not only a bare req.user', () => {
-    // mfa-enforcement.ts reads `(req as any).user || req.session?.user` - req.user
+    // mfa-enforcement.ts read `(req as any).user || req.session?.user` - req.user
     // FIRST - so it was never a session-only file. The word-boundary pattern
     // could not see it because the cast sits between the two words.
     const guard = read('scripts/check-session-user-auth.mjs');
     expect(guard).toMatch(/\\\(req as \[\^\)\]\+\\\)\\\.user\\b/);
-    expect(baseline.files).not.toContain('server/middleware/mfa-enforcement.ts');
   });
 
-  it('does not claim mfa-enforcement is blocked by this story', () => {
-    // Its header said mounting it would deny every request. It would not.
-    const src = read('server/middleware/mfa-enforcement.ts');
-    expect(src).toMatch(/CORRECTED 2026-09-01/);
-    expect(src).toMatch(/Two separate things stop it/);
-    // The two real blockers, both still true.
-    expect(src).toMatch(/Nothing imports enforceMfaForAdmins/);
-    expect(src).toMatch(/mfa_enrollments/);
+  it('still has live files in that form, so the rule is exercised', () => {
+    // AUDIT-034 deleted mfa-enforcement.ts, which was this rule's worked
+    // example. The rule is not retired with it: rebind to the property (files
+    // in the tree still use the cast and are correctly not baselined) rather
+    // than to the one file that happened to prove it.
+    const casts = execFileSync('git', ['grep', '-l', '-e', '(req as any).user', '--', 'server'], {
+      cwd: repo,
+      encoding: 'utf8',
+    })
+      .split('\n')
+      .filter((f) => f && !f.startsWith('server/tests/'));
+    expect(casts.length).toBeGreaterThan(0);
+    for (const file of casts) expect(baseline.files).not.toContain(file);
   });
 });
 

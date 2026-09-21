@@ -1,0 +1,4 @@
+# Generated files. prettier pads markdown tables and the generators emit them
+# compact, so without this every `format:write` rewrites a file whose content
+# did not change, and the next regeneration puts it straight back.
+docs/edge-rbac-express-predecessors.md

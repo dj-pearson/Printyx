@@ -900,6 +900,19 @@ export const hasAnyPermission = (
 /**
  * Require MFA verification for sensitive operations
  * Checks if the user has verified MFA within the session
+ *
+ * NOTHING MOUNTS THIS, AND NOTHING CAN SATISFY IT (AUDIT-034). It is kept
+ * because it fails closed and costs nothing inert, but read this before you
+ * mount it: it is satisfied only by `req.session.mfaVerified`, whose sole
+ * writer was `markMfaVerified` in middleware/mfa-enforcement.ts, which AUDIT-034
+ * deleted as unmountable and which had no callers of its own. So today this
+ * middleware answers 403 to every caller, including one who has just enrolled.
+ *
+ * It is also the wrong layer. Enrolment lives in supabase/functions/mfa/ over
+ * `mfa_enrollments`, and `/api/mfa` is proxied, so the verification a step-up
+ * gate would have to observe happens on the functions host and never touches an
+ * Express session. Giving this a writer means deciding where step-up state
+ * lives first - see AUDIT-034's notes for what the Express side is missing.
  */
 export const requireMFA = (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
   if (!req.user) {

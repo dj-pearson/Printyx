@@ -41,15 +41,21 @@ declare module 'express-session' {
     };
 
     /**
-     * Set by mfa-enforcement.ts (markMfaVerified/clearMfaVerification) and by
-     * the verify branch of routes/mfa-routes.ts, and read by requireMFA in
-     * enhanced-rbac-middleware.ts. It was never declared, so every reader
-     * either produced a TS2339 or reached for `(req.session as any)` - which
-     * is how the writer and the reader came to disagree on the reset value
-     * without anything noticing.
+     * Read by requireMFA in enhanced-rbac-middleware.ts and written by nothing.
+     * It was never declared, so every reader either produced a TS2339 or
+     * reached for `(req.session as any)` - which is how the writer and the
+     * reader came to disagree on the reset value without anything noticing.
      *
-     * mfaVerifiedAt is nullable because clearMfaVerification sets it to null
-     * rather than deleting it.
+     * CORRECTED 2026-09-21 (AUDIT-034): this used to name two writers and
+     * neither exists. `routes/mfa-routes.ts` is not a file in this repo, and
+     * markMfaVerified/clearMfaVerification lived in middleware/mfa-enforcement.ts,
+     * which that story deleted - it had no callers either. The fields stay
+     * declared because requireMFA still reads them and reading an undeclared
+     * field is how this disagreement started; requireMFA's own header says what
+     * has to be decided before anything writes them again.
+     *
+     * mfaVerifiedAt stays nullable: its reader distinguishes absent from
+     * cleared, and a future writer should keep that distinction.
      */
     mfaVerified?: boolean;
     mfaVerifiedAt?: number | null;
