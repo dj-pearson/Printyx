@@ -1105,6 +1105,18 @@ export function registerEdgeFunctionProxy(app: any) {
     // redirect lands on the functions host directly, because it carries no JWT
     // and dev has no public URL for a provider to call back to.
     '/api/calendar-oauth': 'calendar-oauth',
+    //
+    // PROD-008. /api/catalog is the PLATFORM MASTER catalogue on Express and
+    // was the TENANT's own product_models in the edge function, so the two
+    // hosts answered 200 about different tables and ProductHubUnified was
+    // broken five different ways in production. The edge function serves the
+    // master catalogue now and the Express router is deleted, so this entry
+    // makes dev run what production runs rather than papering over a gap.
+    // /api/enabled-products goes with it: the page reads the master catalogue
+    // and the tenant's enabled set together, and its Express handler lived in
+    // the same deleted file.
+    '/api/catalog': 'catalog',
+    '/api/enabled-products': 'enabled-products',
     '/api/sales-pipeline/rep-metrics': { fn: 'sales-pipeline', pathPrefix: '/rep-metrics' },
     '/api/sales-pipeline/summary': { fn: 'sales-pipeline', pathPrefix: '/summary' },
     '/api/sales-pipeline/stages': { fn: 'sales-pipeline', pathPrefix: '/stages' },

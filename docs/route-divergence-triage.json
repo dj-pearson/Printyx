@@ -1,5 +1,5 @@
 {
-  "note": "A verdict and a reason for every ambiguous-ownership domain in docs/route-ownership-baseline.json's bothDivergent list: Express registers handlers for it, an edge function serves it, and nothing proxies between them, so dev and production run different code for the same path. 'unexamined' is a permitted verdict and is the point - it is what stops a guess from being written down as a finding, and this file exists because two priority-1 stories (LAUNCH-013, LEGAL-004) sat inside the flat list indistinguishable from the entries where the divergence is harmless. VERDICTS: parity (both hosts checked, same behaviour); divergent (a named behavioural difference that matters in production); resolved (was divergent, ported, with the round named); express-only-capability (Express does something the edge does not and that is a recorded gap); unexamined (nobody has compared them). Added round 124.",
+  "note": "A verdict and a reason for every ambiguous-ownership domain in docs/route-ownership-baseline.json's bothDivergent list: Express registers handlers for it, an edge function serves it, and nothing proxies between them, so dev and production run different code for the same path. 'unexamined' is a permitted verdict and is the point - it is what stops a guess from being written down as a finding, and this file exists because two priority-1 stories (LAUNCH-013, LEGAL-004) sat inside the flat list indistinguishable from the entries where the divergence is harmless. VERDICTS: parity (both hosts checked, same behaviour); divergent (a named behavioural difference that matters in production); resolved (was divergent, ported, with the round named); express-only-capability (Express does something the edge does not and that is a recorded gap); unexamined (nobody has compared them). Added round 124. A domain that stops being ambiguous - usually because the prefix was proxied - LEAVES this file, so the 'resolved' count is not a history of everything ever fixed; it is the domains that were ported while the divergence itself remains. Round 134 dropped catalog and enabled-products on porting them, and dropped mobile (round 113) and onboarding (round 133), whose scoped proxy entries had made them unambiguous without anyone tightening docs/route-ownership-baseline.json - a stale entry here is pre-forgiveness for whatever lands under that name next.",
   "entries": {
     "analytics": {
       "verdict": "unexamined",
@@ -12,10 +12,6 @@
     "auto-supply-replenishment": {
       "verdict": "unexamined",
       "reason": "AUDIT-032 records all three of this feature's input tables as unwritable until migration 0062. Which host serves what has not been compared."
-    },
-    "catalog": {
-      "verdict": "unexamined",
-      "reason": "The quote builder reads /api/catalog and SEC-EDGE-001 gated the edge side; the Express handlers in routes-catalog.ts and routes-catalog-csv.ts have not been compared to it."
     },
     "chatbot": {
       "verdict": "unexamined",
@@ -44,10 +40,6 @@
     "deal-stages": {
       "verdict": "unexamined",
       "reason": "COP-M07 records deals.stage_id as a LEGACY deal_stages.id bridged by pipeline_stages.legacy_stage_id. Which host serves the vocabulary has not been compared."
-    },
-    "enabled-products": {
-      "verdict": "unexamined",
-      "reason": "Round 85 established that ProductHubUnified only GETs this prefix and every write goes through /api/catalog, so the edge write branches have no caller. The Express side has not been compared."
     },
     "equipment": {
       "verdict": "parity",
@@ -92,14 +84,6 @@
     "meter-readings": {
       "verdict": "resolved",
       "reason": "Round 122. The edge function had zero role checks while routes-products-crud.ts guarded a permission nobody reaches, and its PATCH field map named five columns that do not exist. PATCH and DELETE now require a supervisor and the write goes through _shared/meter-reading-write.ts."
-    },
-    "mobile": {
-      "verdict": "resolved",
-      "reason": "Round 113/114. /time-tracking and /service-tickets/:id/status were Express-only and 404'd in production; they are ported and carry SCOPED crmProxies entries. /mobile/dashboard is deliberately NOT proxied - MobileServiceApp.tsx dereferences a fixture's shape with no guard, so wiring it would turn a dev-only fixture into a crash. See AUDIT-033."
-    },
-    "onboarding": {
-      "verdict": "divergent",
-      "reason": "Round 133, partly resolved. /api/onboarding is not proxied, so its two progress endpoints - getting-started and wizard-state - were Express-only and 404'd in production for GettingStarted.tsx and SetupWizard.tsx, the first two screens a new tenant sees; the wizard's Express store was a module-scope Map, so it did not survive a restart in dev either. Both now live in supabase/functions/onboarding/ over onboarding_progress and carry SCOPED crmProxies entries, so dev runs what production runs. The three /api/onboarding/export/:id/:format handlers are deleted (two declared a content type they did not produce) and the CSV is GET /checklists/:id/export in the edge function. STILL DIVERGENT: Express owns PUT/DELETE /api/onboarding/sections/:id and /tasks/:id, which the edge function does not serve and which therefore 404 in production - no client tree calls them today, so nothing is broken, but a bare '/api/onboarding' proxy entry would take them from working-in-dev to 404-in-dev. Port those four before converging the whole prefix. The checklists CRUD is served by both hosts and has not been compared field by field."
     },
     "parts-orders": {
       "verdict": "unexamined",

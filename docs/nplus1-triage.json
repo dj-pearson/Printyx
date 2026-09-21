@@ -51,6 +51,18 @@
       "why": "One classifyIntent model call per keyword. The model is the wall clock."
     },
     {
+      "loop": "catalog/index.ts:288",
+      "table": "enabled_products",
+      "verdict": "bounded",
+      "why": "One UPDATE per master product the tenant had ALREADY enabled, on a bulk enable. The new rows go in one batched insert beside it; only the re-enable case loops, because each row is addressed by its own primary key and there is nothing to upsert against - enabled_products carries an INDEX on (tenant_id, master_product_id) and no unique constraint, so PostgREST's on_conflict has no target. Bounded by what one person ticked on one screen, and it is the uncommon half of that."
+    },
+    {
+      "loop": "catalog/index.ts:730",
+      "table": "master_product_models",
+      "verdict": "scales-open",
+      "why": "One UPDATE per CSV row that already exists in the master catalogue AND has a blank the file can fill, during a platform-admin import. Irreducible as PostgREST stands: each row's fill set is different, and the upsert that would collapse them needs a unique constraint on (manufacturer, model_code), which that table does not have - it has an index. The reads either side are already batched (one paged select keyed by the manufacturers in the file, one insert for everything new), so this is the only per-row round trip left, and it runs only for rows a previous import left partly filled."
+    },
+    {
       "loop": "company-ids/index.ts:227",
       "table": "business_records",
       "verdict": "bounded",

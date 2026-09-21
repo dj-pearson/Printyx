@@ -64,7 +64,6 @@ import {
 
 import {
   registerProductsCrudRoutes,
-  registerCatalogRoutes,
   registerCatalogCsvRoutes,
   registerProductModelsRoutes,
   registerProductPricingRoutes,
@@ -924,7 +923,22 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   // /api/commission is proxied to supabase/functions/commission/ now, which
   // reads commission_plans / commission_calculations / commission_disputes /
   // deals and already covers every path the page calls.
-  registerCatalogRoutes(app);
+  // registerCatalogRoutes was called here and routes-catalog.ts is DELETED
+  // (PROD-008). /api/catalog is proxied to supabase/functions/catalog/ now,
+  // which serves the MASTER catalogue - the domain this prefix has always meant
+  // on Express and the domain its one caller, ProductHubUnified, is written
+  // against. The edge function used to read `product_models`, the TENANT's own
+  // catalogue, on every branch, so the two hosts answered 200 about different
+  // tables (AUDIT-031) and the page's list, enable, bulk-enable, PATCH and
+  // import were each broken a different way in production.
+  //
+  // What goes with the file, all three unreachable from any client tree:
+  // POST /api/catalog/models/import (a Canon-specific price-list parser that
+  // hardcoded manufacturer: 'Canon' and matched imageRUNNER/imagePRESS section
+  // headings - it was also the only writer of master_product_accessories
+  // anywhere), POST /api/catalog/models/enable-from-csv, and POST
+  // /api/catalog/normalize-categories (its normalizer is now applied on every
+  // write, from shared/master-catalog-import.ts).
   // registerAnalyticsRoutes was called here and is DELETED (CR-017).
   //
   // routes-analytics.ts served eleven /api/analytics paths against SIX tables
@@ -987,19 +1001,9 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   // Both components are now NotConnectedState gates naming what would have to
   // be recorded first (stage-transition history, a loss reason per deal).
 
-  try {
-    const { catalogRouter } = await import('./routes-catalog');
-    app.use(catalogRouter);
-    log.info('✅ Catalog routes registered');
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    log.error('Failed to load catalog routes:', err);
-    failedRouteModules.push({
-      module: 'routes-catalog',
-      error: msg,
-      timestamp: new Date().toISOString(),
-    });
-  }
+  // The lazy catalogRouter mount stood here and is gone with routes-catalog.ts
+  // (PROD-008). It mounted the SAME router object registerCatalogRoutes had
+  // already mounted 60 lines earlier, so /api/catalog was registered twice.
 
   // routes-reporting.ts (KPIs, reporting catalog, exports, dashboard summary)
   // migrated to supabase/functions/reports/handlers/{kpis,reporting}.ts in
