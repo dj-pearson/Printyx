@@ -52,25 +52,38 @@ import {
 import { format, isAfter, isBefore, addMonths } from 'date-fns';
 import { formatCurrency } from '@/lib/utils';
 
+/**
+ * Every field here is a REAL column on `contracts` (migration 0000 plus the
+ * four 0070 adds), reached through the camelCase the edge function now
+ * answers with - it used to return the raw PostgREST row, so `contractNumber`
+ * and the dates were undefined on every contract and `matchesSearch` below
+ * was therefore undefined, which made `filteredContracts` EMPTY for every
+ * customer whatever they typed. The tab rendered nothing, always.
+ *
+ * REMOVED, because `contracts` has no column for them and nothing derives
+ * them (AUDIT-016: delete a claim with no backing data rather than fake it):
+ * contractType, autoRenewal, renewalTerms, totalContractValue,
+ * currentMonthlyBilling, lastBillingDate, nextBillingDate, equipmentCount.
+ * The last five were declared and never rendered; the first three drove a
+ * billing-model badge and a renewal row that could only ever have said "no".
+ * `acquisitionType` IS a column and is NOT the same concept - it records how
+ * the equipment was acquired (cash/lease), not the billing model - so it is
+ * deliberately not substituted in.
+ *
+ * hasTieredRates is derived server-side from contract_tiered_rates.
+ */
 interface Contract {
   id: string;
   contractNumber: string;
-  contractType: string;
   customerId: string;
   startDate: string;
   endDate: string;
-  autoRenewal: boolean;
-  renewalTerms: number;
   blackRate?: number;
   colorRate?: number;
   monthlyBase?: number;
   hasTieredRates: boolean;
   status: string;
-  totalContractValue?: number;
-  currentMonthlyBilling?: number;
-  lastBillingDate?: string;
-  nextBillingDate?: string;
-  equipmentCount?: number;
+  acquisitionType?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -79,14 +92,6 @@ interface CustomerContractsProps {
   customerId: string;
   customerName: string;
 }
-
-const contractTypeLabels = {
-  cost_per_click: 'Cost Per Click',
-  flat_rate: 'Flat Rate',
-  hybrid: 'Hybrid',
-  maintenance_only: 'Maintenance Only',
-  full_service: 'Full Service',
-};
 
 const statusColors = {
   active: 'bg-green-100 text-green-800',
@@ -115,39 +120,62 @@ export function CustomerContracts({ customerId, customerName }: CustomerContract
     enabled: !!customerId,
   });
 
-  // Filter contracts based on search and status
+  // start_date and end_date are nullable, so format() would throw
+  // "Invalid time value" on a contract that carries neither.
+  const formatDate = (value?: string) => {
+    if (!value) return <span className="text-gray-400">&mdash;</span>;
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return <span className="text-gray-400">&mdash;</span>;
+    return format(d, 'MMM d, yyyy');
+  };
+
+  // Filter contracts based on search and status. An EMPTY search term matches
+  // everything: the old expression was `a?.toLowerCase().includes(term) ||
+  // b?.toLowerCase().includes(term)`, which is `undefined` rather than `true`
+  // when the fields are absent, so it excluded every row even with nothing
+  // typed. A contract whose number is null must not vanish either.
+  const term = searchTerm.trim().toLowerCase();
   const filteredContracts = contracts.filter((contract: Contract) => {
     const matchesSearch =
-      contract.contractNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      contract.contractType?.toLowerCase().includes(searchTerm.toLowerCase());
+      term === '' || (contract.contractNumber ?? '').toLowerCase().includes(term);
 
     const matchesStatus = statusFilter === 'all' || contract.status === statusFilter;
 
     return matchesSearch && matchesStatus;
   });
 
+  // start_date and end_date are NULLABLE (migration 0070 dropped both NOT
+  // NULLs), so a contract can carry neither and `new Date(undefined)` is an
+  // Invalid Date that compares false against everything - which would have
+  // silently reported 'active'. Fall back to the stored status instead of
+  // inferring one from dates that are not there.
   const getContractStatus = (contract: Contract) => {
     const now = new Date();
-    const endDate = new Date(contract.endDate);
-    const startDate = new Date(contract.startDate);
+    const start = contract.startDate ? new Date(contract.startDate) : null;
+    const end = contract.endDate ? new Date(contract.endDate) : null;
+    const valid = (d: Date | null): d is Date => d !== null && !Number.isNaN(d.getTime());
 
-    if (isBefore(now, startDate)) return 'pending';
-    if (isAfter(now, endDate)) {
-      if (contract.autoRenewal) return 'renewal_pending';
-      return 'expired';
-    }
+    if (valid(start) && isBefore(now, start)) return 'pending';
+    // 'renewal_pending' is gone with autoRenewal: nothing records whether a
+    // contract renews, so every contract would have read as simply expired.
+    if (valid(end) && isAfter(now, end)) return 'expired';
+    if (!valid(start) && !valid(end)) return contract.status || 'active';
     return 'active';
   };
 
-  const getRenewalAlert = (contract: Contract) => {
-    if (!contract.autoRenewal) return null;
+  // The end date is a real column, so "this contract is nearly up" is a real
+  // signal and the alert stays. It used to be gated on autoRenewal, which is
+  // not a column, and it said "Renewal coming up" - a claim about what happens
+  // next that nothing here records. It says what is known instead.
+  const getExpiryAlert = (contract: Contract) => {
+    if (!contract.endDate) return null;
+    const endDate = new Date(contract.endDate);
+    if (Number.isNaN(endDate.getTime())) return null;
 
     const now = new Date();
-    const endDate = new Date(contract.endDate);
-    const threeMonthsOut = addMonths(now, 3);
-
-    if (isAfter(threeMonthsOut, endDate)) {
-      return 'Renewal coming up';
+    if (isBefore(endDate, now)) return null; // already expired; the badge says so
+    if (isAfter(addMonths(now, 3), endDate)) {
+      return 'Expires within 3 months';
     }
     return null;
   };
@@ -242,12 +270,11 @@ export function CustomerContracts({ customerId, customerName }: CustomerContract
                 <TableHeader>
                   <TableRow>
                     <TableHead>Contract #</TableHead>
-                    <TableHead>Type</TableHead>
                     <TableHead>Start Date</TableHead>
                     <TableHead>End Date</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Monthly Base</TableHead>
-                    <TableHead>Auto Renewal</TableHead>
+                    <TableHead>Tiered Rates</TableHead>
                     <TableHead>Alerts</TableHead>
                     <TableHead className="w-[50px]"></TableHead>
                   </TableRow>
@@ -255,20 +282,13 @@ export function CustomerContracts({ customerId, customerName }: CustomerContract
                 <TableBody>
                   {filteredContracts.map((contract: Contract) => {
                     const status = getContractStatus(contract);
-                    const renewalAlert = getRenewalAlert(contract);
+                    const expiryAlert = getExpiryAlert(contract);
 
                     return (
                       <TableRow key={contract.id}>
                         <TableCell className="font-medium">{contract.contractNumber}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline">
-                            {contractTypeLabels[
-                              contract.contractType as keyof typeof contractTypeLabels
-                            ] || contract.contractType}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{format(new Date(contract.startDate), 'MMM d, yyyy')}</TableCell>
-                        <TableCell>{format(new Date(contract.endDate), 'MMM d, yyyy')}</TableCell>
+                        <TableCell>{formatDate(contract.startDate)}</TableCell>
+                        <TableCell>{formatDate(contract.endDate)}</TableCell>
                         <TableCell>
                           <Badge className={statusColors[status as keyof typeof statusColors]}>
                             {status.replace('_', ' ')}
@@ -276,17 +296,17 @@ export function CustomerContracts({ customerId, customerName }: CustomerContract
                         </TableCell>
                         <TableCell>{formatCurrency(contract.monthlyBase)}</TableCell>
                         <TableCell>
-                          {contract.autoRenewal ? (
+                          {contract.hasTieredRates ? (
                             <CheckCircle2 className="h-4 w-4 text-green-600" />
                           ) : (
-                            <span className="text-gray-400">—</span>
+                            <span className="text-gray-400">&mdash;</span>
                           )}
                         </TableCell>
                         <TableCell>
-                          {renewalAlert && (
+                          {expiryAlert && (
                             <div className="flex items-center">
                               <AlertTriangle className="h-4 w-4 text-amber-500 mr-1" />
-                              <span className="text-xs text-amber-700">{renewalAlert}</span>
+                              <span className="text-xs text-amber-700">{expiryAlert}</span>
                             </div>
                           )}
                         </TableCell>
@@ -348,40 +368,27 @@ export function CustomerContracts({ customerId, customerName }: CustomerContract
                   <p className="text-gray-600">{selectedContract.contractNumber}</p>
                 </div>
                 <div>
-                  <h4 className="font-medium text-gray-900">Type</h4>
-                  <p className="text-gray-600">
-                    {contractTypeLabels[
-                      selectedContract.contractType as keyof typeof contractTypeLabels
-                    ] || selectedContract.contractType}
-                  </p>
+                  <h4 className="font-medium text-gray-900">Status</h4>
+                  <p className="text-gray-600">{selectedContract.status}</p>
                 </div>
                 <div>
                   <h4 className="font-medium text-gray-900">Start Date</h4>
-                  <p className="text-gray-600">
-                    {format(new Date(selectedContract.startDate), 'MMMM d, yyyy')}
-                  </p>
+                  <p className="text-gray-600">{formatDate(selectedContract.startDate)}</p>
                 </div>
                 <div>
                   <h4 className="font-medium text-gray-900">End Date</h4>
-                  <p className="text-gray-600">
-                    {format(new Date(selectedContract.endDate), 'MMMM d, yyyy')}
-                  </p>
+                  <p className="text-gray-600">{formatDate(selectedContract.endDate)}</p>
                 </div>
                 <div>
                   <h4 className="font-medium text-gray-900">Monthly Base</h4>
                   <p className="text-gray-600">{formatCurrency(selectedContract.monthlyBase)}</p>
                 </div>
-                <div>
-                  <h4 className="font-medium text-gray-900">Auto Renewal</h4>
-                  <p className="text-gray-600">
-                    {selectedContract.autoRenewal
-                      ? `Yes (${selectedContract.renewalTerms} months)`
-                      : 'No'}
-                  </p>
-                </div>
               </div>
 
-              {selectedContract.contractType === 'cost_per_click' && (
+              {/* Shown when the contract carries per-click rates, rather than
+                  when it is typed 'cost_per_click' - there is no contract-type
+                  column, and the rates themselves are the evidence. */}
+              {(selectedContract.blackRate != null || selectedContract.colorRate != null) && (
                 <div>
                   <h4 className="font-medium text-gray-900 mb-2">Per-Click Rates</h4>
                   <div className="grid grid-cols-2 gap-4">
