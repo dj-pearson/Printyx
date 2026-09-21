@@ -1,6 +1,6 @@
 {
   "note": "Parameterless routes that nothing in client source links to, so the only way in is typing the URL. Shrink-only. Each is either a page that needs a nav entry or a link, or a page to retire — see scripts/check-unlinked-routes.mjs.",
-  "count": 63,
+  "count": 60,
   "routes": [
     "/access-control",
     "/admin/database-updater",
@@ -12,7 +12,6 @@
     "/auto-supply-replenishment",
     "/billing-analytics",
     "/billing-rules",
-    "/booking-pages",
     "/briefings",
     "/company-contacts",
     "/company-ids-test",
@@ -32,7 +31,6 @@
     "/manufacturer-integration/devices",
     "/meeting-to-proposal",
     "/my-tasks",
-    "/oid-management",
     "/onboarding/original",
     "/platform-crm/assignment-rules",
     "/platform-crm/cohort-analysis",
@@ -62,7 +60,6 @@
     "/service/voice-agent",
     "/settings/api-keys",
     "/system-monitoring",
-    "/tasks",
     "/unauthorized",
     "/white-label"
   ]

@@ -16,6 +16,22 @@ import {
   UNMAPPED_ONBOARDING_FIELDS,
   type EquipmentLinkResult,
 } from '../_shared/onboarding-equipment-link.ts';
+import {
+  requiresScanToEmail,
+  summariseOidCoverage,
+  type DeviceRef,
+  type OidMappingRow,
+} from '../../../shared/onboarding-readiness.ts';
+import { fetchAllRows } from '../_shared/paged-select.ts';
+
+/**
+ * A wizard step sends what is on screen; a caller can send anything. Both caps
+ * keep one request bounded without changing what a real install looks like - a
+ * checklist with fifty machines on it is already an outlier, and a customer
+ * with twenty address books is one too.
+ */
+const MAX_READINESS_DEVICES = 50;
+const MAX_READINESS_BOOKS = 20;
 
 /**
  * The installation_type Postgres enum, verbatim (migration 0000, line 56).
@@ -285,6 +301,114 @@ export default async function handler(req: Request) {
           equipment: equipment.data || [],
           sections: sections.data || [],
           tasks: tasks.data || [],
+        },
+        200,
+        req,
+      );
+    }
+
+    // ───────── WF-L-11: the two existence checks the network step needs ──────
+    //
+    // GET /onboarding/config-readiness?customerId=<uuid>&devices=<json>
+    //
+    // NO CHECKLIST ID, AND THAT IS THE POINT. This answers the wizard's Network
+    // Setup step, which runs BEFORE the checklist is created, so there is no row
+    // to read the equipment off - the caller sends what it has. Both halves are
+    // read-only over tables that already exist (WF-L-11 AC3); nothing here
+    // writes and nothing here decides.
+    //
+    // `oid_mappings` HAS NO tenant_id (SEC-EDGE-001 round 76 recorded it as a
+    // shared catalogue every dealer can edit), so this read is cross-tenant by
+    // construction and the response says so rather than implying a per-dealer
+    // answer. `address_books` does have one and is filtered on it plus the
+    // customer.
+    //
+    // Each half is independently try/caught with the failure NAMED in
+    // `degraded`: one missing relation must not blank the whole panel, and a
+    // coverage count over a read that failed would be a measurement (AUDIT-028).
+    if (req.method === 'GET' && pathParts[0] === 'config-readiness') {
+      const customerId = url.searchParams.get('customerId')?.trim() || null;
+      const devicesParam = url.searchParams.get('devices');
+
+      let devices: DeviceRef[] = [];
+      if (devicesParam) {
+        try {
+          const parsed = JSON.parse(devicesParam);
+          if (!Array.isArray(parsed)) throw new Error('devices must be a JSON array');
+          devices = parsed.slice(0, MAX_READINESS_DEVICES) as DeviceRef[];
+        } catch (err) {
+          return createCorsResponse(
+            {
+              error: 'devices must be a JSON array of { manufacturer, model, equipmentType }',
+              code: 'INVALID_DEVICES',
+              details: err instanceof Error ? err.message : String(err),
+            },
+            400,
+            req,
+          );
+        }
+      }
+
+      const degraded: string[] = [];
+
+      let mappings: OidMappingRow[] = [];
+      let oidReadFailed = false;
+      try {
+        mappings = await fetchAllRows<OidMappingRow>(() =>
+          admin
+            .from('oid_mappings')
+            .select('id, manufacturer, model_series, mapping_name, is_default'),
+        );
+      } catch (err) {
+        oidReadFailed = true;
+        degraded.push('oid_mappings');
+        console.error('config-readiness: oid_mappings read failed:', err);
+      }
+
+      // A coverage summary over a catalogue nobody could read is not "nothing
+      // is covered" - it is not knowing, so the whole half is null.
+      const oid = oidReadFailed ? null : summariseOidCoverage(devices, mappings);
+
+      const scan = requiresScanToEmail(devices);
+
+      let books: Array<Record<string, unknown>> | null = null;
+      if (customerId) {
+        try {
+          const { data, error } = await admin
+            .from('address_books')
+            .select('id, name, source_vendor, last_imported_at')
+            .eq('tenant_id', tenantId)
+            .eq('customer_id', customerId)
+            .is('deleted_at', null)
+            .order('name', { ascending: true })
+            .limit(MAX_READINESS_BOOKS);
+          if (error) throw error;
+          books = data ?? [];
+        } catch (err) {
+          degraded.push('address_books');
+          console.error('config-readiness: address_books read failed:', err);
+        }
+      }
+
+      return createCorsResponse(
+        {
+          oid,
+          // The catalogue is global, so a gap is a gap for every dealer on this
+          // deployment and closing it changes what everyone polls with.
+          oidCatalogueIsShared: true,
+          addressBook: {
+            scan,
+            customerId,
+            // null means not looked up (no customer selected yet) or the read
+            // failed; 0 means looked up and there are none.
+            bookCount: books ? books.length : null,
+            books: books ?? [],
+          },
+          degraded,
+          unbacked:
+            devices.length === 0
+              ? ['No equipment was sent, so neither check could be run for a device.']
+              : [],
         },
         200,
         req,

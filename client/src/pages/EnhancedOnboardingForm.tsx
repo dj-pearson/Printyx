@@ -76,6 +76,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
 import ContextualHelp from '@/components/contextual/ContextualHelp';
 import { clickableProps } from '@/lib/accessibility';
+import { ConfigReadinessPanel } from '@/components/onboarding/ConfigReadinessPanel';
+import type { DeviceRef } from '@shared/onboarding-readiness';
 
 // Enhanced onboarding schema with auto-population and machine replacement
 const enhancedOnboardingSchema = z.object({
@@ -920,6 +922,21 @@ export default function EnhancedOnboardingForm() {
       description: `Your ${format.toUpperCase()} export is downloading...`,
     });
   };
+
+  /**
+   * What the readiness panel needs and nothing else. Serial numbers, asset
+   * tags, site addresses and contacts stay out of a query string; the two
+   * checks only ever look at manufacturer, model and what makes a device a
+   * scanner.
+   */
+  const watchedEquipment = form.watch('equipment');
+  const readinessDevices: DeviceRef[] = (watchedEquipment ?? []).map((item) => ({
+    manufacturer: item?.manufacturer ?? null,
+    model: item?.model ?? null,
+    equipmentType: item?.equipmentType ?? null,
+    features: item?.features ?? [],
+    smtpName: item?.networkConfiguration?.smtpName ?? null,
+  }));
 
   const steps = [
     { number: 1, title: 'Customer Selection', icon: Search },
@@ -1918,6 +1935,267 @@ export default function EnhancedOnboardingForm() {
                 </CardContent>
               </Card>
             ))}
+          </div>
+        );
+
+      // WF-L-11 / WF-L-10. This step rendered NOTHING - the switch handled 1,
+      // 2, 5 and 10 and everything else fell to `default: return null` - so the
+      // nineteen network fields the schema declares could never be filled in.
+      // WF-L-10 writes onboarding_network_config from this payload and gates
+      // `is_configured` on an address, a VLAN, a switch port or a naming
+      // convention being present, none of which a user could reach, so every
+      // checklist raised through this wizard was permanently unconfigured and
+      // the checklist PDF printed a blank network section.
+      //
+      // Steps 3, 4, 7, 8 and 9 are STILL blank. They are the same defect and
+      // they are not this story's; fixing the one the readiness panel lives on
+      // and saying so beats a silent half-sweep.
+      //
+      // TWELVE OF THE NINETEEN FIELDS ARE RENDERED, and the seven left out are
+      // the ones `onboarding_network_config` has no column for - networkType,
+      // alternateIPs, wirelessSSID, wirelessPassword, portConfiguration,
+      // trunkingRequired, hostsFileEntry (NETWORK_FIELDS_WITHOUT_COLUMNS in
+      // _shared/onboarding-config.ts). An input that silently discards what a
+      // technician types is worse than one that is absent; giving them columns
+      // is a migration and a different story. The wireless passphrase is the
+      // one nobody should want back as it stood: a shared key typed into a form
+      // that renders into a signed public PDF link.
+      case 6:
+        return (
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Network Setup</h3>
+              <p className="text-sm text-gray-600">
+                How the devices get on the network, and whether the services that depend on it are
+                already configured.
+              </p>
+            </div>
+
+            <ConfigReadinessPanel
+              customerId={selectedBusinessRecord?.id || form.watch('businessRecordId') || null}
+              devices={readinessDevices}
+            />
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Network className="h-5 w-5" />
+                  Addressing
+                </CardTitle>
+                <CardDescription>
+                  A static assignment needs an address. DHCP or reserved needs something an
+                  installer can act on - a VLAN, a switch port or a naming convention.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="networkConfig.ipAssignment"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>IP Assignment</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select IP assignment" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="dhcp">DHCP</SelectItem>
+                          <SelectItem value="static">Static</SelectItem>
+                          <SelectItem value="reserved">Reserved (DHCP reservation)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="networkConfig.staticIpAddress"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Static IP Address</FormLabel>
+                      <FormControl>
+                        <Input placeholder="192.168.1.50" {...field} value={field.value ?? ''} />
+                      </FormControl>
+                      <FormDescription>Required when the assignment is static.</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="networkConfig.subnetMask"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Subnet Mask</FormLabel>
+                      <FormControl>
+                        <Input placeholder="255.255.255.0" {...field} value={field.value ?? ''} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="networkConfig.gateway"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Gateway</FormLabel>
+                      <FormControl>
+                        <Input placeholder="192.168.1.1" {...field} value={field.value ?? ''} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="networkConfig.dnsServers"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>DNS Servers</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="8.8.8.8, 8.8.4.4"
+                          {...field}
+                          value={field.value ?? ''}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="networkConfig.namingConvention"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Naming Convention</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="BLDG-FLOOR-MODEL"
+                          {...field}
+                          value={field.value ?? ''}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Router className="h-5 w-5" />
+                  Switch and VLAN
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="networkConfig.vlanConfig"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>VLAN</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="VLAN 40 - Printers"
+                          {...field}
+                          value={field.value ?? ''}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="networkConfig.switchLocation"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Switch Location</FormLabel>
+                      <FormControl>
+                        <Input placeholder="IDF 2, rack B" {...field} value={field.value ?? ''} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="networkConfig.switchPort"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Switch Port</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Gi1/0/12" {...field} value={field.value ?? ''} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Shield className="h-5 w-5" />
+                  Firewall, QoS and DNS
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="networkConfig.firewallRules"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Firewall Rules</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          rows={3}
+                          placeholder="Outbound 443 to the monitoring host, SNMP 161 from the collector"
+                          {...field}
+                          value={field.value ?? ''}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="networkConfig.qosSettings"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>QoS Settings</FormLabel>
+                      <FormControl>
+                        <Textarea rows={2} {...field} value={field.value ?? ''} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <div className="flex flex-col gap-3 sm:flex-row sm:gap-8">
+                  <FormField
+                    control={form.control}
+                    name="networkConfig.dnsUpdate"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start gap-3 space-y-0">
+                        <FormControl>
+                          <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                        </FormControl>
+                        <FormLabel className="font-normal">DNS record to be updated</FormLabel>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </CardContent>
+            </Card>
           </div>
         );
 
