@@ -370,8 +370,9 @@ export default function SEODashboard() {
     mutationFn: async (url: string) => {
       return apiRequest('/api/seo/audit', 'POST', { url });
     },
-    onSuccess: () => {
+    onSuccess: (data: unknown) => {
       queryClient.invalidateQueries({ queryKey: ['/api/seo/audit/history'] });
+      noteUnbacked('SEO audit', data);
       toast({
         title: 'Audit completed',
         description: 'SEO audit has been completed successfully.',

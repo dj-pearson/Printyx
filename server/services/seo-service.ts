@@ -38,6 +38,7 @@ import {
   type LinkFact,
   type PageFacts,
 } from '@shared/seo-page-facts';
+import { evaluateSeoAudit, type AuditResult } from '@shared/seo-audit';
 import {
   evaluateSecurityHeaders,
   MAX_REDIRECTS,
@@ -49,24 +50,9 @@ import fetch from 'node-fetch';
 
 // ============= TYPES =============
 
-interface AuditResult {
-  overallScore: number;
-  technicalScore: number;
-  contentScore: number;
-  performanceScore: number;
-  criticalIssues: number;
-  highIssues: number;
-  mediumIssues: number;
-  lowIssues: number;
-  issues: Array<{
-    category: string;
-    severity: string;
-    message: string;
-    fix?: string;
-  }>;
-  recommendations: string[];
-  technicalDetails: any;
-}
+// AuditResult is imported from @shared/seo-audit, which both hosts read. The
+// local copy that stood here typed technicalDetails as `any`, so every field
+// the page reads off it was unchecked.
 
 interface CrawlPage {
   url: string;
@@ -99,11 +85,7 @@ interface CrawlPage {
 // ============= COMPREHENSIVE SEO AUDIT =============
 
 export async function performComprehensiveSEOAudit(url: string): Promise<AuditResult> {
-  const issues: Array<{ category: string; severity: string; message: string; fix?: string }> = [];
-  const recommendations: string[] = [];
-
   try {
-    // Fetch the page
     const response = await fetch(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; PrintyxSEOBot/1.0; +https://printyx.net)',
@@ -111,279 +93,16 @@ export async function performComprehensiveSEOAudit(url: string): Promise<AuditRe
     });
 
     const html = await response.text();
-    const $ = cheerio.load(html);
-    const statusCode = response.status;
 
-    // Technical SEO checks
-    const technicalChecks = await analyzeTechnicalSEO($, url, statusCode);
-    issues.push(...technicalChecks.issues);
-    recommendations.push(...technicalChecks.recommendations);
-
-    // Content SEO checks
-    const contentChecks = await analyzeContentSEO($, html);
-    issues.push(...contentChecks.issues);
-    recommendations.push(...contentChecks.recommendations);
-
-    // Performance checks (basic - real PageSpeed API integration separate)
-    const performanceChecks = await analyzeBasicPerformance(html, response);
-    issues.push(...performanceChecks.issues);
-    recommendations.push(...performanceChecks.recommendations);
-
-    // Calculate scores
-    const criticalIssues = issues.filter((i) => i.severity === 'critical').length;
-    const highIssues = issues.filter((i) => i.severity === 'high').length;
-    const mediumIssues = issues.filter((i) => i.severity === 'medium').length;
-    const lowIssues = issues.filter((i) => i.severity === 'low').length;
-
-    // Calculate scores (100 base, deduct points for issues)
-    const technicalScore = Math.max(
-      0,
-      100 - criticalIssues * 10 - highIssues * 5 - mediumIssues * 2 - lowIssues,
-    );
-    const contentScore = Math.max(0, 100 - contentChecks.issueCount * 5);
-    const performanceScore = Math.max(0, 100 - performanceChecks.issueCount * 7);
-    const overallScore = Math.round((technicalScore + contentScore + performanceScore) / 3);
-
-    return {
-      overallScore,
-      technicalScore,
-      contentScore,
-      performanceScore,
-      criticalIssues,
-      highIssues,
-      mediumIssues,
-      lowIssues,
-      issues,
-      recommendations,
-      technicalDetails: {
-        statusCode,
-        hasHTTPS: url.startsWith('https://'),
-        hasRobotsMeta: $('meta[name="robots"]').length > 0,
-        hasCanonical: $('link[rel="canonical"]').length > 0,
-        hasSchema: $('script[type="application/ld+json"]').length > 0,
-        pageSize: html.length,
-        totalLinks: $('a').length,
-        totalImages: $('img').length,
-      },
-    };
+    return evaluateSeoAudit(extractPageFacts(html), {
+      url,
+      statusCode: response.status,
+      contentEncoding: response.headers.get('content-encoding'),
+      cacheControl: response.headers.get('cache-control'),
+    });
   } catch (error: any) {
     throw new Error(`SEO Audit failed: ${error.message}`);
   }
-}
-
-// ============= TECHNICAL SEO ANALYSIS =============
-
-async function analyzeTechnicalSEO($: cheerio.CheerioAPI, url: string, statusCode: number) {
-  const issues: Array<{ category: string; severity: string; message: string; fix?: string }> = [];
-  const recommendations: string[] = [];
-
-  // Check HTTPS
-  if (!url.startsWith('https://')) {
-    issues.push({
-      category: 'Security',
-      severity: 'critical',
-      message: 'Site is not using HTTPS',
-      fix: 'Install SSL certificate and redirect all HTTP traffic to HTTPS',
-    });
-  }
-
-  // Check title tag
-  const title = $('title').text();
-  if (!title) {
-    issues.push({
-      category: 'Meta Tags',
-      severity: 'critical',
-      message: 'Missing title tag',
-      fix: 'Add a unique, descriptive title tag to the page',
-    });
-  } else if (title.length < 30) {
-    issues.push({
-      category: 'Meta Tags',
-      severity: 'high',
-      message: 'Title tag is too short',
-      fix: 'Expand title to 50-60 characters for optimal display',
-    });
-  } else if (title.length > 60) {
-    issues.push({
-      category: 'Meta Tags',
-      severity: 'medium',
-      message: 'Title tag may be truncated in search results',
-      fix: 'Shorten title to 50-60 characters',
-    });
-  }
-
-  // Check meta description
-  const metaDescription = $('meta[name="description"]').attr('content');
-  if (!metaDescription) {
-    issues.push({
-      category: 'Meta Tags',
-      severity: 'high',
-      message: 'Missing meta description',
-      fix: 'Add a compelling meta description (150-160 characters)',
-    });
-  } else if (metaDescription.length < 120) {
-    issues.push({
-      category: 'Meta Tags',
-      severity: 'medium',
-      message: 'Meta description is too short',
-      fix: 'Expand description to 150-160 characters',
-    });
-  } else if (metaDescription.length > 160) {
-    issues.push({
-      category: 'Meta Tags',
-      severity: 'low',
-      message: 'Meta description may be truncated',
-      fix: 'Shorten description to 150-160 characters',
-    });
-  }
-
-  // Check H1 tags
-  const h1Tags = $('h1');
-  if (h1Tags.length === 0) {
-    issues.push({
-      category: 'Headings',
-      severity: 'high',
-      message: 'Missing H1 tag',
-      fix: 'Add a single H1 tag that describes the page content',
-    });
-  } else if (h1Tags.length > 1) {
-    issues.push({
-      category: 'Headings',
-      severity: 'medium',
-      message: `Multiple H1 tags found (${h1Tags.length})`,
-      fix: 'Use only one H1 tag per page for clarity',
-    });
-  }
-
-  // Check canonical tag
-  const canonical = $('link[rel="canonical"]').attr('href');
-  if (!canonical) {
-    recommendations.push('Add canonical tag to specify preferred URL version');
-  }
-
-  // Check robots meta tag
-  const robotsMeta = $('meta[name="robots"]').attr('content');
-  if (robotsMeta && (robotsMeta.includes('noindex') || robotsMeta.includes('nofollow'))) {
-    issues.push({
-      category: 'Indexing',
-      severity: 'critical',
-      message: 'Page is blocked from indexing',
-      fix: 'Remove noindex/nofollow directives if page should be indexed',
-    });
-  }
-
-  // Check viewport meta tag
-  const viewport = $('meta[name="viewport"]').attr('content');
-  if (!viewport) {
-    issues.push({
-      category: 'Mobile',
-      severity: 'high',
-      message: 'Missing viewport meta tag',
-      fix: 'Add: <meta name="viewport" content="width=device-width, initial-scale=1">',
-    });
-  }
-
-  // Check structured data
-  const schemaScripts = $('script[type="application/ld+json"]');
-  if (schemaScripts.length === 0) {
-    recommendations.push('Add structured data (Schema.org) for enhanced search results');
-  }
-
-  return { issues, recommendations };
-}
-
-// ============= CONTENT SEO ANALYSIS =============
-
-async function analyzeContentSEO($: cheerio.CheerioAPI, html: string) {
-  const issues: Array<{ category: string; severity: string; message: string; fix?: string }> = [];
-  const recommendations: string[] = [];
-
-  // Word count
-  const bodyText = $('body').text().replace(/\s+/g, ' ').trim();
-  const wordCount = bodyText.split(' ').length;
-
-  if (wordCount < 300) {
-    issues.push({
-      category: 'Content',
-      severity: 'high',
-      message: `Content is too thin (${wordCount} words)`,
-      fix: 'Add more comprehensive, valuable content (aim for 600+ words)',
-    });
-  }
-
-  // Check for images with missing alt text
-  const imagesWithoutAlt = $('img:not([alt])').length;
-  const totalImages = $('img').length;
-
-  if (imagesWithoutAlt > 0) {
-    issues.push({
-      category: 'Images',
-      severity: 'medium',
-      message: `${imagesWithoutAlt} of ${totalImages} images missing alt text`,
-      fix: 'Add descriptive alt text to all images',
-    });
-  }
-
-  // Check internal links
-  const internalLinks = $('a[href^="/"], a[href^="' + $('base').attr('href') + '"]').length;
-  if (internalLinks < 3) {
-    recommendations.push('Add more internal links to improve site navigation and SEO');
-  }
-
-  // Check for heading structure
-  let lastHeadingLevel = 0;
-  let headingIssues = false;
-  $('h1, h2, h3, h4, h5, h6').each((i, el) => {
-    const level = parseInt(el.tagName[1]);
-    if (level > lastHeadingLevel + 1) {
-      headingIssues = true;
-    }
-    lastHeadingLevel = level;
-  });
-
-  if (headingIssues) {
-    issues.push({
-      category: 'Content Structure',
-      severity: 'low',
-      message: 'Heading hierarchy is not properly structured',
-      fix: 'Use headings in order (H1 → H2 → H3) without skipping levels',
-    });
-  }
-
-  return { issues, recommendations, issueCount: issues.length };
-}
-
-// ============= BASIC PERFORMANCE ANALYSIS =============
-
-async function analyzeBasicPerformance(html: string, response: any) {
-  const issues: Array<{ category: string; severity: string; message: string; fix?: string }> = [];
-  const recommendations: string[] = [];
-
-  // Page size
-  const pageSize = html.length;
-  if (pageSize > 2000000) {
-    // 2MB
-    issues.push({
-      category: 'Performance',
-      severity: 'high',
-      message: `Page size is too large (${(pageSize / 1024).toFixed(0)}KB)`,
-      fix: 'Optimize images, minify CSS/JS, enable compression',
-    });
-  }
-
-  // Check compression
-  const contentEncoding = response.headers.get('content-encoding');
-  if (!contentEncoding || !contentEncoding.includes('gzip')) {
-    recommendations.push('Enable GZIP compression to reduce page size');
-  }
-
-  // Check caching headers
-  const cacheControl = response.headers.get('cache-control');
-  if (!cacheControl) {
-    recommendations.push('Add caching headers to improve repeat visit performance');
-  }
-
-  return { issues, recommendations, issueCount: issues.length };
 }
 
 // ============= WEB CRAWLER =============
@@ -618,7 +337,7 @@ export async function checkCoreWebVitalsWithAPI(
 export function extractPageFacts(html: string): PageFacts {
   const $ = cheerio.load(html);
 
-  const attr = (el: cheerio.Element, name: string): string | null => {
+  const attr = (el: cheerio.AnyNode, name: string): string | null => {
     const value = $(el).attr(name);
     return value === undefined ? null : value;
   };
@@ -666,7 +385,50 @@ export function extractPageFacts(html: string): PageFacts {
     // script and what an entity-decoding read would quietly rewrite.
     .map((el) => $(el).html() ?? '');
 
-  return { images, links, viewport, flashElements, jsonLdBlocks };
+  const titleEl = $('title').first();
+  const title = titleEl.length ? titleEl.text() : null;
+
+  const descEl = $('meta[name="description"]').first();
+  const metaDescription = descEl.length ? (descEl.attr('content') ?? '') : null;
+
+  const canonicalEl = $('link[rel="canonical"]').first();
+  const canonical = canonicalEl.length ? (canonicalEl.attr('href') ?? '') : null;
+
+  const robotsEl = $('meta[name="robots"]').first();
+  const robotsMeta = robotsEl.length ? (robotsEl.attr('content') ?? '') : null;
+
+  const headings = $('h1, h2, h3, h4, h5, h6')
+    .toArray()
+    .map((el) => ({
+      level: Number.parseInt(((el as { tagName?: string }).tagName ?? '').slice(1), 10),
+      text: $(el).text().replace(/\s+/g, ' ').trim(),
+    }))
+    .filter((h) => Number.isFinite(h.level));
+
+  // Script, style and noscript are stripped before the text is read: the audit
+  // used to count inline JavaScript as words. This runs LAST, after the JSON-LD
+  // blocks above have been read off the same tree.
+  $('script, style, noscript').remove();
+  const bodyEl = $('body');
+  // Two concrete reads rather than one union: Cheerio<Document> and
+  // Cheerio<Element> do not share a `this` type for .text().
+  const rawBody = bodyEl.length > 0 ? bodyEl.text() : $.root().text();
+  const bodyText = rawBody.replace(/\s+/g, ' ').trim();
+
+  return {
+    images,
+    links,
+    viewport,
+    flashElements,
+    jsonLdBlocks,
+    title,
+    metaDescription,
+    canonical,
+    robotsMeta,
+    headings,
+    bodyText,
+    htmlLength: html.length,
+  };
 }
 
 /** Fetch a page and extract its facts. */

@@ -157,22 +157,33 @@ router.post('/api/seo/audit', async (req: any, res) => {
       })
       .returning();
 
-    // Perform audit (simplified version - in production, this would call various SEO analysis services)
     const auditResults = await performSEOAudit(url);
 
-    // Update audit with results
+    // Explicit columns, not `...auditResults`: scoreCovers and unbacked belong
+    // on the RESPONSE and have no column, and drizzle drops a key the table
+    // does not have without saying so.
     const [updatedAudit] = await db
       .update(seoAuditHistory)
       .set({
         status: 'completed',
-        ...auditResults,
+        overallScore: auditResults.overallScore,
+        technicalScore: auditResults.technicalScore,
+        contentScore: auditResults.contentScore,
+        performanceScore: auditResults.performanceScore,
+        criticalIssues: auditResults.criticalIssues,
+        highIssues: auditResults.highIssues,
+        mediumIssues: auditResults.mediumIssues,
+        lowIssues: auditResults.lowIssues,
+        issues: auditResults.issues,
+        recommendations: auditResults.recommendations,
+        technicalDetails: auditResults.technicalDetails,
         completedAt: new Date(),
         duration: audit.startedAt ? Date.now() - audit.startedAt.getTime() : 0,
       })
       .where(eq(seoAuditHistory.id, audit.id))
       .returning();
 
-    res.json(updatedAudit);
+    res.json({ ...updatedAudit, ...auditResults });
   } catch (error: any) {
     log.error('Error running SEO audit:', error);
     res.status(500).json({ message: 'An internal error occurred' });

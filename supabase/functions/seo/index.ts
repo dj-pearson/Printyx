@@ -31,6 +31,8 @@ import {
   validateJsonLdBlocks,
 } from '../../../shared/seo-page-facts.ts';
 import { extractPageFacts } from './_page-facts.ts';
+import { evaluateSeoAudit } from '../../../shared/seo-audit.ts';
+import { toCamelShallow } from '../_shared/case.ts';
 
 /**
  * Fetch a page the caller named and hand back its HTML, or the Response to
@@ -760,6 +762,122 @@ export default async function handler(req: Request) {
      * half now imports - shared/seo-page-facts.ts - so the two hosts cannot
      * reach different verdicts about one URL.
      */
+
+    // POST /seo/audit - the dashboard's primary button
+    if (req.method === 'POST' && resource === 'audit' && !resourceId) {
+      const body = await req.json().catch(() => ({}));
+      const targetUrl = body.url || body.pageUrl;
+      if (!targetUrl) {
+        return createCorsResponse({ error: 'URL is required' }, 400, req);
+      }
+
+      // The row is claimed as `running` BEFORE the fetch, exactly as the
+      // Express handler does, so a request that dies mid-audit leaves a record
+      // an operator can see rather than nothing at all.
+      const startedAt = Date.now();
+      const { data: started, error: startError } = await admin
+        .from('seo_audit_history')
+        .insert({
+          tenant_id: tenantId,
+          url: targetUrl,
+          status: 'running',
+          triggered_by: user.id,
+          started_at: new Date(startedAt).toISOString(),
+        })
+        .select('id')
+        .single();
+
+      if (startError || !started) {
+        return createCorsResponse(
+          { error: 'Could not start the audit', details: startError?.message },
+          500,
+          req,
+        );
+      }
+
+      let response: Response;
+      let html: string;
+      try {
+        response = await safeFetch(targetUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (compatible; PrintyxSEOBot/1.0; +https://printyx.net)',
+          },
+        });
+        html = await response.text();
+      } catch (err) {
+        // The claimed row is marked failed rather than left reading `running`
+        // for ever, which is what an abandoned row looks like to the history
+        // list beside it.
+        const { error: markError } = await admin
+          .from('seo_audit_history')
+          .update({ status: 'failed', completed_at: new Date().toISOString() })
+          .eq('id', started.id)
+          .eq('tenant_id', tenantId);
+
+        // If the marker itself failed the row is still reading `running`, and
+        // the history list beside it will show this audit as in progress for
+        // ever. The caller is told, because nothing else will notice.
+        const auditRecordStale = markError ? { auditRecordStale: true, auditId: started.id } : {};
+
+        if (err instanceof SSRFError) {
+          return createCorsResponse(
+            { error: err.message, code: 'BLOCKED_URL', ...auditRecordStale },
+            400,
+            req,
+          );
+        }
+        return createCorsResponse(
+          {
+            error: `Could not reach ${targetUrl}: ${err instanceof Error ? err.message : err}`,
+            ...auditRecordStale,
+          },
+          502,
+          req,
+        );
+      }
+
+      const audit = evaluateSeoAudit(extractPageFacts(html), {
+        url: targetUrl,
+        statusCode: response.status,
+        contentEncoding: response.headers.get('content-encoding'),
+        cacheControl: response.headers.get('cache-control'),
+      });
+
+      // Explicit columns: scoreCovers and unbacked belong on the RESPONSE and
+      // have no column, and a spread would drop them without saying so.
+      const { data: stored, error: finishError } = await admin
+        .from('seo_audit_history')
+        .update({
+          status: 'completed',
+          overall_score: audit.overallScore,
+          technical_score: audit.technicalScore,
+          content_score: audit.contentScore,
+          performance_score: audit.performanceScore,
+          critical_issues: audit.criticalIssues,
+          high_issues: audit.highIssues,
+          medium_issues: audit.mediumIssues,
+          low_issues: audit.lowIssues,
+          issues: audit.issues,
+          recommendations: audit.recommendations,
+          technical_details: audit.technicalDetails,
+          duration_ms: Date.now() - startedAt,
+          completed_at: new Date().toISOString(),
+        })
+        .eq('id', started.id)
+        .eq('tenant_id', tenantId)
+        .select()
+        .single();
+
+      if (finishError) {
+        return createCorsResponse(
+          { error: 'Audit ran but could not be stored', details: finishError.message },
+          500,
+          req,
+        );
+      }
+
+      return createCorsResponse({ ...toCamelShallow(stored), ...audit }, 200, req);
+    }
 
     // POST /seo/analyze/images - alt text, dimensions and format per image
     if (req.method === 'POST' && resource === 'analyze' && resourceId === 'images') {

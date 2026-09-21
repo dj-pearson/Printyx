@@ -494,13 +494,13 @@ describe('a keyword row is not a place to type your own rankings', () => {
 });
 
 describe('what is still not served, named so it cannot go quiet', () => {
-  it('audit and crawl have no edge branch yet', () => {
-    // SEODashboard POSTs both. They are much larger than the four above - the
-    // audit is a whole-page analysis and the crawl walks a site - so they stay
-    // Express-only for now. This assertion FAILS the day one is served, which
-    // is the point: the reminder lives where it breaks rather than in a
-    // comment that goes stale.
-    expect(edgeCode).not.toMatch(/req\.method === 'POST' && resource === 'audit'/);
+  it('the audit is served and the crawl is not', () => {
+    // Both were named here in round 135 as still Express-only, in an assertion
+    // that FAILS the day one is served - which is what happened to the audit
+    // one round later. Inverted rather than deleted, so removing the branch
+    // still costs something; the crawl half is unchanged, and the audit's own
+    // properties live in server/tests/unit/seo-audit.test.ts.
+    expect(edgeCode).toMatch(/req\.method === 'POST' && resource === 'audit'/);
     expect(edgeCode).not.toMatch(/req\.method === 'POST' && resource === 'crawl'/);
 
     const page = readFileSync(join(ROOT, 'client/src/pages/SEODashboard.tsx'), 'utf8');

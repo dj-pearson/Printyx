@@ -10,7 +10,12 @@
 // carrying a '>' and a <script> holding markup all defeat a pattern, and this
 // parser is already used by supabase/functions/proposals/_html-to-pdf.ts.
 import { parse } from 'https://esm.sh/node-html-parser@6.1.13';
-import type { ImageFact, LinkFact, PageFacts } from '../../../shared/seo-page-facts.ts';
+import type {
+  HeadingFact,
+  ImageFact,
+  LinkFact,
+  PageFacts,
+} from '../../../shared/seo-page-facts.ts';
 
 /** node-html-parser returns undefined for an absent attribute; we want null. */
 function attr(el: { getAttribute: (name: string) => string | undefined }, name: string) {
@@ -58,5 +63,44 @@ export function extractPageFacts(html: string): PageFacts {
     // rewrite the customer's own strings.
     .map((el) => (el as unknown as { rawText?: string }).rawText ?? el.text ?? '');
 
-  return { images, links, viewport, flashElements, jsonLdBlocks };
+  const titleEl = root.querySelector('title');
+  const title = titleEl ? (titleEl.text ?? '') : null;
+
+  const descEl = root.querySelector('meta[name="description"]');
+  const metaDescription = descEl ? (attr(descEl, 'content') ?? '') : null;
+
+  const canonicalEl = root.querySelector('link[rel="canonical"]');
+  const canonical = canonicalEl ? (attr(canonicalEl, 'href') ?? '') : null;
+
+  const robotsEl = root.querySelector('meta[name="robots"]');
+  const robotsMeta = robotsEl ? (attr(robotsEl, 'content') ?? '') : null;
+
+  const headings: HeadingFact[] = root
+    .querySelectorAll('h1, h2, h3, h4, h5, h6')
+    .map((el) => ({
+      level: Number.parseInt(el.tagName.slice(1), 10),
+      text: (el.text ?? '').replace(/\s+/g, ' ').trim(),
+    }))
+    .filter((h) => Number.isFinite(h.level));
+
+  // Script, style and noscript are stripped before the text is read: the audit
+  // used to count inline JavaScript as words.
+  const body = root.querySelector('body') ?? root;
+  for (const el of body.querySelectorAll('script, style, noscript')) el.remove();
+  const bodyText = (body.text ?? '').replace(/\s+/g, ' ').trim();
+
+  return {
+    images,
+    links,
+    viewport,
+    flashElements,
+    jsonLdBlocks,
+    title,
+    metaDescription,
+    canonical,
+    robotsMeta,
+    headings,
+    bodyText,
+    htmlLength: html.length,
+  };
 }

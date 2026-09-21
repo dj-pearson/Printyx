@@ -54,6 +54,12 @@ export interface LinkFact {
   rel: string | null;
 }
 
+/** One heading, in document order. */
+export interface HeadingFact {
+  level: number;
+  text: string;
+}
+
 export interface PageFacts {
   images: ImageFact[];
   links: LinkFact[];
@@ -63,10 +69,50 @@ export interface PageFacts {
   flashElements: number;
   /** The raw text of every `<script type="application/ld+json">`. */
   jsonLdBlocks: string[];
+  title: string | null;
+  metaDescription: string | null;
+  canonical: string | null;
+  /** The content attribute of `<meta name="robots">`, or null. */
+  robotsMeta: string | null;
+  headings: HeadingFact[];
+  /**
+   * The body's visible text, with `<script>`, `<style>` and `<noscript>`
+   * REMOVED. The audit used to take `$('body').text()`, which includes every
+   * inline script, so a JS-heavy page reported thousands of "words" of minified
+   * JavaScript and sailed past the thin-content check.
+   */
+  bodyText: string;
+  /** Bytes of HTML as delivered. */
+  htmlLength: number;
 }
 
 export function emptyPageFacts(): PageFacts {
-  return { images: [], links: [], viewport: null, flashElements: 0, jsonLdBlocks: [] };
+  return {
+    images: [],
+    links: [],
+    viewport: null,
+    flashElements: 0,
+    jsonLdBlocks: [],
+    title: null,
+    metaDescription: null,
+    canonical: null,
+    robotsMeta: null,
+    headings: [],
+    bodyText: '',
+    htmlLength: 0,
+  };
+}
+
+/**
+ * Words in a block of visible text.
+ *
+ * `text.split(' ').length` answers 1 for an empty string, so a page with no
+ * body reported one word rather than none - and one word is still "thin
+ * content", so the issue fired for the right reason by luck.
+ */
+export function wordCount(text: string): number {
+  const trimmed = text.replace(/\s+/g, ' ').trim();
+  return trimmed === '' ? 0 : trimmed.split(' ').length;
 }
 
 /* ------------------------------------------------------------------ images */
