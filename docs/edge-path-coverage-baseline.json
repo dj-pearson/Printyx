@@ -32,7 +32,6 @@
     ],
     "mobile-field": ["metrics", "technicians", "voice-notes", "work-orders"],
     "onboarding": ["export", "getting-started", "wizard-state"],
-    "proposals": [":id/send"],
     "seo": ["analyze", "validate"],
     "team-reports": ["no-touch"],
     "technician-management": ["dashboard"]

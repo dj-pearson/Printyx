@@ -106,15 +106,14 @@ describe('the findings are recorded as findings', () => {
    * All three are paths only a native client calls, which is precisely what
    * that widening exists to surface:
    *   equipment/:id/service-history   mobile/app/(app)/(equipment)/[id].tsx
-   *   proposals/:id/send              the iOS proposals surface
    *
-   * service-tickets/:id/attachments was the third and is CLOSED - round 110
-   * built the handler, so the list shrank by one rather than being relaxed.
+   * Two of the three are CLOSED, and the list shrank rather than being relaxed:
+   * service-tickets/:id/attachments in round 110, proposals/:id/send in 111.
    *
    * Listed rather than counted, and asserted in both directions, so it cannot
    * rot into a pre-forgiveness for whatever is added next.
    */
-  const KNOWN_DEEP_SHAPES = ['equipment/:id/service-history', 'proposals/:id/send'];
+  const KNOWN_DEEP_SHAPES = ['equipment/:id/service-history'];
 
   it('the deep shapes in the baseline are exactly the ones that were examined', () => {
     const deep = flat.filter((p) => p.includes('/:id/')).sort();

@@ -196,8 +196,34 @@ describe('WF-C-04: the guardrail reads the stamp, not the caller', () => {
   });
 
   it('selects the stamp and gates on it', () => {
+    // Bound to the PROPERTY, not to one spelling of it. This used to pin the
+    // exact string `if (cur && !hasPricingApproval(cur))`, so PROD-008
+    // extracting the gate into pricingGateRefusal - where the same test becomes
+    // an early `if (!cur || hasPricingApproval(cur)) return null` - failed a
+    // change that was strictly better. A test that pins an implementation
+    // blocks the better version of it.
     expect(code).toMatch(/pricing_approval_id/);
-    expect(code).toMatch(/if \(cur && !hasPricingApproval\(cur\)\)/);
+    const at = code.indexOf('async function pricingGateRefusal');
+    expect(at).toBeGreaterThan(-1);
+    const gate = code.slice(at, code.indexOf('\n}', at));
+    // A stamped row leaves the gate without a refusal, whichever way round the
+    // condition is written.
+    expect(gate).toMatch(/hasPricingApproval\(cur\)[^;]*\)\s*return null;/);
+  });
+
+  it('there is exactly one implementation of the gate, and both senders use it', () => {
+    // The guardrail lived inline in the PATCH /:id/status branch and nowhere
+    // else, so POST /:id/send - the iOS swipe action - would have been a way
+    // around the pricing policy had it been written with its own copy.
+    const refusals = code.match(/code: 'PRICING_APPROVAL_REQUIRED'/g) ?? [];
+    expect(refusals.length).toBe(2); // margin and max-discount, both inside the one helper
+    const gateAt = code.indexOf('async function pricingGateRefusal');
+    const gateEnd = code.indexOf('\n}', gateAt);
+    for (const m of code.matchAll(/code: 'PRICING_APPROVAL_REQUIRED'/g)) {
+      expect({ inHelper: m.index! > gateAt && m.index! < gateEnd }).toEqual({ inHelper: true });
+    }
+    const callers = code.match(/await pricingGateRefusal\(/g) ?? [];
+    expect(callers.length).toBe(2);
   });
 
   it('gets its who-needs-approval answer from the pure module', () => {
