@@ -12,6 +12,7 @@ import {
 import { z } from 'zod';
 
 import { getUserId, getTenantId } from './utils/auth-helpers';
+import { canEditDealerCost } from './services/pricing-service';
 
 // Numeric money inputs for the pricing calculator. z.coerce + .finite() rejects
 // missing/garbage values so parseFloat(NaN) can never propagate into stored
@@ -40,11 +41,25 @@ export async function getCompanyPricingSettings(req: Request, res: Response) {
   }
 }
 
+/**
+ * POST /api/pricing/company-settings.
+ *
+ * GATED IN ROUND 125. This row carries the discount ceiling QUOTE-016 enforces
+ * and `show_dealer_cost_to_reps`, and it had two doors: PUT /api/pricing/settings
+ * required `canEditDealerCost`, and this one required nothing at all - the
+ * party the policy checks could edit the policy. The edge function that serves
+ * this path in production now requires the same level, so both hosts agree on
+ * who may write it.
+ */
 export async function updateCompanyPricingSettings(req: Request, res: Response) {
   try {
     const user = req.user as any;
     if (!user?.tenantId) {
       return res.status(401).json({ message: 'Unauthorized' });
+    }
+
+    if (!canEditDealerCost(String(user?.role ?? ''))) {
+      return res.status(403).json({ message: 'Insufficient permissions to edit pricing settings' });
     }
 
     const validated = insertCompanyPricingSettingsSchema.parse({

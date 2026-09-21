@@ -103,7 +103,12 @@ describe('every column named exists', () => {
 
   it('on enhanced_quote_pricing', () => {
     const quoteCols = cols(enhancedQuotePricing);
-    const body = branch("resource === 'margin-report'", 'GET /pricing/company-settings');
+    // Bound to the next branch CONDITION, not to a comment: round 125
+    // rewrote the company-settings header and this end marker moved with it.
+    const body = branch(
+      "resource === 'margin-report'",
+      "resource === 'company-settings' || resource === 'settings'",
+    );
     for (const m of body.matchAll(/quote\.([a-z_]+)/g)) {
       expect(quoteCols.has(m[1]), `enhanced_quote_pricing.${m[1]}`).toBe(true);
     }
@@ -132,7 +137,10 @@ describe('the shape the widgets destructure', () => {
   });
 
   it('the margin report is { count, report } with the keys its caller reads', () => {
-    const body = branch("resource === 'margin-report'", 'GET /pricing/company-settings');
+    const body = branch(
+      "resource === 'margin-report'",
+      "resource === 'company-settings' || resource === 'settings'",
+    );
     expect(body).toContain('count: report.length');
     for (const key of [
       'quoteNumber',
@@ -149,7 +157,10 @@ describe('the shape the widgets destructure', () => {
   it('does not recompute margin, it reports what was stored', () => {
     // A third margin formula is how the two that disagreed with quote-math got
     // into the codebase.
-    const body = branch("resource === 'margin-report'", 'GET /pricing/company-settings');
+    const body = branch(
+      "resource === 'margin-report'",
+      "resource === 'company-settings' || resource === 'settings'",
+    );
     expect(body).toContain('total_margin_percentage');
     expect(body).not.toContain('grossMarginPct');
   });

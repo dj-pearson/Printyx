@@ -393,8 +393,19 @@ function scan(source: string): Ref[] {
     }
   }
 
-  // .insert({ … }) / .update({ … }) with an INLINE object literal.
-  for (const m of source.matchAll(/\.(insert|update)\(\s*\{/g)) {
+  // .insert({ … }) / .update({ … }) / .upsert({ … }) with an INLINE object literal.
+  //
+  // UPSERT WAS MISSING UNTIL ROUND 125 and it is the verb a SETTINGS row is
+  // written with, because a settings write is "create it or change it" by
+  // nature. supabase/functions/pricing wrote five columns company_pricing_
+  // settings has never had - default_company_markup_percentage,
+  // default_minimum_margin_percentage, require_approval_below_minimum,
+  // auto_calculate_prices, pricing_currency - through
+  // `.upsert(settingsData, { onConflict: 'tenant_id' })`, so saving company
+  // pricing policy was a guaranteed PGRST204 in production, and the quote
+  // discount ceiling QUOTE-016 reads off that table could never be set.
+  // 58 .upsert( calls in the edge tree were outside this gate's scope.
+  for (const m of source.matchAll(/\.(insert|update|upsert)\(\s*\{/g)) {
     const body = balancedBody(source, (m.index ?? 0) + m[0].length - 1);
     for (const key of topLevelKeys(body)) push(m.index ?? 0, key, m[1]);
   }
@@ -497,7 +508,7 @@ function scan(source: string): Ref[] {
     assignments.push({ name: a[1], at: a.index ?? 0, key: a[2] });
   }
 
-  for (const m of source.matchAll(/\.(insert|update)\(\s*([A-Za-z_$][\w$]*)\s*[,)]/g)) {
+  for (const m of source.matchAll(/\.(insert|update|upsert)\(\s*([A-Za-z_$][\w$]*)\s*[,)]/g)) {
     const callAt = m.index ?? 0;
     const decl = declarations
       .filter((d) => d.name === m[2] && d.at < callAt)

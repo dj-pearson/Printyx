@@ -24,8 +24,17 @@ const read = (p: string) => readFileSync(join(repo, p), 'utf8');
 const guard = read('scripts/check-phantom-columns.ts');
 
 describe('it resolves named payloads', () => {
-  it('matches .insert(ident) and .update(ident)', () => {
-    expect(guard).toMatch(/\\\.\(insert\|update\)\\\(\\s\*\(\[A-Za-z_\$\]/);
+  it('matches every write verb, not just the two it started with', () => {
+    // Round 125 added `upsert`, which is what a settings row is written with -
+    // 58 calls in the edge tree were outside the gate. Asserting the verb SET
+    // rather than the exact alternation, so widening it again does not fail a
+    // change that is strictly better.
+    const alternation = /\\\.\(([a-z|]+)\)\\\(\\s\*\(\[A-Za-z_\$\]/.exec(guard);
+    expect(alternation, 'named-payload call-site pattern not found').not.toBeNull();
+    const verbs = alternation![1].split('|');
+    for (const verb of ['insert', 'update', 'upsert']) {
+      expect({ verb, covered: verbs.includes(verb) }).toEqual({ verb, covered: true });
+    }
   });
 
   it('collects every binding, not only the literals', () => {

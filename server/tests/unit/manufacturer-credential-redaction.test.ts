@@ -17,10 +17,22 @@
  * The audit-log branch is the one a redactor applied only to the obvious read
  * would have missed: it embeds `integration:manufacturer_integrations(*)`, so
  * every log row carried the full credential set through a different path.
+ *
+ * CORRECTED ROUND 125: THE REDACTOR THIS FILE WAS WRITTEN AGAINST REDACTED
+ * NOTHING, and two of these assertions were pinning the defect. Its
+ * SECRET_COLUMNS named seven columns `manufacturer_integrations` has never
+ * had - they were copied from the `connect` branch's upsert, itself a
+ * guaranteed PGRST204 - so `column in view` was false every time and the row
+ * came back whole. The credentials are one level down, in the NOT NULL
+ * `credentials` jsonb the adapters read. The two assertions below now state
+ * the PROPERTY (a secret value does not appear in a response) rather than the
+ * shape of a list that was wrong, and they run the view against real rows
+ * instead of reading the source for a string.
  */
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'fs';
 import path from 'path';
+import { toManufacturerIntegrationView } from '@shared/manufacturer-integration-view';
 
 const root = path.resolve(__dirname, '../../..');
 const read = (p: string) => readFileSync(path.join(root, p), 'utf-8');
@@ -30,23 +42,45 @@ const fn = read('supabase/functions/manufacturer-integrations/index.ts');
 const software = read('supabase/functions/software-products/index.ts');
 
 describe('credentials never leave the function', () => {
-  it('names every secret column the table carries', () => {
-    for (const column of [
-      'api_key',
-      'api_secret',
-      'client_secret',
-      'access_token',
-      'refresh_token',
-      'webhook_secret',
+  it('no credential value survives the view, whatever it is called', () => {
+    // Called, not read as text: proving the string is in the file is what let
+    // a list of seven columns that do not exist pass for a redactor.
+    const view = toManufacturerIntegrationView({
+      id: 'i1',
+      manufacturer: 'hp',
+      credentials: {
+        apiKey: 'AK-SECRET',
+        apiSecret: 'AS-SECRET',
+        clientSecret: 'CS-SECRET',
+        accessToken: 'AT-SECRET',
+        refreshToken: 'RT-SECRET',
+        webhookSecret: 'WS-SECRET',
+        password: 'PW-SECRET',
+      },
+    })!;
+    const body = JSON.stringify(view);
+    for (const secret of [
+      'AK-SECRET',
+      'AS-SECRET',
+      'CS-SECRET',
+      'AT-SECRET',
+      'RT-SECRET',
+      'WS-SECRET',
+      'PW-SECRET',
     ]) {
-      expect(fn).toContain(`'${column}'`);
+      expect({ secret, leaked: body.includes(secret) }).toEqual({ secret, leaked: false });
     }
   });
 
   it('answers a set/not-set marker instead of deleting the field silently', () => {
     // The settings page has to show whether a credential is configured
     // without ever receiving it.
-    expect(fn).toContain('_set`] = Boolean(');
+    const configured = toManufacturerIntegrationView({ id: 'i', credentials: { apiKey: 'k' } })!;
+    expect(configured.credentialsSet).toBe(true);
+    expect(configured.credentialKeys).toEqual(['apiKey']);
+
+    const blank = toManufacturerIntegrationView({ id: 'i', credentials: {} })!;
+    expect(blank.credentialsSet).toBe(false);
   });
 
   it('the list, the single read and the connect response all go through the view', () => {

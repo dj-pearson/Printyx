@@ -93,7 +93,7 @@
       "why": "One ilike duplicate search per CSV row, so a 5,000-row import is 5,000 round trips before a single record lands. The largest remaining one. Convertible by reading the tenant company names once and matching a normalised Map - ilike here is case-insensitive equality with no wildcard - but a large tenant makes that read big, so it wants a measurement rather than an assumption."
     },
     {
-      "loop": "manufacturer-integrations/index.ts:626",
+      "loop": "manufacturer-integrations/index.ts:631",
       "table": "device_registrations",
       "verdict": "deliberate",
       "why": "The INSERT half is already collected into one statement; what loops is the UPDATE half, and each discovered device updates different columns on a different row. One statement cannot express that."
@@ -135,7 +135,7 @@
       "why": "A draft service ticket per high-confidence prediction. Only the machines over the threshold reach the insert, so the count is normally small, but a fleet-wide degradation would make it large. Batchable."
     },
     {
-      "loop": "pricing/index.ts:548",
+      "loop": "pricing/index.ts:598",
       "table": "product_pricing",
       "verdict": "deliberate",
       "why": "A bulk price update where every row sets DIFFERENT columns to different values. One statement cannot express that, and the response reports per row."
