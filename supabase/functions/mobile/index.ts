@@ -7,9 +7,16 @@ import { resolveScope, rowInScope } from '../_shared/scope.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 import { WRITE_BATCH, writeInBatches } from '../_shared/batch-fetch.ts';
 import {
+  OPEN_TICKET_STATUSES,
   SERVICE_TICKET_STATUSES,
   normalizeTicketStatus,
 } from '../_shared/service-ticket-vocabulary.ts';
+import { fetchAllRows } from '../_shared/paged-select.ts';
+import {
+  previousUtcMonthStart,
+  summariseMobileDashboard,
+  toMobileTickets,
+} from '../../../shared/mobile-dashboard.ts';
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -354,6 +361,158 @@ export default async function handler(req: Request) {
       }
 
       return createCorsResponse(session, 200, req);
+    }
+
+    // GET /mobile/dashboard - the React Native home screen (PROD-008)
+    //
+    // THREE CONSUMERS, THREE SHAPES, AND THE HANDLER MATCHED NONE OF THEM. The
+    // Express version answered a FIXTURE - "TECH-001", a 4.8 rating, 1247
+    // completed jobs, $2,340.50 of revenue today, invented customers at
+    // invented coordinates - so the dashboard screen showed "$—" and blanks and
+    // the field-service screen had nothing to act on, on both hosts, because
+    // this function had no branch at all.
+    //
+    // Served here for the two React Native screens, which read the six stat
+    // keys and `tickets`. `client/src/pages/MobileServiceApp.tsx` reads
+    // `jobsQueue` and is NOT brought along, deliberately: it dereferences
+    // `job.coordinates.lat` and `job.routeOptimization.driveTime` with no
+    // guard, and `service_tickets` has no coordinates and nothing in this
+    // product computes drive time, traffic or parking notes - so handing it a
+    // real queue would turn a fixture into a crash. That page is AUDIT-033's,
+    // and the gap is named in `unbacked` rather than filled with plausible
+    // numbers.
+    //
+    // EACH SECTION IS CAUGHT SEPARATELY and answers null on failure. A count
+    // of zero is a measurement about a quiet day; a null says the query did not
+    // run, and the screen can tell them apart.
+    if (req.method === 'GET' && resource === 'dashboard' && !resourceId) {
+      const scope = await resolveScope(admin, {
+        userId: user.id,
+        tenantId,
+        appMetadata: user.app_metadata,
+      });
+      const now = new Date();
+      const since = previousUtcMonthStart(now).toISOString();
+      const unbacked: string[] = [];
+
+      // The technician's queue. Scoped to the caller unless their tier is
+      // wider, the same way the service-tickets list is.
+      let tickets: ReturnType<typeof toMobileTickets> | null = null;
+      let activeTickets: number | null = null;
+      try {
+        const rows = await fetchAllRows<any>(() => {
+          let q = admin
+            .from('service_tickets')
+            .select(
+              'id, ticket_number, title, description, priority, status, customer_id, customer_address, customer_phone, scheduled_date, estimated_duration, required_parts',
+            )
+            .eq('tenant_id', tenantId)
+            .in('status', OPEN_TICKET_STATUSES);
+          if (scope.userIds) q = q.in('assigned_technician_id', scope.userIds);
+          return q;
+        });
+
+        const customerIds = [...new Set(rows.map((r: any) => r.customer_id).filter(Boolean))];
+        const names = new Map<string, string>();
+        // PostgREST rejects an .in() with no values, so an empty queue does not
+        // issue a lookup that would answer 400.
+        if (customerIds.length > 0) {
+          const { data: customers } = await admin
+            .from('business_records')
+            .select('id, company_name')
+            .eq('tenant_id', tenantId)
+            .in('id', customerIds as string[]);
+          for (const c of customers ?? []) {
+            if (c.company_name) names.set(c.id, c.company_name);
+          }
+        }
+
+        tickets = toMobileTickets(
+          rows.map((r: any) => ({
+            id: r.id,
+            ticketNumber: r.ticket_number,
+            title: r.title,
+            description: r.description,
+            priority: r.priority,
+            status: r.status,
+            customerId: r.customer_id,
+            customerAddress: r.customer_address,
+            customerPhone: r.customer_phone,
+            scheduledDate: r.scheduled_date,
+            estimatedDuration: r.estimated_duration,
+            requiredParts: r.required_parts,
+          })),
+          names,
+        );
+        activeTickets = tickets.length;
+      } catch (err) {
+        console.error('[mobile] dashboard tickets failed', err);
+      }
+
+      let totals: ReturnType<typeof summariseMobileDashboard> | null = null;
+      try {
+        const [paid, leads] = await Promise.all([
+          fetchAllRows<any>(() =>
+            admin
+              .from('invoices')
+              .select('amount_paid, paid_date')
+              .eq('tenant_id', tenantId)
+              .gte('paid_date', since),
+          ),
+          fetchAllRows<any>(() =>
+            admin
+              .from('business_records')
+              .select('created_at')
+              .eq('tenant_id', tenantId)
+              .eq('record_type', 'lead'),
+          ),
+        ]);
+        totals = summariseMobileDashboard(
+          paid.map((r: any) => ({ amountPaid: r.amount_paid, paidDate: r.paid_date })),
+          leads.map((r: any) => ({ createdAt: r.created_at })),
+          now,
+        );
+      } catch (err) {
+        console.error('[mobile] dashboard totals failed', err);
+      }
+
+      let totalEquipment: number | null = null;
+      try {
+        const { count, error } = await admin
+          .from('equipment')
+          .select('id', { count: 'exact', head: true })
+          .eq('tenant_id', tenantId);
+        if (error) throw error;
+        totalEquipment = count ?? 0;
+      } catch (err) {
+        console.error('[mobile] dashboard equipment count failed', err);
+      }
+
+      if (totals?.uncostedPaidCount) {
+        unbacked.push(
+          `${totals.uncostedPaidCount} invoice(s) settled this month carry no amount, so revenueMtd is a lower bound`,
+        );
+      }
+      unbacked.push(
+        'jobsQueue is not returned: service_tickets has no coordinates, and nothing in this product computes drive time, traffic or parking notes (AUDIT-033)',
+      );
+
+      return createCorsResponse(
+        {
+          openLeads: totals?.openLeads ?? null,
+          activeTickets,
+          revenueMtd: totals?.revenueMtd ?? null,
+          totalEquipment,
+          revenueTrend: totals?.revenueTrend ?? null,
+          leadsTrend: totals?.leadsTrend ?? null,
+          tickets: tickets ?? [],
+          scopeTier: scope.tier,
+          coversWholeTenant: scope.userIds === null,
+          unbacked,
+        },
+        200,
+        req,
+      );
     }
 
     // ========================================
