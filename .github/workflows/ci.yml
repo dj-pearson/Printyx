@@ -101,6 +101,10 @@ jobs:
         run: npm run check:ssrf-fetch
       - name: Security headers are current and do not block a used capability
         run: npm run check:security-headers
+      - name: SQL injection static audit (SEC-001)
+        run: npm run check:sqli
+      - name: Command injection static audit (SEC-005)
+        run: npm run check:command-injection
       - name: Passing stories naming an unreachable deliverable (WF-G-03)
         run: npm run check:story-orphans
       - name: Fabricated-fallback ratchet (AUDIT-019)

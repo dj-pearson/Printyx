@@ -1,0 +1,8 @@
+{
+  "note": "Accepted child_process call sites, each with the reason it is accepted. Shrink-only: a new key fails `npm run check:command-injection`, and an entry with no reason is refused, because a flat list reads the same whether it was decided or overlooked. All three below are DEVELOPER TOOLING whose command is a literal in the same file - none is reachable from a request, and none takes a value from a user, a database row or an environment variable. SEC-005 round 120 took this scanner from 172 findings to 6 by deriving the callable names from each file's own child_process import (151 were RegExp.prototype.exec) and from 6 to 3 by fixing printyx-desktop's three execSync template literals; the product code that answers requests spawns nothing at all.",
+  "accepted": {
+    "scripts/audit/run-all.ts::spawn-shell-true": "Dev audit runner. spawn('node', ['--import','tsx', <a script path from its own AUDITS table>]) with shell: true, so the argument array is re-joined into a shell string - but every element is a literal in this file. shell: true is what makes it work on Windows, where the runner is used.",
+    "testing/run-tests.js::spawn-shell-true": "Dev test harness. spawn('npm', ['run','dev']) needs shell: true because npm is a .cmd shim on Windows and cannot be exec'd directly. Both arguments are literals.",
+    "scripts/prd-verify.mjs::spawn-variable": "Dev gate runner. execSync(gate.cmd) where gate.cmd comes from the hardcoded GATES table 20 lines above (npm run check:types, npm run lint, npm run build, ...). A shell is required to run an `npm run` line at all, and nothing outside this file can add a gate."
+  }
+}

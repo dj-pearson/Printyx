@@ -3,6 +3,15 @@ import { app } from 'electron';
 import path from 'path';
 
 export class WindowsService {
+  /**
+   * SEC-005: the sc/net calls below use execFileSync with an argument array,
+   * not execSync with a template literal. `serviceName` is a constant today,
+   * so the old form was not exploitable - but the whole point of a private
+   * field is that somebody may make it configurable, and the day it takes an
+   * installer flag or a config file the shell string is a command injection in
+   * the Electron main process. execFileSync never starts a shell, so there is
+   * nothing to escape and nothing to get wrong later.
+   */
   private serviceName = 'PrintyxMonitor';
   private serviceDisplayName = 'Printyx Printer Monitoring Service';
 
@@ -86,8 +95,8 @@ export class WindowsService {
     }
 
     try {
-      const { execSync } = await import('child_process');
-      const output = execSync(`sc query "${this.serviceName}"`, {
+      const { execFileSync } = await import('child_process');
+      const output = execFileSync('sc', ['query', this.serviceName], {
         encoding: 'utf8',
       });
 
@@ -107,8 +116,8 @@ export class WindowsService {
     }
 
     try {
-      const { execSync } = await import('child_process');
-      execSync(`net start "${this.serviceName}"`, { encoding: 'utf8' });
+      const { execFileSync } = await import('child_process');
+      execFileSync('net', ['start', this.serviceName], { encoding: 'utf8' });
       log.info('Windows service started');
     } catch (error) {
       log.error('Failed to start Windows service:', error);
@@ -122,8 +131,8 @@ export class WindowsService {
     }
 
     try {
-      const { execSync } = await import('child_process');
-      execSync(`net stop "${this.serviceName}"`, { encoding: 'utf8' });
+      const { execFileSync } = await import('child_process');
+      execFileSync('net', ['stop', this.serviceName], { encoding: 'utf8' });
       log.info('Windows service stopped');
     } catch (error) {
       log.error('Failed to stop Windows service:', error);

@@ -218,6 +218,8 @@
     "check:ssrf-fetch": "node scripts/check-ssrf-fetch.mjs",
     "check:mounted-path-lists": "node scripts/check-mounted-path-lists.mjs",
     "check:security-headers": "node scripts/check-security-headers.mjs",
+    "check:sqli": "tsx server/scripts/sql-injection-audit.ts",
+    "check:command-injection": "tsx server/scripts/command-injection-audit.ts --check",
     "security:headers": "node scripts/generate-security-headers.mjs",
     "check:migration-enums": "node scripts/check-migration-enum-values.mjs"
   },

@@ -100,10 +100,14 @@ describe('SEC-001: SQL Injection Prevention', () => {
     it('nor builds an INTERVAL by concatenating a value into the unit', () => {
       // `INTERVAL '${n} days'` is the same hole wearing template syntax: the
       // safe form multiplies a fixed unit, `INTERVAL '1 day' * ${Number(n)}`.
+      //
+      // The unit is ANY word, not a list of four. Naming day|hour|month|year
+      // let `INTERVAL '${LOCK_TIMEOUT_MS} milliseconds'` sit in
+      // server/lib/migrate.ts through every run of this suite - the
+      // ban-one-spelling failure this repo already paid for on setMonth vs
+      // setUTCMonth, at unit granularity.
       const offenders = walkServer().filter((f) =>
-        /INTERVAL\s+'\$\{(?!sql\.raw)[^}]*\}\s*(day|hour|month|year)/.test(
-          fs.readFileSync(f, 'utf-8'),
-        ),
+        /INTERVAL\s+'\$\{(?!sql\.raw)[^}]*\}\s*[a-z]/i.test(fs.readFileSync(f, 'utf-8')),
       );
       expect(offenders.map((f) => path.relative(SERVER_DIR, f))).toEqual([]);
     });
