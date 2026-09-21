@@ -39,6 +39,7 @@ import {
   createStorageErasureClient,
   eraseSubjectStorageObjects,
   type StorageErasureResult,
+  qbrBucket,
 } from './gdpr-storage-erasure';
 
 export type ErasureSubjectType = 'user' | 'contact' | 'customer' | 'lead';
@@ -307,6 +308,15 @@ export class GdprErasureService {
       tenantId,
       subjectType,
       subjectId,
+      // The bucket name and the error sink are injected because the core is
+      // shared with the edge function, which has neither process.env nor a
+      // Node logger (LEGAL-004). This service has no logger of its own, so a
+      // bucket failure goes to stderr rather than being swallowed - the whole
+      // point of the sink is that the caller never gets to not-know.
+      {
+        qbrBucket: qbrBucket(),
+        onError: (...args: unknown[]) => console.error('GDPR storage erasure:', ...args),
+      },
     );
     notes.push(...storage.notes);
 

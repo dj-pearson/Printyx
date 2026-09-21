@@ -2,6 +2,11 @@
 // Handles GDPR compliance operations
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import {
+  eraseSubjectStorageObjects,
+  type StorageErasureClient,
+  type StorageErasureResult,
+} from '../../../shared/gdpr-storage-erasure.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 import { fetchAllRows } from '../_shared/paged-select.ts';
@@ -326,6 +331,64 @@ export default async function handler(req: Request) {
         );
       }
 
+      // LEGAL-004: ANONYMISING ROWS LEAVES THE FILES. Documents, recordings and
+      // QBR reports live in Supabase Storage, and a completion record that says
+      // "anonymized" while a signed lease carrying the subject's name and
+      // signature sits in a bucket is the same false claim this branch already
+      // had to be corrected for once. The rules, the bucket specs and the
+      // Art. 17(3) exemptions are in shared/gdpr-storage-erasure.ts, imported by
+      // the Express service too, so the two hosts cannot drift.
+      //
+      // Every id anonymised above is a subject: company_contacts rows are
+      // 'contact', business_records rows are 'customer' (the qbr spec keys on
+      // customer_id, and business_records covers leads and customers alike).
+      const storageSubjects: Array<{ type: 'contact' | 'customer'; id: string }> = [
+        ...(anonymizedContacts ?? []).map((row: { id: string }) => ({
+          type: 'contact' as const,
+          id: row.id,
+        })),
+        ...(anonymizedRecords ?? []).map((row: { id: string }) => ({
+          type: 'customer' as const,
+          id: row.id,
+        })),
+      ];
+
+      const storageResults: StorageErasureResult[] = [];
+      for (const subject of storageSubjects) {
+        storageResults.push(
+          await eraseSubjectStorageObjects(
+            admin as unknown as StorageErasureClient,
+            tenantId,
+            subject.type,
+            subject.id,
+            {
+              qbrBucket: Deno.env.get('QBR_STORAGE_BUCKET') || undefined,
+              onError: (...args: unknown[]) => console.error('GDPR storage erasure:', ...args),
+            },
+          ),
+        );
+      }
+
+      const storageRemoved = storageResults.reduce((sum, r) => sum + r.totalRemoved, 0);
+      const storageNotes = [
+        ...new Set(storageResults.flatMap((r) => r.notes)),
+        // The backup note is about ROWS. pg_dump archives do not contain bucket
+        // contents, so there is no retained copy ageing out behind a failed
+        // object removal - anything reported failed below still exists.
+        'Storage objects are NOT covered by database backups (pg_dump does not include bucket contents), so the removals above are the only deletion step for them.',
+      ];
+      // Per bucket, summed across every subject this erasure touched.
+      const byBucket: Record<string, { removed: number; failed: number; skipped?: string }> = {};
+      for (const result of storageResults) {
+        for (const bucket of result.buckets) {
+          const entry = (byBucket[bucket.bucket] ??= { removed: 0, failed: 0 });
+          entry.removed += bucket.removed;
+          entry.failed += bucket.failed;
+          if (bucket.skipped && !entry.skipped) entry.skipped = bucket.skipped;
+        }
+      }
+      const storageFailed = Object.values(byBucket).reduce((sum, b) => sum + b.failed, 0);
+
       // Log the deletion
       await admin.from('gdpr_audit_log').insert({
         tenant_id: tenantId,
@@ -337,15 +400,26 @@ export default async function handler(req: Request) {
 
       return createCorsResponse(
         {
-          success: true,
-          message: 'User data has been anonymized',
+          // An object that could not be deleted means the erasure is not
+          // complete, and a data subject must not be told otherwise.
+          success: storageFailed === 0,
+          message:
+            storageFailed === 0
+              ? 'User data has been anonymized and uploaded objects removed'
+              : 'Rows were anonymized, but some uploaded objects could not be deleted; the erasure is INCOMPLETE',
           affectedEmail: subjectEmail,
           anonymized: {
             companyContacts: anonymizedContacts?.length ?? 0,
             businessRecords: anonymizedRecords?.length ?? 0,
           },
+          storage: {
+            removed: storageRemoved,
+            failed: storageFailed,
+            buckets: byBucket,
+            notes: storageNotes,
+          },
         },
-        200,
+        storageFailed === 0 ? 200 : 500,
         req,
       );
     }
