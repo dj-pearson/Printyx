@@ -73,6 +73,8 @@ jobs:
         run: npm run check:invalidation-keys
       - name: Raw browser alert gate (WF-S-08)
         run: npm run check:browser-dialogs
+      - name: Action buttons have a handler (UI-DEAD-BUTTONS-001)
+        run: npm run check:dead-buttons
       - name: Inline percentage-division gate (PRICING-MARGIN-002)
         run: npm run check:percent-math
       - name: Markup-as-margin gate (PRICING-MARGIN-001)

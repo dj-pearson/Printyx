@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useLocation } from 'wouter';
+import { Link, useLocation } from 'wouter';
 import { format, formatDistance } from 'date-fns';
 import {
   AlertCircle,
@@ -24,7 +24,6 @@ import {
   AlertTriangle,
   Sparkles,
   ArrowRight,
-  MessageSquare,
   RefreshCw,
   FileText,
 } from 'lucide-react';
@@ -223,9 +222,16 @@ export default function TodayDashboard() {
               <CardTitle>Today&apos;s Schedule</CardTitle>
               <Badge variant="secondary">{today.length} tasks</Badge>
             </div>
-            <Button variant="outline" size="sm">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Task
+            {/* UI-DEAD-BUTTONS-001: this had no handler at all. TaskHub owns the
+                create-task dialog, and `?action=new` is the established way to
+                open one from elsewhere (use-action-param, six pages) - wired on
+                that side in the same change, because AUDIT-014 found nine of
+                these links dropping the user on a list and doing nothing. */}
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/tasks?action=new">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Task
+              </Link>
             </Button>
           </div>
         </CardHeader>
@@ -675,9 +681,13 @@ function DealAlertItem({ deal }: { deal: Deal }) {
           {deal.staleReason}
         </p>
       )}
-      <Button size="sm" variant="outline" className="w-full mt-3">
-        <MessageSquare className="h-3 w-3 mr-1" /> Log Activity
-      </Button>
+      {/* UI-DEAD-BUTTONS-001: "Log Activity" had no handler and there is nowhere
+          for it to go from here - /activities is not a route, and the activity
+          composer lives on the deal record (CRM-008). The enclosing card already
+          navigates to that deal, so the button promised something more specific
+          than it could do while duplicating its parent's action, and a button
+          nested inside a clickable div is its own problem. Deleted rather than
+          repointed at the destination the card already has - AUDIT-016's rule. */}
     </div>
   );
 }
