@@ -45,7 +45,7 @@ Every file is idempotent: each `cron.schedule(...)` call is preceded by a condit
 | `billing-meter-aggregate-daily`   | billing.sql           | `0 4 * * *`    | HTTP | POST `/billing/meters/aggregate-daily`                                       |
 | `contract-renewal-notifications`  | contract-renewals.sql | `0 6 * * *`    | HTTP | POST `/contracts/renewals/send-notices`                                      |
 | `lease-payment-due-notices`       | leases.sql            | `0 7 * * *`    | HTTP | POST `/leases/payments/send-due-notices`                                     |
-| `mileage-auto-generate-nightly`   | mileage.sql           | `0 5 * * *`    | HTTP | POST `/field-service/mileage/auto-generate`                                  |
+| `mileage-auto-generate-nightly`   | mileage.sql           | `0 5 * * *`    | HTTP | POST `/field-service/auto-generate`                                          |
 | `scheduled-reports-dispatch`      | reports.sql           | `*/15 * * * *` | HTTP | POST `/reports/schedule/dispatch-due` (reports edge function pending US-023) |
 | `booking-reminders`               | booking-reminders.sql | `15 * * * *`   | HTTP | POST `/booking-pages/reminders/sweep` (COP-B14 AC6)                          |
 | `booking-attempts-prune`          | booking-reminders.sql | `40 3 * * *`   | SQL  | Delete `public_booking_attempts` older than 2 days (COP-B14 AC4)             |

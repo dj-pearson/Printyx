@@ -1,0 +1,60 @@
+{
+  "note": "Nine scheduled HTTP jobs post to a path nothing serves. pg_net discards the response, so every one of them has failed in silence on every tick since it shipped, and every other piece of evidence a reader checks - the edge function exists, the cron file exists, drizzle/cron/README.md lists the job with its cadence - says the feature runs. Round 144 found the first (scheduled reports) by hand; this list is the rest of the class. VERDICTS: 'unbuilt' means nothing anywhere performs the work, so the URL is the smaller half of the problem and repointing it would schedule a 404 against a different path. 'wrong-path' means the capability exists at a different URL and the schedule can be repointed once the per-tenant-to-all-tenants question named in the entry is answered. An entry leaves this file when its job posts somewhere real, not when somebody decides it is acceptable.",
+  "generated": "2026-09-21",
+  "entries": {
+    "billing/invoices/run-monthly": {
+      "file": "billing.sql",
+      "kind": "unrouted-path",
+      "verdict": "wrong-path",
+      "why": "Monthly invoice generation EXISTS, at POST /billing/generate-invoices (handlers/generate-invoices.ts), so this is a URL that names a capability the function has under another word. It cannot simply be repointed: that handler is generateInvoicesFromPendingReadings(admin, tenantId, userId) - one tenant, and userId becomes invoices.created_by, which is NOT NULL. A sweep has no user, so closing this needs the COP-B04 treatment (extract the per-tenant body, add a cron branch above auth.getUser, iterate tenants sequentially) AND an answer to what created_by holds for a row nobody raised - COP-B00's rule says refuse and count rather than invent a sentinel owner."
+    },
+    "billing/meters/aggregate-daily": {
+      "file": "billing.sql",
+      "kind": "unrouted-path",
+      "verdict": "unbuilt",
+      "why": "Nothing in supabase/functions/billing aggregates meter readings on its own. The only rollup is inside generateInvoicesFromPendingReadings, which consumes billing_status='pending' readings and marks them billed as a side effect of raising an invoice - a different act from a daily aggregation, and monthly rather than daily. So there is no endpoint to repoint this at, and the question to answer first is what a daily aggregate would WRITE: no table in any schema holds a per-day meter rollup."
+    },
+    "contracts/renewals/send-notices": {
+      "file": "contract-renewals.sql",
+      "kind": "unrouted-path",
+      "verdict": "unbuilt",
+      "why": "supabase/functions/contracts routes / , /:id and /:id/:sub only, so 'renewals' is read as a contract id and 'send-notices' as its sub-resource - and the cron sends POST, which has no branch with an id at all. Nothing anywhere dispatches a renewal notice: contract-renewal serves the renewal BOOK and renewal-autoquote drafts quotes, neither sends the 60/30/7-day emails this job claims to. QUALITY-002 recorded the same gap when routes-contract-alerts.ts was deleted - milestone automation at 180/90/60/30 days is what disappeared with it, and this schedule is the other end of that same missing feature."
+    },
+    "customer-success/health-scores/recalc": {
+      "file": "customer-success.sql",
+      "kind": "unrouted-path",
+      "verdict": "unbuilt",
+      "why": "'health-scores' IS routed (index.ts case label) and 'recalc' is not, so this 404s inside the handler. The nearest real endpoint is POST /customer-success/calculate-health, and repointing the schedule at it would schedule a 501: that branch answers NOT_IMPLEMENTED on purpose, because the scoring pipeline was never ported from the Express service and an earlier version moved next_review_date forward without computing anything, making a stale score look freshly reviewed. A nightly job against it would do nothing every night, honestly. The work is the pipeline, not the URL - and shared/platform-health-score.ts (round 142) is the PLATFORM-side equivalent that could be read for the per-factor coverage rules."
+    },
+    "customer-success/at-risk/check": {
+      "file": "customer-success.sql",
+      "kind": "unrouted-path",
+      "verdict": "unbuilt",
+      "why": "Two faults. The segments are transposed against the real route - the at-risk READ is GET /customer-success/health-scores/at-risk, so 'at-risk' at segment 0 hits the dispatcher's default and returns null - and 'check' is served nowhere. Repointing is not the fix: the job is named alerts and hourly, so what it wants is a NOTIFIER, and re-reading a list on a schedule raises nothing. There is no alert writer behind it either; AUDIT-028 records system_alerts as a table the performance function reads and nothing fills."
+    },
+    "email-marketing/campaigns/dispatch-due": {
+      "file": "email-marketing.sql",
+      "kind": "unrouted-path",
+      "verdict": "unbuilt",
+      "why": "Two faults, and the second is the one that matters. The resource segment is 'campaigns' where the dispatcher's case is 'email-campaigns', and no handler serves 'dispatch-due' under either spelling - handlers/campaigns.ts is CRUD plus refresh-metrics plus two nested reads. A campaign CAN be scheduled: email_campaigns carries schedule_type ('immediate|scheduled|recurring'), scheduled_date, timezone and status ('draft|scheduled|sending|sent|...'), so a user can set one to 'scheduled' and it will sit at that status for ever. handlers/sends.ts dispatches through SendGrid for a single send and a bulk send, so the provider wiring exists and the sweep that selects due campaigns and calls it does not."
+    },
+    "leases/payments/send-due-notices": {
+      "file": "leases.sql",
+      "kind": "unrouted-path",
+      "verdict": "unbuilt",
+      "why": "The dispatcher's case is 'lease-payments'; a bare 'payments' falls through to handleLeases, where parts[0] is a lease id - so this looks up a lease whose id is the string 'payments' and 'send-due-notices' is its sub-resource. No handler sends a payment-due notice under either prefix; handlers/lease-payments.ts records payments that have been made. Same shape as the contract renewal notices above: the reminder half of a feature whose record half shipped."
+    },
+    "billing/subscriptions/check-trials": {
+      "file": "subscriptions.sql",
+      "kind": "unrouted-path",
+      "verdict": "unbuilt",
+      "why": "The URL names the WRONG FUNCTION: subscriptions are served by supabase/functions/subscriptions, and supabase/functions/billing has no 'subscriptions' segment at all, so this is a 404 at segment 1 before anything else is considered. It is unbuilt at the right function too - subscriptions/ has POST /convert-trial, a manual per-tenant action a customer takes, and no sweep over trial_end_date. So a trial that lapses transitions nothing and sends nothing; whatever the tenant's status column said the day the trial started is what it still says."
+    },
+    "billing/subscriptions/process-renewals": {
+      "file": "subscriptions.sql",
+      "kind": "unrouted-path",
+      "verdict": "unbuilt",
+      "why": "Wrong function, exactly as check-trials above. The renewal question also needs asking before anything is built: Stripe charges a subscription on its own billing cycle and reports the outcome through the webhook receiver INTEG-WEBHOOK-001 wired to StripeService.handleWebhookEventEnhanced, so a nightly job that 'processes renewal charges' would either duplicate Stripe or do nothing. Decide which of those it is before porting it - an endpoint built to satisfy this URL could charge a card twice."
+    }
+  }
+}

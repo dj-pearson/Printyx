@@ -21,7 +21,7 @@
       "why": "One usage-history read per monitored supply, and one generateCompletion per supply in the same iteration. The model call is the wall clock; hoisting the read halves the DB hops and changes nothing a user could perceive. Worth doing when the loop stops calling a model, not before."
     },
     {
-      "loop": "billing/handlers/generate-invoices.ts:242",
+      "loop": "billing/handlers/generate-invoices.ts:258",
       "table": "invoices",
       "verdict": "deliberate",
       "why": "The documented per-row FALLBACK after a bulk insert fails, which is the writeInBatches shape written out by hand. Converting it would remove the fault isolation it exists for."

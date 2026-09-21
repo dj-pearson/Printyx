@@ -223,6 +223,7 @@
     "check:security-headers": "node scripts/check-security-headers.mjs",
     "check:sqli": "tsx server/scripts/sql-injection-audit.ts",
     "check:command-injection": "tsx server/scripts/command-injection-audit.ts --check",
+    "check:cron-endpoints": "node scripts/check-cron-endpoints.mjs",
     "check:dead-policy-gates": "node scripts/check-dead-policy-gates.mjs",
     "check:route-divergence": "node scripts/check-route-divergence-triage.mjs",
     "security:headers": "node scripts/generate-security-headers.mjs",

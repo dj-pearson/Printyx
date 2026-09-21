@@ -8,6 +8,8 @@
 
 // deno-lint-ignore-file no-explicit-any
 
+import { fetchAllRows } from '../../_shared/paged-select.ts';
+
 export interface GenerateInvoicesResult {
   message: string;
   invoices: any[];
@@ -133,15 +135,29 @@ export async function generateInvoicesFromPendingReadings(
   tenantId: string,
   userId: string,
 ): Promise<GenerateInvoicesResult> {
-  // Get all pending meter readings
-  const { data: pendingReadings, error: readingsError } = await admin
-    .from('meter_readings')
-    .select('*')
-    .eq('tenant_id', tenantId)
-    .eq('billing_status', 'pending');
-
-  if (readingsError) {
-    throw new Error(`Failed to fetch meter readings: ${readingsError.message}`);
+  /**
+   * ALL pending meter readings - which is what the old comment here claimed
+   * and the query did not do. A bare `.select()` stops at PostgREST's page
+   * size, so a tenant with more pending readings than one page had the rest
+   * silently left out while the response reported "Generated N invoices" as
+   * though the run were finished. The readings stay `pending`, so this delayed
+   * revenue rather than losing it - and nothing on screen said a second run was
+   * owed, which is what made it invisible.
+   *
+   * A truncated COUNT is worse than a truncated list: an invoice run is read as
+   * "this month is billed".
+   */
+  let pendingReadings: any[];
+  try {
+    pendingReadings = await fetchAllRows<any>(() =>
+      admin
+        .from('meter_readings')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .eq('billing_status', 'pending'),
+    );
+  } catch (readingsError) {
+    throw new Error(`Failed to fetch meter readings: ${(readingsError as Error).message}`);
   }
 
   if (!pendingReadings || pendingReadings.length === 0) {
