@@ -1107,6 +1107,18 @@ export function registerEdgeFunctionProxy(app: any) {
     '/api/mobile/time-tracking': { fn: 'mobile', pathPrefix: '/time-tracking' },
     '/api/mobile/service-tickets': { fn: 'mobile', pathPrefix: '/service-tickets' },
     //
+    // LAUNCH-008: self-service registration. The signup page used to call
+    // supabase.auth.signUp directly, so this edge function - the only thing
+    // that creates the tenant, the users row and app_metadata.tenantId - had
+    // no caller in any client tree. Repointing the page means dev needs to run
+    // the same handler production does: /api/signup has never had an Express
+    // route (the legacy one is /api/auth/signup, a different prefix and a
+    // different auth model - it bcrypts a password into `users` and creates no
+    // GoTrue user at all), so without this entry the page would 404 on every
+    // developer machine. app.use matches on segment boundaries, so this does
+    // NOT capture /api/signup-crm.
+    '/api/signup': 'signup',
+    //
     // /api/ai-employees is deliberately NOT here. Its edge fn covers the two
     // READ endpoints the dashboard calls, but the Express router also owns
     // create / tasks / workflows-execute, which run agents through

@@ -103,17 +103,20 @@ describe('the findings are recorded as findings', () => {
    * PROD-008 widening the guard's corpus to the native client trees - which
    * found three real ones - looked like a regression too.
    *
-   * All three are paths only a native client calls, which is precisely what
-   * that widening exists to surface:
-   *   equipment/:id/service-history   mobile/app/(app)/(equipment)/[id].tsx
+   * All three were paths only a native client calls, which is precisely what
+   * that widening exists to surface, and ALL THREE ARE NOW CLOSED - the list
+   * shrank rather than being relaxed, one entry at a time:
+   *   service-tickets/:id/attachments  round 110
+   *   proposals/:id/send               round 111
+   *   equipment/:id/service-history    round 115
    *
-   * Two of the three are CLOSED, and the list shrank rather than being relaxed:
-   * service-tickets/:id/attachments in round 110, proposals/:id/send in 111.
-   *
-   * Listed rather than counted, and asserted in both directions, so it cannot
-   * rot into a pre-forgiveness for whatever is added next.
+   * EMPTY IS NOT THE SAME AS RELAXED. The assertion below is unchanged and
+   * still bites: a deep shape appearing in the baseline fails until somebody
+   * examines it and puts it here. Listed rather than counted, and asserted in
+   * both directions, so it cannot rot into a pre-forgiveness for whatever is
+   * added next.
    */
-  const KNOWN_DEEP_SHAPES = ['equipment/:id/service-history'];
+  const KNOWN_DEEP_SHAPES: string[] = [];
 
   it('the deep shapes in the baseline are exactly the ones that were examined', () => {
     const deep = flat.filter((p) => p.includes('/:id/')).sort();
@@ -125,7 +128,26 @@ describe('the findings are recorded as findings', () => {
     // The property the guard actually owns: a deep finding names the whole path
     // a caller uses, so the report says where the gap is rather than leaving a
     // segment that could belong to any depth.
-    for (const entry of flat.filter((p) => p.includes('/:id/'))) {
+    //
+    // With every deep shape closed this loop has nothing to iterate, so it is
+    // run over the real entries AND over the three that were closed - which are
+    // the exact strings the guard emitted - rather than being left to pass on
+    // an empty array. The mechanism that produces them is asserted separately
+    // against the script's source above.
+    const CLOSED_SHAPES = [
+      'service-tickets/:id/attachments',
+      'proposals/:id/send',
+      'equipment/:id/service-history',
+    ];
+    const entries = [...flat.filter((p) => p.includes('/:id/')), ...CLOSED_SHAPES];
+    expect(CLOSED_SHAPES.length).toBe(3);
+    // COUNTED INSIDE THE LOOP, not asserted about the array beside it. A floor
+    // on `entries.length` does not bind to the iteration: a mutant that walks
+    // an empty list instead still satisfies it, which is the vacuous pass this
+    // file's own note is about, one level in.
+    let checked = 0;
+    for (const entry of entries) {
+      checked += 1;
       const segs = entry.split('/').slice(1);
       expect({ entry, hasPlaceholder: segs.includes(':id') }).toEqual({
         entry,
@@ -136,6 +158,8 @@ describe('the findings are recorded as findings', () => {
         literalLeaf: true,
       });
     }
+    expect(checked).toBe(entries.length);
+    expect(checked).toBeGreaterThanOrEqual(CLOSED_SHAPES.length);
   });
 
   it('keeps the depth-1 entries alongside them in one list', () => {

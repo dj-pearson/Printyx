@@ -1,9 +1,13 @@
 /**
- * Abuse controls for unauthenticated public surfaces (COP-B14 AC4).
+ * Abuse controls for unauthenticated public surfaces (COP-B14 AC4, LAUNCH-010).
  *
- * Pure. A public booking page is an endpoint that writes rows, sends email and
- * puts events on a rep's calendar, with no JWT in front of it. Left open it is
- * a way to fill a sales team's week with fake meetings from a script.
+ * Pure. TWO SURFACES USE IT. A public booking page writes rows, sends email and
+ * puts events on a rep's calendar, with no JWT in front of it - left open it is
+ * a way to fill a sales team's week with fake meetings from a script. Self-
+ * service SIGNUP is the same shape and costs more: it creates a tenant, a
+ * GoTrue user and a `users` row, and asks GoTrue to send a verification email
+ * to whatever address it was handed, so an open one is both a way to fill the
+ * tenants table and a way to send mail from this product's domain to anybody.
  *
  * WHAT EACH CONTROL IS ACTUALLY WORTH, stated rather than implied, because a
  * control whose strength nobody wrote down gets trusted for more than it does:
@@ -43,11 +47,44 @@ export const DEFAULT_BOOKING_LIMITS: ThrottleLimits = {
   windowSeconds: 600,
 };
 
+/**
+ * Which bucket ran out. An explicit union rather than a bare string, so a
+ * caller reading the reason cannot be handed a value no surface emits.
+ */
+export type ThrottleReason = 'source' | 'page' | 'email' | 'surface';
+
 export interface ThrottleDecision {
   allowed: boolean;
   /** 'source' when one client is hammering, 'page' when the page is flooded. */
-  reason: 'source' | 'page' | null;
+  reason: ThrottleReason | null;
   retryAfterSeconds: number;
+}
+
+export interface BucketCheck {
+  reason: ThrottleReason;
+  attempts: number;
+  limit: number;
+}
+
+/**
+ * The first bucket that is out, in the order given.
+ *
+ * ORDER IS THE CALLER'S DECISION and it decides what the refusal says: the
+ * narrowest bucket goes first, so one client hammering is reported as that
+ * rather than as the whole surface being busy. A ladder rather than two
+ * hand-written ifs, because signup has three buckets and booking has two and
+ * neither should get its own copy of the comparison.
+ */
+export function firstExceeded(
+  checks: readonly BucketCheck[],
+  windowSeconds: number,
+): ThrottleDecision {
+  for (const check of checks) {
+    if (check.attempts >= check.limit) {
+      return { allowed: false, reason: check.reason, retryAfterSeconds: windowSeconds };
+    }
+  }
+  return { allowed: true, reason: null, retryAfterSeconds: 0 };
 }
 
 /**
@@ -63,13 +100,13 @@ export function throttleDecision(
   pageAttempts: number,
   limits: ThrottleLimits = DEFAULT_BOOKING_LIMITS,
 ): ThrottleDecision {
-  if (sourceAttempts >= limits.perSource) {
-    return { allowed: false, reason: 'source', retryAfterSeconds: limits.windowSeconds };
-  }
-  if (pageAttempts >= limits.perPage) {
-    return { allowed: false, reason: 'page', retryAfterSeconds: limits.windowSeconds };
-  }
-  return { allowed: true, reason: null, retryAfterSeconds: 0 };
+  return firstExceeded(
+    [
+      { reason: 'source', attempts: sourceAttempts, limit: limits.perSource },
+      { reason: 'page', attempts: pageAttempts, limit: limits.perPage },
+    ],
+    limits.windowSeconds,
+  );
 }
 
 export interface BotSignalInput {
@@ -138,15 +175,137 @@ export async function sourceBucket(
   ipHeader: string | null | undefined,
   digest: (input: string) => Promise<string>,
 ): Promise<string> {
-  // x-forwarded-for is a list; the client is the first entry.
-  const ip = String(ipHeader ?? '')
-    .split(',')[0]
-    .trim();
+  const ip = firstForwardedAddress(ipHeader);
   if (!ip) return `booking:${slug}:unknown`;
   return `booking:${slug}:${await digest(`${slug}|${ip}`)}`;
+}
+
+/**
+ * The calling client's address out of an `x-forwarded-for` header.
+ *
+ * The header is a LIST and the client is the FIRST entry; every later one is a
+ * proxy. Taking the wrong end buckets every caller behind one proxy together,
+ * which turns a per-source limit into a per-datacentre one. One definition,
+ * because both surfaces need it and it is easy to get backwards.
+ */
+export function firstForwardedAddress(ipHeader: string | null | undefined): string {
+  return String(ipHeader ?? '')
+    .split(',')[0]
+    .trim();
 }
 
 /** Every attempt against one page, whatever the source. */
 export function pageBucket(slug: string): string {
   return `booking-page:${slug}`;
+}
+
+// ─────────────────────────── self-service signup ───────────────────────────
+//
+// LAUNCH-010. Signup has no slug, so it has no per-page bucket the way booking
+// does; what it has instead is a THIRD dimension booking does not need.
+
+/**
+ * Deliberately generous for a company registering once and hopeless for a
+ * script. A person signs up for a dealer product one time; nobody does it four
+ * times in an hour.
+ *
+ * THE SURFACE LIMIT IS A DELIBERATE TRADE AND IT CUTS BOTH WAYS. It is the only
+ * control a botnet cannot walk around, and an attacker can also trip it on
+ * purpose and stop real registrations for the rest of the window. Thirty an
+ * hour is far above any organic rate for this product and far below what a
+ * script does, and an hour of refused signups is recoverable where thousands of
+ * junk tenants and a burnt sending domain are not.
+ */
+export const DEFAULT_SIGNUP_LIMITS = {
+  /** Attempts from one address. */
+  perSource: 3,
+  /** Attempts naming one email address, from any source. */
+  perEmail: 3,
+  /** Attempts against the whole signup surface, from all sources. */
+  perSurface: 30,
+  windowSeconds: 3600,
+} as const;
+
+export interface SignupThrottleLimits {
+  perSource: number;
+  perEmail: number;
+  perSurface: number;
+  windowSeconds: number;
+}
+
+export interface SignupBuckets {
+  source: string;
+  email: string;
+  surface: string;
+}
+
+/** Every attempt at signing up, whatever the source and whatever the address. */
+export const SIGNUP_SURFACE_BUCKET = 'signup:surface';
+
+/**
+ * A stable, non-identifying bucket key for one identity.
+ *
+ * THE IDENTITY IS HASHED, NEVER STORED, for the same reason the booking bucket
+ * hashes an address: throttling needs to know "this one again", not who, and an
+ * attempts table holding the email of everybody who tried to register is a
+ * liability nobody asked for - it is a list of people interested in the product,
+ * sitting in a table with no tenant and a two-day retention sweep.
+ *
+ * AN ABSENT IDENTITY STILL GETS A BUCKET, shared by every caller we cannot
+ * distinguish, which is the safe way round: unknown sources are throttled
+ * together rather than exempted.
+ */
+export async function identityBucket(
+  namespace: string,
+  identity: string | null | undefined,
+  digest: (input: string) => Promise<string>,
+): Promise<string> {
+  const value = String(identity ?? '').trim();
+  if (!value) return `${namespace}:unknown`;
+  return `${namespace}:${await digest(`${namespace}|${value}`)}`;
+}
+
+/**
+ * The three buckets a signup attempt counts against.
+ *
+ * THE EMAIL BUCKET IS THE ONE BOOKING DOES NOT HAVE, and it is here for a
+ * specific harm rather than for symmetry: the per-source limit is defeated by a
+ * handful of addresses, and a botnet aiming twenty registration attempts at one
+ * victim's inbox stays well under the surface limit while sending that person
+ * twenty "verify your account" emails from this domain. Counting by address is
+ * what sees that.
+ *
+ * The email is lower-cased and trimmed first, so `A@B.com ` and `a@b.com` are
+ * one bucket - otherwise the control is defeated by the shift key.
+ */
+export async function signupBuckets(
+  ipHeader: string | null | undefined,
+  email: string | null | undefined,
+  digest: (input: string) => Promise<string>,
+): Promise<SignupBuckets> {
+  const [source, emailBucket] = await Promise.all([
+    identityBucket('signup:ip', firstForwardedAddress(ipHeader), digest),
+    identityBucket('signup:email', String(email ?? '').toLowerCase(), digest),
+  ]);
+  return { source, email: emailBucket, surface: SIGNUP_SURFACE_BUCKET };
+}
+
+/**
+ * Narrowest bucket first, so the refusal names the client rather than the
+ * surface whenever one client is the cause.
+ */
+export function signupThrottleDecision(
+  sourceAttempts: number,
+  emailAttempts: number,
+  surfaceAttempts: number,
+  limits: SignupThrottleLimits = DEFAULT_SIGNUP_LIMITS,
+): ThrottleDecision {
+  return firstExceeded(
+    [
+      { reason: 'source', attempts: sourceAttempts, limit: limits.perSource },
+      { reason: 'email', attempts: emailAttempts, limit: limits.perEmail },
+      { reason: 'surface', attempts: surfaceAttempts, limit: limits.perSurface },
+    ],
+    limits.windowSeconds,
+  );
 }

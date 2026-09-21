@@ -108,6 +108,14 @@ function transformUser(user: User | null): AuthUser | null {
   };
 }
 
+export interface SignupResult {
+  success?: boolean;
+  email?: string;
+  message?: string;
+  tenantId?: string;
+  userId?: string;
+}
+
 export function useSupabaseAuth() {
   const queryClient = useQueryClient();
   const [session, setSession] = useState<Session | null>(null);
@@ -433,21 +441,36 @@ export function useSupabaseAuth() {
   }, []);
 
   // Signup function (basic - for full signup use Edge Function)
+  /**
+   * Self-service registration (LAUNCH-008).
+   *
+   * POSTs to the `signup` edge function rather than calling
+   * `supabase.auth.signUp` directly, and that distinction is the whole feature.
+   * signUp creates a GoTrue account and NOTHING ELSE: the metadata blob this
+   * page assembles lands in `user_metadata`, which _shared/resolve-tenant.ts
+   * ignores on purpose because the session holder can rewrite it. So the
+   * account had no tenant row, no `users` row, no role and no
+   * `app_metadata.tenantId` - and every edge function answers "No tenant ID
+   * found" for it. The endpoint creates all four, and it is the only
+   * implementation that does.
+   *
+   * It is also where the documented password policy is enforced. GoTrue's own
+   * minimum is six characters; the handler mirrors the twelve-character rule
+   * the product documents (PA-006), so until this call moved, that control
+   * applied to nobody.
+   */
   const signup = useCallback(
     async (email: string, password: string, metadata?: Record<string, any>) => {
-      const { data, error } = await supabase.auth.signUp({
+      // apiRequest is (url, method, body). Reversing the first two sends the
+      // request to a URL of "POST" with the path as its HTTP method, which
+      // fails as a network error rather than a readable 4xx -
+      // check:api-request-args exists because that is easy to write and hard
+      // to read, and it caught this one.
+      return (await apiRequest('/api/signup', 'POST', {
         email,
         password,
-        options: {
-          data: metadata,
-        },
-      });
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      return data;
+        metadata,
+      })) as SignupResult;
     },
     [],
   );
