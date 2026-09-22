@@ -218,7 +218,12 @@ export function registerTemplateRoutes(app: Express) {
         description: task.description,
         priority: task.priority,
         estimatedHours: task.estimatedHours,
-        dependencies: task.dependencies || [],
+        // AUDIT-037: `tasks` has no `dependencies` column - it came from a
+        // second, wrong declaration in task-schema.ts, so this was always
+        // `undefined || []` and every template recorded an empty dependency
+        // list whatever the project's tasks actually depended on. The field is
+        // dropped rather than written empty, so a template does not assert that
+        // its tasks are independent.
       }));
 
       // Create template

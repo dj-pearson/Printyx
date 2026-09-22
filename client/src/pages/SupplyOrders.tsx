@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/select';
 import { format, formatDistanceToNow } from 'date-fns';
 import { CheckCircle, Clock, Package, ShoppingCart, X } from 'lucide-react';
+import { PendingSupplyOrders } from '@/components/supply/PendingSupplyOrders';
 
 interface SupplyOrder {
   id: string;
@@ -127,6 +128,12 @@ export default function SupplyOrders() {
           </SelectContent>
         </Select>
       </div>
+
+      {/* WF-V-06: this page is named for every supply order and lists one of
+          three tables. The panel is read-only across all three; the table below
+          stays device_supply_orders, because its Approve and Cancel only work
+          there. */}
+      <PendingSupplyOrders />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card>

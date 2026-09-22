@@ -46,6 +46,26 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+/**
+ * A note somebody WROTE survives --update-baseline.
+ *
+ * These baselines are worklists, and the prose at the top is what makes them
+ * one rather than an undifferentiated list - "each is a question, who fills
+ * this in", "a TODO list, not settled debt". Regenerating the default on every
+ * tighten silently discarded any annotation added since, which cost two rounds
+ * on check:raw-body-writes before a test caught it.
+ * server/tests/unit/baseline-notes-preserved.test.ts holds the property for
+ * every writer.
+ */
+function existingBaselineNote(p) {
+  try {
+    const note = JSON.parse(fs.readFileSync(p, 'utf8')).note;
+    return typeof note === 'string' && note.length > 0 ? note : null;
+  } catch {
+    return null;
+  }
+}
+
 /** table -> does it declare tenant_id */
 const tenantTables = new Set();
 for (const f of fs.readdirSync('shared').filter((f) => f.endsWith('.ts'))) {
@@ -256,7 +276,9 @@ if (process.argv.includes('--update-baseline')) {
     BASELINE_PATH,
     JSON.stringify(
       {
-        note: 'update/delete on a tenant-scoped table with no tenant_id filter, no user scope and no preceding ownership read. SHRINK ONLY.',
+        note:
+          existingBaselineNote(BASELINE_PATH) ??
+          'update/delete on a tenant-scoped table with no tenant_id filter, no user scope and no preceding ownership read. SHRINK ONLY.',
         entries: Object.fromEntries(Object.entries(counted).sort(([a], [b]) => a.localeCompare(b))),
       },
       null,

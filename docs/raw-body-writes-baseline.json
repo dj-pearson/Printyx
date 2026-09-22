@@ -1,0 +1,27 @@
+{
+  "note": "Edge handlers that spread a request body straight into PostgREST. Shrink-only. Each entry is the same question: can this body name a column it should not (tenant_id, id, created_by), and does its caller spell fields the way the table does? See scripts/check-raw-body-writes.mjs and the fix shape in _shared/business-record-write.ts. COUNT WENT 12 -> 23 ON 2026-09-20 BECAUSE THE GUARD GOT BETTER, NOT BECAUSE THE CODE GOT WORSE: it matched line by line, so it only ever saw the single-line spelling, while prettier breaks `.update({ ...body, updated_at })` onto two lines the moment the literal has a second key - which it always does. Eleven sites had been invisible since the guard shipped; supplies and enrichment are fixed and the rest are here. Do not read the jump as a regression.",
+  "count": 21,
+  "writes": [
+    "supabase/functions/blog-content-platform/index.ts:insert:blog_post_translations",
+    "supabase/functions/branding-profiles/index.ts:insert:company_branding_profiles",
+    "supabase/functions/branding-profiles/index.ts:update:company_branding_profiles",
+    "supabase/functions/customer-segments/index.ts:update:customer_segments",
+    "supabase/functions/fleet/index.ts:update:fleet_vehicles",
+    "supabase/functions/leases/handlers/leases.ts:insert:lease_dispositions",
+    "supabase/functions/maintenance/index.ts:update:maintenance_schedules",
+    "supabase/functions/managed-services/index.ts:update:managed_services_contracts",
+    "supabase/functions/parts-inventory/index.ts:update:parts",
+    "supabase/functions/pipeline-config/index.ts:insert:pipeline_stages",
+    "supabase/functions/pipeline-config/index.ts:update:pipeline_stages",
+    "supabase/functions/platform-crm/index.ts:insert:platform_activities",
+    "supabase/functions/platform-deals/index.ts:update:platform_deals",
+    "supabase/functions/pricing-rules/index.ts:update:pricing_rules",
+    "supabase/functions/proposals/index.ts:insert:equipment_packages",
+    "supabase/functions/proposals/index.ts:insert:proposal_templates",
+    "supabase/functions/proposals/index.ts:update:proposal_line_items",
+    "supabase/functions/proposals/index.ts:update:proposal_templates",
+    "supabase/functions/service-contracts/index.ts:update:service_contracts",
+    "supabase/functions/social-media/index.ts:update:social_media_posts",
+    "supabase/functions/technician-management/index.ts:update:technicians"
+  ]
+}

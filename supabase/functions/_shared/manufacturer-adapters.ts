@@ -173,7 +173,9 @@ export class XeroxAdapter implements ManufacturerAdapter {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
-          Authorization: `Basic ${Buffer.from(`${this.credentials.clientId}:${this.credentials.clientSecret}`).toString('base64')}`,
+          // `Buffer` is a Node global and does not exist in Deno, so this
+          // header threw a ReferenceError before the request was ever sent.
+          Authorization: `Basic ${btoa(`${this.credentials.clientId}:${this.credentials.clientSecret}`)}`,
         },
         body: 'grant_type=client_credentials',
       });
@@ -298,7 +300,7 @@ export class HPAdapter implements ManufacturerAdapter {
     try {
       // HP HMAC authentication
       const timestamp = Date.now().toString();
-      const signature = this.generateHMACSignature(timestamp);
+      const signature = await this.generateHMACSignature(timestamp);
 
       const response = await fetch(`${this.apiEndpoint}/auth/validate`, {
         method: 'POST',
@@ -320,7 +322,7 @@ export class HPAdapter implements ManufacturerAdapter {
   async discoverDevices(): Promise<any[]> {
     try {
       const timestamp = Date.now().toString();
-      const signature = this.generateHMACSignature(timestamp);
+      const signature = await this.generateHMACSignature(timestamp);
 
       const response = await fetch(`${this.apiEndpoint}/devices`, {
         headers: {
@@ -344,7 +346,7 @@ export class HPAdapter implements ManufacturerAdapter {
   async collectMetrics(deviceId: string): Promise<any> {
     try {
       const timestamp = Date.now().toString();
-      const signature = this.generateHMACSignature(timestamp);
+      const signature = await this.generateHMACSignature(timestamp);
 
       const response = await fetch(`${this.apiEndpoint}/devices/${deviceId}/usage`, {
         headers: {
@@ -403,11 +405,25 @@ export class HPAdapter implements ManufacturerAdapter {
     return this.connect();
   }
 
-  private generateHMACSignature(timestamp: string): string {
-    // Simplified HMAC generation - in production, use proper crypto
-    const crypto = require('crypto');
+  /**
+   * `require` is CommonJS and does not exist in a Deno module, so this threw a
+   * ReferenceError the moment it was called - the signature was never computed
+   * and the request it signs could never have been sent.
+   *
+   * Web Crypto is the runtime's own HMAC and is async, which is why this is now
+   * a promise; every caller awaits it.
+   */
+  private async generateHMACSignature(timestamp: string): Promise<string> {
     const message = `${this.credentials.clientId}${timestamp}`;
-    return crypto.createHmac('sha256', this.credentials.clientSecret).update(message).digest('hex');
+    const key = await crypto.subtle.importKey(
+      'raw',
+      new TextEncoder().encode(this.credentials.clientSecret),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign'],
+    );
+    const signature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(message));
+    return [...new Uint8Array(signature)].map((b) => b.toString(16).padStart(2, '0')).join('');
   }
 
   private mapHPStatus(status: string): 'online' | 'offline' | 'error' | 'maintenance' | 'unknown' {

@@ -1,266 +1,315 @@
 /**
- * WF-V-02: the check-in console works a real ticket.
+ * PROD-008: the React Native field-service screen worked in dev and 404'd on
+ * every technician's phone.
  *
- * MobileFieldService.tsx hard-coded serviceTicketId 'ticket-123' and
- * technicianId 'tech-456', with the comment "Mock service ticket ID for demo".
- * The backend behind it is real - the mobile function moves service_tickets.status
- * through in_progress and completed - so the only web surface with a working
- * check-in could not be pointed at anything.
+ * `mobile/app/(app)/(service)/field-service.tsx` calls three endpoints -
+ * /api/mobile/time-tracking/start, /stop and /api/mobile/service-tickets/:id/
+ * status. `supabase/functions/mobile/` served `sessions`, `photos` and `sync`
+ * and nothing else, so all three fell to its trailing 404; Express served them,
+ * and `/api/mobile` is not proxied, so dev was the working host. That split runs
+ * in its worse direction here, because production is where the technician is
+ * standing.
  *
- * The second half is a hole rather than a gap: `?technicianId=` was taken from the
- * caller and used unchecked, so any authenticated member of the tenant could read
- * another technician's sessions, their assigned tickets (with customer addresses
- * and phone numbers) and their photos - and could open a session AS them.
+ * The port is a FIX, not a move. What the Express versions did:
+ *   start  wrote status 'in-progress' WITH A HYPHEN, which WF-V-05's CHECK
+ *          constraint refuses, and set assigned_technician_id to the caller
+ *          with no scope check.
+ *   stop   bumped updated_at and answered { stoppedAt } - no session closed, no
+ *          duration recorded. A fabricated write outcome.
+ *   status passed the body through unvalidated.
  */
+import { describe, expect, it } from 'vitest';
+import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
+import { join } from 'node:path';
+import {
+  SERVICE_TICKET_STATUSES,
+  normalizeTicketStatus,
+} from '../../../supabase/functions/_shared/service-ticket-vocabulary.ts';
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { readFileSync } from 'fs';
+const repo = process.cwd();
+const read = (p: string) => readFileSync(join(repo, p), 'utf8');
 
-type Row = Record<string, unknown>;
-const state: {
-  tables: Record<string, Row[]>;
-  inserts: { table: string; row: Row }[];
-  claims: Row;
-} = { tables: {}, inserts: [], claims: {} };
+function stripComments(src: string) {
+  return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+}
 
-function tableApi(name: string) {
-  const eqs: Array<[string, unknown]> = [];
-  const ors: string[] = [];
-  const ins: Array<[string, unknown[]]> = [];
-  let mode: 'select' | 'insert' | 'update' = 'select';
-  let pending: Row[] = [];
-  let patch: Row = {};
+const fn = stripComments(read('supabase/functions/mobile/index.ts'));
 
-  const api: Record<string, unknown> = {
-    select: () => api,
-    order: () => api,
-    limit: () => api,
-    range: () => api,
-    gte: () => api,
-    not: () => api,
-    neq: () => api,
-    eq(col: string, val: unknown) {
-      eqs.push([col, val]);
-      return api;
-    },
-    in(col: string, vals: unknown[]) {
-      ins.push([col, vals]);
-      return api;
-    },
-    or(expr: string) {
-      ors.push(expr);
-      return api;
-    },
-    insert(rows: Row | Row[]) {
-      mode = 'insert';
-      pending = Array.isArray(rows) ? rows : [rows];
-      return api;
-    },
-    update(next: Row) {
-      mode = 'update';
-      patch = next;
-      return api;
-    },
-    single: () => Promise.resolve(run(true)),
-    maybeSingle: () => Promise.resolve(run(true)),
-    then: (resolve: (v: unknown) => void) => Promise.resolve(run(false)).then(resolve),
-  };
+/**
+ * One branch, bounded by the NEXT branch - a window is not a scope.
+ *
+ * The first version searched forward for the next `if (req.method` and the stop
+ * branch still ran into the status one, which reads `service_tickets`, so the
+ * "stopping the clock does not complete the ticket" assertion reported a
+ * correct file as wrong. The markers are known, so the bound is the next
+ * marker rather than a guess about formatting.
+ */
+const MARKERS = [
+  "resource === 'time-tracking' && resourceId === 'start'",
+  "resource === 'time-tracking' && resourceId === 'stop'",
+  "resource === 'service-tickets'",
+  'PHOTOS ENDPOINTS',
+];
 
-  const matchesOr = (r: Row, expr: string): boolean =>
-    expr.split(/,(?=[a-z_]+\.(?:in|is)\.)/).some((clause) => {
-      const col = clause.slice(0, clause.indexOf('.'));
-      const op = clause.split('.')[1];
-      if (op === 'is') return r[col] === null || r[col] === undefined;
-      const vals = clause
-        .slice(clause.indexOf('(') + 1, clause.lastIndexOf(')'))
-        .split(',')
-        .map((v) => v.replace(/^"|"$/g, ''));
-      return vals.includes(String(r[col]));
-    });
+function branch(marker: string): string {
+  const at = fn.indexOf(marker);
+  expect(at).toBeGreaterThan(-1);
+  const later = MARKERS.map((m) => fn.indexOf(m, at + marker.length)).filter((n) => n > -1);
+  const end = later.length ? Math.min(...later) : fn.length;
+  // The slice must be a real branch, not an empty or runaway one.
+  expect(end - at).toBeGreaterThan(200);
+  return fn.slice(at, end);
+}
 
-  function run(single: boolean) {
-    state.tables[name] ??= [];
-    if (mode === 'insert') {
-      for (const r of pending) state.inserts.push({ table: name, row: r });
-      const stored = pending.map((r, i) => ({ id: `${name}-${i + 1}`, ...r }));
-      state.tables[name].push(...stored);
-      return { data: single ? { ...stored[0] } : stored, error: null };
+describe('the three branches exist', () => {
+  it('serves time-tracking start and stop', () => {
+    expect(fn).toMatch(/resource === 'time-tracking' && resourceId === 'start'/);
+    expect(fn).toMatch(/resource === 'time-tracking' && resourceId === 'stop'/);
+  });
+
+  it('serves the ticket status write at the depth the app calls it', () => {
+    // /api/mobile/service-tickets/:id/status is three segments deep, so the
+    // handler has to read parts[2] - reading only parts[0] and parts[1] is the
+    // shape that answers the wrong branch rather than 404ing.
+    expect(fn).toMatch(/const subAction = parts\[2\]/);
+    expect(fn).toMatch(/resource === 'service-tickets'/);
+    expect(fn).toMatch(/subAction === 'status'/);
+  });
+});
+
+describe('starting a timer', () => {
+  const b = branch("resource === 'time-tracking' && resourceId === 'start'");
+
+  it('writes the canonical status spelling, not the hyphenated one', () => {
+    // 'in-progress' is refused by WF-V-05's CHECK constraint, so the Express
+    // version could only ever 23514.
+    expect(b).toMatch(/status: 'in_progress'/);
+    expect(b).not.toMatch(/'in-progress'/);
+  });
+
+  it('never takes the ticket from another technician', () => {
+    // The Express version set assigned_technician_id = caller, so pressing
+    // Start reassigned the ticket to whoever pressed it.
+    expect(b).not.toMatch(/assigned_technician_id:/);
+  });
+
+  it('checks scope before writing anything', () => {
+    const check = b.indexOf('denyIfTicketOutOfScope');
+    const write = b.indexOf('.insert(');
+    expect(check).toBeGreaterThan(-1);
+    expect(write).toBeGreaterThan(check);
+  });
+
+  it('is idempotent - a second press finds the running session', () => {
+    // A technician who backgrounds the app and returns must not restart the
+    // clock, and two sessions on one ticket would double the hours.
+    expect(b).toMatch(/\.is\('check_out_timestamp', null\)/);
+    expect(b).toMatch(/alreadyRunning/);
+  });
+
+  it('takes the technician from the JWT, not the body', () => {
+    expect(b).toMatch(/technician_id: user\.id/);
+  });
+});
+
+describe('stopping a timer', () => {
+  const b = branch("resource === 'time-tracking' && resourceId === 'stop'");
+
+  it('actually closes the session and records the duration', () => {
+    // The Express version answered { stoppedAt } having written nothing but
+    // updated_at - the technician was told the timer stopped and no time was
+    // recorded anywhere.
+    //
+    // Bound to the VALUE, not the key. `toMatch(/total_hours:/)` is satisfied
+    // by `total_hours: null`, which is the defect with the column name still
+    // in the file.
+    expect(b).toMatch(/check_out_timestamp: stoppedAt/);
+    expect(b).toMatch(/total_hours: [^\n]*totalHours/);
+    expect(b).toMatch(/working_hours: [^\n]*totalHours/);
+  });
+
+  it('writes the departure entry that pairs with the arrival one', () => {
+    expect(b).toMatch(/check_in_type: 'departure'/);
+  });
+
+  it('does NOT complete the ticket', () => {
+    // Stopping the clock is not finishing the job - the screen has a separate
+    // status control, and the session check-out path is the "I am done here"
+    // action that does close the ticket.
+    expect(b).not.toMatch(/status: 'completed',[\s\S]{0,80}resolved_at/);
+    expect(b).not.toMatch(/from\('service_tickets'\)/);
+  });
+
+  it('a clock that ran backwards records nothing rather than negative hours', () => {
+    // Somebody gets paid on this number, and BOTH columns need the guard - a
+    // single presence check passed while working_hours lost it, which is this
+    // repo's "walk the sites, a total is not a property" trap again.
+    for (const column of ['total_hours', 'working_hours'] as const) {
+      const line = new RegExp(`${column}: [^\\n]*totalHours >= 0 \\?`);
+      expect({ column, guarded: line.test(b) }).toEqual({ column, guarded: true });
     }
-    const hits = state.tables[name].filter(
-      (r) =>
-        eqs.every(([c, v]) => String(r[c]) === String(v)) &&
-        ins.every(([c, vals]) => vals.map(String).includes(String(r[c]))) &&
-        ors.every((e) => matchesOr(r, e)),
-    );
-    if (mode === 'update') {
-      for (const row of hits) Object.assign(row, patch);
-      return { data: hits[0] ? { ...hits[0] } : null, error: null };
+  });
+
+  it('no running timer is a 200 that says so, not a failure', () => {
+    // A 500 here makes the technician press it again.
+    expect(b).toMatch(/stopped: false/);
+  });
+});
+
+describe('the status write', () => {
+  const b = branch("resource === 'service-tickets'");
+
+  it('normalizes through the one vocabulary', () => {
+    expect(b).toMatch(/normalizeTicketStatus\(body\.status\)/);
+  });
+
+  it('refuses an unknown status WITH the vocabulary instead of a 23514', () => {
+    expect(b).toMatch(/allowed: SERVICE_TICKET_STATUSES/);
+    expect(b).toMatch(/UNKNOWN_STATUS/);
+  });
+
+  it('the vocabulary it refuses against is the real one', () => {
+    // Behavioural, not a source read: the normalizer is what decides.
+    expect(normalizeTicketStatus('in-progress')).toBe('in_progress');
+    expect(normalizeTicketStatus('nonsense')).toBeNull();
+    expect(SERVICE_TICKET_STATUSES).toContain('in_progress');
+  });
+
+  it('stamps resolved_at when the work is finished', () => {
+    expect(b).toMatch(/if \(status === 'completed'\) patch\.resolved_at = nowIso/);
+  });
+
+  it('is scoped and tenant-filtered', () => {
+    expect(b).toMatch(/denyIfTicketOutOfScope/);
+    expect(b).toMatch(/\.eq\('tenant_id', tenantId\)/);
+  });
+});
+
+describe('both hosts run one implementation', () => {
+  const proxy = read('server/middleware/edge-function-proxy.ts');
+  const express = read('server/routes-mobile-api.ts');
+
+  it('the two paths are proxied so dev runs what production runs', () => {
+    expect(proxy).toMatch(/'\/api\/mobile\/time-tracking': \{ fn: 'mobile'/);
+    expect(proxy).toMatch(/'\/api\/mobile\/service-tickets': \{ fn: 'mobile'/);
+  });
+
+  it('the whole /api/mobile prefix is NOT proxied', () => {
+    // dashboard and jobs/:jobId are still Express-only; a bare entry would take
+    // them from working-in-dev to 404-in-dev.
+    expect(proxy).not.toMatch(/'\/api\/mobile': /);
+  });
+
+  it('the Express handlers are gone, not shadowed', () => {
+    const code = stripComments(express);
+    expect(code).not.toMatch(/mobile\/time-tracking\/start/);
+    expect(code).not.toMatch(/mobile\/time-tracking\/stop/);
+    expect(code).not.toMatch(/mobile\/service-tickets\/:ticketId\/status/);
+  });
+});
+
+/**
+ * The sweep that found this.
+ *
+ * check:edge-path-coverage asks whether a segment appears ANYWHERE in the
+ * function source, which is generous on purpose - and round 112 showed what
+ * that costs when the word is present for another reason. This asks the
+ * stricter question: is the segment ever COMPARED to? It is a test rather than
+ * a guard because the strict rule has false positives of its own (a path
+ * matched by a regex rather than an equality), which is exactly why the shipped
+ * guard is lenient.
+ */
+describe('native clients: every path segment reaches a routing comparison', () => {
+  const TREES = [
+    'printyx-client',
+    'printyx-desktop',
+    'mobile-app',
+    'mobile',
+    'browser-extensions',
+    'printyx-extension',
+    'ios',
+  ];
+  const SRC = /\.(ts|tsx|js|jsx|mjs|cjs|swift|kt|java|dart)$/;
+  const TEST =
+    /(^|[\\/])(tests?|__tests__|spec|specs)[\\/]|[\\/][^\\/]*(Tests|\.test|\.spec)\.[a-z]+$/i;
+
+  function walk(dir: string, out: string[] = []): string[] {
+    if (!existsSync(dir)) return out;
+    for (const entry of readdirSync(dir)) {
+      if (['node_modules', 'dist', 'build'].includes(entry) || entry.startsWith('.')) continue;
+      const p = join(dir, entry);
+      if (statSync(p).isDirectory()) walk(p, out);
+      else if (SRC.test(entry) && !TEST.test(p)) out.push(p);
     }
-    return single
-      ? { data: hits[0] ? { ...hits[0] } : null, error: null }
-      : { data: hits.map((r) => ({ ...r })), error: null };
+    return out;
   }
-  return api;
-}
 
-vi.mock('../../../supabase/functions/_shared/supabase.ts', () => ({
-  createSupabaseClient: () => ({
-    auth: {
-      getUser: async () => ({
-        data: { user: { id: 'tech-1', app_metadata: state.claims } },
-        error: null,
-      }),
-    },
-  }),
-  createSupabaseServiceClient: () => ({ from: (t: string) => tableApi(t) }),
-}));
+  function dirSrc(dir: string): string {
+    let out = '';
+    for (const entry of readdirSync(dir)) {
+      const p = join(dir, entry);
+      if (statSync(p).isDirectory()) out += dirSrc(p);
+      else if (p.endsWith('.ts')) out += stripComments(readFileSync(p, 'utf8'));
+    }
+    return out;
+  }
 
-(globalThis as { Deno?: unknown }).Deno = { env: { get: () => undefined } };
+  /** Domains whose native paths are knowingly unserved; each one a worklist entry. */
+  const KNOWN_UNSERVED = new Set([
+    'mobile/dashboard', // AUDIT-033: a fixture on both hosts.
+    'mobile/device-tokens', // No token table and no push sender anywhere.
+    'mobile/push-token', // Same feature, the React Native half.
+    'activities/recent',
+    'analytics/performance-metrics',
+    'equipment/:id/service-history',
+    // No edge directory at all, and no server.ts alias:
+    'client-metrics',
+    'extension',
+    'health',
+    'proposal-templates',
+    'service-dispatch',
+  ]);
 
-async function handler() {
-  return (await import('../../../supabase/functions/mobile/index.ts')).default;
-}
+  it('the mobile field-service paths all reach a comparison now', () => {
+    const files = TREES.flatMap((t) => walk(join(repo, t)));
+    expect(files.length).toBeGreaterThan(100);
 
-function call(path: string, method = 'GET', body?: unknown) {
-  return new Request(`https://functions.printyx.net${path}`, {
-    method,
-    headers: { Authorization: 'Bearer t', 'Content-Type': 'application/json' },
-    ...(body ? { body: JSON.stringify(body) } : {}),
-  });
-}
+    const shapes = new Set<string>();
+    for (const f of files) {
+      const s = stripComments(readFileSync(f, 'utf8'));
+      for (const m of s.matchAll(/["'`]\/api\/([a-z0-9-]+)((?:\/[^"'`?\s]*)*)/g)) {
+        const tail = (m[2] || '')
+          .split('/')
+          .filter(Boolean)
+          .map((seg) => (/^[a-z0-9][a-z0-9-]*$/.test(seg) ? seg : ':id'));
+        shapes.add(m[1] + (tail.length ? '/' + tail.join('/') : ''));
+      }
+    }
+    expect(shapes.size).toBeGreaterThan(50);
 
-const TECHNICIAN = { tenant_id: 't1', tenantId: 't1', roleLevel: 1, role: 'FIELD_TECHNICIAN' };
-const SUPERVISOR = { tenant_id: 't1', tenantId: 't1', roleLevel: 3, role: 'SERVICE_SUPERVISOR' };
+    const unserved: string[] = [];
+    for (const shape of shapes) {
+      const [domain, ...tail] = shape.split('/');
+      const dir = join(repo, 'supabase/functions', domain);
+      if (!existsSync(dir)) {
+        unserved.push(domain);
+        continue;
+      }
+      const src = dirSrc(dir);
+      for (const seg of tail) {
+        if (seg === ':id') continue;
+        const cmp = new RegExp(
+          `===\\s*['"\`]${seg}['"\`]|['"\`]/${seg}['"\`]|startsWith\\(['"\`]/?${seg}|case '${seg}'|\\[['"\`]${seg}['"\`]\\]|\\b${seg.replace(/-/g, '')}Match\\b`,
+        );
+        if (!cmp.test(src)) unserved.push(shape);
+      }
+    }
 
-beforeEach(() => {
-  state.claims = TECHNICIAN;
-  state.inserts = [];
-  state.tables = {
-    users: [
-      { id: 'tech-1', tenant_id: 't1', team_id: 'crew-a', manager_id: 'sup-1' },
-      { id: 'tech-2', tenant_id: 't1', team_id: 'crew-a', manager_id: 'sup-1' },
-      { id: 'tech-9', tenant_id: 't1', team_id: 'crew-z', manager_id: 'sup-9' },
-    ],
-    mobile_service_sessions: [
-      { id: 's1', tenant_id: 't1', technician_id: 'tech-1', service_ticket_id: 'tk-1' },
-      { id: 's2', tenant_id: 't1', technician_id: 'tech-9', service_ticket_id: 'tk-9' },
-    ],
-    service_tickets: [
-      { id: 'tk-1', tenant_id: 't1', assigned_technician_id: 'tech-1', status: 'open' },
-      { id: 'tk-9', tenant_id: 't1', assigned_technician_id: 'tech-9', status: 'open' },
-    ],
-  };
-});
-
-describe('WF-V-02: whose sessions am I looking at', () => {
-  it('defaults to the caller when no technician is named', async () => {
-    const res = await (await handler())(call('/sessions'));
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    const rows = Array.isArray(body) ? body : (body.data ?? []);
-    expect(rows.map((r: { id: string }) => r.id)).toEqual(['s1']);
-  });
-
-  it('refuses a technician the caller may not see', async () => {
-    // The hole: any tenant member could read another technician's sessions.
-    const res = await (await handler())(call('/sessions?technicianId=tech-9'));
-    expect(res.status).toBe(403);
-    expect((await res.json()).code).toBe('ROW_OUT_OF_SCOPE');
-  });
-
-  it('lets a supervisor look at their own crew', async () => {
-    state.claims = SUPERVISOR;
-    state.tables.users = [
-      { id: 'tech-1', tenant_id: 't1', team_id: 'crew-a', manager_id: null },
-      { id: 'tech-2', tenant_id: 't1', team_id: 'crew-a', manager_id: 'tech-1' },
-      { id: 'tech-9', tenant_id: 't1', team_id: 'crew-z', manager_id: 'sup-9' },
-    ];
-    const ok = await (await handler())(call('/sessions?technicianId=tech-2'));
-    expect(ok.status).toBe(200);
-    const denied = await (await handler())(call('/sessions?technicianId=tech-9'));
-    expect(denied.status).toBe(403);
-  });
-
-  it('403s rather than quietly substituting the caller', async () => {
-    // Returning the caller's own rows for somebody else's id is how a UI comes to
-    // show the wrong person's work while looking like it worked.
-    const res = await (await handler())(call('/sessions?technicianId=tech-9'));
-    expect(res.status).not.toBe(200);
-  });
-
-  it('applies the same rule to the sync queue', async () => {
-    const res = await (await handler())(call('/sync?technicianId=tech-9'));
-    expect(res.status).toBe(403);
-  });
-
-  it('returns the caller own assigned tickets from sync', async () => {
-    const res = await (await handler())(call('/sync'));
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    // { syncedAt, technician, data: { serviceTickets, ... }, counts } - the shape
-    // the picker reads, pinned because reading the wrong key renders an empty
-    // queue forever and says nothing.
-    expect(body.data.serviceTickets.map((t: { id: string }) => t.id)).toEqual(['tk-1']);
-  });
-});
-
-describe('WF-V-02: a session belongs to the caller', () => {
-  it('stamps the technician from the JWT, whatever the body says', async () => {
-    await (
-      await handler()
-    )(call('/sessions', 'POST', { serviceTicketId: 'tk-1', technicianId: 'tech-9' }));
-    const row = state.inserts.find((i) => i.table === 'mobile_service_sessions')!.row;
-    expect(row.technician_id).toBe('tech-1');
-  });
-});
-
-describe('WF-V-02: the page points at a real ticket', () => {
-  const page = readFileSync('client/src/pages/MobileFieldService.tsx', 'utf8');
-  const code = page
-    .split('\n')
-    .filter((l) => {
-      const t = l.trim();
-      return !t.startsWith('//') && !t.startsWith('/*') && !t.startsWith('*');
-    })
-    .join('\n');
-
-  it('has no mock ids left', () => {
-    expect(code).not.toMatch(/'ticket-123'/);
-    expect(code).not.toMatch(/'tech-456'/);
-  });
-
-  it('takes the ticket from the route', () => {
-    expect(code).toMatch(/useRoute\('\/mobile-field-service\/:ticketId'\)/);
-    expect(code).toMatch(/const serviceTicketId = params\?\.ticketId \?\? null/);
-  });
-
-  it('sends no technician id at all', () => {
-    // The mobile function takes it from the JWT; sending one was the hole above.
-    expect(code).not.toMatch(/technicianId,/);
-  });
-
-  it('offers the caller own queue when the route carries no ticket', () => {
-    expect(code).toMatch(/if \(!serviceTicketId\) \{\s*return <TicketPicker \/>;/);
-    expect(code).toMatch(/queryKey: \['\/api\/mobile\/sync'\]/);
-    // And reads the key the endpoint actually sends.
-    expect(code).toMatch(/data\?\.data\?\.serviceTickets/);
-  });
-
-  it('waits for a ticket before querying its sessions and photos', () => {
-    expect([...code.matchAll(/enabled: Boolean\(serviceTicketId\)/g)]).toHaveLength(2);
-  });
-
-  it('is routed with the id and gated the same as the bare path', () => {
-    const app = readFileSync('client/src/App.tsx', 'utf8');
-    expect(app).toMatch(
-      /path="\/mobile-field-service\/:ticketId" component=\{MobileFieldService\}/,
-    );
-    const nav = readFileSync('client/src/lib/navigation-permissions.ts', 'utf8');
-    expect(nav).toMatch(/'\/mobile-field-service\/:ticketId':/);
-  });
-
-  it('is reachable from the service hub', () => {
-    const hub = readFileSync('client/src/pages/ServiceHub.tsx', 'utf8');
-    expect(hub).toMatch(/setLocation\('\/mobile-field-service'\)/);
+    const surprising = [...new Set(unserved)].filter((s) => {
+      if (KNOWN_UNSERVED.has(s)) return false;
+      // A bare domain with no edge directory is recorded by its domain name.
+      return !KNOWN_UNSERVED.has(s.split('/')[0]);
+    });
+    expect(surprising).toEqual([]);
   });
 });

@@ -3,8 +3,14 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import geocodeLeadsHandler from '../geocode-leads/index.ts';
 import { toCamel } from '../_shared/case.ts';
+import { planBusinessRecordWrite } from '../_shared/business-record-write.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { applyUserScope, resolveScope } from '../_shared/scope.ts';
+import {
+  ACTIVITY_FIELDS_WITHOUT_COLUMNS,
+  buildActivityInsert,
+  presentActivity,
+} from '../../../shared/lead-activity-write.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -337,19 +343,52 @@ export default async function handler(req: Request) {
     if (req.method === 'PUT' && leadId && !subResource) {
       const body = await req.json();
 
+      // COP-M01. This used to be `.update({ ...body, updated_at })`, handing
+      // the request body to PostgREST untouched. The page sends camelCase, PostgREST wants columns, so every save was a
+      // PGRST204 reported as "Failed to update lead" - in PRODUCTION ONLY,
+      // because /api/leads is not proxied and dev goes through Drizzle, which
+      // maps field names to columns. The same spread let a body set `tenant_id`:
+      // the .eq() filter below decides which row is written, not what is
+      // written into it.
+      const { update, ignoredFields, refusedFields } = planBusinessRecordWrite(body);
+
+      if (Object.keys(update).length === 0) {
+        return createCorsResponse(
+          {
+            error: 'No writable field in the request body',
+            code: 'NO_WRITABLE_FIELDS',
+            ignoredFields,
+            refusedFields,
+          },
+          400,
+          req,
+        );
+      }
+
       const { data: lead, error } = await admin
         .from('business_records')
-        .update({ ...body, updated_at: new Date().toISOString() })
+        .update({ ...update, updated_at: new Date().toISOString() })
         .eq('id', leadId)
         .eq('tenant_id', tenantId)
         .select()
         .single();
 
       if (error) {
+        console.error('Error updating lead:', error);
         return createCorsResponse({ error: 'Failed to update lead' }, 500, req);
       }
 
-      return createCorsResponse(lead, 200, req);
+      // What was dropped is SAID. A narrowing nobody can see turns a renamed
+      // field into data loss that reports success (COP-B06).
+      return createCorsResponse(
+        {
+          ...lead,
+          ...(ignoredFields.length > 0 ? { ignoredFields } : {}),
+          ...(refusedFields.length > 0 ? { refusedFields } : {}),
+        },
+        200,
+        req,
+      );
     }
 
     // POST /leads/:id/convert - Convert lead to customer
@@ -516,6 +555,91 @@ export default async function handler(req: Request) {
       }
 
       return createCorsResponse(toCamel(contact), 201, req);
+    }
+
+    // GET/POST /leads/:id/activities
+    //
+    // PROD-008. The iOS quick-log FAB and its offline write queue post here
+    // (ios/.../ActivityQuickLogService.swift), and this function had no
+    // `activities` branch, so every one of those writes hit the trailing 404
+    // while Express answered them in dev - and Express answered them with a
+    // 23502, because iOS sends `type` and the column is `activity_type`. Both
+    // halves live in shared/lead-activity-write.ts now, imported by the Express
+    // handler too, so the two hosts cannot drift apart again.
+    //
+    // A lead IS a business record here, so the rows are the same
+    // `business_record_activities` the web timeline reads through
+    // /api/companies/:id/activities.
+    if (leadId && subResource === 'activities' && (req.method === 'GET' || req.method === 'POST')) {
+      if (req.method === 'GET') {
+        const { data: activities, error } = await admin
+          .from('business_record_activities')
+          .select('*')
+          .eq('business_record_id', leadId)
+          .eq('tenant_id', tenantId)
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('Error fetching lead activities:', error);
+          return createCorsResponse({ message: 'Failed to fetch activities' }, 500, req);
+        }
+
+        return createCorsResponse((activities ?? []).map(presentActivity), 200, req);
+      }
+
+      const body = await req.json().catch(() => ({}) as Record<string, unknown>);
+      const plan = buildActivityInsert(body, {
+        tenantId,
+        businessRecordId: leadId,
+        createdBy: user.id,
+      });
+
+      if (!plan.columns) {
+        return createCorsResponse(
+          {
+            message: plan.error?.message ?? 'Invalid activity',
+            code: plan.error?.code ?? 'ACTIVITY_INVALID',
+            ignoredFields: plan.ignoredFields,
+            refusedFields: plan.refusedFields,
+          },
+          400,
+          req,
+        );
+      }
+
+      const { data: activity, error } = await admin
+        .from('business_record_activities')
+        .insert(plan.columns)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating lead activity:', error);
+        return createCorsResponse(
+          { message: 'Failed to create activity', details: error.message },
+          500,
+          req,
+        );
+      }
+
+      // What could not be stored is named on the response. A rep whose call was
+      // geotagged and whose coordinates went nowhere should be able to find out.
+      return createCorsResponse(
+        {
+          ...presentActivity(activity),
+          ignoredFields: plan.ignoredFields,
+          refusedFields: plan.refusedFields,
+          unbacked: plan.ignoredFields.some((f) =>
+            (ACTIVITY_FIELDS_WITHOUT_COLUMNS as readonly string[]).includes(f),
+          )
+            ? [
+                'business_record_activities has no location columns, so latitude, longitude and accuracy are not stored',
+              ]
+            : [],
+        },
+        201,
+        req,
+      );
     }
 
     // POST /leads/geocode

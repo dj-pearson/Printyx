@@ -113,10 +113,10 @@ async function acquireLock(pool: pg.Pool): Promise<boolean> {
     UPDATE ${LOCK_TABLE}
     SET locked = TRUE, locked_by = $1, locked_at = NOW()
     WHERE id = $2
-      AND (locked = FALSE OR locked_at < NOW() - INTERVAL '${LOCK_TIMEOUT_MS} milliseconds')
+      AND (locked = FALSE OR locked_at < NOW() - ($3 * INTERVAL '1 millisecond'))
     RETURNING *
   `,
-    [hostname, LOCK_ID],
+    [hostname, LOCK_ID, LOCK_TIMEOUT_MS],
   );
   return result.rowCount !== null && result.rowCount > 0;
 }

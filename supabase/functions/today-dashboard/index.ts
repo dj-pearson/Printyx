@@ -4,6 +4,7 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { mergeCrewDay } from '../_shared/delivery-scheduling.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { fetchAllRows } from '../_shared/paged-select.ts';
+import { startOfUtcDay, startOfNextUtcDay } from '../_shared/date-months.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 
 export default async function handler(req: Request) {
@@ -31,10 +32,13 @@ export default async function handler(req: Request) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
     }
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayIso = today.toISOString();
-    const tomorrowIso = new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString();
+    // DATE-LOCAL-002: setHours(0,0,0,0) is LOCAL midnight, and tasks.due_date
+    // holds a calendar date stored at UTC midnight, so the bound was off by
+    // the host's offset. Both ends come from the shared helpers now and the
+    // upper one is exclusive.
+    const now = new Date();
+    const todayIso = startOfUtcDay(now).toISOString();
+    const tomorrowIso = startOfNextUtcDay(now).toISOString();
 
     // GET /today-dashboard - Get today's dashboard data
     if (req.method === 'GET') {
@@ -70,48 +74,140 @@ export default async function handler(req: Request) {
 
       const appointments = mergeCrewDay(deliveryRows.data ?? [], installRows.data ?? []);
 
-      // Get today's tasks
-      const { data: tasks } = await admin
-        .from('tasks')
-        .select('*')
-        .eq('tenant_id', tenantId)
-        .or(`due_date.gte.${todayIso},due_date.lt.${tomorrowIso}`)
-        .eq('status', 'pending');
+      // WF-L-06 fixed the appointments half of this handler and stopped there.
+      // The other five reads had the same defect, and every one of them
+      // discarded its error, so each failure reached the iOS Today screen as a
+      // zero or an empty list - the shape the comment above already calls
+      // worse than a 500 would have been. All five proven against the Drizzle
+      // declarations, not inferred:
+      //
+      //   `activities`             no such table in any schema (42P01). Activity
+      //                            lives in business_record_activities, which is
+      //                            what /dashboards/today already reads.
+      //   `leads`                  no such table. A lead is a business_records
+      //                            row with record_type = 'lead' (COP-B00).
+      //   `deal_desk_requests`     no such table. deal-desk writes
+      //                            approval_requests, and its pending set is
+      //                            ['pending', 'in_review'] everywhere it asks.
+      //   `users.full_name`        users has first_name/last_name. The embed
+      //                            took the whole activity query down with it.
+      //   tasks.status = 'pending' the column and the table are both real and
+      //                            the value is not: the vocabulary is
+      //                            todo/in_progress/completed/cancelled, so
+      //                            this matched no row that has ever existed.
+      //
+      // That last one is the one nothing here can catch. A literal compared to
+      // a real column on a real table typechecks, satisfies check:phantom-cols
+      // and is simply never true - the only way to find it is to read what the
+      // writers store.
+      //
+      // The window was wrong too, in a way that cancelled out: `.or()` is a
+      // DISJUNCTION, so "due_date >= today OR due_date < tomorrow" is true of
+      // every task carrying a due date at all. It read as a day filter and was
+      // not one; the status filter was the only thing keeping the list empty.
+      const OUTSTANDING_TASK_STATUSES = ['todo', 'in_progress'];
 
-      // Get overdue tasks
-      const { data: overdueTasks } = await admin
-        .from('tasks')
-        .select('*')
-        .eq('tenant_id', tenantId)
-        .lt('due_date', todayIso)
-        .eq('status', 'pending');
+      // A family that fails is NAMED rather than zeroed. Independently caught
+      // so one missing relation cannot blank the whole screen (AUDIT-028), and
+      // reported on the response so a zero means zero.
+      const degraded: string[] = [];
+      async function family<T>(
+        name: string,
+        run: () => Promise<{ data: T[] | null; error: unknown }>,
+      ) {
+        try {
+          const { data, error } = await run();
+          if (error) {
+            console.error(`today-dashboard: ${name} failed`, error);
+            degraded.push(name);
+            return null;
+          }
+          return data ?? [];
+        } catch (err) {
+          console.error(`today-dashboard: ${name} threw`, err);
+          degraded.push(name);
+          return null;
+        }
+      }
 
-      // Get recent activities
-      const { data: recentActivities } = await admin
-        .from('activities')
-        .select(
-          `
-          *,
-          user:user_id (id, full_name)
-        `,
-        )
-        .eq('tenant_id', tenantId)
-        .order('created_at', { ascending: false })
-        .limit(10);
+      /**
+       * A family whose only use is `.length`.
+       *
+       * `newLeads` fetched every lead created today and counted the rows, so a
+       * tenant importing more than PostgREST's default page in a day had the
+       * count silently capped - the number on the screen is the one thing that
+       * cannot show it (check:row-caps, which was red on main). A head count
+       * asks the database for the number instead, and keeps the same
+       * null-on-failure contract so a zero still means zero.
+       */
+      async function countFamily(
+        name: string,
+        run: () => Promise<{ count: number | null; error: unknown }>,
+      ): Promise<number | null> {
+        try {
+          const { count, error } = await run();
+          if (error) {
+            console.error(`today-dashboard: ${name} failed`, error);
+            degraded.push(name);
+            return null;
+          }
+          return count ?? 0;
+        } catch (err) {
+          console.error(`today-dashboard: ${name} threw`, err);
+          degraded.push(name);
+          return null;
+        }
+      }
 
-      // Get pending approvals
-      const { data: pendingApprovals } = await admin
-        .from('deal_desk_requests')
-        .select('*')
-        .eq('tenant_id', tenantId)
-        .eq('status', 'pending');
-
-      // Get key metrics
-      const { data: newLeads } = await admin
-        .from('leads')
-        .select('id')
-        .eq('tenant_id', tenantId)
-        .gte('created_at', todayIso);
+      const [tasks, overdueTasks, recentActivities, pendingApprovals, newLeadCount] =
+        await Promise.all([
+          family<any>('tasks', () =>
+            admin
+              .from('tasks')
+              .select('*')
+              .eq('tenant_id', tenantId)
+              .in('status', OUTSTANDING_TASK_STATUSES)
+              .gte('due_date', todayIso)
+              .lt('due_date', tomorrowIso),
+          ),
+          family<any>('overdueTasks', () =>
+            admin
+              .from('tasks')
+              .select('*')
+              .eq('tenant_id', tenantId)
+              .in('status', OUTSTANDING_TASK_STATUSES)
+              .lt('due_date', todayIso),
+          ),
+          // Raw rows: the iOS ActivityItem decoder already maps activity_type,
+          // subject, notes, business_record_id and created_by off exactly this
+          // table, so nothing client-side changes.
+          family<any>('recentActivities', () =>
+            admin
+              .from('business_record_activities')
+              .select(
+                'id, activity_type, subject, description, business_record_id, company_id, completed_date, due_date, scheduled_date, created_by, created_at',
+              )
+              .eq('tenant_id', tenantId)
+              .order('created_at', { ascending: false })
+              .limit(10),
+          ),
+          family<any>('pendingApprovals', () =>
+            admin
+              .from('approval_requests')
+              .select('*')
+              .eq('tenant_id', tenantId)
+              .in('status', ['pending', 'in_review']),
+          ),
+          countFamily('newLeads', () =>
+            admin
+              .from('business_records')
+              .select('id', { count: 'exact', head: true })
+              .eq('tenant_id', tenantId)
+              .eq('record_type', 'lead')
+              .gte('created_at', todayIso)
+              .lt('created_at', tomorrowIso),
+          ),
+        ]);
 
       const wonDeals = await fetchAllRows<any>(() =>
         admin
@@ -129,23 +225,31 @@ export default async function handler(req: Request) {
       const todayRevenue =
         wonDeals?.reduce((sum: number, d: any) => sum + Number(d.amount ?? 0), 0) || 0;
 
+      // A COUNT OF A FAMILY THAT DID NOT LOAD IS NOT ZERO. `family()` answers
+      // null when its read failed, and that travels as null rather than 0 -
+      // the iOS model already types every count as optional, so this decodes
+      // unchanged while the payload stops asserting an empty day it cannot
+      // measure. `degraded` names whichever families are missing.
+      const countOf = (rows: unknown[] | null) => (rows === null ? null : rows.length);
+
       return createCorsResponse(
         {
           date: todayIso,
           appointments: appointments || [],
           appointmentCount: appointments?.length || 0,
           tasks: tasks || [],
-          taskCount: tasks?.length || 0,
+          taskCount: countOf(tasks),
           overdueTasks: overdueTasks || [],
-          overdueCount: overdueTasks?.length || 0,
+          overdueCount: countOf(overdueTasks),
           recentActivities: recentActivities || [],
           pendingApprovals: pendingApprovals || [],
-          pendingApprovalCount: pendingApprovals?.length || 0,
+          pendingApprovalCount: countOf(pendingApprovals),
           metrics: {
-            newLeads: newLeads?.length || 0,
+            newLeads: newLeadCount,
             todayRevenue,
             dealsWon: wonDeals?.length || 0,
           },
+          degraded,
         },
         200,
         req,

@@ -313,6 +313,24 @@ export function registerEdgeFunctionProxy(app: any) {
     // calls /api/demos.
     '/api/demos': 'demos',
     '/api/deals': 'deals',
+    // COP-B10: competitive knockout intelligence. A new prefix with no Express
+    // handler at all, so the whole-prefix entry cannot shadow anything.
+    '/api/competitors': 'competitors',
+    // COP-B13: copier sales playbooks. Same - a new prefix, nothing to shadow.
+    '/api/playbooks': 'playbooks',
+    // COP-B09: sales territories. The edge function has had full CRUD all
+    // along and nothing called it; Express served the same paths, so dev and
+    // prod ran different code for a surface with no users. One host now.
+    '/api/sales-territories': 'sales-territories',
+    // COP-B04: the installed-base opportunity radar. New prefix, no Express handler.
+    '/api/opportunity-radar': 'opportunity-radar',
+    // COP-B03: suggested tasks. New prefix, no Express handler.
+    '/api/suggested-tasks': 'suggested-tasks',
+    // CRM-008: record page layouts. The Express router this replaces could
+    // never run in production and nothing called it; see the fn header.
+    '/api/record-layout-config': 'record-layout-config',
+    // COP-B05: the fleet assessment / TCO builder. New prefix, no Express handler.
+    '/api/fleet-assessment': 'fleet-assessment',
     '/api/contacts': 'contacts',
     // WF-S-06: the CRM Goals page. Its eleven endpoints now all live in the crm
     // edge function, so dev and prod run the same code and
@@ -414,6 +432,9 @@ export function registerEdgeFunctionProxy(app: any) {
     // dev and 404'd in prod.
     '/api/dashboard/widgets': { fn: 'dashboard-widgets', pathPrefix: '/widgets' },
     '/api/dashboard/user-layout': { fn: 'dashboard-widgets', pathPrefix: '/user-layout' },
+    // COP-B01: the My Day card layout. Its own table, so it does not join the
+    // two handlers already contesting dashboard_layouts.
+    '/api/dashboard/my-day-layout': { fn: 'dashboard', pathPrefix: '/my-day-layout' },
     '/api/dashboard/layouts': { fn: 'dashboard', pathPrefix: '/layouts' },
     '/api/dashboard/metrics': { fn: 'dashboard', pathPrefix: '/metrics' },
     '/api/dashboard/charts': { fn: 'dashboard', pathPrefix: '/charts' },
@@ -613,6 +634,25 @@ export function registerEdgeFunctionProxy(app: any) {
     // (Pre-existing upstream drift surfaced by the route-ownership guard; same
     // clean pattern as lease-payments, so resolved here rather than grandfathered.)
     '/api/ai-employees': { fn: 'ai-employee', pathPrefix: '/ai-employees' },
+
+    // SEC-EDGE-001 batch 15: auto-lead-routing. AutoLeadRoutingDashboard.tsx is
+    // routed and calls /dashboard, /config and /rules. Express served the first
+    // two and had NO /rules handler at all, so listing, creating and deleting a
+    // routing rule - three controls on a live page - 404'd in dev while working
+    // in production. Its /config PUT was worse than missing: it logged the body
+    // and answered success without storing anything, so a user toggling routing
+    // settings was told "saved successfully" and lost them on reload.
+    //
+    // The edge function covers /rules (GET/POST/PUT/DELETE), /dashboard,
+    // /config (GET/PUT, stored under tenants.metadata.autoLeadRouting) and
+    // POST /route[/:leadId]. Its /dashboard returns the same four keys the page
+    // reads - overview, scoreDistribution, repWorkload, recentLeads - checked
+    // against the page rather than assumed, because a proxy entry changes what
+    // dev answers.
+    //
+    // NOT carried over, and neither has a caller in any client tree:
+    // POST /route-batch and GET /preview/:leadId.
+    '/api/auto-lead-routing': 'auto-lead-routing',
 
     // EDGE-002a: billing — full frontend parity audited 2026-06-11
     // (analytics + 3 sub-routes, invoices list/:id/pay/email/pdf/
@@ -983,6 +1023,18 @@ export function registerEdgeFunctionProxy(app: any) {
     // so this wins for this one path and nothing else changes.
     '/api/admin/system-health': { fn: 'admin', pathPrefix: '/system-health' },
 
+    // ROUND 133. TWO SCOPED ENTRIES, not the whole prefix: Express still owns
+    // PUT/DELETE /api/onboarding/sections/:id and /tasks/:id, which the edge
+    // function does not serve, so a bare '/api/onboarding' entry would take
+    // those from working-in-dev to 404-in-dev (they already 404 in production).
+    //
+    // These two were Express-only, so the routed pages behind them -
+    // GettingStarted.tsx and SetupWizard.tsx, the first two screens a new
+    // tenant sees - 404'd for every deployed user. The proxy makes dev run what
+    // production runs; the Express handlers are deleted rather than shadowed.
+    '/api/onboarding/getting-started': { fn: 'onboarding', pathPrefix: '/getting-started' },
+    '/api/onboarding/wizard-state': { fn: 'onboarding', pathPrefix: '/wizard-state' },
+
     // WF-R-08. Same reasoning, four more paths, and they close a DEV-ONLY 404
     // rather than opening one: /admin/user-management is a routed page calling
     // /api/admin/users, and no Express router owns that prefix - routes-registry
@@ -1053,9 +1105,43 @@ export function registerEdgeFunctionProxy(app: any) {
     // redirect lands on the functions host directly, because it carries no JWT
     // and dev has no public URL for a provider to call back to.
     '/api/calendar-oauth': 'calendar-oauth',
+    //
+    // PROD-008. /api/catalog is the PLATFORM MASTER catalogue on Express and
+    // was the TENANT's own product_models in the edge function, so the two
+    // hosts answered 200 about different tables and ProductHubUnified was
+    // broken five different ways in production. The edge function serves the
+    // master catalogue now and the Express router is deleted, so this entry
+    // makes dev run what production runs rather than papering over a gap.
+    // /api/enabled-products goes with it: the page reads the master catalogue
+    // and the tenant's enabled set together, and its Express handler lived in
+    // the same deleted file.
+    '/api/catalog': 'catalog',
+    '/api/enabled-products': 'enabled-products',
     '/api/sales-pipeline/rep-metrics': { fn: 'sales-pipeline', pathPrefix: '/rep-metrics' },
     '/api/sales-pipeline/summary': { fn: 'sales-pipeline', pathPrefix: '/summary' },
     '/api/sales-pipeline/stages': { fn: 'sales-pipeline', pathPrefix: '/stages' },
+    //
+    // PROD-008: SCOPED, not the whole /api/mobile prefix. The edge function
+    // now serves time tracking and the ticket-status write, so dev and
+    // production run one implementation - but /api/mobile/dashboard and
+    // /api/mobile/jobs/:jobId are still Express-only, and a bare '/api/mobile'
+    // entry would take those from working-in-dev to 404-in-dev. The note in
+    // server/routes-registry.ts that set that condition is the reason these two
+    // are here and a third is not.
+    '/api/mobile/time-tracking': { fn: 'mobile', pathPrefix: '/time-tracking' },
+    '/api/mobile/service-tickets': { fn: 'mobile', pathPrefix: '/service-tickets' },
+    //
+    // LAUNCH-008: self-service registration. The signup page used to call
+    // supabase.auth.signUp directly, so this edge function - the only thing
+    // that creates the tenant, the users row and app_metadata.tenantId - had
+    // no caller in any client tree. Repointing the page means dev needs to run
+    // the same handler production does: /api/signup has never had an Express
+    // route (the legacy one is /api/auth/signup, a different prefix and a
+    // different auth model - it bcrypts a password into `users` and creates no
+    // GoTrue user at all), so without this entry the page would 404 on every
+    // developer machine. app.use matches on segment boundaries, so this does
+    // NOT capture /api/signup-crm.
+    '/api/signup': 'signup',
     //
     // /api/ai-employees is deliberately NOT here. Its edge fn covers the two
     // READ endpoints the dashboard calls, but the Express router also owns

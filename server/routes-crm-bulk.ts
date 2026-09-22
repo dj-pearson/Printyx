@@ -4,6 +4,7 @@
  * Part of CRM-007: Bulk selection and bulk operations.
  */
 import type { Express, Request, Response } from 'express';
+import { summariseBulkWrite } from '@shared/bulk-result';
 import { eq, and, inArray } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from './db';
@@ -79,15 +80,26 @@ export function registerCrmBulkRoutes(app: Express) {
         safeUpdates.updatedAt = new Date();
 
         // Bulk update
-        const result = await db
+        // Measured, not assumed: this update is tenant-scoped and nothing
+        // above verifies the ids, so a deal from another tenant matched
+        // nothing while the response claimed it had been updated (round 132).
+        const updated = await db
           .update(deals)
           .set(safeUpdates)
-          .where(and(eq(deals.tenantId, tenantId), inArray(deals.id, dealIds)));
+          .where(and(eq(deals.tenantId, tenantId), inArray(deals.id, dealIds)))
+          .returning({ id: deals.id });
 
-        log.info(`Bulk updated ${dealIds.length} deals by user ${userId}`);
+        const outcome = summariseBulkWrite(
+          dealIds,
+          updated.map((row) => row.id),
+          'deal',
+          'updated',
+        );
+        log.info(`Bulk updated ${outcome.affectedCount} deals by user ${userId}`);
         res.json({
-          message: `Successfully updated ${dealIds.length} deals`,
-          updatedCount: dealIds.length,
+          message: outcome.message,
+          updatedCount: outcome.affectedCount,
+          notFound: outcome.notFound,
         });
       } catch (error: any) {
         log.error('Failed to bulk update deals:', error);
@@ -160,17 +172,25 @@ export function registerCrmBulkRoutes(app: Express) {
 
         safeUpdates.updatedAt = new Date();
 
-        await db
+        const updated = await db
           .update(businessRecords)
           .set(safeUpdates)
           .where(
             and(eq(businessRecords.tenantId, tenantId), inArray(businessRecords.id, recordIds)),
-          );
+          )
+          .returning({ id: businessRecords.id });
 
-        log.info(`Bulk updated ${recordIds.length} business records by user ${userId}`);
+        const outcome = summariseBulkWrite(
+          recordIds,
+          updated.map((row) => row.id),
+          'record',
+          'updated',
+        );
+        log.info(`Bulk updated ${outcome.affectedCount} business records by user ${userId}`);
         res.json({
-          message: `Successfully updated ${recordIds.length} records`,
-          updatedCount: recordIds.length,
+          message: outcome.message,
+          updatedCount: outcome.affectedCount,
+          notFound: outcome.notFound,
         });
       } catch (error: any) {
         log.error('Failed to bulk update records:', error);
@@ -198,14 +218,22 @@ export function registerCrmBulkRoutes(app: Express) {
           return res.status(400).json({ message: 'Validation failed' });
         }
 
-        await db
+        const deleted = await db
           .delete(deals)
-          .where(and(eq(deals.tenantId, tenantId), inArray(deals.id, parsed.data.dealIds)));
+          .where(and(eq(deals.tenantId, tenantId), inArray(deals.id, parsed.data.dealIds)))
+          .returning({ id: deals.id });
 
-        log.info(`Bulk deleted ${parsed.data.dealIds.length} deals by user ${userId}`);
+        const outcome = summariseBulkWrite(
+          parsed.data.dealIds,
+          deleted.map((row) => row.id),
+          'deal',
+          'deleted',
+        );
+        log.info(`Bulk deleted ${outcome.affectedCount} deals by user ${userId}`);
         res.json({
-          message: `Successfully deleted ${parsed.data.dealIds.length} deals`,
-          deletedCount: parsed.data.dealIds.length,
+          message: outcome.message,
+          deletedCount: outcome.affectedCount,
+          notFound: outcome.notFound,
         });
       } catch (error: any) {
         log.error('Failed to bulk delete deals:', error);

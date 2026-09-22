@@ -37,6 +37,7 @@ import { useToast } from '@/hooks/use-toast';
 import { apiRequest, extractRecords } from '@/lib/queryClient';
 import type { JournalEntry } from '@shared/schema';
 import { todayLocalDate } from '@/lib/date-utils';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 // Form schema for journal entries
 const journalEntrySchema = z
@@ -64,6 +65,7 @@ export default function JournalEntries() {
   const [editingEntry, setEditingEntry] = useState<JournalEntry | null>(null);
   const [viewingEntry, setViewingEntry] = useState<JournalEntry | null>(null);
   const { toast } = useToast();
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
 
   const { data: entries = [], isLoading } = useQuery({
@@ -194,10 +196,10 @@ export default function JournalEntries() {
     }
   };
 
-  const handleDelete = (entry: JournalEntry) => {
-    if (confirm(`Are you sure you want to delete journal entry ${entry.entryNumber}?`)) {
-      deleteEntryMutation.mutate(entry.id);
-    }
+  const handleDelete = async (entry: JournalEntry) => {
+    const ok = await confirm({ title: `Delete journal entry ${entry.entryNumber}?` });
+    if (!ok) return;
+    deleteEntryMutation.mutate(entry.id);
   };
 
   const getStatusColor = (status: string) => {

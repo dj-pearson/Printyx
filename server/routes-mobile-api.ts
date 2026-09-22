@@ -319,98 +319,29 @@ router.get('/api/service-dispatch', async (req: any, res) => {
 // recordId === 'stats' and its comment names both /stats and /stats/overview.
 
 // ─── Mobile Time Tracking & Status ─────────────────────────────────────
-
-/**
- * POST /api/mobile/time-tracking/start
- * Start time tracking for a service ticket
- */
-router.post('/api/mobile/time-tracking/start', async (req: any, res) => {
-  try {
-    const tenantId = getTenantId(req);
-    const userId = getUserId(req);
-    if (!tenantId || !userId) return res.status(401).json({ message: 'Authentication required' });
-
-    const { ticketId } = req.body;
-    if (!ticketId) return res.status(400).json({ message: 'ticketId is required' });
-
-    // Update the ticket status to in-progress
-    await db
-      .update(serviceTickets)
-      .set({
-        status: 'in-progress',
-        assignedTechnicianId: userId,
-        updatedAt: new Date(),
-      })
-      .where(and(eq(serviceTickets.id, ticketId), eq(serviceTickets.tenantId, tenantId)));
-
-    res.json({ success: true, startedAt: new Date().toISOString() });
-  } catch (error: any) {
-    log.error('Error starting time tracking:', error);
-    res.status(500).json({ message: 'Failed to start time tracking' });
-  }
-});
-
-/**
- * POST /api/mobile/time-tracking/stop
- * Stop time tracking for a service ticket
- */
-router.post('/api/mobile/time-tracking/stop', async (req: any, res) => {
-  try {
-    const tenantId = getTenantId(req);
-    const userId = getUserId(req);
-    if (!tenantId || !userId) return res.status(401).json({ message: 'Authentication required' });
-
-    const { ticketId } = req.body;
-    if (!ticketId) return res.status(400).json({ message: 'ticketId is required' });
-
-    // Update the ticket
-    await db
-      .update(serviceTickets)
-      .set({ updatedAt: new Date() })
-      .where(and(eq(serviceTickets.id, ticketId), eq(serviceTickets.tenantId, tenantId)));
-
-    res.json({ success: true, stoppedAt: new Date().toISOString() });
-  } catch (error: any) {
-    log.error('Error stopping time tracking:', error);
-    res.status(500).json({ message: 'Failed to stop time tracking' });
-  }
-});
-
-/**
- * POST /api/mobile/service-tickets/:ticketId/status
- * Update service ticket status from mobile
- */
-router.post('/api/mobile/service-tickets/:ticketId/status', async (req: any, res) => {
-  try {
-    const tenantId = getTenantId(req);
-    const userId = getUserId(req);
-    if (!tenantId || !userId) return res.status(401).json({ message: 'Authentication required' });
-
-    const { ticketId } = req.params;
-    const { status } = req.body;
-
-    if (!status) return res.status(400).json({ message: 'status is required' });
-
-    const updateData: any = {
-      status,
-      updatedAt: new Date(),
-    };
-
-    if (status === 'completed') {
-      updateData.resolvedAt = new Date();
-    }
-
-    await db
-      .update(serviceTickets)
-      .set(updateData)
-      .where(and(eq(serviceTickets.id, ticketId), eq(serviceTickets.tenantId, tenantId)));
-
-    res.json({ success: true, status });
-  } catch (error: any) {
-    log.error('Error updating ticket status:', error);
-    res.status(500).json({ message: 'Failed to update ticket status' });
-  }
-});
+//
+// PROD-008: the three handlers that were here are GONE, and
+// /api/mobile/time-tracking and /api/mobile/service-tickets are scoped
+// crmProxies entries now, so dev and production run the one implementation in
+// supabase/functions/mobile/. They had to move rather than be copied, because
+// the edge function served none of them - the React Native field-service screen
+// worked on a developer machine and 404'd on every technician's phone.
+//
+// What the Express versions did, recorded because the port is a fix rather than
+// a move:
+//   start  set the ticket to 'in-progress' WITH A HYPHEN, which WF-V-05's CHECK
+//          constraint refuses, and wrote assigned_technician_id = caller with no
+//          scope check - any tenant member could take any ticket by pressing
+//          Start.
+//   stop   bumped updated_at and answered { stoppedAt }. No session was closed
+//          and no duration was recorded: the technician was told the timer had
+//          stopped and nothing stored any time.
+//   status passed the body through unvalidated, so anything outside the
+//          vocabulary was a 23514 reported as a generic failure.
+//
+// /api/mobile/dashboard and /api/mobile/jobs/:jobId are still Express-only and
+// are NOT proxied - see server/routes-registry.ts, and AUDIT-033 for the
+// dashboard, which is a fixture on both hosts.
 
 export default router;
 

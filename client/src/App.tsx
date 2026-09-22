@@ -1,6 +1,7 @@
 import { Switch, Route } from 'wouter';
 import { queryClient } from './lib/queryClient';
 import { QueryClientProvider } from '@tanstack/react-query';
+import { ConfirmDialogProvider } from '@/components/ui/confirm-dialog';
 import React from 'react';
 import { useLocation } from 'wouter';
 import { SEOProvider } from '@/lib/seo/SEOProvider';
@@ -170,6 +171,10 @@ const WorkflowBuilderPage = React.lazy(() => import('@/pages/workflows/WorkflowB
 const WorkflowDetailPage = React.lazy(() => import('@/pages/workflows/WorkflowDetailPage'));
 const WorkflowStepPage = React.lazy(() => import('@/pages/workflows/WorkflowStepPage'));
 const CrmDealsPage = React.lazy(() => import('@/pages/CrmDealsPage'));
+const CompetitiveIntelligence = React.lazy(() => import('@/pages/CompetitiveIntelligence'));
+const SalesPlaybooks = React.lazy(() => import('@/pages/SalesPlaybooks'));
+const OpportunityRadar = React.lazy(() => import('@/pages/OpportunityRadar'));
+const SalesTerritories = React.lazy(() => import('@/pages/SalesTerritories'));
 const CrmLeadsPage = React.lazy(() => import('@/pages/CrmLeadsPage'));
 const CrmContactsPage = React.lazy(() => import('@/pages/CrmContactsPage'));
 const ContactDetail = React.lazy(() => import('@/pages/ContactDetail'));
@@ -722,8 +727,13 @@ function Router() {
                     />
                   )}
                 </Route>
-                <Route path="/today" component={TodayDashboard} />
-                <Route path="/dashboard/today" component={TodayDashboard} />
+                {/* COP-B01 AC1: one canonical path for the workspace. The two
+                    paths it shipped under REDIRECT rather than render - two URLs
+                    serving one page is the sprawl COP-E04 is about, and a
+                    bookmark should land somewhere that stays. */}
+                <Route path="/crm/my-day" component={TodayDashboard} />
+                <Route path="/today">{() => <LegacyRedirect to="/crm/my-day" />}</Route>
+                <Route path="/dashboard/today">{() => <LegacyRedirect to="/crm/my-day" />}</Route>
                 {/* CRM */}
                 {/* COP-E04: /crm/deals is the canonical deals path. The legacy
                     /deals, /deals-management and /opportunities paths redirect
@@ -737,6 +747,14 @@ function Router() {
                 <Route path="/crm/contacts" component={CrmContactsPage} />
                 <Route path="/crm/contacts/:id" component={ContactDetail} />
                 <Route path="/crm/companies" component={CrmCompaniesPage} />
+                {/* COP-B10: competitive knockout intelligence. */}
+                <Route path="/competitors" component={CompetitiveIntelligence} />
+                {/* COP-B13: copier sales playbooks. */}
+                <Route path="/playbooks" component={SalesPlaybooks} />
+                {/* COP-B04: the installed-base opportunity radar. */}
+                <Route path="/opportunity-radar" component={OpportunityRadar} />
+                {/* COP-B09: territories. */}
+                <Route path="/territories" component={SalesTerritories} />
                 <Route path="/leads" component={LeadsPage} />
                 <Route path="/prospects" component={ProspectsPage} />
                 <Route path="/customers" component={CustomersPage} />
@@ -1397,41 +1415,47 @@ function App() {
           <AccessibilityProvider>
             <LiveRegionProvider>
               <TooltipProvider>
-                <PWAProvider>
-                  <SEOProvider>
-                    <SkipNavigation />
-                    <Toaster />
-                    <CookieConsent />
-                    <ErrorBoundary
-                      level="critical"
-                      onError={(error, errorInfo) => {
-                        // Log to console in development, send to monitoring in production
-                        console.error('[App Error Boundary]', error, errorInfo);
-                      }}
-                    >
-                      <React.Suspense
-                        fallback={
-                          <div
-                            className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100"
-                            role="status"
-                            aria-busy="true"
-                            aria-label="Loading application"
-                          >
-                            <div className="text-center">
-                              <div
-                                className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"
-                                aria-hidden="true"
-                              />
-                              <p className="mt-4 text-gray-600">Loading...</p>
-                            </div>
-                          </div>
-                        }
+                {/* UI-BROWSER-DIALOGS-001: inside TooltipProvider so the dialog
+                    inherits the app's theme and portal container, and ABOVE the
+                    router so a confirm survives the navigation a destructive
+                    action often triggers. */}
+                <ConfirmDialogProvider>
+                  <PWAProvider>
+                    <SEOProvider>
+                      <SkipNavigation />
+                      <Toaster />
+                      <CookieConsent />
+                      <ErrorBoundary
+                        level="critical"
+                        onError={(error, errorInfo) => {
+                          // Log to console in development, send to monitoring in production
+                          console.error('[App Error Boundary]', error, errorInfo);
+                        }}
                       >
-                        <Router />
-                      </React.Suspense>
-                    </ErrorBoundary>
-                  </SEOProvider>
-                </PWAProvider>
+                        <React.Suspense
+                          fallback={
+                            <div
+                              className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100"
+                              role="status"
+                              aria-busy="true"
+                              aria-label="Loading application"
+                            >
+                              <div className="text-center">
+                                <div
+                                  className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"
+                                  aria-hidden="true"
+                                />
+                                <p className="mt-4 text-gray-600">Loading...</p>
+                              </div>
+                            </div>
+                          }
+                        >
+                          <Router />
+                        </React.Suspense>
+                      </ErrorBoundary>
+                    </SEOProvider>
+                  </PWAProvider>
+                </ConfirmDialogProvider>
               </TooltipProvider>
             </LiveRegionProvider>
           </AccessibilityProvider>

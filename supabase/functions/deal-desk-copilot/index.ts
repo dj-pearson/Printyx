@@ -22,6 +22,7 @@ import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { generateCompletion } from '../_shared/anthropic.ts';
 import { fetchAllRows } from '../_shared/paged-select.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { ROLE_LEVEL, RbacError, requireRoleLevel } from '../_shared/rbac.ts';
 
 type SB = ReturnType<typeof createSupabaseServiceClient>;
 
@@ -551,7 +552,35 @@ export default async function handler(req: Request) {
       if (req.method === 'GET') {
         return createCorsResponse(await getOrCreateSettings(admin, tenantId), 200, req);
       }
+      /**
+       * SEC-EDGE-001: `gp_floor_pct` IS THE THRESHOLD THAT DECIDES WHO NEEDS
+       * APPROVAL, so the person it constrains could move it.
+       *
+       * The copilot renders inside the quote builder (QuoteBuilderPage), which
+       * every rep uses, so a function-level gate would take the whole feature
+       * away from its users - the reads below are a rep's own analysis of
+       * their own quote. This one branch is different: lowering the gross
+       * profit floor is how a margin that should have gone to the deal desk
+       * stops being flagged, which is QUOTE-006's guardrail being edited by
+       * the party it exists to check.
+       *
+       * Gated at MANAGER, and no client calls it today, so this closes the
+       * door before a settings screen opens it.
+       */
       if (req.method === 'PUT') {
+        try {
+          requireRoleLevel(user, ROLE_LEVEL.MANAGER);
+        } catch (err) {
+          if (!(err instanceof RbacError)) throw err;
+          return createCorsResponse(
+            {
+              error: 'Manager role required to change the gross profit floor',
+              code: 'INSUFFICIENT_ROLE',
+            },
+            403,
+            req,
+          );
+        }
         const body = await req.json().catch(() => ({}));
         const raw = body?.gpFloorPct ?? body?.gp_floor_pct;
         if (raw !== undefined) {

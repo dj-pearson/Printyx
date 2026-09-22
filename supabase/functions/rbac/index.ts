@@ -3,6 +3,11 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { RBAC_SEED_TEMPLATES, buildRbacSeedPlan } from '../../../shared/rbac-seed.ts';
+import { writeAuditLog } from '../_shared/audit-log.ts';
+
+/** COMPANY_ADMIN in migration 0072's catalogue. */
+const COMPANY_ADMIN_LEVEL = 7;
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 
 export default async function handler(req: Request) {
@@ -194,18 +199,34 @@ export default async function handler(req: Request) {
       return createCorsResponse({ hasPermission, permission }, 200, req);
     }
 
-    // GET /rbac/audit-logs - Get RBAC audit logs
+    /**
+     * GET /rbac/audit-logs
+     *
+     * This read the same phantom table the assignment above used to write, and
+     * DISCARDED its error - so it answered `[]` at 200 on a 42P01, which on a
+     * role-management screen reads as "nobody has changed anyone's access"
+     * rather than as an audit trail that does not exist. `audit_logs` is the
+     * real one, and its timestamp column is `timestamp`, not `created_at`
+     * (COP-M01) - ordering by the wrong name would have been a 42703 on the
+     * correct table.
+     */
     if (req.method === 'GET' && endpoint === 'audit-logs') {
-      const limit = parseInt(url.searchParams.get('limit') || '100');
+      const limit = Math.min(parseInt(url.searchParams.get('limit') || '100', 10) || 100, 200);
 
-      const { data: logs } = await admin
-        .from('rbac_audit_log')
+      const { data: logs, error } = await admin
+        .from('audit_logs')
         .select('*')
         .eq('tenant_id', tenantId)
-        .order('created_at', { ascending: false })
+        .eq('category', 'authorization')
+        .order('timestamp', { ascending: false })
         .limit(limit);
 
-      return createCorsResponse(logs || [], 200, req);
+      if (error) {
+        console.error('Error fetching rbac audit logs:', error);
+        return createCorsResponse({ error: 'Failed to fetch audit logs' }, 500, req);
+      }
+
+      return createCorsResponse(logs ?? [], 200, req);
     }
 
     // POST /rbac/assign-role - Assign role to user (admin only)
@@ -250,15 +271,27 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to assign role' }, 500, req);
       }
 
-      // Log the assignment
-      await admin.from('rbac_audit_log').insert({
-        tenant_id: tenantId,
-        user_id: user.id,
-        action: 'role_assigned',
-        target_user_id: targetUserId,
-        new_role_id: roleId,
-        created_at: new Date().toISOString(),
-      });
+      // `rbac_audit_log` is a table in no schema and no migration - it has sat
+      // in docs/phantom-tables-baseline.json against this file all along - and
+      // this insert did not destructure its result, so every role assignment
+      // succeeded with its audit entry silently going nowhere. `audit_logs` is
+      // real and _shared/audit-log.ts is its one writer (round 106); it never
+      // throws, because a grant that cannot be made when the log is down is
+      // worse than a gap in the log, and the gap is the visible one.
+      await writeAuditLog(
+        admin,
+        {
+          tenantId,
+          userId: user.id,
+          action: 'role_assigned',
+          resource: 'user_role',
+          resourceId: targetUserId,
+          newValues: { roleId },
+          severity: 'high',
+          category: 'authorization',
+        },
+        req,
+      );
 
       return createCorsResponse({ success: true, message: 'Role assigned' }, 200, req);
     }
@@ -346,26 +379,151 @@ export default async function handler(req: Request) {
       );
     }
 
-    // POST /rbac/seed - NOT PORTED YET.
-    //
-    // Express seeds an organizational unit plus a full role set that varies by
-    // dealerType - roughly 160 lines of literal role definitions with hierarchy
-    // levels and departments. It is mechanical to port but it decides what
-    // permissions a tenant's roles carry, so a transcription slip would hand
-    // someone the wrong access. It gets its own pass rather than a rushed one,
-    // and it is a one-time initialisation that dev can still run through
-    // Express in the meantime.
+    /**
+     * POST /rbac/seed - the only way out of `initialized: false`.
+     *
+     * The Express original could never have run: it omitted lft/rght/depth,
+     * organizational_tier and created_by (all NOT NULL with no default),
+     * wrote 'COMPANY'/'INDIVIDUAL' into an enum whose members are
+     * level_1..level_8, and named four role codes migration 0072's catalogue
+     * does not carry. shared/rbac-seed.ts derives all of that instead.
+     *
+     * GATED ON THE GLOBAL `roles` LEVEL, not on enhanced_roles. A tenant
+     * reaching this endpoint has no enhanced_roles row by definition - that
+     * is the condition it exists to fix - so gating on one is circular and
+     * would let whichever member clicked first take the top role. The level
+     * on `users.roles` is what signup grants the tenant's creator, and it is
+     * the same source `assign-role` above already trusts.
+     */
     if (req.method === 'POST' && endpoint === 'seed') {
+      const { data: callerRole } = await admin
+        .from('users')
+        .select('roles!inner(level)')
+        .eq('id', user.id)
+        .eq('tenant_id', tenantId)
+        .single();
+
+      // deno-lint-ignore no-explicit-any
+      const callerLevel = (callerRole?.roles as any)?.level ?? 0;
+      if (callerLevel < COMPANY_ADMIN_LEVEL) {
+        return createCorsResponse(
+          {
+            error: 'Initializing role management requires a company administrator',
+            code: 'INSUFFICIENT_ROLE',
+          },
+          403,
+          req,
+        );
+      }
+
+      const body = await req.json().catch(() => ({}));
+      const dealerType = body.dealerType || body.dealer_type || 'standard';
+      const templates = RBAC_SEED_TEMPLATES[dealerType];
+      if (!templates) {
+        return createCorsResponse(
+          { error: `Unknown dealer type: ${dealerType}`, code: 'UNKNOWN_DEALER_TYPE' },
+          400,
+          req,
+        );
+      }
+
+      // Idempotent: a second call must not stack a duplicate hierarchy on a
+      // tenant that already has one.
+      const { count: existing } = await admin
+        .from('enhanced_roles')
+        .select('id', { count: 'exact', head: true })
+        .eq('tenant_id', tenantId);
+
+      if ((existing ?? 0) > 0) {
+        return createCorsResponse(
+          {
+            error: 'Role management is already initialized for this tenant',
+            code: 'ALREADY_SEEDED',
+          },
+          409,
+          req,
+        );
+      }
+
+      const { data: catalogue, error: catalogueError } = await admin
+        .from('roles')
+        .select('code, level, role_type')
+        .in(
+          'code',
+          templates.map((t) => t.code),
+        );
+
+      if (catalogueError) {
+        console.error('Error reading role catalogue:', catalogueError);
+        return createCorsResponse({ error: 'Failed to read the role catalogue' }, 500, req);
+      }
+
+      const plan = buildRbacSeedPlan({
+        tenantId,
+        userId: user.id,
+        dealerType,
+        catalogue: catalogue ?? [],
+      });
+
+      if (plan.error) {
+        // A missing catalogue code is the signup MISSING_ADMIN_ROLE case:
+        // the chain has not been applied, and inventing a level here would
+        // hand out access nobody granted.
+        return createCorsResponse(
+          { error: plan.error, code: 'ROLE_CATALOGUE_INCOMPLETE' },
+          503,
+          req,
+        );
+      }
+
+      const { error: unitError } = await admin.from('organizational_units').insert(plan.unit);
+      if (unitError) {
+        console.error('Error creating organizational unit:', unitError);
+        return createCorsResponse({ error: 'Failed to create the company unit' }, 500, req);
+      }
+
+      const { error: rolesError } = await admin.from('enhanced_roles').insert(plan.roles);
+      if (rolesError) {
+        console.error('Error creating roles:', rolesError);
+        // Leave nothing half-built: without roles the unit is an orphan the
+        // next attempt would trip over, since this endpoint refuses twice.
+        const { error: cleanupError } = await admin
+          .from('organizational_units')
+          .delete()
+          .eq('id', plan.unit.id)
+          .eq('tenant_id', tenantId);
+        return createCorsResponse(
+          {
+            error: 'Failed to create the default roles',
+            // A cleanup that itself failed leaves the unit behind, and the
+            // next attempt refuses on it - so the caller has to be told
+            // rather than left to rediscover it as ALREADY_SEEDED.
+            ...(cleanupError
+              ? { warning: 'The company unit could not be removed and must be deleted by hand' }
+              : {}),
+          },
+          500,
+          req,
+        );
+      }
+
+      const { error: assignmentError } = await admin
+        .from('user_role_assignments')
+        .insert(plan.assignment);
+
+      // The assignment is reported rather than rolled back: the hierarchy is
+      // the thing the page needs, and a caller who can seed can assign.
       return createCorsResponse(
         {
-          error: 'RBAC seeding is not available on the edge function yet',
-          code: 'RBAC_SEED_NOT_PORTED',
-          details:
-            'server/routes-enhanced-rbac.ts POST /seed creates the default organizational unit ' +
-            'and the per-dealerType role set. Porting it verbatim matters more than porting it ' +
-            'quickly, because the seeded roles define tenant permissions.',
+          message: 'Role management initialized',
+          dealerType,
+          rolesCreated: plan.roles.length,
+          userAssigned: assignmentError ? null : plan.primaryRoleId,
+          ...(assignmentError
+            ? { warning: 'Roles were created but your own assignment could not be written' }
+            : {}),
         },
-        501,
+        200,
         req,
       );
     }

@@ -230,12 +230,11 @@ export default function QuoteProposalGeneration() {
     // DoD Validation: Check if quote is ready for proposal creation
     if (data.quoteId) {
       try {
-        const validation = await fetch(`/api/validate/quote-to-proposal/${data.quoteId}`, {
-          headers: {
-            'x-tenant-id': localStorage.getItem('currentTenantId') || '',
-          },
-        });
-        const validationResult = await validation.json();
+        // PROD-013 + AUDIT-001: see ProposalBuilder - the same bare fetch and
+        // the same caller-chosen tenant header, both replaced by apiRequest.
+        const validationResult = await apiRequest(
+          `/api/validate/quote-to-proposal/${data.quoteId}`,
+        );
 
         if (!validationResult.valid) {
           toast({

@@ -1,10 +1,42 @@
 // Technician Management Edge Function
 // Handles technician profiles, skills, and availability
+//
+// ROW-SCOPED IS NOT GATED (SEC-EDGE-001 AC4, round 92). The roster READ narrows
+// to the caller through technicians.user_id (WF-R-07), and check:edge-rbac
+// therefore files this function as row-scoped - which is a statement about
+// which rows you can see, and says nothing about whether you may write. All
+// five writes here - creating a technician, editing one, adding a skill,
+// setting availability, and DELETING a record - had no role check at all.
+//
+// The predecessor inventory this round built is what surfaced it:
+// server/routes-technician-management.ts gates exactly these on
+// PERMISSIONS.SERVICE.TECHNICIAN.MANAGE while its reads take .VIEW, and that
+// code IS seeded, so the split was deliberate and satisfiable rather than one
+// of SEC-EDGE-002's unsatisfiable gates. That router is still mounted and the
+// prefix is NOT proxied, so dev has been the safe host and production the open
+// one - the dev/prod split running in its worse direction.
+//
+// SUPERVISOR mirrors /technician-management in navigation-permissions.ts
+// (minLevel 3, service.schedule.manage) and matches the Express intent, so it
+// constrains nobody who can already open the page. Reads stay open: row
+// scoping is the right control for a roster and the gate belongs on the branch
+// that changes it.
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { fetchAllRows } from '../_shared/paged-select.ts';
+import {
+  TERMINAL_TICKET_STATUSES,
+  bucketTicketCounts,
+  toRosterRow,
+  type TechnicianRow,
+  type TicketRow,
+} from '../../../shared/technician-roster.ts';
 import { applyUserScope, resolveScope } from '../_shared/scope.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { startOfNextUtcDay, startOfUtcDay } from '../_shared/date-months.ts';
+import { buildTechnicianSchedule } from '../_shared/technician-schedule.ts';
+import { ROLE_LEVEL, RbacError, requireRoleLevel, type AuthContext } from '../_shared/rbac.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -31,8 +63,50 @@ export default async function handler(req: Request) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
     }
 
+    const requireSupervisor = () =>
+      requireRoleLevel(
+        {
+          userId: user.id,
+          tenantId,
+          email: user.email,
+          jwt: jwt ?? '',
+          supabaseUser: user,
+        } as AuthContext,
+        ROLE_LEVEL.SUPERVISOR,
+      );
+
+    // Only an RbacError is a role refusal; anything else is rethrown so a
+    // database outage does not read as "your role is too low".
+    const denySupervisor = (err: unknown) => {
+      if (!(err instanceof RbacError)) throw err;
+      return createCorsResponse(
+        {
+          error: 'Changing the technician roster requires a supervisor role',
+          code: 'INSUFFICIENT_ROLE',
+          details: err.details,
+        },
+        403,
+        req,
+      );
+    };
+
     const url = new URL(req.url);
-    const { parts } = normalizePath(url.pathname, 'technician-management');
+    const { parts: rawParts } = normalizePath(url.pathname, 'technician-management');
+
+    // STRIP AN OPTIONAL LEADING `technicians` SEGMENT.
+    //
+    // Every caller in every client tree asks for exactly three paths -
+    // /technician-management/technicians, /technicians/${id} and /dashboard -
+    // and this function routed NONE of them: its list branch is the bare path,
+    // so `technicians` was read as a technician id and the roster 404'd in
+    // production on every load, while Express (the prefix is not proxied)
+    // served it in dev. The branches below, written against /:id and
+    // /:id/skills, were therefore unreachable from any client.
+    //
+    // Stripping the segment rather than renaming the branches keeps both
+    // spellings working, which is the same idiom normalizePath applies to the
+    // function name and `signatures` applies to its legacy `signature-` prefix.
+    const parts = rawParts[0] === 'technicians' ? rawParts.slice(1) : rawParts;
     const techId = parts[0];
     const subResource = parts[1];
 
@@ -85,7 +159,42 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to fetch technicians' }, 500, req);
       }
 
-      return createCorsResponse(technicians || [], 200, req);
+      // Project into the shape the page reads, and bucket the two ticket
+      // counts beside it. The raw row carries first_name/skills/is_active,
+      // which the page does not read, so every cell was blank on this host.
+      const rows = (technicians || []) as TechnicianRow[];
+      const ids = rows.map((r) => r.id).filter((id): id is string => !!id);
+
+      let counts = new Map<string, { activeTickets: number; completedThisMonth: number }>();
+      if (ids.length > 0) {
+        const now = new Date();
+        const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+        // ONE fetch of the rows that can possibly count - open tickets plus
+        // this month's completions - rather than two head counts per
+        // technician, which is the N+1 AUDIT-007 removed from the Express side
+        // and which must not come back through the other host. Paged, because
+        // a busy tenant's open tickets exceed PostgREST's default page.
+        // build() must return a FRESH query each page - a PostgREST builder
+        // accumulates filters, so reusing one narrows the result silently.
+        const tickets = await fetchAllRows<TicketRow>(() =>
+          admin
+            .from('service_tickets')
+            .select('assigned_technician_id, status, updated_at')
+            .eq('tenant_id', tenantId)
+            .in('assigned_technician_id', ids)
+            .or(
+              `status.not.in.(${TERMINAL_TICKET_STATUSES.join(',')}),` +
+                `and(status.eq.completed,updated_at.gte.${monthStart.toISOString()})`,
+            ),
+        );
+        counts = bucketTicketCounts(ids, tickets, monthStart);
+      }
+
+      return createCorsResponse(
+        rows.map((r) => toRosterRow(r, r.id ? counts.get(r.id) : undefined)),
+        200,
+        req,
+      );
     }
 
     // GET /technician-management/available - Get available technicians
@@ -103,6 +212,80 @@ export default async function handler(req: Request) {
       const { data: technicians } = await query;
 
       return createCorsResponse(technicians || [], 200, req);
+    }
+
+    // GET /technician-management/dashboard - roster counts for the stat cards
+    //
+    // This branch did not exist, and the prefix is not proxied, so
+    // TechnicianManagement.tsx's four cards were served by
+    // server/routes-technician-management.ts in dev and by nothing in
+    // production: the page 404'd there and the cards stayed empty. Sits ABOVE
+    // the /:id branches, which makes 'dashboard' a reserved technician id -
+    // free, because these are uuids.
+    //
+    // THE COUNTS CARRY THE SAME SCOPE AS THE ROSTER BELOW THEM. The list
+    // applies applyUserScope on technicians.user_id (WF-R-07), so counting on
+    // tenant alone would tell a supervisor "24 technicians" above a list of
+    // four - a real count of a set the page does not show, which is harder to
+    // spot than an invented number because both figures are true of something
+    // (COP-I01, CRM-008 AC6).
+    if (req.method === 'GET' && techId === 'dashboard' && !subResource) {
+      const scope = await resolveScope(admin, {
+        userId: user.id,
+        tenantId,
+        appMetadata: user.app_metadata,
+        requestedScope: url.searchParams.get('scope'),
+      });
+
+      const countOf = async (filters: (q: any) => any) => {
+        let q = admin
+          .from('technicians')
+          .select('id', { count: 'exact', head: true })
+          .eq('tenant_id', tenantId);
+        q = applyUserScope(q, 'user_id', scope);
+        const { count, error } = await filters(q);
+        if (error) {
+          console.error('Error counting technicians:', error);
+          return null;
+        }
+        return count ?? 0;
+      };
+
+      const [total, active, available, busy] = await Promise.all([
+        countOf((q: any) => q),
+        countOf((q: any) => q.eq('is_active', true)),
+        countOf((q: any) => q.eq('is_active', true).eq('is_available', true)),
+        countOf((q: any) => q.eq('is_active', true).eq('is_available', false)),
+      ]);
+
+      // A read that FAILED is null, not 0: a zeroed roster card says the dealer
+      // employs no technicians, which is a measurement rather than an absence
+      // of one. The page renders an em dash for null.
+      const degraded = [
+        total === null && 'totalTechnicians',
+        active === null && 'activeTechnicians',
+        available === null && 'availableTechnicians',
+        busy === null && 'busyTechnicians',
+      ].filter(Boolean);
+
+      return createCorsResponse(
+        {
+          totalTechnicians: total,
+          activeTechnicians: active,
+          availableTechnicians: available,
+          busyTechnicians: busy,
+          // Utilisation is busy over ACTIVE, and it is null when nothing is
+          // active - 0% would claim a fully idle crew where the honest answer
+          // is that there is no crew to be idle.
+          utilizationRate:
+            active === null || busy === null || active === 0 ? null : (busy / active) * 100,
+          scopeTier: scope.tier,
+          coversWholeTenant: scope.tier === 'tenant',
+          ...(degraded.length > 0 ? { degraded } : {}),
+        },
+        200,
+        req,
+      );
     }
 
     // GET /technician-management/:id - Get single technician
@@ -152,6 +335,12 @@ export default async function handler(req: Request) {
 
     // POST /technician-management - Create technician
     if (req.method === 'POST' && !techId) {
+      try {
+        requireSupervisor();
+      } catch (err) {
+        return denySupervisor(err);
+      }
+
       const body = await req.json();
 
       // Six of this payload's names were phantom: full_name, status,
@@ -216,6 +405,12 @@ export default async function handler(req: Request) {
 
     // PUT /technician-management/:id - Update technician
     if (req.method === 'PUT' && techId && !subResource) {
+      try {
+        requireSupervisor();
+      } catch (err) {
+        return denySupervisor(err);
+      }
+
       const body = await req.json();
 
       const { data: technician, error } = await admin
@@ -250,6 +445,12 @@ export default async function handler(req: Request) {
 
     // POST /technician-management/:id/skills - Add skill
     if (req.method === 'POST' && techId && subResource === 'skills') {
+      try {
+        requireSupervisor();
+      } catch (err) {
+        return denySupervisor(err);
+      }
+
       const body = await req.json();
 
       const { data: skill, error } = await admin
@@ -273,25 +474,120 @@ export default async function handler(req: Request) {
 
     // GET /technician-management/:id/schedule - Get technician schedule
     if (req.method === 'GET' && techId && subResource === 'schedule') {
+      /**
+       * WF-V-07. This read `work_orders`, a table in no schema, no migration and
+       * no database export here, and discarded the error into `schedule || []` -
+       * so every technician's schedule was a permanent empty list at 200. See
+       * _shared/technician-schedule.ts for why the three real tables cannot be
+       * queried with the id this route receives.
+       */
+      const { data: technician } = await admin
+        .from('technicians')
+        .select('id, user_id')
+        .eq('id', techId)
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+
+      if (!technician) {
+        return createCorsResponse({ error: 'Technician not found' }, 404, req);
+      }
+
+      // A contractor with no login cannot be the subject of any of these three
+      // columns, so an empty list would be a claim about their week rather than
+      // about what can be looked up.
+      if (!technician.user_id) {
+        return createCorsResponse(
+          {
+            items: [],
+            degraded: [],
+            unbacked: [
+              'This technician has no linked user account, and all three schedule ' +
+                'tables key the assignee on users.id, so nothing can be matched to them.',
+            ],
+          },
+          200,
+          req,
+        );
+      }
+
+      const userId = technician.user_id as string;
       const startDate = url.searchParams.get('startDate');
       const endDate = url.searchParams.get('endDate');
 
-      let query = admin
-        .from('work_orders')
-        .select('*')
-        .eq('assigned_technician_id', techId)
-        .order('scheduled_date', { ascending: true });
+      /**
+       * scheduled_date is a timestamp holding a CALENDAR DATE (DATE-LOCAL-002),
+       * so the bounds are snapped to day boundaries - an upper bound carrying a
+       * time of day drops or admits a whole day depending on which way the
+       * operator points. The upper bound is the exclusive next day rather than
+       * 23:59:59, which is a real timestamp a row can exceed.
+       */
+      // Open-ended sentinels rather than a conditional .gte()/.lt(): applying a
+      // bound only sometimes is what pushed this into a helper, and the helper
+      // is what the column checker could not follow. A row outside these is not
+      // a schedule entry.
+      const EPOCH = '1970-01-01T00:00:00.000Z';
+      const FAR_FUTURE = '9999-12-31T00:00:00.000Z';
+      const from = startDate ? startOfUtcDay(new Date(startDate)).toISOString() : null;
+      const to = endDate ? startOfNextUtcDay(new Date(endDate)).toISOString() : null;
 
-      if (startDate) query = query.gte('scheduled_date', startDate);
-      if (endDate) query = query.lte('scheduled_date', endDate);
+      /**
+       * The date bounds are applied INSIDE each chain rather than through a
+       * shared helper. That is not style: check:phantom-cols resolves a column
+       * literal against the table its call chain is on, and a helper taking a
+       * query has no chain of its own - it read `scheduled_date` as a column of
+       * `technicians`, the last .from() before it. equipment-lifecycle's crew
+       * day carries the same note for the same reason. Writing code the checker
+       * cannot follow is how a real 42703 gets through, so the repetition buys
+       * a guard that works.
+       */
+      const [installations, deliveries, tickets] = await Promise.all([
+        admin
+          .from('installation_schedules')
+          .select(
+            'id, scheduled_date, status, customer_id, equipment_id, estimated_duration, installation_notes',
+          )
+          .eq('tenant_id', tenantId)
+          .eq('technician_id', userId)
+          .gte('scheduled_date', from ?? EPOCH)
+          .lt('scheduled_date', to ?? FAR_FUTURE)
+          .order('scheduled_date', { ascending: true }),
+        admin
+          .from('delivery_schedules')
+          .select('id, scheduled_date, status, customer_id, equipment_id, special_instructions')
+          .eq('tenant_id', tenantId)
+          .eq('driver_id', userId)
+          .gte('scheduled_date', from ?? EPOCH)
+          .lt('scheduled_date', to ?? FAR_FUTURE)
+          .order('scheduled_date', { ascending: true }),
+        admin
+          .from('service_tickets')
+          .select(
+            'id, scheduled_date, status, customer_id, equipment_id, estimated_duration, title, description',
+          )
+          .eq('tenant_id', tenantId)
+          .eq('assigned_technician_id', userId)
+          .gte('scheduled_date', from ?? EPOCH)
+          .lt('scheduled_date', to ?? FAR_FUTURE)
+          .order('scheduled_date', { ascending: true }),
+      ]);
 
-      const { data: schedule } = await query;
+      const schedule = buildTechnicianSchedule([
+        { kind: 'installation', rows: installations.error ? null : (installations.data ?? []) },
+        { kind: 'delivery', rows: deliveries.error ? null : (deliveries.data ?? []) },
+        { kind: 'service', rows: tickets.error ? null : (tickets.data ?? []) },
+      ]);
 
-      return createCorsResponse(schedule || [], 200, req);
+      return createCorsResponse(schedule, 200, req);
     }
 
     // POST /technician-management/:id/availability - Update availability
     if (req.method === 'POST' && techId && subResource === 'availability') {
+      try {
+        requireSupervisor();
+      } catch (err) {
+        return denySupervisor(err);
+      }
+
       const body = await req.json();
 
       const { data: technician, error } = await admin
@@ -325,6 +621,12 @@ export default async function handler(req: Request) {
 
     // DELETE /technician-management/:id - Delete technician
     if (req.method === 'DELETE' && techId) {
+      try {
+        requireSupervisor();
+      } catch (err) {
+        return denySupervisor(err);
+      }
+
       const { error } = await admin
         .from('technicians')
         .delete()

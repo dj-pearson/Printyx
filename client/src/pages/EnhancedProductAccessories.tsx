@@ -4,7 +4,6 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Dialog,
@@ -31,7 +30,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Search, Plus, Edit, Link as LinkIcon, Settings } from 'lucide-react';
+import { Search, Edit, Link as LinkIcon } from 'lucide-react';
 import { z } from 'zod';
 import {
   insertProductAccessorySchema,
@@ -41,6 +40,8 @@ import {
   type InsertAccessoryModelCompatibility,
 } from '@shared/schema';
 import { apiRequest } from '@/lib/queryClient';
+import { bulkDelete, bulkDeleteToast } from '@/lib/bulk-delete';
+import { useRecordDialog } from '@/hooks/use-record-dialog';
 import { useToast } from '@/hooks/use-toast';
 import MainLayout from '@/components/layout/main-layout';
 import ManagementToolbar from '@/components/product-management/ManagementToolbar';
@@ -55,10 +56,8 @@ export default function EnhancedProductAccessories() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedManufacturer, setSelectedManufacturer] = useState<string>('all');
   const [selectedType, setSelectedType] = useState<string>('all');
-  const [dialogOpen, setDialogOpen] = useState(false);
   const [compatibilityDialogOpen, setCompatibilityDialogOpen] = useState(false);
   const [selectedAccessory, setSelectedAccessory] = useState<ProductAccessory | null>(null);
-  const [editingAccessory, setEditingAccessory] = useState<ProductAccessory | null>(null);
   const [bulkMode, setBulkMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
@@ -102,6 +101,21 @@ export default function EnhancedProductAccessories() {
     },
   });
 
+  /**
+   * ADD DID NOT CLEAR THE EDIT TARGET. `onAddClick` called `setDialogOpen(true)`
+   * and nothing else, so opening Add after a cancelled Edit left
+   * `editingAccessory` set AND the form still populated - submitting then
+   * PATCHed the row the user had been looking at while the dialog read "Add
+   * New Accessory". Worse than the dead Edit buttons on the sibling pages,
+   * because it looks like a prefilled duplicate and silently edits.
+   *
+   * The mode and the form are reset together by the hook now, so no opening
+   * path can inherit the previous one.
+   */
+  const dialog = useRecordDialog<ProductAccessory>({
+    reset: (row) => (row ? form.reset(row as unknown as AccessoryFormData) : form.reset()),
+  });
+
   const createAccessoryMutation = useMutation({
     mutationFn: async (data: AccessoryFormData) => {
       return await apiRequest('/api/product-accessories', 'POST', data);
@@ -109,8 +123,7 @@ export default function EnhancedProductAccessories() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/product-accessories'] });
       toast({ title: 'Accessory created successfully' });
-      form.reset();
-      setDialogOpen(false);
+      dialog.close();
     },
     onError: (error) => {
       toast({
@@ -123,14 +136,12 @@ export default function EnhancedProductAccessories() {
 
   const updateAccessoryMutation = useMutation({
     mutationFn: async (data: AccessoryFormData) => {
-      return await apiRequest(`/api/product-accessories/${editingAccessory!.id}`, 'PATCH', data);
+      return await apiRequest(`/api/product-accessories/${dialog.editing!.id}`, 'PATCH', data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/product-accessories'] });
       toast({ title: 'Accessory updated successfully' });
-      form.reset();
-      setDialogOpen(false);
-      setEditingAccessory(null);
+      dialog.close();
     },
     onError: (error) => {
       toast({
@@ -199,18 +210,14 @@ export default function EnhancedProductAccessories() {
   });
 
   const onSubmit = (data: AccessoryFormData) => {
-    if (editingAccessory) {
+    if (dialog.isEditing) {
       updateAccessoryMutation.mutate(data);
     } else {
       createAccessoryMutation.mutate(data);
     }
   };
 
-  const handleEditAccessory = (accessory: ProductAccessory) => {
-    setEditingAccessory(accessory);
-    form.reset(accessory);
-    setDialogOpen(true);
-  };
+  const handleEditAccessory = (accessory: ProductAccessory) => dialog.startEdit(accessory);
 
   const handleManageCompatibility = (accessory: ProductAccessory) => {
     setSelectedAccessory(accessory);
@@ -245,15 +252,17 @@ export default function EnhancedProductAccessories() {
 
   const handleBulkDelete = async () => {
     const ids = Array.from(selectedIds);
-    for (const id of ids) {
-      try {
-        await apiRequest(`/api/product-accessories/${id}`, 'DELETE');
-      } catch {}
-    }
+    // Was a loop of `catch {}` followed by `Deleted ${ids.length}` regardless,
+    // so every failure reported as a success - and in production this endpoint
+    // was missing entirely. See client/src/lib/bulk-delete.ts.
+    const outcome = await bulkDelete(ids, (id) =>
+      apiRequest(`/api/product-accessories/${id}`, 'DELETE'),
+    );
     queryClient.invalidateQueries({ queryKey: ['/api/product-accessories'] });
-    setSelectedIds(new Set());
-    setBulkMode(false);
-    toast({ title: 'Deleted', description: `Deleted ${ids.length} accessories` });
+    // Failures stay selected so a retry does not mean finding them again.
+    setSelectedIds(new Set(outcome.failed));
+    if (outcome.failed.length === 0) setBulkMode(false);
+    toast(bulkDeleteToast(outcome, 'accessories'));
   };
 
   if (isLoading) {
@@ -281,7 +290,7 @@ export default function EnhancedProductAccessories() {
           searchPlaceholder="Search accessories..."
           searchTerm={searchTerm}
           onSearchTermChange={setSearchTerm}
-          onAddClick={() => setDialogOpen(true)}
+          onAddClick={dialog.startCreate}
           productTypeForImport="product-accessories"
           bulkMode={bulkMode}
           onToggleBulkMode={() => setBulkMode(!bulkMode)}
@@ -426,14 +435,14 @@ export default function EnhancedProductAccessories() {
         )}
 
         {/* Add/Edit Accessory Dialog */}
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <Dialog {...dialog.dialogProps}>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle data-testid="accessory-dialog-title">
-                {editingAccessory ? 'Edit Accessory' : 'Add New Accessory'}
+                {dialog.isEditing ? 'Edit Accessory' : 'Add New Accessory'}
               </DialogTitle>
               <DialogDescription>
-                {editingAccessory
+                {dialog.isEditing
                   ? 'Update accessory information'
                   : 'Create a new product accessory'}
               </DialogDescription>
@@ -615,7 +624,7 @@ export default function EnhancedProductAccessories() {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => setDialogOpen(false)}
+                    onClick={dialog.close}
                     data-testid="button-cancel"
                   >
                     Cancel
@@ -627,7 +636,7 @@ export default function EnhancedProductAccessories() {
                     }
                     data-testid="button-save"
                   >
-                    {editingAccessory ? 'Update' : 'Create'} Accessory
+                    {dialog.isEditing ? 'Update' : 'Create'} Accessory
                   </Button>
                 </div>
               </form>

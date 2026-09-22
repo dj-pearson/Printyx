@@ -68,6 +68,7 @@ import {
   type EquipmentRow,
 } from './maintenance.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { ROLE_LEVEL, RbacError, requireRoleLevel } from '../_shared/rbac.ts';
 
 type Admin = ReturnType<typeof createSupabaseServiceClient>;
 
@@ -110,8 +111,38 @@ export default async function handler(req: Request) {
         return await embedOne(req, admin, tenantId, user.id, third);
       if (method === 'GET' && second === 'stats') return await stats(admin, tenantId, req);
       if (method === 'GET' && second === 'settings') return await getSettings(admin, tenantId, req);
-      if (method === 'PUT' && second === 'settings')
+      /**
+       * SEC-EDGE-001: A CONSENT RECORD THAT LETS ANYBODY BE THE CONSENTER.
+       *
+       * This endpoint writes `federated_opt_in`, which sends this dealer's
+       * service knowledge into a pool shared with OTHER TENANTS. The row it
+       * writes stores `consentedAt` and `consentedByUserId` - it is built to
+       * record who agreed - and nothing checked that the caller was anyone in
+       * particular, so any technician could opt the whole company into sharing
+       * its data and the audit trail would faithfully name them.
+       *
+       * Everything else under /knowledge-search is a technician's daily work
+       * (searching historical fixes, embedding a ticket) and stays open, which
+       * is why the gate is on this branch rather than on the function.
+       * MANAGER, because the decision is the company's and no seeded
+       * permission code means "share our data outside the tenant".
+       */
+      if (method === 'PUT' && second === 'settings') {
+        try {
+          requireRoleLevel(user, ROLE_LEVEL.MANAGER);
+        } catch (err) {
+          if (!(err instanceof RbacError)) throw err;
+          return createCorsResponse(
+            {
+              error: 'Manager role required to change knowledge federation settings',
+              code: 'INSUFFICIENT_ROLE',
+            },
+            403,
+            req,
+          );
+        }
         return await putSettings(req, admin, tenantId, user.id);
+      }
     }
 
     if (resource === 'proactive-maintenance') {

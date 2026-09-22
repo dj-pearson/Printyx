@@ -8,7 +8,7 @@ import {
   PRINT_FIELDS_WITHOUT_COLUMNS,
   unpersistedFields,
 } from '../_shared/onboarding-config.ts';
-import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { handleCors, createCorsResponse, getCorsHeaders } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 import {
@@ -16,6 +16,27 @@ import {
   UNMAPPED_ONBOARDING_FIELDS,
   type EquipmentLinkResult,
 } from '../_shared/onboarding-equipment-link.ts';
+import {
+  requiresScanToEmail,
+  summariseOidCoverage,
+  type DeviceRef,
+  type OidMappingRow,
+} from '../../../shared/onboarding-readiness.ts';
+import { fetchAllRows } from '../_shared/paged-select.ts';
+import { toCsv } from '../_shared/csv.ts';
+import {
+  ONBOARDING_EXPORT_HEADERS,
+  buildChecklistExportRows,
+} from '../../../shared/onboarding-export.ts';
+
+/**
+ * A wizard step sends what is on screen; a caller can send anything. Both caps
+ * keep one request bounded without changing what a real install looks like - a
+ * checklist with fifty machines on it is already an outlier, and a customer
+ * with twenty address books is one too.
+ */
+const MAX_READINESS_DEVICES = 50;
+const MAX_READINESS_BOOKS = 20;
 
 /**
  * The installation_type Postgres enum, verbatim (migration 0000, line 56).
@@ -285,6 +306,114 @@ export default async function handler(req: Request) {
           equipment: equipment.data || [],
           sections: sections.data || [],
           tasks: tasks.data || [],
+        },
+        200,
+        req,
+      );
+    }
+
+    // ───────── WF-L-11: the two existence checks the network step needs ──────
+    //
+    // GET /onboarding/config-readiness?customerId=<uuid>&devices=<json>
+    //
+    // NO CHECKLIST ID, AND THAT IS THE POINT. This answers the wizard's Network
+    // Setup step, which runs BEFORE the checklist is created, so there is no row
+    // to read the equipment off - the caller sends what it has. Both halves are
+    // read-only over tables that already exist (WF-L-11 AC3); nothing here
+    // writes and nothing here decides.
+    //
+    // `oid_mappings` HAS NO tenant_id (SEC-EDGE-001 round 76 recorded it as a
+    // shared catalogue every dealer can edit), so this read is cross-tenant by
+    // construction and the response says so rather than implying a per-dealer
+    // answer. `address_books` does have one and is filtered on it plus the
+    // customer.
+    //
+    // Each half is independently try/caught with the failure NAMED in
+    // `degraded`: one missing relation must not blank the whole panel, and a
+    // coverage count over a read that failed would be a measurement (AUDIT-028).
+    if (req.method === 'GET' && pathParts[0] === 'config-readiness') {
+      const customerId = url.searchParams.get('customerId')?.trim() || null;
+      const devicesParam = url.searchParams.get('devices');
+
+      let devices: DeviceRef[] = [];
+      if (devicesParam) {
+        try {
+          const parsed = JSON.parse(devicesParam);
+          if (!Array.isArray(parsed)) throw new Error('devices must be a JSON array');
+          devices = parsed.slice(0, MAX_READINESS_DEVICES) as DeviceRef[];
+        } catch (err) {
+          return createCorsResponse(
+            {
+              error: 'devices must be a JSON array of { manufacturer, model, equipmentType }',
+              code: 'INVALID_DEVICES',
+              details: err instanceof Error ? err.message : String(err),
+            },
+            400,
+            req,
+          );
+        }
+      }
+
+      const degraded: string[] = [];
+
+      let mappings: OidMappingRow[] = [];
+      let oidReadFailed = false;
+      try {
+        mappings = await fetchAllRows<OidMappingRow>(() =>
+          admin
+            .from('oid_mappings')
+            .select('id, manufacturer, model_series, mapping_name, is_default'),
+        );
+      } catch (err) {
+        oidReadFailed = true;
+        degraded.push('oid_mappings');
+        console.error('config-readiness: oid_mappings read failed:', err);
+      }
+
+      // A coverage summary over a catalogue nobody could read is not "nothing
+      // is covered" - it is not knowing, so the whole half is null.
+      const oid = oidReadFailed ? null : summariseOidCoverage(devices, mappings);
+
+      const scan = requiresScanToEmail(devices);
+
+      let books: Array<Record<string, unknown>> | null = null;
+      if (customerId) {
+        try {
+          const { data, error } = await admin
+            .from('address_books')
+            .select('id, name, source_vendor, last_imported_at')
+            .eq('tenant_id', tenantId)
+            .eq('customer_id', customerId)
+            .is('deleted_at', null)
+            .order('name', { ascending: true })
+            .limit(MAX_READINESS_BOOKS);
+          if (error) throw error;
+          books = data ?? [];
+        } catch (err) {
+          degraded.push('address_books');
+          console.error('config-readiness: address_books read failed:', err);
+        }
+      }
+
+      return createCorsResponse(
+        {
+          oid,
+          // The catalogue is global, so a gap is a gap for every dealer on this
+          // deployment and closing it changes what everyone polls with.
+          oidCatalogueIsShared: true,
+          addressBook: {
+            scan,
+            customerId,
+            // null means not looked up (no customer selected yet) or the read
+            // failed; 0 means looked up and there are none.
+            bookCount: books ? books.length : null,
+            books: books ?? [],
+          },
+          degraded,
+          unbacked:
+            devices.length === 0
+              ? ['No equipment was sent, so neither check could be run for a device.']
+              : [],
         },
         200,
         req,
@@ -925,6 +1054,179 @@ export default async function handler(req: Request) {
       }
 
       return createCorsResponse({ success: true, message: 'Checklist deleted' }, 200, req);
+    }
+
+    // ─── Getting Started + Setup Wizard progress ──────────────────────────
+    //
+    // Round 133: both were Express-only on an unproxied prefix, so the routed
+    // pages behind them (GettingStarted.tsx, SetupWizard.tsx) 404'd for every
+    // deployed user - the first two screens a new tenant sees, and the ones
+    // LAUNCH-008 made reachable when self-service signup started working.
+    //
+    // The wizard's Express store was `new Map()` in module scope, so its
+    // progress did not survive a restart in dev either and would have been
+    // per-instance under any real deployment. Both flows are one row in
+    // `onboarding_progress`, which already carries flow_type, current_step,
+    // completed_steps and is_complete - so this is durable rather than ported.
+    const progressFlow =
+      pathParts[0] === 'getting-started'
+        ? 'getting_started'
+        : pathParts[0] === 'wizard-state'
+          ? 'setup_wizard'
+          : null;
+
+    if (progressFlow && !checklistId) {
+      if (!user?.id) {
+        return createCorsResponse({ error: 'Authentication required' }, 401, req);
+      }
+
+      if (req.method === 'GET') {
+        // Ordered and limited rather than `.maybeSingle()`: there is NO unique
+        // constraint on (tenant_id, user_id, flow_type) - checked against
+        // migration 0000, which indexes tenant_id and user_id separately and
+        // nothing else - so two concurrent saves can leave two rows, and a
+        // reader that does not tie-break answers arbitrarily (round 91).
+        const { data: rows, error } = await admin
+          .from('onboarding_progress')
+          .select('current_step, completed_steps, is_complete')
+          .eq('tenant_id', tenantId)
+          .eq('user_id', user.id)
+          .eq('flow_type', progressFlow)
+          .order('updated_at', { ascending: false })
+          .limit(1);
+        const row = rows?.[0];
+
+        if (error) {
+          console.error('Error reading onboarding progress:', error);
+          return createCorsResponse({ error: 'Failed to read onboarding progress' }, 500, req);
+        }
+
+        const completedSteps = Array.isArray(row?.completed_steps) ? row.completed_steps : [];
+        // Two shapes for two callers, from one row: the wizard reads
+        // currentStep/completed, the checklist reads completedSteps/isComplete.
+        return createCorsResponse(
+          progressFlow === 'setup_wizard'
+            ? {
+                currentStep: Number(row?.current_step ?? 0),
+                completedSteps,
+                completed: row?.is_complete ?? false,
+              }
+            : { completedSteps, isComplete: row?.is_complete ?? false },
+          200,
+          req,
+        );
+      }
+
+      if (req.method === 'POST' || req.method === 'PUT') {
+        const body = await req.json().catch(() => ({}));
+        const rawSteps = Array.isArray(body.completedSteps) ? body.completedSteps : [];
+        // De-duplicated, because the callers append on every tick and a step
+        // ticked twice must not read as two steps done.
+        const completedSteps = [...new Set(rawSteps.map((step: unknown) => String(step)))];
+        const isComplete = Boolean(body.isComplete ?? body.completed ?? false);
+        const currentStep =
+          body.currentStep === undefined || body.currentStep === null
+            ? null
+            : String(body.currentStep);
+
+        // NOT an upsert: PostgREST resolves `on_conflict` against a unique
+        // index, and there is none on (tenant_id, user_id, flow_type) - the
+        // request would be a 42P10 on every database. Read then write, which is
+        // what the Express handler did, with the same race it had.
+        const { data: existingRows, error: findError } = await admin
+          .from('onboarding_progress')
+          .select('id')
+          .eq('tenant_id', tenantId)
+          .eq('user_id', user.id)
+          .eq('flow_type', progressFlow)
+          .order('updated_at', { ascending: false })
+          .limit(1);
+
+        if (findError) {
+          console.error('Error reading onboarding progress:', findError);
+          return createCorsResponse({ error: 'Failed to save onboarding progress' }, 500, req);
+        }
+
+        const values = {
+          current_step: currentStep,
+          completed_steps: completedSteps,
+          is_complete: isComplete,
+          completed_at: isComplete ? new Date().toISOString() : null,
+          updated_at: new Date().toISOString(),
+        };
+
+        const { error } = existingRows?.[0]
+          ? await admin.from('onboarding_progress').update(values).eq('id', existingRows[0].id)
+          : await admin.from('onboarding_progress').insert({
+              tenant_id: tenantId,
+              user_id: user.id,
+              flow_type: progressFlow,
+              ...values,
+            });
+
+        if (error) {
+          console.error('Error saving onboarding progress:', error);
+          return createCorsResponse({ error: 'Failed to save onboarding progress' }, 500, req);
+        }
+
+        return createCorsResponse(
+          progressFlow === 'setup_wizard'
+            ? { currentStep: Number(currentStep ?? 0), completedSteps, completed: isComplete }
+            : { completedSteps, isComplete },
+          200,
+          req,
+        );
+      }
+
+      return createCorsResponse({ error: 'Method not allowed' }, 405, req);
+    }
+
+    // GET /onboarding/checklists/:id/export - CSV of the checklist + equipment
+    //
+    // ONE FORMAT, because it is the only one this tree can actually produce.
+    // The Express endpoints this replaces sent HTML under application/pdf and
+    // JSON under a spreadsheet content type; see shared/onboarding-export.ts.
+    if (req.method === 'GET' && checklistId && subResource === 'export') {
+      const { data: checklist, error: checklistError } = await admin
+        .from('equipment_onboarding_checklists')
+        .select('*')
+        .eq('id', checklistId)
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+
+      if (checklistError) {
+        console.error('Error reading checklist for export:', checklistError);
+        return createCorsResponse({ error: 'Failed to build export' }, 500, req);
+      }
+      if (!checklist) {
+        return createCorsResponse({ error: 'Checklist not found' }, 404, req);
+      }
+
+      const { data: equipment, error: equipmentError } = await admin
+        .from('onboarding_equipment')
+        .select('*')
+        .eq('checklist_id', checklistId)
+        .eq('tenant_id', tenantId)
+        .order('created_at', { ascending: true });
+
+      if (equipmentError) {
+        console.error('Error reading equipment for export:', equipmentError);
+        return createCorsResponse({ error: 'Failed to build export' }, 500, req);
+      }
+
+      const body = toCsv([
+        [...ONBOARDING_EXPORT_HEADERS],
+        ...buildChecklistExportRows(checklist as Record<string, unknown>, equipment ?? []),
+      ]);
+
+      return new Response(body, {
+        status: 200,
+        headers: {
+          ...getCorsHeaders(req.headers.get('Origin')),
+          'Content-Type': 'text/csv; charset=utf-8',
+          'Content-Disposition': `attachment; filename="checklist-${checklistId}.csv"`,
+        },
+      });
     }
 
     return createCorsResponse({ error: 'Invalid onboarding endpoint' }, 400, req);

@@ -12,7 +12,7 @@
  * Same style as financial-period-months.test.ts, deliberately.
  */
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { addMonths, subtractMonths } from '../../../shared/date-months';
 
@@ -112,32 +112,47 @@ describe('the last day of the current month', () => {
   });
 });
 
-describe('the idiom is gone from every site the ratchet held', () => {
-  const files = [
-    'supabase/functions/seo/index.ts',
-    'supabase/functions/voice-agent/index.ts',
-    'supabase/functions/customer-portal/handlers/satisfaction.ts',
-    'supabase/functions/analytics/index.ts',
-    'server/routes-admin-stats.ts',
-    'server/routes-platform-deals.ts',
-    'server/routes-sales-forecasting.ts',
-    'server/seed-lease-data.ts',
-    'server/services/automated-billing-service.ts',
-    'server/services/billing-analytics-service.ts',
-    'server/services/billing-engine-service.ts',
-    'client/src/components/leads/LeadDeals.tsx',
-  ];
+describe('the idiom is gone from the whole tree, not from a list of files', () => {
+  /**
+   * This named twelve files. A property asserted about one file BY NAME stops
+   * being enforced the day that file is renamed or deleted - which is exactly
+   * what happened when `server/seed-lease-data.ts` (an orphan with no runner
+   * and no importer) was retired, and it is the same lesson
+   * sql-injection-prevention.test.ts already carries. So it walks instead.
+   *
+   * Two exclusions, both by rule rather than by name-list:
+   *   - `server/tests/` and this file, because these tests DEMONSTRATE the old
+   *     idiom to show what it got wrong; asserting its absence over its own
+   *     proof reports the explanation as the defect.
+   *   - `shared/date-months.ts` and its Deno twin, the replacement. They step a
+   *     cursor that is pinned to day 1, where setMonth cannot overflow, and
+   *     that is the whole point of having one implementation.
+   */
+  const ROOTS = ['server', 'client/src', 'supabase/functions', 'shared', 'scripts'];
+  const EXCLUDED = /(^|\/)(node_modules|dist|build)(\/|$)|(^|\/)server\/tests\/|date-months\.ts$/;
+  const IDIOM = /setMonth\(\s*\w+(?:\.\w+)*\.getMonth\(\)\s*[+-]/;
 
-  for (const file of files) {
-    it(`${file} does not step a month by hand`, () => {
-      expect(code(file)).not.toMatch(/setMonth\(\s*\w+(?:\.\w+)*\.getMonth\(\)\s*[+-]/);
-    });
+  function walk(dir: string, out: string[] = []): string[] {
+    for (const entry of readdirSync(join(repo, dir))) {
+      const rel = `${dir}/${entry}`;
+      if (EXCLUDED.test(rel)) continue;
+      if (statSync(join(repo, rel)).isDirectory()) walk(rel, out);
+      else if (/\.(tsx?|mjs)$/.test(entry)) out.push(rel);
+    }
+    return out;
   }
 
-  it('and the gate is hard rather than a list of known-bad sites', () => {
-    const baseline = JSON.parse(raw('docs/month-arithmetic-baseline.json'));
-    expect(baseline.allowed).toEqual([]);
-    expect(baseline.total).toBe(0);
+  const files = ROOTS.flatMap((r) => walk(r));
+
+  it('walks a corpus rather than a list, and a big one', () => {
+    // A walk that matched nothing would pass every assertion below in silence,
+    // which is the vacuous-pass trap check:unlinked-routes was caught by.
+    expect(files.length).toBeGreaterThan(1000);
+  });
+
+  it('no production file steps a month by hand', () => {
+    const offenders = files.filter((f) => IDIOM.test(code(f)));
+    expect(offenders).toEqual([]);
   });
 });
 

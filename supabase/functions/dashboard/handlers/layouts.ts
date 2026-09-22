@@ -44,6 +44,16 @@ export const EMPTY_LAYOUT: SavedLayout = {
   isDefault: true,
 };
 
+/**
+ * CRM-LAYOUT-001. `/custom-dashboard` and the role dashboard
+ * (`dashboard-widgets`, /dashboard/user-layout) both stored "the one custom
+ * layout per user" and both filtered on `(tenant_id, user_id, is_user_custom)`
+ * alone, so a layout saved on one could be returned to the other - and the read
+ * below had no ORDER BY, which made the winner arbitrary rather than merely
+ * wrong.
+ */
+const CUSTOM_DASHBOARD_SURFACE = 'custom';
+
 export function normalizeLayout(body: LayoutPayload): {
   name: string;
   widgets: unknown[];
@@ -83,6 +93,7 @@ export async function getDefaultLayout(
     .eq('tenant_id', tenantId)
     .eq('user_id', userId)
     .eq('is_user_custom', true)
+    .eq('surface', CUSTOM_DASHBOARD_SURFACE)
     .order('updated_at', { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -110,6 +121,11 @@ export async function saveLayout(
     .eq('tenant_id', tenantId)
     .eq('user_id', userId)
     .eq('is_user_custom', true)
+    .eq('surface', CUSTOM_DASHBOARD_SURFACE)
+    // Same order as the read above. A row predating the surface column can
+    // leave two candidates, and an update that picks a different one than the
+    // read did would show the user a layout they did not just save.
+    .order('updated_at', { ascending: false })
     .limit(1)
     .maybeSingle();
   if (findError) throw findError;
@@ -134,6 +150,7 @@ export async function saveLayout(
       user_id: userId,
       is_user_custom: true,
       is_default: false,
+      surface: CUSTOM_DASHBOARD_SURFACE,
       created_at: now,
       updated_at: now,
     })

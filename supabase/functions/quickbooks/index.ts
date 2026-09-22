@@ -5,29 +5,14 @@ import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 import { denyWithoutPermission } from '../_shared/rbac.ts';
+import {
+  CONNECTION_GAP,
+  SYNC_GAP,
+  isSyncEntity,
+  unavailableStatus,
+} from '../../../shared/quickbooks-availability.ts';
 
 const REQUIRED_PERMISSION = 'admin.settings.integrations';
-
-/**
- * The id of this tenant's QuickBooks row in `integrations`.
- *
- * integration_sync_logs links to a provider through integration_id and has no
- * integration_type column of its own, so every read and write here needs this
- * first. `integrations` is not in any Drizzle schema, but /status already
- * depends on it, so this reuses that rather than adding a second unverified
- * dependency. Returns null when there is no connection, which the callers treat
- * as "no history" rather than as an error.
- */
-// deno-lint-ignore no-explicit-any
-async function quickbooksIntegrationId(admin: any, tenantId: string): Promise<string | null> {
-  const { data } = await admin
-    .from('integrations')
-    .select('id')
-    .eq('tenant_id', tenantId)
-    .eq('integration_type', 'quickbooks')
-    .maybeSingle();
-  return data?.id ?? null;
-}
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -62,194 +47,59 @@ export default async function handler(req: Request) {
     const { parts } = normalizePath(url.pathname, 'quickbooks');
     const endpoint = parts[0];
 
-    // GET /quickbooks/status - Get connection status
+    /**
+     * GET /quickbooks/status
+     *
+     * This read `integrations` - a table in no schema and no migration -
+     * DISCARDED the error and answered `{ connected: false }` at 200, so every
+     * dealer in production was told they had not connected QuickBooks, whether
+     * or not they had. `connected` is null now, because false is a measurement
+     * and this endpoint cannot make one until a credential store exists.
+     */
     if (req.method === 'GET' && endpoint === 'status') {
-      const { data: connection } = await admin
-        .from('integrations')
-        .select('*')
-        .eq('tenant_id', tenantId)
-        .eq('integration_type', 'quickbooks')
-        .single();
-
-      return createCorsResponse(
-        {
-          connected: !!connection?.is_active,
-          lastSync: connection?.last_sync_at,
-          companyName: connection?.metadata?.companyName,
-          realmId: connection?.metadata?.realmId,
-        },
-        200,
-        req,
-      );
+      return createCorsResponse(unavailableStatus(), 200, req);
     }
 
-    // GET /quickbooks/sync-history - Get sync history
-    //
-    // integration_sync_logs names no provider: it has integration_id (the row in
-    // `integrations`), sync_type, entity_type, records_fetched/created/updated/
-    // failed, started_at and completed_at. Filtering on integration_type and
-    // ordering by created_at were both 42703s, so sync history never loaded.
-    // The provider is resolved through the same integrations row /status reads.
+    /**
+     * GET /quickbooks/sync-history
+     *
+     * integration_sync_logs is a real table, but a log row is reached through
+     * an `integrations` row that cannot exist, so this could only ever answer
+     * an empty list - which reads as "no syncs yet" rather than as a feature
+     * with no store behind it.
+     */
     if (req.method === 'GET' && endpoint === 'sync-history') {
-      const integrationId = await quickbooksIntegrationId(admin, tenantId);
-      if (!integrationId) {
-        return createCorsResponse([], 200, req);
-      }
-
-      const { data: history } = await admin
-        .from('integration_sync_logs')
-        .select('*')
-        .eq('tenant_id', tenantId)
-        .eq('integration_id', integrationId)
-        .order('started_at', { ascending: false })
-        .limit(50);
-
-      return createCorsResponse(history || [], 200, req);
+      return createCorsResponse(CONNECTION_GAP, 501, req);
     }
 
-    // POST /quickbooks/sync/invoices - Sync invoices to QuickBooks
-    if (req.method === 'POST' && endpoint === 'sync' && parts[1] === 'invoices') {
-      const body = await req.json();
-      const { invoiceIds } = body;
-
-      // Log sync attempt
-      const { data: syncLog } = await admin
-        .from('integration_sync_logs')
-        .insert({
-          tenant_id: tenantId,
-          integration_id: await quickbooksIntegrationId(admin, tenantId),
-          sync_type: 'invoices',
-          status: 'pending',
-          records_fetched: invoiceIds?.length || 0,
-          started_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
-
-      // In production, this would call the QuickBooks API
-      return createCorsResponse(
-        {
-          success: true,
-          syncId: syncLog?.id,
-          message: 'Invoice sync initiated',
-          invoiceCount: invoiceIds?.length || 0,
-        },
-        200,
-        req,
-      );
+    /**
+     * POST /quickbooks/sync/:entity
+     *
+     * These answered `{ success: true, message: 'Customer sync initiated' }`
+     * beside a comment saying the QuickBooks call would happen "in
+     * production", and logged a `pending` row whose insert error they
+     * discarded. Nothing was attempted and nothing was stored.
+     *
+     * `items` had no branch at all and fell to the trailing 404, while
+     * `invoices` and `payments` had branches no client calls - so the one
+     * button the page offers was the one shape that was missing. Every entity
+     * answers the same refusal now, rather than one of them failing
+     * differently for a reason that is not about QuickBooks.
+     */
+    if (req.method === 'POST' && endpoint === 'sync' && isSyncEntity(parts[1])) {
+      return createCorsResponse(SYNC_GAP, 501, req);
     }
 
-    // POST /quickbooks/sync/customers - Sync customers to QuickBooks
-    if (req.method === 'POST' && endpoint === 'sync' && parts[1] === 'customers') {
-      const body = await req.json();
-      const { customerIds } = body;
-
-      const { data: syncLog } = await admin
-        .from('integration_sync_logs')
-        .insert({
-          tenant_id: tenantId,
-          integration_id: await quickbooksIntegrationId(admin, tenantId),
-          sync_type: 'customers',
-          status: 'pending',
-          records_fetched: customerIds?.length || 0,
-          started_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
-
-      return createCorsResponse(
-        {
-          success: true,
-          syncId: syncLog?.id,
-          message: 'Customer sync initiated',
-          customerCount: customerIds?.length || 0,
-        },
-        200,
-        req,
-      );
-    }
-
-    // POST /quickbooks/sync/payments - Sync payments
-    if (req.method === 'POST' && endpoint === 'sync' && parts[1] === 'payments') {
-      const body = await req.json();
-
-      const { data: syncLog } = await admin
-        .from('integration_sync_logs')
-        .insert({
-          tenant_id: tenantId,
-          integration_id: await quickbooksIntegrationId(admin, tenantId),
-          sync_type: 'payments',
-          status: 'pending',
-          started_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
-
-      return createCorsResponse(
-        {
-          success: true,
-          syncId: syncLog?.id,
-          message: 'Payment sync initiated',
-        },
-        200,
-        req,
-      );
-    }
-
-    // GET /quickbooks/mapping - Get entity mapping
-    if (req.method === 'GET' && endpoint === 'mapping') {
-      const entityType = url.searchParams.get('entityType');
-
-      let query = admin.from('quickbooks_mappings').select('*').eq('tenant_id', tenantId);
-
-      if (entityType) query = query.eq('entity_type', entityType);
-
-      const { data: mappings } = await query;
-
-      return createCorsResponse(mappings || [], 200, req);
-    }
-
-    // POST /quickbooks/mapping - Create entity mapping
-    if (req.method === 'POST' && endpoint === 'mapping') {
-      const body = await req.json();
-
-      const { data: mapping, error } = await admin
-        .from('quickbooks_mappings')
-        .upsert({
-          tenant_id: tenantId,
-          entity_type: body.entityType || body.entity_type,
-          local_id: body.localId || body.local_id,
-          quickbooks_id: body.quickbooksId || body.quickbooks_id,
-          last_synced_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
-
-      if (error) {
-        return createCorsResponse({ error: 'Failed to create mapping' }, 500, req);
-      }
-
-      return createCorsResponse(mapping, 201, req);
-    }
-
-    // POST /quickbooks/disconnect - Disconnect QuickBooks
-    if (req.method === 'POST' && endpoint === 'disconnect') {
-      const { error } = await admin
-        .from('integrations')
-        .update({
-          is_active: false,
-          disconnected_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('tenant_id', tenantId)
-        .eq('integration_type', 'quickbooks');
-
-      if (error) {
-        return createCorsResponse({ error: 'Failed to disconnect' }, 500, req);
-      }
-
-      return createCorsResponse({ success: true, message: 'QuickBooks disconnected' }, 200, req);
+    /**
+     * /quickbooks/mapping and /quickbooks/disconnect
+     *
+     * `quickbooks_mappings` is phantom, so the GET answered `[]` over a 42P01
+     * (an empty map reads as "nothing mapped yet") and the POST answered 500.
+     * Disconnect updated the phantom `integrations` table, so it could only
+     * ever report a failure to disconnect something that was never stored.
+     */
+    if (endpoint === 'mapping' || endpoint === 'disconnect') {
+      return createCorsResponse(CONNECTION_GAP, 501, req);
     }
 
     // GET /quickbooks/entities (EDGE-002h)

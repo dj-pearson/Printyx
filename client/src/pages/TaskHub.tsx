@@ -28,10 +28,23 @@ import ContextualHelp from '@/components/contextual/ContextualHelp';
 import PageAlerts from '@/components/contextual/PageAlerts';
 import KpiSummaryBar from '@/components/dashboard/KpiSummaryBar';
 import { apiRequest, extractRecords } from '@/lib/queryClient';
+import { useActionParam } from '@/hooks/use-action-param';
 
 export default function TaskHub() {
   const [activeTab, setActiveTab] = useState<string>('my-tasks');
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
+
+  /**
+   * UI-DEAD-BUTTONS-001: TodayDashboard's "Add Task" links here with
+   * `?action=new`, and AUDIT-014's finding was that NO page read that parameter
+   * - nine quick-action links dropped the user on a list and did nothing. The
+   * hook strips it once it is read, so a refresh or a back-press does not
+   * reopen the dialog.
+   */
+  const action = useActionParam();
+  useEffect(() => {
+    if (action === 'new') setIsCreateTaskOpen(true);
+  }, [action]);
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();

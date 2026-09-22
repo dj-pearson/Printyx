@@ -167,7 +167,13 @@ export default function ScheduledReportsDashboard() {
     total: reports.length,
     active: reports.filter((r) => r.isActive).length,
     paused: reports.filter((r) => !r.isActive).length,
-    totalDeliveries: reports.reduce((sum, r) => sum + (r.runCount || 0), 0),
+    // Attempts, not deliveries: run_count is only bumped where a report was
+    // actually produced, and nothing produces one yet.
+    runsAttempted: reports.reduce((sum, r) => sum + (r.runCount || 0), 0),
+    // A schedule whose last run failed. With delivery unimplemented every
+    // swept schedule lands here, which is the honest signal the old
+    // "Delivered" figure was hiding.
+    lastRunFailed: reports.filter((r) => r.lastStatus === 'failed').length,
   };
 
   const formatRecipients = (recipients: any): number => {
@@ -241,12 +247,19 @@ export default function ScheduledReportsDashboard() {
               </div>
             </CardContent>
           </Card>
+          {/* ROUND 144: this card read `runCount` as "Delivered". Nothing in
+              this product generates or sends a report - the reporting engine's
+              own /execute records `execute_degraded` and /export returns a null
+              filePath - and run-now used to increment runCount and store
+              status 'success' anyway, so the figure counted mail nobody
+              received. run_count is no longer incremented, and the card now
+              counts runs that were ATTEMPTED, which is what the rows record. */}
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Delivered</p>
-                  <p className="text-3xl font-bold text-purple-600">{stats.totalDeliveries}</p>
+                  <p className="text-sm text-muted-foreground">Runs attempted</p>
+                  <p className="text-3xl font-bold text-purple-600">{stats.runsAttempted}</p>
                 </div>
                 <Send className="h-8 w-8 text-purple-600" />
               </div>
@@ -425,11 +438,19 @@ export default function ScheduledReportsDashboard() {
                 </ul>
               </div>
               <div className="flex items-center justify-center">
+                {/* The 6xl figure here was `runCount` under "Reports
+                    Delivered Automatically" - the most precisely false claim on
+                    the page, since the cron job that would have run them posted
+                    to a path no handler served. Under it, that count times 0.25
+                    was printed as hours of manual work saved: a rate nobody
+                    measured, over deliveries that never happened (AUDIT-019 -
+                    delete a claim with no backing data rather than fake it). */}
                 <div className="text-center">
-                  <div className="text-6xl font-bold mb-2">{stats.totalDeliveries}</div>
-                  <p className="text-lg text-white/90">Reports Delivered Automatically</p>
+                  <div className="text-6xl font-bold mb-2">{stats.active}</div>
+                  <p className="text-lg text-white/90">Schedules Active</p>
                   <p className="text-sm text-white/80 mt-2">
-                    Saving ~{Math.round(stats.totalDeliveries * 0.25)} hours of manual work
+                    Report generation and email delivery are not implemented yet, so no schedule has
+                    been delivered.
                   </p>
                 </div>
               </div>

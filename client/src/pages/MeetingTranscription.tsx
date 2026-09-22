@@ -118,6 +118,28 @@ interface ConsentAnswer {
   };
 }
 
+/**
+ * SEC-EDGE-001: the list is narrowed to the recordings this caller may reach -
+ * their own, their team's for a manager, plus anything flagged public - and the
+ * envelope says so. A narrowed list that does not say it was narrowed reads as
+ * "this company records very few meetings" (COP-I06).
+ */
+interface RecordingsResponse {
+  recordings: Recording[];
+  scopeTier: string;
+  coversWholeTenant: boolean;
+  degradedFrom: string | null;
+  scopeTruncated: boolean;
+  unbacked: string[];
+}
+
+const SCOPE_LABEL: Record<string, string> = {
+  own: 'the recordings you uploaded',
+  team: "your team's recordings",
+  location: "your location's recordings",
+  regional: "your region's recordings",
+};
+
 function formatDuration(seconds: number | null): string {
   if (seconds === null || !Number.isFinite(seconds)) return 'Unknown';
   const h = Math.floor(seconds / 3600);
@@ -161,7 +183,7 @@ export default function MeetingTranscription() {
   const [consentParticipants, setConsentParticipants] = useState('');
   const [consentNotice, setConsentNotice] = useState(DEFAULT_RECORDING_NOTICE);
 
-  const recordingsQuery = useQuery<Recording[]>({
+  const recordingsQuery = useQuery<RecordingsResponse>({
     queryKey: [`${API}/recordings`],
   });
 
@@ -228,7 +250,7 @@ export default function MeetingTranscription() {
     },
   });
 
-  const selected = recordingsQuery.data?.find((r) => r.id === selectedId) ?? null;
+  const selected = recordingsQuery.data?.recordings?.find((r) => r.id === selectedId) ?? null;
 
   return (
     <MainLayout
@@ -310,14 +332,24 @@ export default function MeetingTranscription() {
               query={recordingsQuery}
               loading={<Skeleton className="h-48" />}
               errorTitle="Could not load recordings"
+              // The response is an envelope now, and defaultIsEmpty only knows
+              // about arrays - without this the empty state never renders.
+              isEmpty={(data) => data.recordings.length === 0}
               empty={
                 <p className="py-8 text-center text-sm text-muted-foreground">
                   No recordings yet. Upload one to get started.
                 </p>
               }
             >
-              {(recordings) => (
+              {(data) => (
                 <div className="overflow-x-auto">
+                  {!data.coversWholeTenant && (
+                    <p className="mb-3 text-xs text-muted-foreground">
+                      Showing {SCOPE_LABEL[data.scopeTier] ?? 'the recordings you can access'}
+                      {data.scopeTruncated ? ', capped at the most recent 500' : ''}. Recordings
+                      shared with everyone are included.
+                    </p>
+                  )}
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b text-left text-muted-foreground">
@@ -330,7 +362,7 @@ export default function MeetingTranscription() {
                       </tr>
                     </thead>
                     <tbody>
-                      {recordings.map((r) => (
+                      {data.recordings.map((r) => (
                         <tr
                           key={r.id}
                           className={`border-b last:border-0 ${

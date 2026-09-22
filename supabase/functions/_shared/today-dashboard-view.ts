@@ -227,6 +227,14 @@ export function todayWindows(now: Date) {
   const upcomingTo = new Date(startOfDay);
   upcomingTo.setUTCDate(upcomingTo.getUTCDate() + 4);
 
+  // COP-B01: how far back "needs follow-up" looks. Fourteen days rather than
+  // an open window, because a meeting nobody followed up on three months ago is
+  // not today's work and putting it on a daily worklist is how the list stops
+  // being read. setUTCDate handles the month boundary; the arithmetic never
+  // touches setUTCMonth, which is the overflow DATE-SETMONTH-001 closed.
+  const followUpFrom = new Date(startOfDay);
+  followUpFrom.setUTCDate(followUpFrom.getUTCDate() - 14);
+
   // Week starts Sunday, matching date-fns' default in the Express handler.
   const weekStart = new Date(startOfDay);
   weekStart.setUTCDate(weekStart.getUTCDate() - weekStart.getUTCDay());
@@ -234,5 +242,14 @@ export function todayWindows(now: Date) {
   weekEnd.setUTCDate(weekEnd.getUTCDate() + 7);
   weekEnd.setUTCMilliseconds(-1);
 
-  return { startOfDay, endOfDay, yesterday, upcomingFrom, upcomingTo, weekStart, weekEnd };
+  return {
+    startOfDay,
+    endOfDay,
+    yesterday,
+    upcomingFrom,
+    upcomingTo,
+    followUpFrom,
+    weekStart,
+    weekEnd,
+  };
 }

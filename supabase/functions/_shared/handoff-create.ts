@@ -13,6 +13,7 @@
 
 import {
   buildHandoffChecklist,
+  DEFAULT_HANDOFF_TASKS,
   defaultTemplateRow,
   instantiateHandoffTasks,
   type HandoffType,
@@ -50,6 +51,16 @@ export async function ensureHandoffTemplate(
   handoffType: HandoffType,
   createdBy: string | null,
 ): Promise<TemplateTask[]> {
+  /**
+   * SEC-EDGE-001 round 91: THE TIEBREAK IS THE POINT. `is_default` alone left the
+   * winner to whatever order Postgres happened to return once a tenant had two
+   * default rows for one handoff type - which the create path allowed, because it
+   * accepted isDefault: true without clearing the others. That is the
+   * renewal-playbooks shape: arbitrary selection wearing matching logic's
+   * clothes. The edge function clears other defaults now, and this orders by
+   * updated_at and then id so the answer is deterministic whatever the table
+   * holds - a reader should not depend on every writer having behaved.
+   */
   const { data: templates } = await admin
     .from('handoff_task_templates')
     .select('id, tasks, is_default, is_active')
@@ -57,10 +68,26 @@ export async function ensureHandoffTemplate(
     .eq('handoff_type', handoffType)
     .eq('is_active', true)
     .order('is_default', { ascending: false })
+    .order('updated_at', { ascending: false })
+    .order('id', { ascending: true })
     .limit(1);
 
   const existing = templates?.[0];
-  if (existing?.tasks) return existing.tasks as TemplateTask[];
+  const storedTasks = Array.isArray(existing?.tasks) ? (existing.tasks as TemplateTask[]) : null;
+  if (storedTasks && storedTasks.length > 0) return storedTasks;
+
+  /**
+   * AN EMPTY ARRAY IS TRUTHY, so `if (existing?.tasks)` handed operations a
+   * checklist with nothing on it and reported success - a queue nobody can work,
+   * indistinguishable from one nobody has got to. A template with no tasks is
+   * not a usable template.
+   *
+   * What it must NOT do is bootstrap: a row already exists, so inserting another
+   * on every handoff would pile up duplicates for as long as the empty one stays
+   * active. The default tasks are returned without a write, and the row is left
+   * alone because the tenant may be midway through authoring it.
+   */
+  if (existing) return DEFAULT_HANDOFF_TASKS[handoffType];
 
   const row = defaultTemplateRow(tenantId, handoffType, createdBy);
   const { data: created, error } = await admin

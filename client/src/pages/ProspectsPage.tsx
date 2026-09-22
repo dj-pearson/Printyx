@@ -1,11 +1,19 @@
 /**
  * Prospects Page - Visual pipeline management.
  *
+ * COP-E02 wants this page retired into the canonical board, and there is
+ * nowhere to send it yet. It boards `companies` filtered to
+ * business_record_type='Prospect'; the canonical Leads config is pinned to
+ * record_type 'lead' and the companies config has no board view at all, so
+ * AC4's "redirect with a preset saved view" has no target. A canonical
+ * prospects view is the prerequisite, not a redirect.
+ *
  * Sales reps drag prospects through stages. Managers see total pipeline value,
  * stage distribution, and forecast. Dual view: Pipeline Board (Kanban) + List View.
  */
 
 import { useState, useMemo, useCallback } from 'react';
+import { CRM_PAGE_SIZE } from '@shared/board-truncation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { useLocation } from 'wouter';
@@ -262,7 +270,11 @@ export default function ProspectsPage() {
     queryKey: ['/api/companies', 'prospect', 'pipeline'],
     enabled: isAuthenticated && viewMode === 'board',
     queryFn: async () => {
-      const resp = await apiRequest('/api/companies?recordType=Prospect&limit=500&offset=0', 'GET');
+      // COP-I01: asked for 500 against an endpoint that clamps to CRM_PAGE_SIZE.
+      const resp = await apiRequest(
+        `/api/companies?recordType=Prospect&limit=${CRM_PAGE_SIZE}&offset=0`,
+        'GET',
+      );
       const rawRecords = resp?.records || resp?.data || [];
       return rawRecords.map(normalizeRecord);
     },

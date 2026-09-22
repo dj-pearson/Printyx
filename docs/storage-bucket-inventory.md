@@ -24,6 +24,18 @@ anonymous GET return"**. `npm run storage:audit` answers it.
 | `qbr-artifacts`      | private    | Quarterly business reviews: fleet, usage, spend | Short-lived signed URLs (15 min) |
 | `branding-assets`    | **public** | Tenant logos                                    | Public URL, by design            |
 | `blog-assets`        | **public** | Images in published blog posts                  | Public URL, by design            |
+| `service-photos`     | private    | Field technician photos of a customer's machine | Short-lived signed URLs (15 min) |
+
+`service-photos` was added by PROD-008 (2026-09-21) and is private for the same
+reason `qbr-artifacts` is. The iOS ticket photo picker asks a technician to
+"attach photos of error codes, meters, or damage": those are pictures of a
+customer's equipment, usually carrying serials and often the inside of their
+premises, and the schema has latitude and longitude columns beside them. The
+bucket is created with `public: false` stated explicitly in
+`supabase/functions/service-tickets/index.ts` rather than left to a default, and
+every read hands back `createSignedUrl`, never `getPublicUrl` - which is the
+distinction this page exists to make, since `getPublicUrl` returns a working-
+looking string either way.
 
 The two public buckets are deliberate. A logo is rendered in quotes, proposals
 and customer portals, and a blog image is referenced from a published page;
@@ -33,7 +45,11 @@ something else needs storing, it needs a different bucket, not an exception.
 
 `drizzle/migrations/_pin_storage_bucket_visibility.sql` pins this table into the
 database so the state is reproducible rather than whatever was last clicked in a
-dashboard.
+dashboard. It does NOT yet carry `service-photos`: that bucket is
+created on first upload by `ensureAttachmentBucket`, so a deployment that has
+never had a photo uploaded has no row to pin. Add it to the pin file the first
+time this runs against a real project, and check the visibility while you are
+there.
 
 ## Live state: NOT YET VERIFIED
 

@@ -36,6 +36,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { formatCurrencyWhole as formatCurrency, formatPercent, percentOf } from '@/lib/utils';
+import { useTextPrompt } from '@/components/ui/confirm-dialog';
 
 interface Deal {
   id: string;
@@ -73,6 +74,7 @@ const STAGE_CONFIG = [
 
 export default function PlatformDealsPipeline() {
   const { toast } = useToast();
+  const textPrompt = useTextPrompt();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
 
@@ -341,9 +343,13 @@ export default function PlatformDealsPipeline() {
                                       </DropdownMenuItem>
                                       <DropdownMenuItem
                                         className="text-red-600"
-                                        onClick={(e) => {
+                                        onClick={async (e) => {
                                           e.stopPropagation();
-                                          const reason = prompt('Reason for loss:');
+                                          const reason = await textPrompt({
+                                            title: 'Mark this deal lost',
+                                            label: 'Reason for loss',
+                                            confirmLabel: 'Mark lost',
+                                          });
                                           if (reason) {
                                             closeLostMutation.mutate({
                                               dealId: deal.id,

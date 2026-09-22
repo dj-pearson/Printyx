@@ -161,3 +161,182 @@ describe('scoreDeal — banding and bounds', () => {
     expect(result.missingSignals).toContain('last activity date');
   });
 });
+
+/**
+ * A deal that is neither sinking nor at the 100 clamp. Comparisons between two
+ * scores must start here: healthy() already scores 100, so a clamped comparison
+ * passes whichever way the factor under test points (caught by mutation).
+ */
+function middling(overrides: Partial<DealScoreInput> = {}): DealScoreInput {
+  return {
+    status: 'open',
+    lastActivityDate: daysAgo(12),
+    nextFollowUpDate: daysAgo(2),
+    expectedCloseDate: daysAhead(20),
+    contactCount: 2,
+    ...overrides,
+  };
+}
+
+// ── COP-B11 second pass: the COP-M04 copier signals ───────────────────
+//
+// These three columns landed with COP-M04 and the deals edge function already
+// returns them, so the scorer reads them instead of listing them as planned.
+
+describe('scoreDeal — competitive pressure', () => {
+  it('costs points when an incumbent is named, and names the vendor', () => {
+    // middling(), not healthy(): the healthy fixture already scores 100, so a
+    // clamped comparison would pass whichever direction the factor points.
+    const withIncumbent = scoreDeal(middling({ incumbentVendor: 'Xerox' }), NOW);
+    const without = scoreDeal(middling(), NOW);
+
+    expect(withIncumbent.score).toBeLessThan(without.score);
+    const factor = withIncumbent.factors.find((f) => f.key === 'incumbent_present');
+    expect(factor?.points).toBeLessThan(0);
+    expect(factor?.reason).toContain('Xerox');
+  });
+
+  it('does not raise a risk flag for competition alone', () => {
+    const result = scoreDeal(healthy({ incumbentVendor: 'Ricoh' }), NOW);
+    expect(result.risks.map((r) => r.key)).not.toContain('incumbent_present');
+  });
+
+  it('reports the vendor as missing rather than assuming none', () => {
+    expect(scoreDeal(healthy(), NOW).missingSignals).toContain('incumbent vendor');
+    // Whitespace is not an answer either.
+    expect(scoreDeal(healthy({ incumbentVendor: '  ' }), NOW).missingSignals).toContain(
+      'incumbent vendor',
+    );
+  });
+});
+
+describe('scoreDeal — lease buyout exposure', () => {
+  it('treats zero exposure as a fact worth points, not as missing', () => {
+    const result = scoreDeal(healthy({ leaseBuyoutExposure: 0 }), NOW);
+    expect(result.missingSignals).not.toContain('lease buyout exposure');
+    expect(result.factors.find((f) => f.key === 'no_buyout')?.points).toBe(5);
+  });
+
+  it('scores a heavy buyout against the deal size and flags it', () => {
+    const result = scoreDeal(healthy({ amount: '40000', leaseBuyoutExposure: '14000' }), NOW);
+    const factor = result.factors.find((f) => f.key === 'buyout_heavy');
+    expect(factor?.points).toBe(-15);
+    expect(factor?.reason).toContain('35%');
+    expect(result.risks.find((r) => r.key === 'buyout_heavy')?.severity).toBe('warning');
+  });
+
+  it('escalates to critical when the buyout is half the deal or more', () => {
+    const result = scoreDeal(healthy({ amount: 20000, leaseBuyoutExposure: 12000 }), NOW);
+    expect(result.risks.find((r) => r.key === 'buyout_heavy')?.severity).toBe('critical');
+  });
+
+  it('scores a small buyout lightly when the deal has no amount to compare against', () => {
+    const result = scoreDeal(healthy({ leaseBuyoutExposure: '3200.00' }), NOW);
+    expect(result.factors.find((f) => f.key === 'buyout_present')?.points).toBe(-5);
+    expect(result.risks.map((r) => r.key)).not.toContain('buyout_heavy');
+  });
+
+  it('treats an unparseable exposure as absent rather than as zero', () => {
+    const result = scoreDeal(healthy({ leaseBuyoutExposure: 'tbd' }), NOW);
+    expect(result.missingSignals).toContain('lease buyout exposure');
+    expect(result.factors.map((f) => f.key)).not.toContain('no_buyout');
+  });
+});
+
+describe('scoreDeal — forecast category', () => {
+  it('rewards commit over best case over pipeline', () => {
+    const commit = scoreDeal(middling({ forecastCategory: 'commit' }), NOW).score;
+    const best = scoreDeal(middling({ forecastCategory: 'best_case' }), NOW).score;
+    const pipeline = scoreDeal(middling({ forecastCategory: 'pipeline' }), NOW).score;
+    expect(commit).toBeGreaterThan(best);
+    expect(best).toBeGreaterThan(pipeline);
+  });
+
+  it('ignores an unknown bucket instead of guessing a weight', () => {
+    const unknown = scoreDeal(middling({ forecastCategory: 'omitted' }), NOW);
+    const none = scoreDeal(middling(), NOW);
+    expect(unknown.score).toBe(none.score);
+    expect(unknown.factors.map((f) => f.key)).not.toContain('forecast_omitted');
+  });
+
+  it('carries no weight for a closed deal — status already says that', () => {
+    const closed = scoreDeal(healthy({ forecastCategory: 'closed' }), NOW);
+    expect(closed.factors.map((f) => f.key)).not.toContain('forecast_closed');
+  });
+});
+
+describe('scoreDeal — quote margin against tenant policy', () => {
+  it('flags margin under the tenant floor, not a floor picked here', () => {
+    const result = scoreDeal(healthy({ quoteMarginPct: 9 }), NOW, { minMarginPct: 22 });
+    const risk = result.risks.find((r) => r.key === 'margin_below_policy');
+    expect(risk?.message).toContain('22%');
+    expect(result.factors.find((f) => f.key === 'margin_below_policy')?.points).toBe(-15);
+  });
+
+  it('falls back to the QUOTE-016 default floor when the tenant sets none', () => {
+    expect(scoreDeal(healthy({ quoteMarginPct: 14 }), NOW).risks.map((r) => r.key)).toContain(
+      'margin_below_policy',
+    );
+    expect(scoreDeal(healthy({ quoteMarginPct: 16 }), NOW).factors.map((f) => f.key)).toContain(
+      'margin_healthy',
+    );
+  });
+
+  it('escalates a negative margin to critical', () => {
+    const result = scoreDeal(healthy({ quoteMarginPct: -3 }), NOW);
+    expect(result.risks.find((r) => r.key === 'margin_below_policy')?.severity).toBe('critical');
+  });
+
+  it('flags a discount over policy without charging for it twice', () => {
+    const result = scoreDeal(healthy({ quoteDiscountPct: 18 }), NOW, { maxDiscountPct: 10 });
+    expect(result.risks.map((r) => r.key)).toContain('discount_over_policy');
+    // The concession is already priced by the margin factor.
+    expect(result.factors.map((f) => f.key)).not.toContain('discount_over_policy');
+  });
+
+  it('does not enforce a discount ceiling the tenant has not set', () => {
+    expect(
+      scoreDeal(healthy({ quoteDiscountPct: 40 }), NOW, { maxDiscountPct: 0 }).risks.map(
+        (r) => r.key,
+      ),
+    ).not.toContain('discount_over_policy');
+    expect(scoreDeal(healthy({ quoteDiscountPct: 40 }), NOW).risks.map((r) => r.key)).not.toContain(
+      'discount_over_policy',
+    );
+  });
+});
+
+describe('scoreDeal — the score still explains itself', () => {
+  it('every factor is accounted for in the total', () => {
+    const input = healthy({
+      incumbentVendor: 'Canon',
+      leaseBuyoutExposure: 2500,
+      amount: 60000,
+      forecastCategory: 'commit',
+      quoteMarginPct: 31,
+    });
+    const result = scoreDeal(input, NOW);
+    const fromFactors = 50 + result.factors.reduce((sum, f) => sum + f.points, 0);
+    expect(result.score).toBe(Math.max(0, Math.min(100, Math.round(fromFactors))));
+  });
+
+  it('stays inside 0-100 with every negative signal at once', () => {
+    const result = scoreDeal(
+      healthy({
+        lastActivityDate: daysAgo(365),
+        nextFollowUpDate: daysAgo(200),
+        expectedCloseDate: daysAgo(200),
+        stageEnteredAt: daysAgo(365),
+        contactCount: 0,
+        incumbentVendor: 'Konica Minolta',
+        amount: 10000,
+        leaseBuyoutExposure: 9000,
+        forecastCategory: 'pipeline',
+        quoteMarginPct: 2,
+      }),
+      NOW,
+    );
+    expect(result.score).toBeGreaterThanOrEqual(0);
+    expect(result.score).toBeLessThanOrEqual(100);
+  });
+});

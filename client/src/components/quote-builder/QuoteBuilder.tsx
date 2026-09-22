@@ -50,10 +50,12 @@ import {
 import { downloadQuotePdf, emailQuote } from '@/lib/quote-pdf';
 import CompanyContactSelector from './CompanyContactSelector';
 import LineItemManager from './LineItemManager';
+import { FleetContextPanel } from './FleetContextPanel';
 import PricingCalculator from './PricingCalculator';
 import { QuoteWizardProgress, DEFAULT_QUOTE_STEPS } from '@/components/quotes/QuoteWizardProgress';
 import GenerateProposalDialog from '@/components/proposal-builder/GenerateProposalDialog';
 import { formatCurrency, percentOfOr } from '@/lib/utils';
+import type { ExposureRollup } from '@shared/fleet-quote';
 
 // Quote form schema
 const quoteSchema = z.object({
@@ -129,10 +131,20 @@ interface LineItem {
   recurringFrequency?: string;
   recurringDuration?: number;
   notes?: string;
+  // COP-B06: the installed machine this line displaces (equipment.id). Quote
+  // Builder's "equipment" has always meant product_models, what we sell; this
+  // is the first field on a line that points at what the customer runs.
+  replacesEquipmentId?: string;
 }
 
 interface QuoteBuilderProps {
   initialQuoteId?: string;
+  /**
+   * COP-B02: the opportunity this quote is being raised for, when the builder
+   * was opened from a deal. Without it `proposals.deal_id` stays null and the
+   * deal record's Quotes tab is a column nothing fills.
+   */
+  dealId?: string;
   onSave?: (quoteId: string) => void;
   onCancel?: () => void;
   onCreateProposal?: (quoteId: string) => void;
@@ -155,7 +167,7 @@ const toIntOrNull = (value?: string | null) => {
 
 // Build the draft proposal payload from form + line items. Shared by the manual
 // Save Draft mutation and the QUOTE-018 autosave so they stay in sync.
-function buildQuoteData(quote: QuoteFormData, lineItems: LineItem[]) {
+function buildQuoteData(quote: QuoteFormData, lineItems: LineItem[], dealId?: string) {
   const subtotalAmount = lineItems.reduce((sum, item) => sum + item.totalPrice, 0);
   const discountAmt = parseFloat(quote.discountAmount || '0');
   const taxAmt = parseFloat(quote.taxAmount || '0');
@@ -163,6 +175,9 @@ function buildQuoteData(quote: QuoteFormData, lineItems: LineItem[]) {
 
   return {
     ...quote,
+    // Only when the builder was opened from a deal. Omitted rather than sent
+    // as null, so a PATCH of an existing quote cannot clear an existing link.
+    ...(dealId ? { dealId } : {}),
     proposalType: 'quote',
     status: 'draft',
     lineItems: lineItems.map((item, index) => ({
@@ -184,6 +199,9 @@ function buildQuoteData(quote: QuoteFormData, lineItems: LineItem[]) {
       isRecurring: item.isRecurring === true,
       recurringFrequency: item.isRecurring ? item.recurringFrequency || 'monthly' : null,
       recurringDuration: item.isRecurring ? (item.recurringDuration ?? null) : null,
+      // COP-B06. Null rather than omitted, so clearing a replacement on an
+      // existing quote actually clears it.
+      replacesEquipmentId: item.replacesEquipmentId ?? null,
     })),
     subtotal: subtotalAmount.toString(),
     discountAmount: discountAmt.toString(),
@@ -210,11 +228,22 @@ function buildQuoteData(quote: QuoteFormData, lineItems: LineItem[]) {
 
 export default function QuoteBuilder({
   initialQuoteId,
+  dealId,
   onSave,
   onCancel,
   onCreateProposal,
 }: QuoteBuilderProps) {
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
+
+  // COP-B06: only for the recorded lease buyout, which the fleet panel prefers
+  // over anything it can derive. Enabled only when the builder was opened from
+  // a deal, so a standalone quote makes no extra request.
+  const dealForBuyout = useQuery<{ leaseBuyoutExposure?: string | null }>({
+    queryKey: [`/api/deals/${dealId}`],
+    queryFn: () => apiRequest(`/api/deals/${dealId}`),
+    enabled: Boolean(dealId),
+    staleTime: 5 * 60_000,
+  });
   const [selectedCompany, setSelectedCompany] = useState<any>(null);
   const [selectedContact, setSelectedContact] = useState<any>(null);
   const [discountAmount, setDiscountAmount] = useState<number>(0);
@@ -490,7 +519,7 @@ export default function QuoteBuilder({
   // Create or update quote mutation
   const saveQuoteMutation = useMutation({
     mutationFn: async (data: { quote: QuoteFormData; lineItems: LineItem[] }) => {
-      const quoteData = buildQuoteData(data.quote, data.lineItems);
+      const quoteData = buildQuoteData(data.quote, data.lineItems, dealId);
       console.log('📤 Submitting quote:', quoteData);
 
       // Prefer an existing persisted id (route or autosave-created draft).
@@ -698,6 +727,47 @@ export default function QuoteBuilder({
   const handleReorderLineItems = (items: LineItem[]) => {
     setLineItems(items);
   };
+
+  /**
+   * COP-B06. Which lines a fleet machine can be attached to, and the handler
+   * that attaches it.
+   *
+   * Only PARENT equipment lines: an accessory subline does not displace a
+   * machine, and offering it as a target invites a serial being recorded
+   * against a staple finisher.
+   */
+  const fleetLineOptions = lineItems
+    .map((item, index) => ({ item, index }))
+    .filter(({ item }) => !item.isSubline && item.productType === 'product_models')
+    .map(({ item, index }) => ({
+      index,
+      label: `${index + 1}. ${item.productName}`,
+      replacesEquipmentId: item.replacesEquipmentId,
+    }));
+
+  const handleAssignReplacement = (lineIndex: number, equipmentId: string | undefined) => {
+    setLineItems((items) =>
+      items.map((item, i) =>
+        i === lineIndex ? { ...item, replacesEquipmentId: equipmentId } : item,
+      ),
+    );
+  };
+
+  /**
+   * The buyout the rep recorded from the lessor, when this quote came from a
+   * deal. It is the quotable figure; anything derived from a payment stream is
+   * a floor (see shared/fleet-quote.ts).
+   */
+  const dealBuyoutExposure = dealForBuyout.data?.leaseBuyoutExposure ?? null;
+
+  /**
+   * COP-B06 AC3: the buyout exposure has to be visible BEFORE SEND, and the
+   * fleet panel that derives it renders on the Products step. It reports the
+   * rollup up here so Review shows the SAME figure - a second derivation is a
+   * second number waiting to disagree with the first (QUOTE-019's rule for the
+   * guardrail math).
+   */
+  const [fleetExposure, setFleetExposure] = useState<ExposureRollup | null>(null);
 
   const handleDiscountChange = (discountAmt: number, discountPct: number) => {
     setDiscountAmount(discountAmt);
@@ -919,7 +989,7 @@ export default function QuoteBuilder({
       await apiRequest(
         `/api/proposals/${savedQuoteId}`,
         'PATCH',
-        buildQuoteData(form.getValues(), latestLineItemsRef.current),
+        buildQuoteData(form.getValues(), latestLineItemsRef.current, dealId),
       );
       // Keep the detail cache in sync so a later remount re-hydrates the autosaved
       // line items instead of the stale empty draft cached at creation time.
@@ -950,7 +1020,10 @@ export default function QuoteBuilder({
       const created = await apiRequest(
         '/api/proposals',
         'POST',
-        buildQuoteData(form.getValues(), lineItems),
+        // QUOTE-018's autosave is how most drafts are actually created, so the
+        // deal link has to be here too - wiring only the explicit Save would
+        // leave the common path writing a null.
+        buildQuoteData(form.getValues(), lineItems, dealId),
       );
       if (created?.id) {
         hydratedRef.current = true; // local state is authoritative; don't re-hydrate
@@ -1291,14 +1364,27 @@ export default function QuoteBuilder({
 
       {/* ── Step 1: Products ───────────────────────────────────────────────── */}
       {currentStep === 1 && (
-        <LineItemManager
-          lineItems={lineItems}
-          pricingType={form.watch('pricingType')}
-          onAddItem={handleAddLineItem}
-          onUpdateItem={handleUpdateLineItem}
-          onDeleteItem={handleDeleteLineItem}
-          onReorderItems={handleReorderLineItems}
-        />
+        <div className="space-y-4">
+          {/* COP-B06: start from what the customer already runs. Rendered only
+              once a company is chosen, because there is no fleet without one. */}
+          {form.watch('businessRecordId') && (
+            <FleetContextPanel
+              businessRecordId={form.watch('businessRecordId')}
+              recordedBuyout={dealBuyoutExposure}
+              lineOptions={fleetLineOptions}
+              onAssign={handleAssignReplacement}
+              onExposureChange={setFleetExposure}
+            />
+          )}
+          <LineItemManager
+            lineItems={lineItems}
+            pricingType={form.watch('pricingType')}
+            onAddItem={handleAddLineItem}
+            onUpdateItem={handleUpdateLineItem}
+            onDeleteItem={handleDeleteLineItem}
+            onReorderItems={handleReorderLineItems}
+          />
+        </div>
       )}
 
       {/* ── Step 2: Pricing & notes ────────────────────────────────────────── */}
@@ -1558,6 +1644,40 @@ export default function QuoteBuilder({
                 {lineItems.length > 0 && (
                   <div className="mt-1 font-medium line-clamp-2">
                     {lineItems.map((i) => i.productName).join(' · ')}
+                  </div>
+                )}
+                {/* AC3. Only when machines are actually displaced: a quote with
+                    no fleet context reads exactly as it did (AC6). */}
+                {fleetExposure && fleetExposure.machinesDisplaced > 0 && (
+                  <div className="mt-3 rounded-md border bg-muted/30 p-3">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <span className="text-muted-foreground">
+                        Buyout exposure on {fleetExposure.machinesDisplaced} machine
+                        {fleetExposure.machinesDisplaced === 1 ? '' : 's'} replaced
+                      </span>
+                      <span className="font-semibold">
+                        {fleetExposure.authoritative === 'recorded'
+                          ? formatCurrency(fleetExposure.recordedBuyout)
+                          : fleetExposure.authoritative === 'derived'
+                            ? formatCurrency(fleetExposure.derivedRemainingPayments)
+                            : '—'}
+                      </span>
+                    </div>
+                    {/* The derived figure is the remaining PAYMENT STREAM, not a
+                        lessor's buyout, and it is a FLOOR when any machine could
+                        not be accounted for. Saying so is the difference between
+                        a number a rep can defend and one they cannot. */}
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {fleetExposure.authoritative === 'recorded'
+                        ? 'The buyout quoted by the lessor, as recorded on the deal.'
+                        : fleetExposure.authoritative === 'derived'
+                          ? 'Derived from remaining payments, not a lessor quote.'
+                          : 'Not derivable from what is recorded for these machines.'}
+                      {fleetExposure.unknown.length > 0 &&
+                        ` At least this much: ${fleetExposure.unknown.length} machine${
+                          fleetExposure.unknown.length === 1 ? '' : 's'
+                        } could not be accounted for.`}
+                    </p>
                   </div>
                 )}
               </div>

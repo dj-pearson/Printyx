@@ -1,3 +1,31 @@
+/**
+ * DO NOT WIRE THIS PAGE TO THE REAL ENDPOINT WITHOUT REWRITING IT (AUDIT-033).
+ *
+ * PROD-008 gave `/api/mobile/dashboard` a real implementation in
+ * supabase/functions/mobile/, off service_tickets, invoices, business_records
+ * and equipment. This page CANNOT consume it, and adding a crmProxies entry
+ * would replace a dev-only fixture with an immediate crash.
+ *
+ * It dereferences, with no guard: `mobileData.technician.name`,
+ * `mobileData.todaysSummary.totalRevenue.toLocaleString`,
+ * `mobileData.partsInventory.vanStock.tonerCartridges` and
+ * `mobileData.performanceMetrics.thisWeek.customerSatisfaction`. Every one of
+ * those came from the Express fixture, and none of them is derivable:
+ *
+ *   technician rating / certification / completedJobs  - no such columns
+ *   partsInventory.vanStock                            - no per-van stock table
+ *   performanceMetrics.firstTimeFixRate                - nothing records it
+ *   performanceMetrics.customerSatisfaction            - CSAT-PRODUCER-001
+ *   jobsQueue[].coordinates / routeOptimization        - service_tickets has no
+ *                                                        coordinates, and nothing
+ *                                                        computes drive time,
+ *                                                        traffic or parking notes
+ *
+ * So this is not a data-contract fix, it is a decision about what the page
+ * should claim. `/api/mobile/dashboard` is deliberately NOT in crmProxies for
+ * exactly that reason; the React Native screens, which read the six stat keys
+ * and `tickets`, get the real one on the only host they use.
+ */
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { MainLayout } from '@/components/layout/main-layout';

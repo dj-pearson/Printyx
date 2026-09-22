@@ -6,8 +6,29 @@
 //   GET  /qualified?minScore=50           — qualified leads list (admin-visible)
 //   GET  /bant-analytics                  — aggregates (admin|manager only)
 //   GET  /qualification-history/:leadId   — per-lead status changes
+//
+// WF-S-09 CAMELISED THE TWO BRANCHES BANTAssessment CALLS, and the reason is
+// worth keeping: the WRITE path has always mapped camel to snake field by
+// field, so an assessment was STORED correctly, while both reads answered the
+// raw PostgREST row. The component hydrates its form with
+// `{ ...defaultBANTData, ...bantData }`, so every snake key was simply ADDED
+// beside an untouched default and the form came back EMPTY after a save - the
+// CRM-008 activities shape, where a correct write and a mapper-less read drift
+// apart with nothing between them. Worse on the POST: the success toast reads
+// `data.qualificationStatus.replace(...)`, which is a TypeError on a snake row,
+// so saving threw after the row had already been written.
+//
+// toCamelShallow, NOT toCamel: pain_points and blockers are jsonb. They hold
+// string arrays today, but a deep convert would rewrite whatever a caller
+// stores inside them.
+//
+// The other three branches keep raw rows on purpose. /qualified and
+// /bant-analytics have no caller in any client tree, and camelising a shape
+// nothing reads is a change with no way to be verified; each carries a note.
 
 import { errorResponse, jsonResponse } from '../../_shared/http.ts';
+import { toCamelShallow } from '../../_shared/case.ts';
+import { scoreBant } from '../../../../shared/bant-score.ts';
 import type { HandlerCtx } from '../_context.ts';
 import { isAdminOrManager } from '../_rbac.ts';
 
@@ -42,6 +63,7 @@ export async function handleBant(req: Request, ctx: HandlerCtx): Promise<Respons
       ...q,
       lead: byLead.get(q.lead_id) ?? null,
     }));
+    // Raw rows: no client tree calls /qualified (see the header).
     return jsonResponse(enriched, 200, req, requestId);
   }
 
@@ -99,7 +121,7 @@ export async function handleBant(req: Request, ctx: HandlerCtx): Promise<Respons
         requestId,
       });
     }
-    return jsonResponse(data, 200, req, requestId);
+    return jsonResponse(toCamelShallow(data), 200, req, requestId);
   }
 
   return null;
@@ -116,47 +138,39 @@ async function upsertBant(req: Request, ctx: HandlerCtx, leadId: string): Promis
     return errorResponse(400, 'Invalid JSON body', req, { code: 'INVALID_JSON', requestId });
   }
 
-  // Scoring (mirrors Express):
+  // WF-S-09: the arithmetic lives in shared/bant-score.ts, which the form's
+  // live preview imports too. It existed here and in BANTAssessment.tsx as two
+  // copies that agreed by luck, and a preview that disagrees with what the
+  // server stores is the worse half of that - a rep reads the preview as the
+  // answer while the pipeline gets the other number.
   const budgetIdentified = !!(body.budgetIdentified ?? body.budget_identified);
   const budgetApproved = !!(body.budgetApproved ?? body.budget_approved);
-  const budgetScore = budgetIdentified ? (budgetApproved ? 25 : 15) : 0;
-
   const decisionMakerIdentified = !!(
     body.decisionMakerIdentified ?? body.decision_maker_identified
   );
-  const authorityScore = decisionMakerIdentified ? 25 : 0;
-
   const needIdentified = !!(body.needIdentified ?? body.need_identified);
   const needUrgency = String(body.needUrgency ?? body.need_urgency ?? '').toLowerCase();
-  const needScore = needIdentified
-    ? needUrgency === 'critical'
-      ? 25
-      : needUrgency === 'high'
-        ? 20
-        : 15
-    : 0;
-
   const timelineIdentified = !!(body.timelineIdentified ?? body.timeline_identified);
   const decisionTimeline = String(
     body.decisionTimeline ?? body.decision_timeline ?? '',
   ).toLowerCase();
-  const timelineScore = timelineIdentified
-    ? decisionTimeline === 'immediate'
-      ? 25
-      : decisionTimeline === '30_days'
-        ? 20
-        : 15
-    : 0;
 
-  const totalBantScore = budgetScore + authorityScore + needScore + timelineScore;
-  const qualificationStatus =
-    totalBantScore >= 75
-      ? 'highly_qualified'
-      : totalBantScore >= 50
-        ? 'qualified'
-        : totalBantScore >= 25
-          ? 'partially_qualified'
-          : 'unqualified';
+  const {
+    budgetScore,
+    authorityScore,
+    needScore,
+    timelineScore,
+    total: totalBantScore,
+    status: qualificationStatus,
+  } = scoreBant({
+    budgetIdentified,
+    budgetApproved,
+    decisionMakerIdentified,
+    needIdentified,
+    needUrgency,
+    timelineIdentified,
+    decisionTimeline,
+  });
 
   const now = new Date().toISOString();
   const qualifiedDate =
@@ -239,7 +253,7 @@ async function upsertBant(req: Request, ctx: HandlerCtx, leadId: string): Promis
     });
   }
 
-  return jsonResponse(saved, 200, req, requestId);
+  return jsonResponse(saved ? toCamelShallow(saved) : saved, 200, req, requestId);
 }
 
 async function bantAnalytics(req: Request, ctx: HandlerCtx): Promise<Response> {

@@ -59,13 +59,59 @@ export default async function handler(req: Request) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
     }
 
-    // Extract customer ID from JWT metadata (for customer portal users)
-    const customerId =
-      (user.app_metadata?.customer_id as string) || (user.user_metadata?.customer_id as string);
+    const url0 = new URL(req.url);
+
+    /**
+     * The acting customer, and who is allowed to choose it (SEC-EDGE-001).
+     *
+     * `app_metadata` ONLY. The fallback here used to read `user_metadata`,
+     * three lines below this file's own comment explaining why that bag cannot
+     * be trusted: the session holder writes it through
+     * `supabase.auth.updateUser`, and every query below runs on the SERVICE
+     * ROLE client, which bypasses RLS. Nothing in the tree writes either bag
+     * today, so removing the fallback costs nothing and closes the door before
+     * whoever provisions portal users picks the wrong one.
+     */
+    const claimedCustomerId = (user.app_metadata?.customer_id as string) || null;
+
+    /**
+     * EVERY branch below resolves its customer as
+     * `?customerId=` || `?customer_id=` || the claim, and the only check that
+     * follows is "does this customer belong to my tenant". The override is
+     * there for a real reason - `_context.ts` calls it the dealer-staff view,
+     * and a support agent opening a customer's portal data is the feature -
+     * but NOTHING VERIFIED THE CALLER WAS STAFF, and a portal customer is in
+     * the tenant too, so that check passes for them as well.
+     *
+     * So the override is now conditional on WHO IS ASKING:
+     *   - a caller carrying a customer claim is a portal customer. Their own
+     *     claim wins, and asking for a different id is refused rather than
+     *     quietly honoured, because silently serving their own data back would
+     *     hide a probe.
+     *   - a caller with NO claim is internal staff, and keeps the override.
+     *
+     * STATED PLAINLY BECAUSE IT CHANGES THE IMPACT: nothing in this repo sets
+     * `customer_id` on any user, so there are no portal customers yet and the
+     * second branch is what runs today. This is a door closed before the
+     * feature that opens it ships, not a breach being cleaned up.
+     */
+    const requestedCustomerId =
+      url0.searchParams.get('customerId') || url0.searchParams.get('customer_id');
+    if (claimedCustomerId && requestedCustomerId && requestedCustomerId !== claimedCustomerId) {
+      return createCorsResponse(
+        {
+          error: 'You can only view your own account',
+          code: 'CUSTOMER_SCOPE_VIOLATION',
+        },
+        403,
+        req,
+      );
+    }
+    const customerId = claimedCustomerId ?? requestedCustomerId;
 
     // Use service_role client for database operations (bypasses RLS)
 
-    const url = new URL(req.url);
+    const url = url0;
     const { parts } = normalizePath(url.pathname, 'customer-portal');
     // Path structure after function-name strip: /<sub-route>/<id>
     const subRoute = parts[0]; // dashboard, service-requests, equipment, supply-orders, knowledge-base
@@ -102,8 +148,8 @@ export default async function handler(req: Request) {
     // =========================================================================
     if (req.method === 'GET' && subRoute === 'dashboard') {
       // For dashboard, customer ID is required
-      const queryCustomerId =
-        url.searchParams.get('customerId') || url.searchParams.get('customer_id') || customerId;
+      // Resolved once above, after the claim check - see the header there.
+      const queryCustomerId = customerId;
 
       if (!queryCustomerId) {
         return createCorsResponse({ error: 'Customer ID required for dashboard' }, 400, req);
@@ -213,8 +259,8 @@ export default async function handler(req: Request) {
     // POST /customer-portal/service-requests - Create service request
     // =========================================================================
     if (subRoute === 'service-requests') {
-      const queryCustomerId =
-        url.searchParams.get('customerId') || url.searchParams.get('customer_id') || customerId;
+      // Resolved once above, after the claim check - see the header there.
+      const queryCustomerId = customerId;
 
       if (!queryCustomerId) {
         return createCorsResponse({ error: 'Customer ID required' }, 400, req);
@@ -463,8 +509,8 @@ export default async function handler(req: Request) {
     // GET /customer-portal/equipment - Get customer's equipment
     // =========================================================================
     if (req.method === 'GET' && subRoute === 'equipment') {
-      const queryCustomerId =
-        url.searchParams.get('customerId') || url.searchParams.get('customer_id') || customerId;
+      // Resolved once above, after the claim check - see the header there.
+      const queryCustomerId = customerId;
 
       if (!queryCustomerId) {
         return createCorsResponse({ error: 'Customer ID required' }, 400, req);
@@ -534,8 +580,8 @@ export default async function handler(req: Request) {
     // (CustomerSelfServicePortal supply-order form)
     // =========================================================================
     if (req.method === 'POST' && subRoute === 'supply-orders') {
-      const queryCustomerId =
-        url.searchParams.get('customerId') || url.searchParams.get('customer_id') || customerId;
+      // Resolved once above, after the claim check - see the header there.
+      const queryCustomerId = customerId;
       if (!queryCustomerId) {
         return createCorsResponse({ error: 'Customer ID required' }, 400, req);
       }
@@ -618,8 +664,8 @@ export default async function handler(req: Request) {
     // GET /customer-portal/supply-orders - Get supply orders
     // =========================================================================
     if (req.method === 'GET' && subRoute === 'supply-orders') {
-      const queryCustomerId =
-        url.searchParams.get('customerId') || url.searchParams.get('customer_id') || customerId;
+      // Resolved once above, after the claim check - see the header there.
+      const queryCustomerId = customerId;
 
       if (!queryCustomerId) {
         return createCorsResponse({ error: 'Customer ID required' }, 400, req);

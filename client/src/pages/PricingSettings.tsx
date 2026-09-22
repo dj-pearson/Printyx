@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Save, Info, DollarSign, Shield, Bell, Eye, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -20,26 +20,66 @@ export default function PricingSettings() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const [formData, setFormData] = useState({
-    defaultMarkupPercentage: settings?.defaultMarkupPercentage || '13.00',
-    categoryMarkupOverrides: settings?.categoryMarkupOverrides || {},
-    allowRepPriceEdit: settings?.allowRepPriceEdit ?? true,
-    requireApprovalForPriceEdit: settings?.requireApprovalForPriceEdit ?? false,
-    requireApprovalAboveThreshold: settings?.requireApprovalAboveThreshold ?? true,
-    maxDiscountPercentage: settings?.maxDiscountPercentage || '20.00',
-    minMarginPercentage: settings?.minMarginPercentage || '5.00',
-    autoApprovalThreshold: settings?.autoApprovalThreshold || '10.00',
-    showDealerCostToReps: settings?.showDealerCostToReps ?? false,
-    showMarginToReps: settings?.showMarginToReps ?? true,
-    notifyOnPriceChange: settings?.notifyOnPriceChange ?? true,
-    notifyManagersOnApproval: settings?.notifyManagersOnApproval ?? true,
-  });
+  /**
+   * THE FORM NEVER SAW THE TENANT'S SETTINGS, on either host (round 125).
+   *
+   * Both useState initialisers read `settings`, and `usePricingSettings` is
+   * still loading on the first render, so they captured the hardcoded
+   * fallbacks - 13% markup, a 20% discount ceiling, a 5% margin floor - and
+   * useState keeps its initial value for the life of the component. The page
+   * then displayed those numbers as the company's policy and Save wrote them
+   * over whatever was stored. In production the save 500'd on a phantom
+   * column, which is the only reason it was not destructive there.
+   *
+   * Hydrate on the FIRST row to arrive, behind a ref, so a refetch does not
+   * discard what the user has typed (QUALITY-002's rule for a form mirroring
+   * a query).
+   */
+  const DEFAULTS = {
+    defaultMarkupPercentage: '13.00',
+    categoryMarkupOverrides: {} as Record<string, unknown>,
+    allowRepPriceEdit: true,
+    requireApprovalForPriceEdit: false,
+    requireApprovalAboveThreshold: true,
+    maxDiscountPercentage: '20.00',
+    minMarginPercentage: '5.00',
+    autoApprovalThreshold: '10.00',
+    showDealerCostToReps: false,
+    showMarginToReps: true,
+    notifyOnPriceChange: true,
+    notifyManagersOnApproval: true,
+  };
+  const EMPTY_OVERRIDES = '{\n  "MFP": 13.0,\n  "Production": 15.0,\n  "Software": 20.0\n}';
 
-  const [categoryOverrides, setCategoryOverrides] = useState<string>(
-    settings?.categoryMarkupOverrides
-      ? JSON.stringify(settings.categoryMarkupOverrides, null, 2)
-      : '{\n  "MFP": 13.0,\n  "Production": 15.0,\n  "Software": 20.0\n}',
-  );
+  const [formData, setFormData] = useState(DEFAULTS);
+  const [categoryOverrides, setCategoryOverrides] = useState<string>(EMPTY_OVERRIDES);
+  const hydrated = useRef(false);
+
+  useEffect(() => {
+    if (hydrated.current || !settings) return;
+    hydrated.current = true;
+    setFormData({
+      defaultMarkupPercentage: settings.defaultMarkupPercentage ?? DEFAULTS.defaultMarkupPercentage,
+      categoryMarkupOverrides: settings.categoryMarkupOverrides ?? {},
+      allowRepPriceEdit: settings.allowRepPriceEdit ?? DEFAULTS.allowRepPriceEdit,
+      requireApprovalForPriceEdit:
+        settings.requireApprovalForPriceEdit ?? DEFAULTS.requireApprovalForPriceEdit,
+      requireApprovalAboveThreshold:
+        settings.requireApprovalAboveThreshold ?? DEFAULTS.requireApprovalAboveThreshold,
+      maxDiscountPercentage: settings.maxDiscountPercentage ?? DEFAULTS.maxDiscountPercentage,
+      minMarginPercentage: settings.minMarginPercentage ?? DEFAULTS.minMarginPercentage,
+      autoApprovalThreshold: settings.autoApprovalThreshold ?? DEFAULTS.autoApprovalThreshold,
+      showDealerCostToReps: settings.showDealerCostToReps ?? DEFAULTS.showDealerCostToReps,
+      showMarginToReps: settings.showMarginToReps ?? DEFAULTS.showMarginToReps,
+      notifyOnPriceChange: settings.notifyOnPriceChange ?? DEFAULTS.notifyOnPriceChange,
+      notifyManagersOnApproval:
+        settings.notifyManagersOnApproval ?? DEFAULTS.notifyManagersOnApproval,
+    });
+    if (settings.categoryMarkupOverrides) {
+      setCategoryOverrides(JSON.stringify(settings.categoryMarkupOverrides, null, 2));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings]);
 
   const updateMutation = useMutation({
     mutationFn: async (data: typeof formData) => {

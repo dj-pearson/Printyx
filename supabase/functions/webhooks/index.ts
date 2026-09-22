@@ -1,10 +1,13 @@
 // Webhooks Edge Function
 // Handles webhook configuration and event dispatching
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
+import { SSRFError, safeFetch } from '../_shared/safe-fetch.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { toWebhookView, toWebhookViews } from '../_shared/webhook-view.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { ROLE_LEVEL, RbacError, requireRoleLevel } from '../_shared/rbac.ts';
+import type { AuthContext } from '../_shared/auth.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -30,6 +33,56 @@ export default async function handler(req: Request) {
     if (!tenantId) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
     }
+
+    /**
+     * SEC-EDGE-001: an outbound webhook sends this tenant's data to a URL the
+     * caller chooses.
+     *
+     * Creating one is therefore an exfiltration primitive - point it at your
+     * own server, subscribe it to every event, and the tenant streams records
+     * to you - and `regenerate-secret` is the other half: it breaks whatever
+     * live integration is verifying signatures with the old one. `test` fires a
+     * real delivery. All five writes were open to any authenticated member.
+     *
+     * The reads stay open and are already safe by construction: every read path
+     * selects an explicit column list that omits `secret`, routed through
+     * `_shared/webhook-view.ts`, so a caller sees which hooks exist and where
+     * they point without the material to forge a delivery.
+     *
+     * SUPERVISOR mirrors the LOWER of the two pages that reach this
+     * (/integration-hub is minLevel 3, /system-integrations is 4), because
+     * gating at 4 would break the page at 3. A LEVEL check, not the
+     * `admin.settings.integrations` permission those pages name, per
+     * SEC-EDGE-002 - no seeder creates that code.
+     */
+    const requireIntegrationAdmin = () => {
+      requireRoleLevel(
+        {
+          userId: user.id,
+          tenantId,
+          email: user.email,
+          jwt: jwt ?? '',
+          supabaseUser: user,
+        } as AuthContext,
+        ROLE_LEVEL.SUPERVISOR,
+      );
+    };
+    const denyIntegrationAdmin = (err: unknown) => {
+      // Only an RbacError is a role refusal; anything else is rethrown, or a
+      // database outage would read as "your role is too low".
+      if (err instanceof RbacError) {
+        return createCorsResponse(
+          {
+            error: 'Managing webhooks requires a supervisor role or above',
+            code: 'INSUFFICIENT_ROLE',
+            details: err.details,
+          },
+          403,
+          req,
+        );
+      }
+      throw err;
+    };
 
     const url = new URL(req.url);
     const { parts } = normalizePath(url.pathname, 'webhooks');
@@ -94,6 +147,11 @@ export default async function handler(req: Request) {
 
     // POST /webhooks - Create webhook
     if (req.method === 'POST' && !webhookId) {
+      try {
+        requireIntegrationAdmin();
+      } catch (err) {
+        return denyIntegrationAdmin(err);
+      }
       const body = await req.json();
 
       // Generate secret for signature verification
@@ -131,6 +189,11 @@ export default async function handler(req: Request) {
 
     // PUT /webhooks/:id - Update webhook
     if (req.method === 'PUT' && webhookId && !subResource) {
+      try {
+        requireIntegrationAdmin();
+      } catch (err) {
+        return denyIntegrationAdmin(err);
+      }
       const body = await req.json();
 
       const { data: webhook, error } = await admin
@@ -158,6 +221,11 @@ export default async function handler(req: Request) {
 
     // POST /webhooks/:id/test - Test webhook
     if (req.method === 'POST' && webhookId && subResource === 'test') {
+      try {
+        requireIntegrationAdmin();
+      } catch (err) {
+        return denyIntegrationAdmin(err);
+      }
       const { data: webhook } = await admin
         .from('webhooks')
         .select('*')
@@ -180,7 +248,14 @@ export default async function handler(req: Request) {
       };
 
       try {
-        const response = await fetch(webhook.url, {
+        // SEC-002: the URL is chosen by whoever created the webhook, and this
+        // branch stores `response_body` in webhook_logs and returns the status
+        // to the caller - so an unchecked request is a read primitive pointed
+        // at anything the cluster can reach, with the answer written somewhere
+        // the caller can read it. The SUPERVISOR gate on this function limits
+        // WHO can do it and is not a substitute: a role check says nothing
+        // about where the request goes.
+        const response = await safeFetch(webhook.url, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -225,7 +300,14 @@ export default async function handler(req: Request) {
         return createCorsResponse(
           {
             success: false,
-            message: 'Failed to reach webhook URL',
+            // Refused and unreachable are different answers, and the operator
+            // needs to know which: one means fix the URL, the other means the
+            // URL points somewhere this product will not send their data.
+            message:
+              error instanceof SSRFError
+                ? 'Refused: that URL resolves to a private or reserved address'
+                : 'Failed to reach webhook URL',
+            code: error instanceof SSRFError ? 'BLOCKED_URL' : undefined,
             error: error instanceof Error ? error.message : 'Unknown error',
           },
           200,
@@ -236,9 +318,17 @@ export default async function handler(req: Request) {
 
     // POST /webhooks/:id/regenerate-secret - Regenerate webhook secret
     if (req.method === 'POST' && webhookId && subResource === 'regenerate-secret') {
+      try {
+        requireIntegrationAdmin();
+      } catch (err) {
+        return denyIntegrationAdmin(err);
+      }
       const newSecret = crypto.randomUUID().replace(/-/g, '');
 
-      const { data: webhook, error } = await admin
+      // The row is not read: the new secret is returned from `newSecret`, and
+      // re-reading it back off the row would put the stored value on a second
+      // code path for no gain.
+      const { error } = await admin
         .from('webhooks')
         .update({
           secret: newSecret,
@@ -277,6 +367,11 @@ export default async function handler(req: Request) {
 
     // DELETE /webhooks/:id - Delete webhook
     if (req.method === 'DELETE' && webhookId) {
+      try {
+        requireIntegrationAdmin();
+      } catch (err) {
+        return denyIntegrationAdmin(err);
+      }
       // Delete logs first — scope by tenant_id defense-in-depth even though
       // the subsequent webhook DELETE is tenant-scoped.
       await admin

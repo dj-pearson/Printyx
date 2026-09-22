@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, invalidateApiPath } from '@/lib/queryClient';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -34,30 +34,19 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import {
   Building2,
-  Users,
   Search,
   Filter,
   Download,
   Plus,
   MoreVertical,
-  Mail,
-  Phone,
-  MapPin,
-  Calendar,
-  TrendingUp,
-  TrendingDown,
-  Sparkles,
   Target,
   UserCheck,
-  UserX,
   ArrowUpDown,
   RefreshCw,
   Eye,
   Edit,
   Trash2,
   CheckCircle2,
-  XCircle,
-  AlertTriangle,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import MainLayout from '@/components/layout/main-layout';
@@ -71,6 +60,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { downloadAuthedFile } from '@/lib/authed-download';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 interface BusinessRecord {
   id: string;
@@ -84,17 +74,17 @@ interface BusinessRecord {
   leadTier?: string;
   industry?: string;
   employeeCount?: number;
-  estimatedRevenue?: string;
+  annualRevenue?: string;
   currentMRR?: string;
-  assignedRep?: string;
+  assignedSalesRep?: string;
   leadSource?: string;
   createdAt: string;
-  lastActivityDate?: string;
+  lastContactDate?: string;
 }
 
 export default function PlatformBusinessRecords() {
   const { toast } = useToast();
-  const queryClient = useQueryClient();
+  const confirm = useConfirm();
   const [, setLocation] = useLocation();
 
   // Filters
@@ -111,6 +101,18 @@ export default function PlatformBusinessRecords() {
 
   // Selection
   const [selectedRecords, setSelectedRecords] = useState<Set<string>>(new Set());
+
+  // Bulk assign
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [assignTo, setAssignTo] = useState('');
+
+  // `assigned_sales_rep` holds a USER ID, so the picker offers the same
+  // platform users a territory or an assignment rule can be given to - typing
+  // one in free text would store an id nobody can verify.
+  const { data: managers = [] } = useQuery<{ id: string; name: string; email: string }[]>({
+    queryKey: ['/api/platform-crm/managers'],
+    enabled: assignOpen,
+  });
 
   // Build query params
   const queryParams = new URLSearchParams();
@@ -166,20 +168,41 @@ export default function PlatformBusinessRecords() {
       recordIds: string[];
       assignedRep: string;
     }) => {
-      const response = await fetch('/api/platform-crm/business-records/bulk/assign', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ recordIds, assignedRep }),
-      });
-      if (!response.ok) throw new Error('Failed to assign records');
-      return response.json();
+      // PROD-013: a bare fetch resolved against the static origin in
+      // production, so response.json() parsed the SPA shell and the mutation
+      // reported "Failed to assign records" - which was also true in dev,
+      // where no route serves this path either. Round 130 built the branch.
+      return apiRequest<{ assigned: number; unchanged: number; missing: string[] }>(
+        '/api/platform-crm/business-records/bulk/assign',
+        { method: 'POST', body: { recordIds, assignedRep } },
+      );
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       invalidateApiPath('/api/platform-crm/business-records');
-      setSelectedRecords(new Set());
+      setAssignOpen(false);
+      setAssignTo('');
+      // Whatever did NOT move stays selected, so a retry does not mean finding
+      // those records again (round 78).
+      setSelectedRecords(new Set(result.missing));
+      // Say what moved. "Records assigned successfully" over a count of
+      // attempts is the shape round 78 found on a bulk delete that deleted
+      // nothing, and the server already knows the difference.
+      const parts = [`${result.assigned} assigned`];
+      if (result.unchanged > 0) parts.push(`${result.unchanged} already assigned`);
+      if (result.missing.length > 0) parts.push(`${result.missing.length} not found`);
       toast({
-        title: 'Success',
-        description: 'Records assigned successfully',
+        title: result.assigned > 0 ? 'Records assigned' : 'Nothing to assign',
+        description: parts.join(', '),
+      });
+    },
+    onError: (error) => {
+      // The selection is deliberately left alone: nothing moved, so the
+      // operator retries from where they were.
+      toast({
+        title: 'Assignment failed',
+        description:
+          error instanceof Error ? error.message : 'Could not assign the selected records.',
+        variant: 'destructive',
       });
     },
   });
@@ -440,17 +463,62 @@ export default function PlatformBusinessRecords() {
                   <Button variant="outline" size="sm" onClick={() => setSelectedRecords(new Set())}>
                     Clear Selection
                   </Button>
-                  {/* Bulk assign/delete have no backend yet — disabled rather than
-                      shown as working buttons that only toast "coming soon" (PA-047). */}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled
-                    title="Bulk assign is not available yet"
-                  >
-                    <UserCheck className="w-4 h-4 mr-2" />
-                    Assign
-                  </Button>
+                  {/* PA-047 disabled these rather than showing buttons that only
+                      toast "coming soon". Round 130 built the assign endpoint, so
+                      that one is live; bulk delete still has no backend. */}
+                  <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        <UserCheck className="w-4 h-4 mr-2" />
+                        Assign
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>
+                          Assign {selectedRecords.size} record
+                          {selectedRecords.size !== 1 ? 's' : ''}
+                        </DialogTitle>
+                        <DialogDescription>
+                          Records already held by this person are left alone, and the change is
+                          recorded in the assignment history.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <Select value={assignTo} onValueChange={setAssignTo}>
+                        <SelectTrigger aria-label="Assign to">
+                          <SelectValue placeholder="Select a sales rep" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {managers.map((m) => (
+                            <SelectItem key={m.id} value={m.id}>
+                              {m.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {managers.length === 0 && (
+                        <p className="text-sm text-muted-foreground">
+                          No platform users are available to assign to.
+                        </p>
+                      )}
+                      <DialogFooter>
+                        <Button variant="outline" onClick={() => setAssignOpen(false)}>
+                          Cancel
+                        </Button>
+                        <Button
+                          disabled={!assignTo || bulkAssignMutation.isPending}
+                          onClick={() =>
+                            bulkAssignMutation.mutate({
+                              recordIds: Array.from(selectedRecords),
+                              assignedRep: assignTo,
+                            })
+                          }
+                        >
+                          {bulkAssignMutation.isPending ? 'Assigning...' : 'Assign'}
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
                   <Button
                     variant="destructive"
                     size="sm"
@@ -629,10 +697,12 @@ export default function PlatformBusinessRecords() {
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem
                                   className="text-destructive"
-                                  onClick={() => {
-                                    if (confirm(`Delete ${record.companyName}?`)) {
-                                      deleteMutation.mutate(record.id);
-                                    }
+                                  onClick={async () => {
+                                    const ok = await confirm({
+                                      title: `Delete ${record.companyName}?`,
+                                    });
+                                    if (!ok) return;
+                                    deleteMutation.mutate(record.id);
                                   }}
                                 >
                                   <Trash2 className="w-4 h-4 mr-2" />

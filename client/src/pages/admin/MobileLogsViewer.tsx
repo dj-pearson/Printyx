@@ -31,6 +31,7 @@ import {
   Play,
   Pause,
 } from 'lucide-react';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 interface MobileLog {
   id: string;
@@ -82,6 +83,7 @@ function JsonViewer({ data }: { data: any }) {
 }
 
 export default function MobileLogsViewer() {
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [level, setLevel] = useState<string>('');
@@ -171,10 +173,13 @@ export default function MobileLogsViewer() {
             <Button
               variant="destructive"
               size="sm"
-              onClick={() => {
-                if (confirm('Purge logs older than 30 days?')) {
-                  purgeMutation.mutate(30);
-                }
+              onClick={async () => {
+                const ok = await confirm({
+                  title: 'Purge logs older than 30 days?',
+                  confirmLabel: 'Purge',
+                });
+                if (!ok) return;
+                purgeMutation.mutate(30);
               }}
               disabled={purgeMutation.isPending}
             >

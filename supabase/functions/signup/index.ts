@@ -3,6 +3,12 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { buildRoleClaims, claimsPatch } from '../_shared/role-claims.ts';
+import {
+  DEFAULT_SIGNUP_LIMITS,
+  signupBuckets,
+  signupThrottleDecision,
+  windowStart,
+} from '../../../shared/public-throttle.ts';
 
 interface SignupRequest {
   email: string;
@@ -36,6 +42,70 @@ function validatePasswordComplexity(password: string): string | null {
   if (!/[0-9]/.test(password)) return 'Password must contain at least one number';
   if (!/[^A-Za-z0-9]/.test(password)) return 'Password must contain at least one special character';
   return null;
+}
+
+/**
+ * Abuse controls for a surface with no JWT in front of it (LAUNCH-010).
+ *
+ * This endpoint creates a tenant, a GoTrue user and a `users` row, and asks
+ * GoTrue to email a verification link to whatever address it was handed. Until
+ * the signup page was pointed at it, nothing called it and there was nothing to
+ * abuse; giving it its first caller is what makes a throttle necessary rather
+ * than tidy.
+ *
+ * DB-BACKED, NOT THE IN-MEMORY LIMITER. `_shared/rate-limit.ts` says in its own
+ * header that it is per-Deno-instance and that hard multi-instance limits want a
+ * database counter. A per-instance cap on account creation is worth what one
+ * isolate's memory is worth, which is nothing against a caller that reconnects.
+ * `public_booking_attempts` is that counter: one row per attempt, counted over a
+ * window, so two invocations racing cannot lose an update the way a read-then-
+ * increment counter can. The table's name says booking and its shape says
+ * nothing of the sort - `bucket` plus `created_at`, no tenant, no page - and its
+ * prune sweep is prefix-agnostic, so a second surface namespaces its buckets and
+ * shares it rather than adding a table for four columns.
+ */
+// deno-lint-ignore no-explicit-any
+type AttemptClient = any;
+
+const ATTEMPTS_TABLE = 'public_booking_attempts';
+
+async function sha256Hex(input: string): Promise<string> {
+  const bytes = new TextEncoder().encode(input);
+  const hash = await crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(hash))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+/** One row per attempt. Appends cannot lose an update the way a counter can. */
+async function recordAttempt(
+  db: AttemptClient,
+  buckets: string[],
+  rejectedReason: string | null,
+): Promise<void> {
+  const { error } = await db
+    .from(ATTEMPTS_TABLE)
+    .insert(buckets.map((bucket) => ({ bucket, rejected_reason: rejectedReason })));
+  // A throttle that cannot record must not refuse a real signup, but it must
+  // say so - silently failing open is how a control stops existing.
+  if (error) console.error('[signup] attempt record failed', error.message);
+}
+
+async function countSince(db: AttemptClient, bucket: string, since: Date): Promise<number> {
+  const { count, error } = await db
+    .from(ATTEMPTS_TABLE)
+    .select('id', { count: 'exact', head: true })
+    .eq('bucket', bucket)
+    .gte('created_at', since.toISOString());
+  if (error) {
+    console.error('[signup] attempt count failed', error.message);
+    // Counting failed, so nothing is known about this source. Allowing is the
+    // deliberate choice: refusing every registration because a count query
+    // broke turns a throttle into an outage on the one path that onboards
+    // customers.
+    return 0;
+  }
+  return count ?? 0;
 }
 
 // Export handler for use by the main server router
@@ -74,7 +144,20 @@ export default async function handler(req: Request) {
       return createCorsResponse({ error: passwordError }, 400, req);
     }
 
-    // Create admin client (service role for tenant creation)
+    // ── LAUNCH-010: rate limit before anything is written or emailed ──
+    //
+    // AFTER validation and BEFORE the first write, on purpose. A malformed body
+    // costs nothing - no row, no email - so letting it through unlimited is
+    // fine, while charging it against a real person's budget is not: three
+    // fat-fingered passwords must not lock somebody out of registering.
+    //
+    // THE HONEYPOT IS DELIBERATELY NOT WIRED HERE. public-booking passes
+    // `b.website` to botSignals because its form has no such field. THIS form
+    // has one - the company website, on step 1 - so copying that call verbatim
+    // would refuse every registration from a company that filled its website
+    // in. The rate limit below is the control that is worth something anyway;
+    // the module's own header says the honeypot stops commodity bots and
+    // nothing else.
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
@@ -85,6 +168,41 @@ export default async function handler(req: Request) {
         },
       },
     );
+
+    const now = new Date();
+    const since = windowStart(now, DEFAULT_SIGNUP_LIMITS.windowSeconds);
+    const buckets = await signupBuckets(req.headers.get('x-forwarded-for'), email, sha256Hex);
+    const [sourceAttempts, emailAttempts, surfaceAttempts] = await Promise.all([
+      countSince(supabaseAdmin, buckets.source, since),
+      countSince(supabaseAdmin, buckets.email, since),
+      countSince(supabaseAdmin, buckets.surface, since),
+    ]);
+    const bucketList = [buckets.source, buckets.email, buckets.surface];
+    const decision = signupThrottleDecision(
+      sourceAttempts,
+      emailAttempts,
+      surfaceAttempts,
+      DEFAULT_SIGNUP_LIMITS,
+    );
+    if (!decision.allowed) {
+      await recordAttempt(supabaseAdmin, bucketList, 'rate_limited');
+      // One message for all three reasons. Telling a caller whether it was
+      // their address, the address they named or the whole surface tells them
+      // which one to vary.
+      return createCorsResponse(
+        {
+          error: 'Too many signup attempts. Please try again later.',
+          code: 'SIGNUP_RATE_LIMITED',
+          retryAfterSeconds: decision.retryAfterSeconds,
+        },
+        429,
+        req,
+      );
+    }
+    // Recorded BEFORE the work rather than after it, so an attempt that fails
+    // halfway - a duplicate email, a rolled-back tenant - still counts. A
+    // throttle that only counts successes is one a failing script never trips.
+    await recordAttempt(supabaseAdmin, bucketList, null);
 
     // Step 1: Create tenant record
     const tenantId = crypto.randomUUID();

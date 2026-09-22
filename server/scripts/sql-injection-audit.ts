@@ -93,14 +93,37 @@ const PATTERNS: Array<{
 const EXCLUDED_DIRS = ['node_modules', 'dist', '.git', 'coverage', 'attached_assets'];
 const FILE_EXTENSIONS = ['.ts', '.tsx'];
 
-function scanFile(filePath: string): Finding[] {
+/**
+ * Exempt BY NAME, not by a `scripts/` or `tests/` glob: a real offence in a
+ * helper should still be reported, and a blanket exemption is where one hides.
+ * These two necessarily CONTAIN the patterns they are about - this scanner
+ * carries them as its own pattern descriptions, and the prevention test quotes
+ * them in prose to explain what must not come back. Five of this scanner's
+ * first six findings were those two files reporting themselves, including both
+ * the CRITICAL and the HIGH, which is how the one real finding
+ * (server/lib/migrate.ts) sat unread.
+ */
+const SELF_REFERENTIAL_FILES = new Set([
+  'sql-injection-audit.ts',
+  'sql-injection-prevention.test.ts',
+]);
+
+export function scanFile(filePath: string): Finding[] {
   const findings: Finding[] = [];
+  if (SELF_REFERENTIAL_FILES.has(path.basename(filePath))) return findings;
+
   const content = fs.readFileSync(filePath, 'utf-8');
   const lines = content.split('\n');
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const lineNumber = i + 1;
+
+    // A line comment cannot execute. Without this the scanner reports the
+    // annotation that explains a fix as though it were the defect - the trap
+    // this repo has now recorded a dozen times in absence assertions.
+    const trimmed = line.trim();
+    if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*')) continue;
 
     for (const pattern of PATTERNS) {
       if (pattern.regex.test(line)) {

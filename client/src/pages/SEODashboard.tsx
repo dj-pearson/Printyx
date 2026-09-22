@@ -229,7 +229,11 @@ interface BrokenLink {
 
 interface RedirectChain {
   sourceUrl: string;
-  destinationUrl: string;
+  /** Null when the walk did not reach an end - truncated, or a hop refused. */
+  destinationUrl: string | null;
+  /** The hop SSRF validation refused, when one was (SEC-002). */
+  blockedAt?: string | null;
+  truncated?: boolean | null;
   /** One entry per hop, in order. */
   redirectChain?: Array<{ url: string; statusCode: number }> | null;
   chainLength?: number | null;
@@ -250,11 +254,22 @@ interface SecurityAnalysis {
 
 interface MobileAnalysis {
   url: string;
-  hasViewport: boolean;
+  // PROD-008: this used to declare hasViewport, touchElementsSize and
+  // textReadability. The endpoint has never sent any of the three - it sends
+  // hasViewportMeta, and the other two measure a rendered page - so all three
+  // rows rendered their FALSE branch ("No", "Too Small", "Issues") for every
+  // URL, on a panel read as a mobile-readiness verdict.
+  hasViewportMeta: boolean;
   isMobileFriendly: boolean;
-  touchElementsSize: boolean;
-  textReadability: boolean;
+  scalesToDevice: boolean;
+  blocksZoom: boolean;
+  hasFlashContent: boolean;
+  /** Null: not measurable from markup. Rendered as "not measured". */
+  hasTouchFriendlyElements: boolean | null;
+  hasReadableText: boolean | null;
   mobileScore: number;
+  issues?: string[];
+  unbacked?: string[];
 }
 
 export default function SEODashboard() {
@@ -271,6 +286,13 @@ export default function SEODashboard() {
   const [performanceDevice, setPerformanceDevice] = useState('mobile');
 
   // Analysis results state
+  // PROD-008: these four endpoints answer { <key>, unbacked } now, because each
+  // one has something it deliberately does not measure and a panel that says so
+  // beats one that leaves the reader to assume. The bare-array fallback keeps
+  // an older deployment working rather than silently rendering nothing.
+  const [unbackedNotes, setUnbackedNotes] = useState<{ check: string; notes: string[] } | null>(
+    null,
+  );
   const [imageAnalysisResults, setImageAnalysisResults] = useState<ImageAnalysis[]>([]);
   const [linkAnalysisResults, setLinkAnalysisResults] = useState<LinkAnalysis[]>([]);
   const [brokenLinksResults, setBrokenLinksResults] = useState<BrokenLink[]>([]);
@@ -348,8 +370,9 @@ export default function SEODashboard() {
     mutationFn: async (url: string) => {
       return apiRequest('/api/seo/audit', 'POST', { url });
     },
-    onSuccess: () => {
+    onSuccess: (data: unknown) => {
       queryClient.invalidateQueries({ queryKey: ['/api/seo/audit/history'] });
+      noteUnbacked('SEO audit', data);
       toast({
         title: 'Audit completed',
         description: 'SEO audit has been completed successfully.',
@@ -441,15 +464,27 @@ export default function SEODashboard() {
     },
   });
 
+  function readList<T>(data: unknown, key: string): T[] {
+    if (Array.isArray(data)) return data as T[];
+    const list = (data as Record<string, unknown> | null)?.[key];
+    return Array.isArray(list) ? (list as T[]) : [];
+  }
+
+  function noteUnbacked(check: string, data: unknown) {
+    const notes = (data as { unbacked?: unknown } | null)?.unbacked;
+    setUnbackedNotes(
+      Array.isArray(notes) && notes.length ? { check, notes: notes as string[] } : null,
+    );
+  }
+
   // Image analysis mutation
   const analyzeImagesMutation = useMutation({
     mutationFn: async (url: string) => {
       return apiRequest('/api/seo/analyze/images', 'POST', { pageUrl: url });
     },
-    onSuccess: (data: ImageAnalysis[]) => {
-      // The endpoint returns the stored rows as a bare array. The page used to
-      // read `data.images`, which is undefined on an array.
-      const images = Array.isArray(data) ? data : [];
+    onSuccess: (data: unknown) => {
+      const images = readList<ImageAnalysis>(data, 'images');
+      noteUnbacked('Image analysis', data);
       setImageAnalysisResults(images);
       toast({
         title: 'Analysis complete',
@@ -470,9 +505,9 @@ export default function SEODashboard() {
     mutationFn: async (url: string) => {
       return apiRequest('/api/seo/check/broken-links', 'POST', { sourceUrl: url });
     },
-    onSuccess: (data: LinkAnalysis[]) => {
-      // Bare array of stored rows; `data.links` was undefined on it.
-      const links = Array.isArray(data) ? data : [];
+    onSuccess: (data: unknown) => {
+      const links = readList<LinkAnalysis>(data, 'links');
+      noteUnbacked('Link analysis', data);
       setLinkAnalysisResults(links);
       toast({ title: 'Analysis complete', description: `Found ${links.length} links` });
     },
@@ -490,11 +525,12 @@ export default function SEODashboard() {
     mutationFn: async (url: string) => {
       return apiRequest('/api/seo/check/broken-links', 'POST', { sourceUrl: url });
     },
-    onSuccess: (data: BrokenLink[]) => {
+    onSuccess: (data: unknown) => {
       // The endpoint returns EVERY link it found, with isBroken null for the
       // ones past the fetch limit. Only the confirmed-broken ones belong under
       // a heading that says "broken links".
-      const all = Array.isArray(data) ? data : [];
+      const all = readList<BrokenLink>(data, 'links');
+      noteUnbacked('Broken-link check', data);
       const broken = all.filter((link) => link.isBroken === true);
       const unchecked = all.filter((link) => link.isBroken === null).length;
       setBrokenLinksResults(broken);
@@ -527,7 +563,9 @@ export default function SEODashboard() {
       toast({
         title: 'Check complete',
         description: chains.length
-          ? `${data?.chainLength ?? 0} redirect(s) to ${data?.destinationUrl ?? 'the final URL'}`
+          ? data?.destinationUrl
+            ? `${data?.chainLength ?? 0} redirect(s) to ${data.destinationUrl}`
+            : `${data?.chainLength ?? 0} redirect(s); the chain did not reach an end`
           : 'No redirects found',
       });
     },
@@ -574,8 +612,9 @@ export default function SEODashboard() {
     mutationFn: async (url: string) => {
       return apiRequest('/api/seo/check/mobile', 'POST', { url });
     },
-    onSuccess: (data) => {
+    onSuccess: (data: MobileAnalysis) => {
       setMobileResults(data);
+      noteUnbacked('Mobile check', data);
       toast({ title: 'Analysis complete', description: `Mobile score: ${data.mobileScore}/100` });
     },
     onError: (error: Error) => {
@@ -616,10 +655,9 @@ export default function SEODashboard() {
     mutationFn: async (url: string) => {
       return apiRequest('/api/seo/validate/structured-data', 'POST', { url });
     },
-    onSuccess: (data: StructuredDataResult[]) => {
-      // A bare array of stored seo_structured_data rows. The page read
-      // `data.schemas`, so the results panel never rendered.
-      const schemas = Array.isArray(data) ? data : [];
+    onSuccess: (data: unknown) => {
+      const schemas = readList<StructuredDataResult>(data, 'schemas');
+      noteUnbacked('Structured-data validation', data);
       setStructuredDataResults(schemas);
       toast({
         title: 'Validation complete',
@@ -846,6 +884,26 @@ export default function SEODashboard() {
                   </TabsTrigger>
                 </TabsList>
               </ScrollArea>
+
+              {/*
+                What the last check deliberately did not measure. Saying it here
+                is the difference between a panel a marketer can act on and one
+                they read as a complete verdict - the originals filled these
+                gaps with a flat 50KB "saving" per image, a hardcoded
+                touch-friendly pass and a 0ms load time.
+              */}
+              {unbackedNotes && (
+                <div className="mt-4 rounded-md border border-border bg-muted/40 p-3">
+                  <p className="text-sm font-medium">
+                    Not measured by {unbackedNotes.check.toLowerCase()}
+                  </p>
+                  <ul className="mt-1 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+                    {unbackedNotes.notes.map((note) => (
+                      <li key={note}>{note}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               {/* Audit Tab */}
               <TabsContent value="audit" className="space-y-4 mt-4">
@@ -1977,9 +2035,21 @@ export default function SEODashboard() {
                                       </div>
                                     ))}
                                   </div>
-                                  <p className="text-xs font-medium">
-                                    Final: {chain.destinationUrl}
-                                  </p>
+                                  {/* No destination is a real answer here:
+                                      the walk was truncated or a hop was
+                                      refused, so the last URL observed is
+                                      somewhere the chain passed through. */}
+                                  {chain.destinationUrl ? (
+                                    <p className="text-xs font-medium">
+                                      Final: {chain.destinationUrl}
+                                    </p>
+                                  ) : (
+                                    <p className="text-xs font-medium text-destructive">
+                                      {chain.blockedAt
+                                        ? `Stopped at ${chain.blockedAt} - it resolves to a private or reserved address`
+                                        : 'The chain did not reach an end'}
+                                    </p>
+                                  )}
                                 </div>
                               </CardContent>
                             </Card>
@@ -2188,7 +2258,7 @@ export default function SEODashboard() {
                           <div>
                             <Label>Viewport Configured</Label>
                             <p className="text-sm font-medium">
-                              {mobileResults.hasViewport ? '✓ Yes' : '✗ No'}
+                              {mobileResults.hasViewportMeta ? '✓ Yes' : '✗ No'}
                             </p>
                           </div>
                           <div>
@@ -2198,18 +2268,25 @@ export default function SEODashboard() {
                             </p>
                           </div>
                           <div>
-                            <Label>Touch Elements</Label>
+                            <Label>Scales To Device</Label>
                             <p className="text-sm font-medium">
-                              {mobileResults.touchElementsSize ? '✓ Proper Size' : '✗ Too Small'}
+                              {mobileResults.scalesToDevice ? '✓ Yes' : '✗ No'}
                             </p>
                           </div>
                           <div>
-                            <Label>Text Readability</Label>
+                            <Label>Zooming Allowed</Label>
                             <p className="text-sm font-medium">
-                              {mobileResults.textReadability ? '✓ Readable' : '✗ Issues'}
+                              {mobileResults.blocksZoom ? '✗ Blocked' : '✓ Yes'}
                             </p>
                           </div>
                         </div>
+                        {(mobileResults.issues?.length ?? 0) > 0 && (
+                          <ul className="list-disc space-y-1 pl-5 text-sm text-destructive">
+                            {mobileResults.issues?.map((issue) => (
+                              <li key={issue}>{issue}</li>
+                            ))}
+                          </ul>
+                        )}
                       </div>
                     )}
                     {!mobileResults && !analyzeMobileMutation.isPending && (
@@ -2223,11 +2300,11 @@ export default function SEODashboard() {
                           <p className="text-sm text-muted-foreground">-</p>
                         </div>
                         <div>
-                          <Label>Touch Elements</Label>
+                          <Label>Scales To Device</Label>
                           <p className="text-sm text-muted-foreground">-</p>
                         </div>
                         <div>
-                          <Label>Text Readability</Label>
+                          <Label>Zooming Allowed</Label>
                           <p className="text-sm text-muted-foreground">-</p>
                         </div>
                       </div>

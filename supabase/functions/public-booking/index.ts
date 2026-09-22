@@ -33,6 +33,14 @@ import {
 } from './_slots.ts';
 import { pushInsert, pushPatch, pushDelete, type ProviderEvent } from './_provider.ts';
 import {
+  DEFAULT_BOOKING_LIMITS,
+  botSignals,
+  pageBucket,
+  sourceBucket,
+  throttleDecision,
+  windowStart,
+} from '../../../shared/public-throttle.ts';
+import {
   sendConfirmation,
   sendReschedule,
   sendCancellation,
@@ -393,6 +401,52 @@ export default async function handler(req: Request): Promise<Response> {
   }
 }
 
+// ─── Abuse controls (COP-B14 AC4) ───────────────────────────────────────────
+//
+// This endpoint has no JWT in front of it and it writes rows, sends email and
+// puts events on a rep's calendar. What each control is worth is written down
+// in shared/public-throttle.ts and is worth repeating: the RATE LIMIT is the
+// real one, enforced server-side over attempts already recorded; the honeypot
+// and the fill timer are client-supplied and stop commodity bots only.
+
+async function sha256Hex(input: string): Promise<string> {
+  const bytes = new TextEncoder().encode(input);
+  const hash = await crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(hash))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+/** One row per attempt. Appends cannot lose an update the way a counter can. */
+async function recordAttempt(
+  db: SupabaseClient,
+  buckets: string[],
+  rejectedReason: string | null,
+): Promise<void> {
+  const { error } = await db
+    .from('public_booking_attempts')
+    .insert(buckets.map((bucket) => ({ bucket, rejected_reason: rejectedReason })));
+  // A throttle that cannot record must not refuse a real booking, but it must
+  // say so - silently failing open is how a control stops existing.
+  if (error) console.error('[public-booking] attempt record failed', error.message);
+}
+
+async function countSince(db: SupabaseClient, bucket: string, since: Date): Promise<number> {
+  const { count, error } = await db
+    .from('public_booking_attempts')
+    .select('id', { count: 'exact', head: true })
+    .eq('bucket', bucket)
+    .gte('created_at', since.toISOString());
+  if (error) {
+    console.error('[public-booking] attempt count failed', error.message);
+    // Counting failed, so nothing is known about this source. Allowing is the
+    // deliberate choice: refusing every booking because a count query broke
+    // turns a throttle into an outage.
+    return 0;
+  }
+  return count ?? 0;
+}
+
 async function handleCreate(req: Request, db: SupabaseClient, slug: string): Promise<Response> {
   const page = await loadPageBySlug(db, slug);
   if (!page) return createCorsResponse({ message: 'Booking page not found' }, 404, req);
@@ -415,6 +469,38 @@ async function handleCreate(req: Request, db: SupabaseClient, slug: string): Pro
   const inviteePhone = typeof b.inviteePhone === 'string' ? b.inviteePhone : null;
   const inviteeCompany = typeof b.inviteeCompany === 'string' ? b.inviteeCompany : null;
   const inviteeNotes = typeof b.inviteeNotes === 'string' ? b.inviteeNotes : null;
+
+  // ── AC4: rate limit, then commodity-bot signals ──
+  const now = new Date();
+  const since = windowStart(now, DEFAULT_BOOKING_LIMITS.windowSeconds);
+  const srcBucket = await sourceBucket(slug, req.headers.get('x-forwarded-for'), sha256Hex);
+  const pgBucket = pageBucket(slug);
+  const [sourceAttempts, pageAttempts] = await Promise.all([
+    countSince(db, srcBucket, since),
+    countSince(db, pgBucket, since),
+  ]);
+  const decision = throttleDecision(sourceAttempts, pageAttempts, DEFAULT_BOOKING_LIMITS);
+  if (!decision.allowed) {
+    await recordAttempt(db, [srcBucket, pgBucket], 'rate_limited');
+    return createCorsResponse(
+      {
+        message: 'Too many booking attempts. Please try again shortly.',
+        retryAfterSeconds: decision.retryAfterSeconds,
+      },
+      429,
+      req,
+    );
+  }
+
+  const bot = botSignals({ honeypot: b.website, formOpenedAt: b.formOpenedAt as string, now });
+  if (bot.suspicious) {
+    await recordAttempt(db, [srcBucket, pgBucket], bot.reason);
+    // Deliberately indistinguishable from a real failure. Telling a bot which
+    // signal caught it is telling it what to change.
+    return createCorsResponse({ message: 'That booking could not be completed.' }, 400, req);
+  }
+
+  await recordAttempt(db, [srcBucket, pgBucket], null);
 
   // Re-validate the slot is still open and pick the assigned host.
   const startDate = localParts(new Date(start), page.timezone).dateStr.replace(

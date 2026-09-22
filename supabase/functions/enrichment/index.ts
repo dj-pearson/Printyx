@@ -5,10 +5,12 @@ import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { WRITE_BATCH, writeInBatches } from '../_shared/batch-fetch.ts';
 import {
+  enrichedContactPatch,
   toEnrichedContactRow,
   UNPERSISTED_ENRICHMENT_FIELDS,
 } from '../_shared/enriched-contact.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { fetchAllRows } from '../_shared/paged-select.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -70,20 +72,32 @@ export default async function handler(req: Request) {
     if (req.method === 'PUT' && resource === 'contacts' && resourceId) {
       const body = await req.json();
 
+      // Mapped, not spread. `{ ...body }` lets the caller name every column -
+      // tenant_id included, which moves the row to another tenant - and the
+      // tenant filter decides WHICH row is written, not what goes into it
+      // (COP-M01). The editable set sits beside the importer's mapper so the
+      // two cannot drift.
+      const patch = enrichedContactPatch(body);
+      if (Object.keys(patch).length === 0) {
+        return createCorsResponse(
+          { error: 'No updatable fields in the request body', code: 'EMPTY_PATCH' },
+          400,
+          req,
+        );
+      }
+
       const { data: contact, error } = await admin
         .from('enriched_contacts')
-        .update({
-          ...body,
-          updated_at: new Date().toISOString(),
-        })
+        .update({ ...patch, updated_at: new Date().toISOString() })
         .eq('id', resourceId)
         .eq('tenant_id', tenantId)
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) {
         return createCorsResponse({ error: 'Failed to update enriched contact' }, 500, req);
       }
+      if (!contact) return createCorsResponse({ error: 'Enriched contact not found' }, 404, req);
 
       return createCorsResponse(contact, 200, req);
     }
@@ -199,30 +213,68 @@ export default async function handler(req: Request) {
 
     // GET /enrichment/analytics
     if (req.method === 'GET' && resource === 'analytics') {
-      const { data: contacts } = await admin
-        .from('enriched_contacts')
-        // The columns are enrichment_source and prospecting_status; `source` and
-        // `status` do not exist, so this analytics query 42703'd and both
-        // breakdowns came back empty. The shared importer mapper already uses
-        // the real names — this read was the last place still on the old ones.
-        .select('enrichment_source, prospecting_status')
-        .eq('tenant_id', tenantId);
+      /**
+       * THE PAGE AND THIS ENDPOINT NEVER AGREED (PA-040's shape, live).
+       *
+       * DataEnrichment.tsx reads `contacts.bySource`, `contacts.byStatus`,
+       * `contacts.byLevel` and `companies.byIndustry`, and calls `.map`,
+       * `.reduce` and `.find` on each - so it wants ARRAYS of
+       * `{ source|status|level|industry, count }` nested under two keys. This
+       * sent `{ totalContacts, bySource: {src: n}, byStatus: {st: n} }`: flat,
+       * as objects, and missing two of the four. Every read resolved to
+       * undefined behind optional chaining, so the whole Analytics tab rendered
+       * "No data available" and the three headline cards showed 0 - on a 200,
+       * with no error anywhere.
+       *
+       * Both of the missing breakdowns are real columns
+       * (`enriched_contacts.management_level`, `enriched_companies.primary_industry`),
+       * so all four are derived rather than dropped.
+       */
+      const [contacts, companies] = await Promise.all([
+        // PAGED. PostgREST caps an unbounded select at its default page size,
+        // so a tenant past that got a tally of the first page presented as a
+        // total - COP-I01's truncation, on an aggregate where nothing on screen
+        // could show it had happened.
+        fetchAllRows<Record<string, any>>(() =>
+          admin
+            .from('enriched_contacts')
+            // The columns are enrichment_source and prospecting_status;
+            // `source` and `status` do not exist, so this read used to 42703.
+            .select('enrichment_source, prospecting_status, management_level')
+            .eq('tenant_id', tenantId),
+        ),
+        fetchAllRows<Record<string, any>>(() =>
+          admin.from('enriched_companies').select('primary_industry').eq('tenant_id', tenantId),
+        ),
+      ]);
 
-      const bySource: Record<string, number> = {};
-      const byStatus: Record<string, number> = {};
-
-      (contacts || []).forEach((c: any) => {
-        const src = c.enrichment_source ?? 'unknown';
-        const st = c.prospecting_status ?? 'unknown';
-        bySource[src] = (bySource[src] || 0) + 1;
-        byStatus[st] = (byStatus[st] || 0) + 1;
-      });
+      /** Tally one column into the `[{ <key>: value, count }]` the page maps. */
+      const tally = (rows: Record<string, any>[], column: string, key: string) => {
+        const counts = new Map<string, number>();
+        for (const row of rows) {
+          const value = (row?.[column] as string | null) ?? 'unknown';
+          counts.set(value, (counts.get(value) ?? 0) + 1);
+        }
+        return [...counts.entries()]
+          .sort((a, b) => b[1] - a[1])
+          .map(([value, count]) => ({ [key]: value, count }));
+      };
 
       return createCorsResponse(
         {
-          totalContacts: contacts?.length || 0,
-          bySource,
-          byStatus,
+          contacts: {
+            total: contacts.length,
+            bySource: tally(contacts, 'enrichment_source', 'source'),
+            byStatus: tally(contacts, 'prospecting_status', 'status'),
+            byLevel: tally(contacts, 'management_level', 'level'),
+          },
+          companies: {
+            total: companies.length,
+            byIndustry: tally(companies, 'primary_industry', 'industry'),
+          },
+          unbacked: [
+            "management_level is a real column that the importers never fill - toEnrichedContactRow does not map it from either provider - so byLevel reads 'unknown' for every imported contact until something writes it (AUDIT-028).",
+          ],
         },
         200,
         req,

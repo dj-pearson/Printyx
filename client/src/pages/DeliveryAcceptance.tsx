@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
 import { useParams, useLocation } from 'wouter';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { MainLayout } from '@/components/layout/main-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { InlineQueryError } from '@/components/ui/inline-query-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -53,7 +54,6 @@ export default function DeliveryAcceptance() {
   const installationId = params.installationId;
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
 
   const [signerName, setSignerName] = useState('');
   const [signerTitle, setSignerTitle] = useState('');
@@ -67,7 +67,12 @@ export default function DeliveryAcceptance() {
     enabled: Boolean(installationId),
   });
 
-  const { data: checklist = [], isLoading: checklistLoading } = useQuery<ChecklistRow[]>({
+  const {
+    data: checklist = [],
+    isLoading: checklistLoading,
+    isError: checklistFailed,
+    refetch: refetchChecklist,
+  } = useQuery<ChecklistRow[]>({
     queryKey: [`/api/field-service/installation-checklists?installation_id=${installationId}`],
     enabled: Boolean(installationId),
   });
@@ -140,7 +145,25 @@ export default function DeliveryAcceptance() {
     },
   });
 
-  const canSubmit = signerName.trim().length > 0 && Boolean(signature) && blockers.length === 0;
+  /**
+   * A CHECKLIST THAT FAILED TO LOAD IS NOT A CHECKLIST WITH NOTHING ON IT.
+   *
+   * `data: checklist = []` turned a failed request into an empty list, so
+   * `blockers` came back empty and `canSubmit` went TRUE - the Accept button
+   * enabled itself and a customer could sign for a delivery whose checklist had
+   * never loaded. The record this page writes is the evidence that a machine
+   * was installed and inspected, so an empty one signed in good faith is worse
+   * than no record at all.
+   *
+   * CR-033 is usually about a failure reading as "no data yet"; here it reads
+   * as "nothing left to check", which is the same lie pointed at a signature.
+   */
+  const canSubmit =
+    signerName.trim().length > 0 &&
+    Boolean(signature) &&
+    blockers.length === 0 &&
+    !checklistFailed &&
+    !checklistLoading;
 
   return (
     <MainLayout
@@ -278,6 +301,14 @@ export default function DeliveryAcceptance() {
                 onChange={(e) => setNotes(e.target.value)}
               />
             </div>
+
+            {checklistFailed && (
+              <InlineQueryError
+                label="the installation checklist"
+                onRetry={refetchChecklist}
+                className="mb-3"
+              />
+            )}
 
             {blockers.length > 0 && (
               <p className="text-sm text-destructive">

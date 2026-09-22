@@ -23,11 +23,21 @@ import {
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 
+/**
+ * `connected` is NULLABLE, and that is the whole point of round 126.
+ *
+ * The endpoint used to answer `connected: false` over a phantom table whose
+ * error it discarded, so this page showed a red "Not connected" badge and a
+ * Connect button to every dealer in production - including any who HAD
+ * connected on the Express host. False is a measurement; null is "we cannot
+ * look", and the two must not render the same.
+ */
 interface QuickBooksStatus {
-  connected: boolean;
-  companyId?: string;
-  tokenValid?: boolean;
-  tokenExpires?: string;
+  connected: boolean | null;
+  companyId?: string | null;
+  tokenValid?: boolean | null;
+  tokenExpires?: string | null;
+  unavailable?: { error: string; code: string; details: string };
 }
 
 interface SyncResult {
@@ -156,6 +166,7 @@ export default function QuickBooksIntegration() {
 
   const getStatusIcon = () => {
     if (statusLoading) return <RefreshCw className="h-4 w-4 animate-spin" />;
+    if (qbStatus?.unavailable) return <AlertCircle className="h-4 w-4 text-muted-foreground" />;
     if (!qbStatus?.connected) return <XCircle className="h-4 w-4 text-red-500" />;
     if (!qbStatus?.tokenValid) return <AlertCircle className="h-4 w-4 text-yellow-500" />;
     return <CheckCircle className="h-4 w-4 text-green-500" />;
@@ -163,12 +174,14 @@ export default function QuickBooksIntegration() {
 
   const getStatusText = () => {
     if (statusLoading) return 'Checking connection...';
+    if (qbStatus?.unavailable) return 'Not available';
     if (!qbStatus?.connected) return 'Not connected';
     if (!qbStatus?.tokenValid) return 'Token expired';
     return 'Connected';
   };
 
   const getStatusVariant = () => {
+    if (qbStatus?.unavailable) return 'outline';
     if (!qbStatus?.connected) return 'destructive';
     if (!qbStatus?.tokenValid) return 'secondary';
     return 'default';
@@ -203,11 +216,15 @@ export default function QuickBooksIntegration() {
                 {getStatusIcon()}
                 <span className="font-medium">{getStatusText()}</span>
                 <Badge variant={getStatusVariant() as any}>
-                  {qbStatus?.connected ? 'Connected' : 'Disconnected'}
+                  {qbStatus?.unavailable
+                    ? 'Unavailable'
+                    : qbStatus?.connected
+                      ? 'Connected'
+                      : 'Disconnected'}
                 </Badge>
               </div>
               <div className="flex gap-2">
-                {qbStatus?.connected ? (
+                {qbStatus?.unavailable ? null : qbStatus?.connected ? (
                   <Button
                     variant="destructive"
                     onClick={() => disconnectMutation.mutate()}
@@ -243,6 +260,16 @@ export default function QuickBooksIntegration() {
                   </p>
                 </div>
               </div>
+            )}
+
+            {qbStatus?.unavailable && (
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  <span className="font-medium">{qbStatus.unavailable.error}.</span>{' '}
+                  {qbStatus.unavailable.details}
+                </AlertDescription>
+              </Alert>
             )}
 
             {isConnecting && (

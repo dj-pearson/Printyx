@@ -33,6 +33,8 @@ import {
   dashboardTopCustomers,
 } from './handlers/summary.ts';
 import { deleteLayout, getDefaultLayout, normalizeLayout, saveLayout } from './handlers/layouts.ts';
+import { resolveRoleLevel } from '../_shared/rbac.ts';
+import { resolveMyDayLayout, type MyDayCardPref } from '../../../shared/my-day-layout.ts';
 import {
   buildCard,
   formatCurrency,
@@ -76,6 +78,89 @@ export default async function handler(req: Request) {
     const url = new URL(req.url);
     const { parts } = normalizePath(url.pathname, 'dashboard');
     const endpoint = parts[0];
+
+    // ------------------------------------------------------------------
+    // GET/PUT /dashboard/my-day-layout (COP-B01 AC2, AC6)
+    //
+    // Its own table, not dashboard_layouts: that one is already claimed by two
+    // handlers that both read (tenant_id, user_id, is_user_custom) with no
+    // surface filter, so a third writer would make an existing collision worse.
+    //
+    // The ROLE GATE IS APPLIED ON READ, EVERY READ. Storing only what a rep may
+    // see would mean a promotion silently loses their arrangement and a
+    // demotion keeps serving a manager card until they next save; resolving
+    // against the live role level each time makes both correct immediately.
+    // ------------------------------------------------------------------
+    if (endpoint === 'my-day-layout') {
+      const roleLevel = await resolveRoleLevel(
+        { userId: user.id, tenantId, email: user.email, jwt: jwt ?? '', supabaseUser: user },
+        admin,
+      );
+
+      if (req.method === 'GET') {
+        const { data, error } = await admin
+          .from('my_day_layouts')
+          .select('cards, updated_at')
+          .eq('tenant_id', tenantId)
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (error) throw new Error(error.message);
+        const resolved = resolveMyDayLayout(
+          ((data as Record<string, any>)?.cards ?? null) as MyDayCardPref[] | null,
+          roleLevel,
+        );
+        return createCorsResponse(
+          {
+            ...resolved,
+            roleLevel,
+            isDefault: !data,
+            updatedAt: (data as any)?.updated_at ?? null,
+          },
+          200,
+          req,
+        );
+      }
+
+      if (req.method === 'PUT') {
+        const body = (await req.json().catch(() => ({}))) as Record<string, any>;
+        if (!Array.isArray(body.cards)) {
+          return createCorsResponse(
+            { error: 'cards must be an array of {id, order, hidden?}', code: 'BAD_CARDS' },
+            400,
+            req,
+          );
+        }
+        const cards: MyDayCardPref[] = body.cards
+          .filter((c: any) => c && typeof c.id === 'string')
+          .map((c: any, i: number) => ({
+            id: String(c.id),
+            order: Number.isFinite(Number(c.order)) ? Number(c.order) : i,
+            ...(c.hidden === true ? { hidden: true } : {}),
+          }));
+
+        const { error } = await admin.from('my_day_layouts').upsert(
+          {
+            tenant_id: tenantId,
+            user_id: user.id,
+            cards,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'tenant_id,user_id' },
+        );
+        if (error) throw new Error(error.message);
+
+        // Answered RESOLVED, not echoed: a saved preference for a card the
+        // role may not see is stored (a promotion restores it) but must not
+        // come back as visible.
+        return createCorsResponse(
+          { ...resolveMyDayLayout(cards, roleLevel), roleLevel, isDefault: false },
+          200,
+          req,
+        );
+      }
+
+      return createCorsResponse({ error: 'Method not allowed' }, 405, req);
+    }
 
     // ------------------------------------------------------------------
     // GET /dashboard/card-config

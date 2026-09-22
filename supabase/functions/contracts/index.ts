@@ -5,6 +5,23 @@ import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { accessibleCustomerIds, applyCustomerScope, resolveScope } from '../_shared/scope.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { toCamel } from '../_shared/case.ts';
+
+// EVERY READ LEAVES HERE IN camelCase (round 140).
+//
+// These branches selected '*' and answered the raw PostgREST row, while the
+// callers read camelCase: CustomerContracts.tsx and MeterBilling.tsx read it
+// exclusively, and contracts.tsx, Invoices.tsx, MeterReadings.tsx and
+// AdvancedReporting.tsx each normalise with `row.contract_number ||
+// row.contractNumber || ''`, so they tolerated either and the two that did not
+// rendered nothing. `contracts` carries no jsonb column, so a DEEP toCamel is
+// safe here - a shallow one would be needed if it ever gains one, because a
+// deep convert rewrites the customer's own keys inside a blob (CRM-008).
+//
+// iOS is unaffected: APIClient sets `.convertFromSnakeCase`, which only
+// transforms keys containing an underscore, so an already-camel key arrives
+// unchanged and still matches the Swift property.
+const camel = <T = unknown>(v: unknown): T => toCamel<T>(v);
 
 // Helper: Batch-enrich records with customer names from business_records
 async function enrichWithCustomerNames(admin: any, records: any[]) {
@@ -111,9 +128,27 @@ export default async function handler(req: Request) {
 
       // Enrich with customer names
       const enriched = await enrichWithCustomerNames(admin, contracts || []);
+
+      // hasTieredRates is NOT a column - it is whether a row exists in
+      // contract_tiered_rates. One batched `.in()` over the page's ids rather
+      // than a lookup per contract, which would be an N+1 on a list.
+      const ids = (enriched || []).map((c: any) => c.id).filter(Boolean);
+      let tieredIds = new Set<string>();
+      if (ids.length > 0) {
+        const { data: tierRows } = await admin
+          .from('contract_tiered_rates')
+          .select('contract_id')
+          .eq('tenant_id', tenantId)
+          .in('contract_id', ids);
+        tieredIds = new Set((tierRows || []).map((r: any) => r.contract_id));
+      }
+
       return createCorsResponse(
         {
-          data: enriched,
+          data: (enriched || []).map((c: any) => ({
+            ...camel<Record<string, unknown>>(c),
+            hasTieredRates: tieredIds.has(c.id),
+          })),
           total: count || 0,
           page,
           limit,
@@ -137,10 +172,23 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to fetch tiered rates' }, 500, req);
       }
 
-      return createCorsResponse(rates || [], 200, req);
+      return createCorsResponse(camel(rates || []), 200, req);
     }
 
     // GET /contracts/:id - Get single contract
+    // An unknown sub-resource answers 404 rather than the parent record.
+    // PA-020's rule: falling through to the row is what makes the NEXT missing
+    // branch invisible - a component mapping over an object renders an empty
+    // list and reports nothing, so the gap reads as "no data yet". Non-GET
+    // methods already reach the terminal refusal below.
+    if (req.method === 'GET' && contractId && subResource) {
+      return createCorsResponse(
+        { error: `Unknown contract sub-resource: ${subResource}` },
+        404,
+        req,
+      );
+    }
+
     if (req.method === 'GET' && contractId) {
       const { data: contractData, error } = await admin
         .from('contracts')
@@ -175,7 +223,11 @@ export default async function handler(req: Request) {
         .eq('tenant_id', tenantId)
         .order('minimum_volume', { ascending: true });
 
-      return createCorsResponse({ ...contract, tieredRates: tieredRates || [] }, 200, req);
+      return createCorsResponse(
+        { ...camel<Record<string, unknown>>(contract), tieredRates: camel(tieredRates || []) },
+        200,
+        req,
+      );
     }
 
     // POST /contracts - Create contract
@@ -234,7 +286,11 @@ export default async function handler(req: Request) {
         .eq('tenant_id', tenantId)
         .order('minimum_volume', { ascending: true });
 
-      return createCorsResponse({ ...contract, tieredRates: rates || [] }, 201, req);
+      return createCorsResponse(
+        { ...camel<Record<string, unknown>>(contract), tieredRates: camel(rates || []) },
+        201,
+        req,
+      );
     }
 
     // PATCH /contracts/:id - Update contract
@@ -304,7 +360,11 @@ export default async function handler(req: Request) {
         .eq('tenant_id', tenantId)
         .order('minimum_volume', { ascending: true });
 
-      return createCorsResponse({ ...contract, tieredRates: updatedRates || [] }, 200, req);
+      return createCorsResponse(
+        { ...camel<Record<string, unknown>>(contract), tieredRates: camel(updatedRates || []) },
+        200,
+        req,
+      );
     }
 
     // DELETE /contracts/:id - Delete contract

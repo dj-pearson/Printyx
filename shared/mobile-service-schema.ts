@@ -115,7 +115,30 @@ export const servicePhotos = pgTable('service_photos', {
 
 // GPS location history for technicians
 export const locationHistory = pgTable('location_history', {
-  id: uuid('id').defaultRandom().primaryKey(),
+  /**
+   * varchar, NOT uuid - this matches the table and is deliberate.
+   *
+   * `check:drift` could not run at all until round 87 (its SQL aliased a
+   * column `notnull`, which is Postgres's postfix IS NOT NULL operator), and
+   * its first clean pass over all 682 tables reported exactly one mismatch:
+   * this column, declared uuid here and `varchar DEFAULT gen_random_uuid()`
+   * in migration 0000.
+   *
+   * The DECLARATION is what moved, because the database is right. 343 of this
+   * schema's `id` columns are varchar against 300 uuid, `tenants.id` is
+   * `varchar PRIMARY KEY DEFAULT gen_random_uuid()` (AUDIT-032 records it as
+   * the shape everything else keys on), nothing holds a foreign key to this
+   * column, and converting a primary key on a table that accumulates a GPS fix
+   * per technician per minute means a full rewrite under an exclusive lock for
+   * no behavioural gain. Values are real uuids either way - proven, two
+   * inserts produce two distinct ones.
+   *
+   * Note `session_id` below stays uuid on purpose: it references
+   * `mobile_service_sessions.id`, which IS uuid live, and the two agree.
+   */
+  id: varchar('id')
+    .default(sql`gen_random_uuid()`)
+    .primaryKey(),
   tenantId: varchar('tenant_id').notNull(),
   technicianId: varchar('technician_id').notNull(),
   sessionId: uuid('session_id').references(() => mobileServiceSessions.id),

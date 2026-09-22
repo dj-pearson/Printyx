@@ -45,7 +45,6 @@ import {
   registerBusinessRecordRoutes,
   registerCrmBulkRoutes,
   registerBulkOperationsRoutes,
-  registerRecordLayoutRoutes,
   registerCsvImportRoutes,
   signupCrmRoutes,
   universalSearchRoutes,
@@ -58,16 +57,13 @@ import {
   registerDealTagRoutes,
   // registerPipelineConfigurationRoutes — migrated to supabase/functions/pipeline-config/
   // setupSalesPipelineRoutes — migrated to supabase/functions/sales-pipeline/
-  registerLeadAssignmentRoutes,
   registerLeadMapRoutes,
-  registerAutoLeadRoutingRoutes,
   registerRenewalManagementRoutes,
   contractRenewalRoutes,
 } from './domains/sales';
 
 import {
   registerProductsCrudRoutes,
-  registerCatalogRoutes,
   registerCatalogCsvRoutes,
   registerProductModelsRoutes,
   registerProductPricingRoutes,
@@ -130,13 +126,7 @@ import {
 
 import { registerSeoCoreRoutes, seoRoutes, googleIndexingRoutes } from './domains/content';
 
-import {
-  registerOnboardingRoutes,
-  exportChecklistPDF,
-  exportChecklistExcel,
-  exportChecklistCSV,
-  accessibilityRoutes,
-} from './domains/onboarding';
+import { registerOnboardingRoutes, accessibilityRoutes } from './domains/onboarding';
 
 import { emailParserRoutes } from './domains/notifications';
 
@@ -413,7 +403,6 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   registerDealTagRoutes(app);
   registerCrmBulkRoutes(app);
   registerBulkOperationsRoutes(app);
-  registerRecordLayoutRoutes(app);
   registerBusinessRecordRoutes(app);
   registerCsvImportRoutes(app);
 
@@ -561,8 +550,11 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
     // said so - "Mock response for now", "Mock event creation", "Mock event
     // deletion" - and no client tree called /api/calendar. The only reference
     // anywhere was a test NAME inside an archived .backup file. The real
-    // calendar surface is CalendarProvider, which uses a different prefix
-    // entirely (/api/integrations/calendar/*) that neither backend serves.
+    // calendar surface is CalendarProvider, which PA-052 repointed at
+    // /api/meetings/calendar/* - the line that used to sit here, saying it
+    // calls /api/integrations/calendar/* "that neither backend serves", went
+    // stale when that fix landed and was still being read as a live finding
+    // in round 128.
     // ['/api/performance', './routes/performance-routes'] - retired
     // (AUDIT-021). The three endpoints anything calls - /metrics, /alerts,
     // /health - are served by supabase/functions/performance/ from
@@ -618,8 +610,37 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
 
   // Async routes mounted at /api root
   const asyncRootApiMounts: string[] = [
-    './routes/team-collaboration-routes',
-    './routes/meeting-scheduling-routes',
+    // team-collaboration-routes retired (AUDIT-035). Nine handlers, ZERO
+    // database calls, and zero callers for every path they answered -
+    // /api/teams, /api/teams/:id[/members|/capacity|/insights],
+    // /api/projects/:id/assignments/optimize, /api/projects/:id/dependencies,
+    // /api/collaboration/templates and /api/collaboration/analytics - across
+    // all eight client trees. supabase/functions/teams/ is the canonical
+    // replacement and says so in its own header ("Replaces
+    // server/routes/team-collaboration-routes.ts"); it covers every one of
+    // those paths over tasks, projects, users and time_entries, so production
+    // was already being served correctly while dev got the mocks.
+    //
+    // Its service went with it. AUDIT-021 had made analyzeTeamCapacity and
+    // getTeamMembers real, but the other thirteen methods were mocks
+    // (getTeamProjects returned a hardcoded "Q4 Sales Campaign" at 75%), and a
+    // real island inside an unreachable file duplicated by a live handler is
+    // not the "unwired work that WORKS" PROD-008c kept advanced-billing for.
+    // What the richer version could do and the edge one cannot is recorded on
+    // the story, not lost with the file.
+    // meeting-scheduling-routes retired (MEETINGS-READS-001). Its four read
+    // handlers already answered 501, and reading the file settled the other
+    // half: server/services/meeting-scheduling-service.ts was 775 lines that
+    // IMPORTED `db` and never used it - zero `.select(`, zero `.from(` - so
+    // the four handlers the story called "real, db-backed" touched no table
+    // either. Nothing in any of the eight client trees called /api/meetings
+    // (only /api/meetings/calendar/*, which is proxied), /api/types,
+    // /api/rooms, /api/schedule-request, /api/schedule/:id or
+    // /api/optimize-schedule, and production resolves /api/meetings to
+    // supabase/functions/meetings/ regardless, so this router only ever ran
+    // in dev. Deleting it also frees the generic root names /api/types,
+    // /api/rooms and /api/analytics, which it owned by accident of being
+    // mounted at the /api root.
     // meeting-transcription-routes retired (iteration 10). Its nine endpoints and
     // the 828-line service beneath them are covered one for one by
     // supabase/functions/meeting-transcription/, whose own header names both files
@@ -656,9 +677,15 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   registerTodayDashboardRoutes(app);
   registerOnboardingRoutes(app);
 
-  app.get('/api/onboarding/export/:id/pdf', exportChecklistPDF);
-  app.get('/api/onboarding/export/:id/excel', exportChecklistExcel);
-  app.get('/api/onboarding/export/:id/csv', exportChecklistCSV);
+  // ROUND 133: the three /api/onboarding/export/:id/:format handlers are gone
+  // with server/routes-export.ts. Two of them declared a content type they did
+  // not produce - HTML under application/pdf, JSON.stringify under the xlsx
+  // type - and all three 404'd in production on this unproxied prefix. The CSV
+  // is now GET /api/onboarding/checklists/:id/export in the edge function, over
+  // columns that exist (the old one named equipmentType and location, neither
+  // of which is on onboarding_equipment), and the PDF is that function's own
+  // generate-pdf branch. There is no xlsx writer in this tree, so Excel is not
+  // offered rather than faked.
 
   // ─── Notifications ──────────────────────────────────────────────────
   // routes-notifications.ts retired (PROD-008b). supabase/functions/notifications/
@@ -702,8 +729,20 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   // selected r.manufacturer, a column device_registrations does not have, so
   // they answered 500 in dev on top of 404 in production.
 
-  const contractAlertsRoutes = (await import('./routes-contract-alerts')).default;
-  app.use(contractAlertsRoutes);
+  // routes-contract-alerts.ts retired (QUALITY-002). 442 lines over four
+  // /api/alerts/* handlers, registered here and called by NOTHING in any client
+  // tree, with no edge function behind the prefix - so 404 in production - and
+  // seven phantom columns (contracts.contractType, service_contracts.includedPages
+  // /overageRate/billingCycle), so it would have 500'd in dev too. It went with
+  // services/contract-renewal-workflow.ts, its only consumer, which named two
+  // more (service_contracts.assignedSalesRepId, tasks.relatedRecordId).
+  //
+  // What users actually see is served elsewhere and works: the alert bell's
+  // contract-expiration entries come from _shared/operational-alerts.ts via the
+  // performance function, off the REAL columns, and the renewal book is the
+  // contract-renewal function. What is genuinely gone is milestone automation
+  // at 180/90/60/30 days - filed on QUALITY-002 rather than left in code that
+  // could not run.
   app.use(serviceDispatchRouter);
   // routes-proactive-maintenance.ts retired (PROD-008b). Both handlers were
   // shadowed by the /api/service proxy; supabase/functions/service/maintenance.ts
@@ -833,9 +872,13 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   registerProductModelsRoutes(app);
   registerProductPricingRoutes(app);
   registerSoftwareProductsRoutes(app);
-  registerLeadAssignmentRoutes(app);
+  // registerLeadAssignmentRoutes(app) - DELETED (SEC-EDGE-001 batch 15):
+  // 16 handlers across six prefixes no client tree calls, every one covered by
+  // supabase/functions/lead-assignment/ and aliased there in server.ts.
   registerLeadMapRoutes(app);
-  registerAutoLeadRoutingRoutes(app);
+  // registerAutoLeadRoutingRoutes(app) - DELETED (SEC-EDGE-001 batch 15):
+  // shadowed by the '/api/auto-lead-routing' proxy entry, which is what makes
+  // the page's /rules controls work in dev at all.
   // registerPredictiveServiceDispatchRoutes was called here and is DELETED
   // (QUALITY-002). See the /api/predictive-dispatch entry in
   // middleware/edge-function-proxy.ts: the router's handlers referenced three
@@ -880,7 +923,22 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   // /api/commission is proxied to supabase/functions/commission/ now, which
   // reads commission_plans / commission_calculations / commission_disputes /
   // deals and already covers every path the page calls.
-  registerCatalogRoutes(app);
+  // registerCatalogRoutes was called here and routes-catalog.ts is DELETED
+  // (PROD-008). /api/catalog is proxied to supabase/functions/catalog/ now,
+  // which serves the MASTER catalogue - the domain this prefix has always meant
+  // on Express and the domain its one caller, ProductHubUnified, is written
+  // against. The edge function used to read `product_models`, the TENANT's own
+  // catalogue, on every branch, so the two hosts answered 200 about different
+  // tables (AUDIT-031) and the page's list, enable, bulk-enable, PATCH and
+  // import were each broken a different way in production.
+  //
+  // What goes with the file, all three unreachable from any client tree:
+  // POST /api/catalog/models/import (a Canon-specific price-list parser that
+  // hardcoded manufacturer: 'Canon' and matched imageRUNNER/imagePRESS section
+  // headings - it was also the only writer of master_product_accessories
+  // anywhere), POST /api/catalog/models/enable-from-csv, and POST
+  // /api/catalog/normalize-categories (its normalizer is now applied on every
+  // write, from shared/master-catalog-import.ts).
   // registerAnalyticsRoutes was called here and is DELETED (CR-017).
   //
   // routes-analytics.ts served eleven /api/analytics paths against SIX tables
@@ -943,29 +1001,25 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   // Both components are now NotConnectedState gates naming what would have to
   // be recorded first (stage-transition history, a loss reason per deal).
 
-  try {
-    const { catalogRouter } = await import('./routes-catalog');
-    app.use(catalogRouter);
-    log.info('✅ Catalog routes registered');
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    log.error('Failed to load catalog routes:', err);
-    failedRouteModules.push({
-      module: 'routes-catalog',
-      error: msg,
-      timestamp: new Date().toISOString(),
-    });
-  }
+  // The lazy catalogRouter mount stood here and is gone with routes-catalog.ts
+  // (PROD-008). It mounted the SAME router object registerCatalogRoutes had
+  // already mounted 60 lines earlier, so /api/catalog was registered twice.
 
   // routes-reporting.ts (KPIs, reporting catalog, exports, dashboard summary)
   // migrated to supabase/functions/reports/handlers/{kpis,reporting}.ts in
   // EDGE-003. Frontend hits /api/kpis/* and /api/reporting/* via the
   // edge-function-proxy.
 
+  // QUALITY-002: /api/territories and /api/cross-module were mounted here and
+  // both prefixes are in crmProxies, so neither router ever ran. They were
+  // invisible to check:shadowed-express because its tuple pattern demanded a
+  // two-element [path, module] entry and these carry a third, the label.
+  // routes-cross-module.ts duplicated supabase/functions/cross-module endpoint
+  // for endpoint; routes-territory-management.ts plus its service duplicated
+  // supabase/functions/lead-assignment over the same four tables, and nothing
+  // in any client tree called /api/territories on either host.
   const lazyModules: [string, string, string][] = [
     ['/api/gdpr', './routes-gdpr-core', 'GDPR Core Features'],
-    ['/api/territories', './routes-territory-management', 'Territory Management'],
-    ['/api/cross-module', './routes-cross-module', 'Cross-Module Integration'],
     ['/api/oid-mappings', './routes-oid-mappings', 'OID Mappings'],
     ['/api/address-books', './routes-address-books', 'Address Books (import/export + CRUD)'],
   ];

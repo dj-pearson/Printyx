@@ -5,6 +5,7 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { dispatchWorkflowEventSafe } from '../_shared/workflow-dispatch.ts';
 import { applyUserScope, resolveScope } from '../_shared/scope.ts';
+import { LEAD_LIST_SPEC, parseCrmListQuery } from '../_shared/crm-list-query.ts';
 
 // Convert camelCase request body keys to snake_case for DB compatibility
 function camelToSnake(str: string): string {
@@ -56,6 +57,12 @@ function mapCompanyToBusinessRecord(company: any): any {
     customer_number: company.customer_number,
     industry: company.industry,
     website: company.website,
+    // COP-M01: the spread above carries created_at/updated_at in snake_case
+    // only, and the CRM table reads camelCase field names off the registry, so
+    // the Created column on the canonical Leads list rendered blank for every
+    // row. Both spellings, like every other field in this mapper.
+    createdAt: company.created_at,
+    updatedAt: company.updated_at,
   };
 }
 
@@ -292,14 +299,25 @@ export default async function handler(req: Request) {
         const status = url.searchParams.get('status');
         const search = url.searchParams.get('search');
         const ownerId = url.searchParams.get('ownerId') || url.searchParams.get('owner_id');
-        const limit = parseInt(url.searchParams.get('limit') || '100');
-        const offset = parseInt(url.searchParams.get('offset') || '0');
+        // COP-I01 AC4. This branch read limit and offset by hand and issued a
+        // HARDCODED `.order('created_at', ...)`, while the CRM shell sends
+        // sortBy and sortOrder on every request - so all seven column headers
+        // the leads registry marks sortable did nothing. The arrow flipped, a
+        // request went out, and the same page came back.
+        //
+        // The shared parser also brings the CLAMP this branch never had: a
+        // caller asking for 5,000 rows got 5,000, on the endpoint behind the
+        // primary CRM list. MAX_CRM_PAGE_SIZE is 200 and every other CRM list
+        // has honoured it since COP-I01 shipped.
+        const q = parseCrmListQuery(url.searchParams, LEAD_LIST_SPEC);
+        const limit = q.limit;
+        const offset = q.offset;
 
         let query = admin
           .from('companies')
           .select('*, company_contacts(*)', { count: 'exact' })
           .eq('tenant_id', tenantId)
-          .order('created_at', { ascending: false });
+          .order(q.sortColumn, { ascending: q.ascending });
 
         // WF-R-04/WF-R-05: until this, a level-1 rep listing accounts got EVERY
         // account in the tenant.

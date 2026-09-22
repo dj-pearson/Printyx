@@ -54,6 +54,7 @@ import {
 import { sanitizeRichHtml } from '@/lib/sanitize-html';
 import { MergeToken } from './merge-token-node';
 import { MERGE_FIELDS } from '@shared/proposal-merge-fields';
+import { useTextPrompt } from '@/components/ui/confirm-dialog';
 
 interface RichTextEditorProps {
   value: string;
@@ -139,6 +140,8 @@ const RichTextEditor = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, editor]);
 
+  const textPrompt = useTextPrompt();
+
   const grouped = useMemo(() => {
     const groups: Record<string, typeof MERGE_FIELDS> = {};
     for (const f of MERGE_FIELDS) (groups[f.group] ??= []).push(f);
@@ -163,8 +166,13 @@ const RichTextEditor = ({
     setLinkUrl('');
   };
 
-  const insertImage = () => {
-    const url = window.prompt('Enter image URL:');
+  const insertImage = async () => {
+    const url = await textPrompt({
+      title: 'Insert an image',
+      label: 'Image URL',
+      placeholder: 'https://',
+      confirmLabel: 'Insert',
+    });
     if (url) editor.chain().focus().setImage({ src: url }).run();
   };
 

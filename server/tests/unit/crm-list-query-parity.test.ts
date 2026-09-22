@@ -386,3 +386,51 @@ describe('COMPANY_LIST_SPEC', () => {
     expect(hit('nothing')).toHaveLength(0);
   });
 });
+
+/**
+ * COP-I01 AC4 round 107 added LEAD_LIST_SPEC to both copies and did not extend
+ * this file, so the two could drift - and mutation testing proved it: mutating
+ * the EDGE copy's companyName mapping left every test green, because the sort
+ * tests import the NODE copy. The edge one is what production runs.
+ *
+ * Asserted spec by spec rather than by a count of specs, so adding a sixth
+ * without a block here is visible.
+ */
+describe('the lead sort whitelist matches across copies', () => {
+  it('LEAD_LIST_SPEC is identical field for field', () => {
+    expect(edge.LEAD_LIST_SPEC.sortFields).toEqual(node.LEAD_LIST_SPEC.sortFields);
+    expect(edge.LEAD_LIST_SPEC.searchColumns).toEqual(node.LEAD_LIST_SPEC.searchColumns);
+    expect(edge.LEAD_LIST_SPEC.filterKeys).toEqual(node.LEAD_LIST_SPEC.filterKeys);
+    expect(edge.LEAD_LIST_SPEC.defaultSortField).toBe(node.LEAD_LIST_SPEC.defaultSortField);
+    expect(edge.LEAD_LIST_SPEC.defaultLimit).toBe(node.LEAD_LIST_SPEC.defaultLimit);
+  });
+
+  it('every mapped column is snake_case', () => {
+    for (const column of Object.values(edge.LEAD_LIST_SPEC.sortFields)) {
+      expect(column).toMatch(/^[a-z][a-z0-9_]*$/);
+    }
+  });
+
+  it.each([
+    // The three that differ from COMPANY_LIST_SPEC. Reusing that spec for leads
+    // would fall back on all three while looking correct, which is why this
+    // object has its own.
+    ['companyName', 'business_name'],
+    ['status', 'activity'],
+    ['city', 'billing_city'],
+    ['industry', 'industry'],
+    ['createdAt', 'created_at'],
+    // Derived from the embedded company_contacts relation, which PostgREST
+    // cannot order a parent by - so it must NOT resolve to a column.
+    ['primaryContactName', 'created_at'],
+    ['primaryContactEmail', 'created_at'],
+    // An unlisted name must never reach either database as an identifier.
+    ['business_name; drop table companies', 'created_at'],
+    ['', 'created_at'],
+  ])('lead sortBy %j orders by %j in both copies', (raw, column) => {
+    for (const copy of [node, edge] as const) {
+      const q = copy.parseCrmListQuery(new URLSearchParams(`sortBy=${raw}`), copy.LEAD_LIST_SPEC);
+      expect(q.sortColumn).toBe(column);
+    }
+  });
+});

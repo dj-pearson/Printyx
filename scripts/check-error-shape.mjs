@@ -75,35 +75,71 @@ if (args.includes('--list')) {
   process.exit(0);
 }
 
+const DEFAULT_NOTE =
+  'CR-023 API error-shape ratchet. CLAUDE.md specifies { message, code, details, requestId } ' +
+  'for every error; these responses answer with an `error` key instead, so a client cannot ' +
+  'branch on the code and the response cannot be tied to a log line. Convert them with ' +
+  'sendError() from server/lib/error-response.ts. Keyed by file so unrelated edits do not ' +
+  'renumber entries. Shrink these counts, never grow them.';
+
+/**
+ * Keep a hand-written note rather than regenerating the default over it.
+ *
+ * Round 82 lost the paragraph explaining a baseline's jump TWICE inside one
+ * session, because the writer rebuilt its header on every tighten - and a
+ * ratchet's note is the difference between a worklist and an undifferentiated
+ * list. Whatever is in the file wins.
+ */
+function existingNote() {
+  try {
+    const note = JSON.parse(readFileSync(baselinePath, 'utf8')).note;
+    return typeof note === 'string' && note.length > 0 ? note : null;
+  } catch {
+    return null;
+  }
+}
+
 if (args.includes('--update-baseline')) {
   const previous = existsSync(baselinePath)
     ? (JSON.parse(readFileSync(baselinePath, 'utf8')).counts ?? {})
     : {};
-  const previousTotal = Object.values(previous).reduce((a, b) => a + b, 0);
-  if (previousTotal > 0 && total > previousTotal) {
-    console.error(
-      `✗ Refusing to raise the baseline: ${previousTotal} -> ${total}. This ratchet only shrinks.`,
-    );
+
+  /**
+   * PER FILE, NOT PER TOTAL.
+   *
+   * This refused only when the TOTAL rose, so a tighten that converted forty
+   * responses in one file while ten appeared in another would absorb the ten
+   * in silence - the exact growth the normal run exists to catch, laundered
+   * through an unrelated improvement. "A total is not a property" is a lesson
+   * this repo has now paid for five times in different costumes.
+   */
+  const grownNow = Object.entries(counts).filter(([file, n]) => n > (previous[file] ?? 0));
+  if (Object.keys(previous).length > 0 && grownNow.length > 0) {
+    console.error('✗ Refusing to raise the baseline. This ratchet only shrinks, per file:\n');
+    for (const [file, n] of grownNow) console.error(`    ${file}: ${previous[file] ?? 0} -> ${n}`);
     process.exit(1);
   }
+
+  /**
+   * Entries naming a file that no longer exists simply vanish, because `counts`
+   * is rebuilt from the walk. That matters twice over: those entries claim
+   * credit for debt that was deleted rather than converted, and a deleted file
+   * coming BACK would arrive pre-forgiven for every response it carries. Four
+   * of them were sitting here (routes-lead-assignment, routes-cross-module,
+   * routes-auto-lead-routing, routes/task-routes) claiming 71 findings between
+   * them, because nothing ran this guard to notice.
+   */
+  const vanished = Object.keys(previous).filter((f) => !(f in counts));
+
   writeFileSync(
     baselinePath,
-    JSON.stringify(
-      {
-        note:
-          'CR-023 API error-shape ratchet. CLAUDE.md specifies { message, code, details, requestId } ' +
-          'for every error; these responses answer with an `error` key instead, so a client cannot ' +
-          'branch on the code and the response cannot be tied to a log line. Convert them with ' +
-          'sendError() from server/lib/error-response.ts. Keyed by file so unrelated edits do not ' +
-          'renumber entries. Shrink these counts, never grow them.',
-        counts,
-      },
-      null,
-      2,
-    ) + '\n',
+    JSON.stringify({ note: existingNote() ?? DEFAULT_NOTE, counts }, null, 2) + '\n',
   );
   console.log(
-    `✓ Baseline updated: ${total} response(s) across ${Object.keys(counts).length} file(s).`,
+    `✓ Baseline updated: ${total} response(s) across ${Object.keys(counts).length} file(s).` +
+      (vanished.length
+        ? `\n  ${vanished.length} entry(ies) dropped for files that no longer exist: ${vanished.join(', ')}`
+        : ''),
   );
   process.exit(0);
 }

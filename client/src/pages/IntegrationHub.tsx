@@ -103,6 +103,8 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { formatCurrency } from '@/lib/utils';
+import { apiRequest } from '@/lib/queryClient';
+import { toast } from '@/hooks/use-toast';
 
 interface IntegrationHubData {
   integrationOverview: {
@@ -445,26 +447,27 @@ export default function IntegrationHub() {
     try {
       setIsConfiguring(apiId);
 
-      const response = await fetch('/api/integrations/oauth/init', {
+      // PROD-013: this was a bare fetch, so in production it resolved against
+      // the static origin and `response.json()` parsed the SPA shell - the
+      // catch below logged a syntax error and the button did nothing visible.
+      // apiRequest carries the Bearer JWT and reaches the host that answers.
+      const { authUrl } = await apiRequest<{ authUrl: string }>('/api/integrations/oauth/init', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ providerId: apiId }),
+        body: { providerId: apiId },
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to initialize OAuth');
-      }
-
-      const { authUrl } = await response.json();
 
       // Redirect to OAuth provider
       window.location.href = authUrl;
     } catch (error) {
-      console.error('Error configuring integration:', error);
       setIsConfiguring(null);
-      // You might want to show an error toast here
+      // The edge function answers 501 OAUTH_STATE_IS_SESSION_BOUND, because
+      // the CSRF state lives in the Express session - so say that rather than
+      // leaving the user pressing a button that does nothing.
+      const message =
+        error instanceof Error && /session|501/i.test(error.message)
+          ? 'Connecting an integration is not available on this deployment yet.'
+          : 'Could not start the connection. Please try again.';
+      toast({ title: 'Connection unavailable', description: message, variant: 'destructive' });
     }
   };
 

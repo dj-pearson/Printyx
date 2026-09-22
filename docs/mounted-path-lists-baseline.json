@@ -1,0 +1,9 @@
+{
+  "note": "Path literals compared against req.path inside a middleware mounted at a prefix those literals start with. Express strips the mount prefix, so the comparison matches nothing - a gate that refuses everything it meant to allow (server/routes.ts' publicPaths), or a lock that blocks nothing (the deleted registration-lock.ts). Both of those are fixed; so is the billing tier of user-rate-limit.ts, which was configured at 20/min, mounted, documented, and could never be selected because every startsWith('/api/billing') was false.\n\nWHAT IS LEFT IS ONE MIDDLEWARE, DELIBERATELY NOT REPAIRED. api-versioning.ts' legacyRouteSupport is inert for exactly this reason: it bails on `if (!req.path.startsWith('/api/')) return next()`, which is always true once the prefix is gone, so it never rewrites a path and its excludePaths never matter. Repairing it would START rewriting every unversioned API path into /api/v1/..., which is a routing change nobody asked for rather than a bug fix - the four entries are its excludePaths list and one example path in a doc comment. That decision is the entry; a reason, not a line. See scripts/check-mounted-path-lists.mjs for what the walk cannot see.",
+  "entries": [
+    "server/routes.ts -> server/middleware/api-versioning.ts::/api/auth",
+    "server/routes.ts -> server/middleware/api-versioning.ts::/api/docs",
+    "server/routes.ts -> server/middleware/api-versioning.ts::/api/health",
+    "server/routes.ts -> server/middleware/api-versioning.ts::/api/v1/users"
+  ]
+}

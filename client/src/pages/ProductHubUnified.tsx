@@ -56,7 +56,7 @@ import {
   Eye,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { apiRequest, apiFormRequest } from '@/lib/queryClient';
+import { apiRequest, apiFormRequest, extractRecords } from '@/lib/queryClient';
 import { type MasterProductModel, type EnabledProduct } from '@shared/schema';
 import { formatCurrency } from '@/lib/utils';
 
@@ -243,8 +243,13 @@ export default function ProductHubUnified() {
     },
   });
 
+  // PROD-008: /api/enabled-products answers `{ data, total }` on the functions
+  // host and used to answer a bare array on Express, so the default queryFn put
+  // the ENVELOPE here in production and `enabledProducts.some(...)` below threw.
+  // extractRecords tolerates either.
   const { data: enabledProducts = [], isLoading: isLoadingEnabled } = useQuery<EnabledProduct[]>({
     queryKey: ['/api/enabled-products'],
+    queryFn: async () => extractRecords<EnabledProduct>(await apiRequest('/api/enabled-products')),
   });
 
   const { data: manufacturers = [] } = useQuery<string[]>({
@@ -284,11 +289,21 @@ export default function ProductHubUnified() {
       apiRequest('/api/catalog/models/bulk-enable', 'POST', data),
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['/api/enabled-products'] });
+      // Report what the write touched. `skipped` used to be incremented on ANY
+      // failure and rendered as "already enabled", so a stale selection and a
+      // failed write both read as a product the company already had.
+      const parts = [`${data.enabled ?? 0} enabled`];
+      if (data.skipped) parts.push(`${data.skipped} already enabled`);
+      if (data.notFound?.length) parts.push(`${data.notFound.length} no longer in the catalogue`);
+      if (data.failed?.length) parts.push(`${data.failed.length} failed`);
       toast({
-        title: 'Products enabled',
-        description: `${data.enabled} products enabled, ${data.skipped} already enabled`,
+        title: data.enabled ? 'Products enabled' : 'Nothing enabled',
+        description: parts.join(', '),
+        variant: data.failed?.length ? 'destructive' : undefined,
       });
-      setSelectedProducts(new Set());
+      // Keep whatever did not land selected, so a retry is not a re-hunt.
+      const unresolved = [...(data.notFound ?? []), ...(data.failed ?? [])];
+      setSelectedProducts(new Set(unresolved));
     },
   });
 

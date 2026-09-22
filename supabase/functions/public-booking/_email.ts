@@ -87,6 +87,32 @@ export async function sendConfirmation(info: BookingEmailInfo): Promise<boolean>
   }
 }
 
+/**
+ * COP-B14 AC6's reminder. Sent by the sweep, not at booking time.
+ *
+ * Deliberately the same detail block and the same manage link as the
+ * confirmation: a reminder whose times disagree with the confirmation is worse
+ * than no reminder, and re-deriving the copy is how that happens.
+ */
+export async function sendReminder(info: BookingEmailInfo): Promise<boolean> {
+  try {
+    await sendEmail({
+      to: info.inviteeEmail,
+      from: FROM,
+      fromName: info.brandName,
+      subject: `Reminder: ${info.title} with ${info.hostName}`,
+      html: shell(
+        info.brandName,
+        `See you soon, ${info.inviteeName.split(' ')[0]}`,
+        `<p style="margin:0;color:#374151">This is a reminder of your upcoming meeting.</p>${detailRows(info)}${manageButtons(info)}`,
+      ),
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function sendReschedule(info: BookingEmailInfo): Promise<boolean> {
   try {
     await sendEmail({

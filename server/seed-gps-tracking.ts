@@ -127,21 +127,24 @@ async function seedGpsTracking() {
     const historyCount = 20;
     for (let i = 0; i < historyCount; i++) {
       const minutesAgo = i * 5; // Every 5 minutes
+      // Only the columns `location_history` has. Eight of the ones this used to
+      // write - ticketId, customerId, activityType, distanceFromPrevious,
+      // distanceFromTicket, deviceId, batteryLevel, altitude - came from a
+      // second, wrong declaration, and Drizzle drops an unknown key in silence,
+      // so the seed reported twenty rows and wrote twelve columns of each.
+      // `heading` is an integer here, not a string.
       await storage.createGpsLocationHistory({
         tenantId,
         technicianId: 'tech-001',
         latitude: (30.2872 + i * 0.001).toString(),
         longitude: (-97.7531 - i * 0.0005).toString(),
         accuracy: '10.0',
-        heading: '45.0',
+        heading: 45,
         speed: '15.0',
-        ticketId: 'ticket-101',
-        customerId: 'customer-201',
-        activityType: i < 15 ? 'traveling' : 'on_site',
-        distanceFromPrevious: i === 0 ? '0' : '125.5',
-        distanceFromTicket: ((15 - i) * 125.5).toString(),
-        deviceId: 'device-abc123',
-        batteryLevel: 90 - i,
+        address: 'Austin, TX',
+        // A session is what makes a trip countable; without one the summary
+        // reports trips as null rather than guessing.
+        sessionId: i < 15 ? 'session-outbound' : 'session-onsite',
         timestamp: new Date(now.getTime() - minutesAgo * 60 * 1000),
       });
     }

@@ -15,7 +15,7 @@
  * them.
  */
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
 const repo = join(__dirname, '../../..');
@@ -25,8 +25,32 @@ const read = (p: string) => readFileSync(join(repo, p), 'utf8');
 const stripComments = (s: string) =>
   s.replace(/^\s*\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
 
-const team = read('server/services/team-collaboration-service.ts');
-const meetings = read('server/services/meeting-scheduling-service.ts');
+/**
+ * Every source file under the given roots, comments stripped.
+ *
+ * Shared by both absence checks below. Two stories in a row deleted a file a
+ * per-file assertion named, and the repair each time was the same: assert the
+ * property over the tree instead. One walk rather than two copies.
+ */
+function walk(roots: string[]): { path: string; code: string }[] {
+  const files: { path: string; code: string }[] = [];
+  const visit = (dir: string) => {
+    let entries: string[];
+    try {
+      entries = readdirSync(join(repo, dir));
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      if (entry === 'node_modules' || entry.startsWith('.')) continue;
+      const rel = `${dir}/${entry}`;
+      if (statSync(join(repo, rel)).isDirectory()) visit(rel);
+      else if (/\.tsx?$/.test(entry)) files.push({ path: rel, code: stripComments(read(rel)) });
+    }
+  };
+  for (const root of roots) visit(root);
+  return files;
+}
 
 describe('the ratchet is a gate, not a backlog', () => {
   it('has an empty baseline', () => {
@@ -36,88 +60,88 @@ describe('the ratchet is a gate, not a backlog', () => {
   });
 });
 
-describe('team capacity is counted', () => {
-  it('takes no capacity number from Math.random()', () => {
-    const code = stripComments(team);
-    for (const prop of [
-      'aiPredictedWorkload',
-      'aiEfficiencyScore',
-      'projectsCount',
-      'tasksCount',
-      'overdueTasksCount',
-      'allocatedHours',
-    ]) {
-      const at = code.indexOf(`${prop}:`);
-      expect(at, prop).toBeGreaterThan(-1);
-      expect(code.slice(at, at + 120), prop).not.toMatch(/Math\.random/);
-    }
-  });
+/**
+ * AUDIT-035 deleted server/services/team-collaboration-service.ts, so the
+ * capacity assertions that read it by name have no subject either.
+ *
+ * That file's real half - the per-member capacity analysis AUDIT-021 rewrote -
+ * is superseded by supabase/functions/teams/handlers/teams.ts, which counts the
+ * same open and overdue tasks and is what production runs. The PROPERTY these
+ * assertions protected is that a capacity or utilisation figure is counted
+ * rather than invented, so it moves to the live implementation, plus a
+ * tree-wide absence check for the phrases the mock produced.
+ */
+describe('team capacity is counted, on the host that serves it', () => {
+  const EDGE = read('supabase/functions/teams/handlers/teams.ts');
 
-  it('derives the counts from the tasks table', () => {
-    expect(team).toMatch(/from\(tasksTable\)/);
-    expect(team).toMatch(/inArray\(tasksTable\.status, \['todo', 'in_progress', 'review'\]\)/);
-    expect(team).toMatch(/estimatedHours \?\? 0/);
-  });
-
-  it('reads real team membership, tenant-scoped', () => {
-    // getTeamMembers returned 'user-1' and 'user-2', so every per-member number
-    // was about someone who does not exist.
-    // Scoped to getTeamMembers: getTeamProjects in the same file is still a
-    // mock and still names 'user-1'. That is a separate finding, recorded on
-    // the story rather than quietly cleared by a whole-file assertion here.
-    const code = stripComments(team);
-    const from = code.indexOf('private async getTeamMembers');
-    const to = code.indexOf('private async getTeamProjects');
-    expect(from).toBeGreaterThan(-1);
-    expect(to).toBeGreaterThan(from);
-    const members = code.slice(from, to);
-    expect(members).not.toMatch(/'user-1'/);
-    expect(members).not.toMatch(/'member-1'/);
-    expect(team).toMatch(/eq\(users\.teamId, teamId\)/);
-    expect(team).toMatch(/eq\(users\.tenantId, tenantId\)/);
-  });
-
-  it('says nothing rather than 0 when there is no team', () => {
-    // 0% utilisation reads as an idle team, which is a different claim from
-    // "nobody is on this team" and from "the read failed".
-    expect(team).toMatch(/totalCapacity > 0 \? \(totalAllocated \/ totalCapacity\) \* 100 : null/);
-    expect(team).toMatch(/averageUtilization: null/);
-  });
-
-  it('names what it cannot measure', () => {
-    expect(team).toMatch(/UNBACKED_CAPACITY_FIELDS/);
-    expect(team).toMatch(/unbacked: UNBACKED_CAPACITY_FIELDS/);
-  });
-});
-
-describe('meeting availability says nothing rather than something invented', () => {
-  it('scores neither fatigue nor flexibility', () => {
-    const code = stripComments(meetings);
-    expect(code).toMatch(/meetingFatigueRisk: null/);
-    expect(code).toMatch(/flexibility: null/);
+  it('counts open and overdue tasks rather than generating them', () => {
+    const code = stripComments(EDGE);
+    expect(code).toMatch(/from\('tasks'\)/);
+    expect(code).toMatch(/count: 'exact', head: true/);
     expect(code).not.toMatch(/Math\.random/);
   });
 
-  it('raises no conflict against a person from an unmeasured score', () => {
-    const code = stripComments(meetings);
-    expect(code).not.toMatch(/High meeting fatigue risk/);
-    expect(code).not.toMatch(/Limited scheduling flexibility/);
+  it('scopes every capacity count to the tenant and the team members', () => {
+    // analyzeTeamCapacity took a teamId straight off the URL with no tenant
+    // until AUDIT-021 threaded one; the replacement must not reopen that.
+    const code = stripComments(EDGE);
+    const at = code.indexOf('async function teamCapacity');
+    expect(at).toBeGreaterThan(-1);
+    const body = code.slice(at, code.indexOf('async function', at + 30));
+    expect(body).toMatch(/\.eq\('tenant_id', auth\.tenantId\)/);
+    expect(body).toMatch(/\.in\('assigned_to', members\)/);
   });
 
-  it('does not invent a participant conflict', () => {
-    // "Random conflict for demo": a 30% chance of telling a user that somebody
-    // has a clash. check:no-random-metrics excludes jitter inside an `if`, so
-    // this survived the sweep that emptied its baseline.
-    const code = stripComments(meetings);
-    expect(code).not.toMatch(/participant_conflict/);
-    expect(code).not.toMatch(/potential scheduling conflict/);
+  it('says so rather than reporting zero when a team has no members', () => {
+    // 0 open tasks across 0 members reads as an idle team, which is a different
+    // claim from "we could not resolve who is on this team".
+    expect(stripComments(EDGE)).toMatch(/membership model pending/);
   });
 
-  it('offers no invented free slot', () => {
-    // A confident window gets a real invitation sent to a time somebody is busy.
-    const code = stripComments(meetings);
-    expect(code).not.toMatch(/9 AM tomorrow|Lunch break/);
-    expect(code).not.toMatch(/bestProductivityHours: \['9 AM'/);
-    expect(meetings).toMatch(/UNBACKED_AVAILABILITY_FIELDS/);
+  it("nothing recommends redistributing a named person's workload from an invented number", () => {
+    // The mock read its own invented utilisation back out and produced
+    // "redistribute tasks from <user> to prevent burnout" - a claim about a
+    // real person, regenerated per request.
+    const offenders = walk(['server/services', 'supabase/functions']).filter((f) =>
+      /prevent burnout|redistribute tasks from/.test(f.code),
+    );
+    expect(offenders.map((f) => f.path)).toEqual([]);
+  });
+
+  it('the service that invented all of it is gone', () => {
+    expect(existsSync(join(repo, 'server/services/team-collaboration-service.ts'))).toBe(false);
+  });
+});
+
+describe('invented meeting availability stays gone, everywhere', () => {
+  const files = walk(['server/services', 'supabase/functions']);
+
+  it('there are files to check, so this cannot pass vacuously', () => {
+    expect(files.length).toBeGreaterThan(400);
+  });
+
+  it('no file scores meeting fatigue or scheduling flexibility', () => {
+    const offenders = files
+      .filter((f) => /High meeting fatigue risk|Limited scheduling flexibility/.test(f.code))
+      .map((f) => f.path);
+    expect(offenders).toEqual([]);
+  });
+
+  it('no file invents a participant conflict', () => {
+    const offenders = files
+      .filter((f) => /participant_conflict|potential scheduling conflict/.test(f.code))
+      .map((f) => f.path);
+    expect(offenders).toEqual([]);
+  });
+
+  it('no file offers an invented free slot', () => {
+    const offenders = files
+      .filter((f) => /9 AM tomorrow|Lunch break|bestProductivityHours: \['9 AM'/.test(f.code))
+      .map((f) => f.path);
+    expect(offenders).toEqual([]);
+  });
+
+  it('the service that carried all four is gone', () => {
+    expect(existsSync(join(repo, 'server/services/meeting-scheduling-service.ts'))).toBe(false);
   });
 });

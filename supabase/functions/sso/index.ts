@@ -13,13 +13,13 @@
  *     - SAML metadata XML generation (static template)
  *
  *   **Stubbed with clear follow-up (per PRD §3 + §10 risk):**
- *     - SAML assertion signature verification — XML crypto in Deno is the
+ *     - SAML assertion signature verification - XML crypto in Deno is the
  *       single highest-risk port. `xml-crypto`+`@xmldom/xmldom` via esm.sh
  *       works but is fragile; a security review is warranted before sunset.
  *       Currently the /callback/saml/:providerId handler returns 501 with a
  *       clear follow-up marker. Track in follow-up/sso-saml-signing.md.
- *     - SAML SLO (single-logout) response signing — same reason
- *     - JIT user provisioning + Supabase GoTrue admin session minting —
+ *     - SAML SLO (single-logout) response signing - same reason
+ *     - JIT user provisioning + Supabase GoTrue admin session minting -
  *       framework present; needs review against current auth-setup
  *
  * One-time SQL:
@@ -104,7 +104,7 @@ export default async function handler(req: Request) {
       return jsonResponse(redactProvider(data), 201, req, requestId);
     }
 
-    // POST /providers/import — SAML metadata XML upload (parse → fill form)
+    // POST /providers/import - SAML metadata XML upload (parse → fill form)
     if (method === 'POST' && p0 === 'providers' && p1 === 'import') {
       return errorResponse(501, 'SAML metadata import not yet ported', req, {
         code: 'NOT_IMPLEMENTED',
@@ -117,7 +117,7 @@ export default async function handler(req: Request) {
       });
     }
 
-    // POST /providers/:id/test — config probe
+    // POST /providers/:id/test - config probe
     if (method === 'POST' && p0 === 'providers' && p1 && p2 === 'test') {
       return await testProvider(req, p1, auth, db, requestId);
     }
@@ -184,25 +184,25 @@ export default async function handler(req: Request) {
       return jsonResponse({ success: true }, 200, req, requestId);
     }
 
-    // POST /auth/initiate — returns the URL to redirect the user to for SSO
+    // POST /auth/initiate - returns the URL to redirect the user to for SSO
     if (method === 'POST' && p0 === 'auth' && p1 === 'initiate') {
       return await initiateAuth(req, auth, db, requestId);
     }
 
-    // POST /logout — local session clear
+    // POST /logout - local session clear
     if (method === 'POST' && p0 === 'logout' && !p1) {
       await db.from('sso_sessions').delete().eq('user_id', auth.userId);
       return jsonResponse({ loggedOut: true }, 200, req, requestId);
     }
 
-    // POST /logout/saml/:providerId — SAML SLO (stub)
+    // POST /logout/saml/:providerId - SAML SLO (stub)
     if (method === 'POST' && p0 === 'logout' && p1 === 'saml' && p2) {
       return errorResponse(501, 'SAML SLO not yet ported', req, {
         code: 'NOT_IMPLEMENTED',
         details: {
           stub: true,
           reason:
-            'Single-logout requires signed logout request generation. Local session is cleared via /sso/logout — follow-up.',
+            'Single-logout requires signed logout request generation. Local session is cleared via /sso/logout - follow-up.',
         },
         requestId,
       });
@@ -244,7 +244,7 @@ export default async function handler(req: Request) {
   }
 }
 
-// ─── SAML callback — STUB ────────────────────────────────────────────────────
+// ─── SAML callback - STUB ────────────────────────────────────────────────────
 
 async function samlCallback(
   req: Request,
@@ -280,7 +280,16 @@ async function oidcCallback(
   requestId: string,
 ): Promise<Response> {
   const code = url.searchParams.get('code');
-  const stateRaw = url.searchParams.get('state');
+  /**
+   * NOTE FOR WHOEVER FINISHES THIS FLOW: there is no `state` validation here,
+   * and there cannot be yet. `initiateAuth` generates a `crypto.randomUUID()`
+   * state and RETURNS it to the caller without storing it anywhere, so the
+   * callback has nothing to compare an incoming state against - which is why
+   * the value used to be read and dropped into a metadata blob rather than
+   * checked. State is the OIDC flow's CSRF control; wiring it means
+   * persisting the issued value (against the provider and a short expiry) at
+   * initiation and rejecting a callback whose state does not match.
+   */
   if (!code) {
     return errorResponse(400, 'code parameter required', req, {
       code: 'VALIDATION_ERROR',
@@ -336,17 +345,29 @@ async function oidcCallback(
     }
   }
 
-  // JIT provisioning + Supabase session minting is a follow-up. For now we
-  // persist a session record so the frontend can complete the flow.
+  /**
+   * AUDIT-037: the session insert that stood here could never have run, and
+   * nothing would have told you.
+   *
+   * It wrote three columns `sso_sessions` does not have - `user_identifier`,
+   * `access_token_hash` and `metadata` - AND omitted two it requires:
+   * `user_id` is NOT NULL with a foreign key to `users`, and `session_id` is
+   * NOT NULL UNIQUE. The result was never destructured, so the failure was
+   * discarded and this endpoint answered `success: true, note: 'Session
+   * stored'` while storing nothing.
+   *
+   * ADDING THE THREE COLUMNS WOULD NOT HAVE FIXED IT, which is why this is a
+   * deletion rather than a migration. The row wants a `user_id`, and the
+   * comment above it said why there isn't one: JIT provisioning has not been
+   * built, so at this point in the flow no local user exists to point at.
+   * The table is modelling a session for a known user; this callback has an
+   * IdP subject and nothing else.
+   *
+   * So no row is written and the response says so. When JIT provisioning
+   * lands it will create the user first, and a session insert carrying a real
+   * `user_id` and `session_id` becomes possible for the first time.
+   */
   const expiresAt = new Date(Date.now() + (tokens.expires_in ?? 3600) * 1000).toISOString();
-  await db.from('sso_sessions').insert({
-    tenant_id: provider.tenant_id,
-    provider_id: providerId,
-    user_identifier: userinfo?.sub ?? userinfo?.email ?? null,
-    access_token_hash: tokens.access_token ? await sha256Hex(String(tokens.access_token)) : null,
-    expires_at: expiresAt,
-    metadata: { userinfo, stateHint: stateRaw },
-  });
 
   return jsonResponse(
     {
@@ -355,7 +376,8 @@ async function oidcCallback(
       userinfo,
       tokenType: 'bearer',
       expiresAt,
-      note: 'Session stored. JIT user provisioning + Supabase session mint is a follow-up; frontend should complete via supabase-js auth flow for now.',
+      sessionPersisted: false,
+      note: 'Identity verified against the IdP. NO session row was stored: sso_sessions requires a user_id and JIT user provisioning is not built, so there is no local user to attach one to. Complete via the supabase-js auth flow.',
     },
     200,
     req,
@@ -428,7 +450,7 @@ async function testProvider(
 
   try {
     if (provider.protocol === 'oidc' && provider.oidc_issuer) {
-      // GET the issuer's well-known config — cheap probe.
+      // GET the issuer's well-known config - cheap probe.
       const wk = `${String(provider.oidc_issuer).replace(/\/$/, '')}/.well-known/openid-configuration`;
       const r = await fetch(wk);
       success = r.ok;
@@ -444,14 +466,43 @@ async function testProvider(
     errMsg = e instanceof Error ? e.message : String(e);
   }
 
+  /**
+   * AUDIT-037: this wrote `last_tested_at`, `last_test_success` and
+   * `last_test_error`, none of which is a column on `sso_provider_configs` -
+   * a guaranteed 42703, so the test button has never recorded a result. The
+   * table already carries the same three facts under the names it chose:
+   * `verified_at` for a connection that answered, and
+   * `last_error`/`last_error_at`/`error_count` for one that did not.
+   *
+   * A SUCCESS CLEARS THE ERROR. A stale message sitting beside a fresh
+   * `verified_at` reads as a provider that is both working and broken, and an
+   * admin looking at an SSO config needs one answer.
+   *
+   * `error_count` is read-then-written rather than incremented in place:
+   * PostgREST cannot do `error_count = error_count + 1` without an RPC. Two
+   * admins testing the same provider in the same second would lose a count,
+   * which is acceptable on a manually-fired probe and is said here rather
+   * than left for somebody to discover.
+   */
+  const previousErrors = Number((provider as Record<string, unknown>).error_count ?? 0) || 0;
+  const testResult = success
+    ? {
+        verified_at: now,
+        verified_by: auth.userId ?? null,
+        last_error: null,
+        last_error_at: null,
+        updated_at: now,
+      }
+    : {
+        last_error: errMsg,
+        last_error_at: now,
+        error_count: previousErrors + 1,
+        updated_at: now,
+      };
+
   await db
     .from('sso_provider_configs')
-    .update({
-      last_tested_at: now,
-      last_test_success: success,
-      last_test_error: errMsg,
-      updated_at: now,
-    })
+    .update(testResult)
     .eq('id', id)
     .eq('tenant_id', auth.tenantId);
 
@@ -510,7 +561,7 @@ async function initiateAuth(
       {
         redirectUrl: String(provider.saml_sso_url ?? ''),
         stub: true,
-        note: 'SAML AuthnRequest is not signed yet — IdPs requiring signed requests will reject this.',
+        note: 'SAML AuthnRequest is not signed yet - IdPs requiring signed requests will reject this.',
       },
       200,
       req,
@@ -573,12 +624,6 @@ function mapProvider(body: Record<string, unknown>): Record<string, unknown> {
   set('jit_provisioning', 'jitProvisioning', 'jit_provisioning');
   set('jit_provisioning_rules', 'jitProvisioningRules', 'jit_provisioning_rules');
   return r;
-}
-
-async function sha256Hex(s: string): Promise<string> {
-  const buf = new TextEncoder().encode(s);
-  const digest = await crypto.subtle.digest('SHA-256', buf);
-  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
 // deno-lint-ignore no-explicit-any

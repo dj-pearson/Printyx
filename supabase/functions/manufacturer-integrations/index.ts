@@ -5,6 +5,42 @@ import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { createAdapter } from '../_shared/manufacturer-adapters.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { ROLE_LEVEL, RbacError, requireRoleLevel } from '../_shared/rbac.ts';
+import type { AuthContext } from '../_shared/auth.ts';
+
+/**
+ * SEC-EDGE-001 round 74 added a redactor here and it redacted nothing.
+ *
+ * It named seven columns - api_key, api_secret, client_id, client_secret,
+ * access_token, refresh_token, webhook_secret - that `manufacturer_integrations`
+ * has never had, copied from the `connect` upsert below, which was writing the
+ * same phantom set and had been a guaranteed PGRST204 since it shipped. The
+ * dealer's HP, Canon and Xerox credentials are one level down, inside the NOT
+ * NULL `credentials` jsonb, so every read still returned every secret to every
+ * authenticated member of the tenant - and Express returned the raw Drizzle row
+ * too, so the leak was on both hosts.
+ *
+ * The view is `shared/manufacturer-integration-view.ts` now, shared with the
+ * Express half so a redactor cannot exist on one host and be missing on the
+ * other. It is an ALLOW-LIST: anything not named there, today or after the
+ * next migration, does not leave. `resolveIntegration` keeps the raw row,
+ * because the adapter needs the real key to call the manufacturer.
+ */
+import {
+  buildManufacturerConnect,
+  toManufacturerIntegrationView,
+  toManufacturerIntegrationViews,
+} from '../../../shared/manufacturer-integration-view.ts';
+
+// deno-lint-ignore no-explicit-any
+function toIntegrationView(row: any): any {
+  return toManufacturerIntegrationView(row);
+}
+
+// deno-lint-ignore no-explicit-any
+function toIntegrationViews(rows: any[] | null): any[] {
+  return toManufacturerIntegrationViews(rows);
+}
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -57,6 +93,49 @@ export default async function handler(req: Request) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
     }
 
+    /**
+     * Connecting an integration STORES a credential and disconnect, sync,
+     * test and discover all act on one. `/manufacturer-integration` is
+     * `minLevel: 4` with `admin.settings.integrations`, so the nav already
+     * says manager - and a nav rule hides a menu item and protects nothing,
+     * which is this story's own headline finding. Reads stay open because the
+     * redacted view carries no secret and a technician needs to see whether a
+     * manufacturer is connected.
+     */
+    const requireManager = () =>
+      requireRoleLevel(
+        {
+          userId: user.id,
+          tenantId,
+          email: user.email,
+          jwt: jwt ?? '',
+          supabaseUser: user,
+        } as AuthContext,
+        ROLE_LEVEL.MANAGER,
+      );
+    const denyManager = (err: unknown) => {
+      if (err instanceof RbacError) {
+        return createCorsResponse(
+          {
+            error: 'Managing manufacturer integrations requires a manager role',
+            code: 'INSUFFICIENT_ROLE',
+            details: err.details,
+          },
+          403,
+          req,
+        );
+      }
+      throw err;
+    };
+
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      try {
+        requireManager();
+      } catch (err) {
+        return denyManager(err);
+      }
+    }
+
     const url = new URL(req.url);
     // server.ts strips the function-name segment before invoking this handler,
     // so the resource is at parts[0]. normalizePath strips an OPTIONAL leading
@@ -73,7 +152,7 @@ export default async function handler(req: Request) {
         .eq('tenant_id', tenantId)
         .order('manufacturer', { ascending: true });
 
-      return createCorsResponse(integrations || [], 200, req);
+      return createCorsResponse(toIntegrationViews(integrations), 200, req);
     }
 
     // GET /manufacturer-integrations/status - Get all integration statuses
@@ -175,7 +254,11 @@ export default async function handler(req: Request) {
       return createCorsResponse(
         (logs ?? []).map((row: any) => {
           const { integration, device, ...log } = row;
-          return { log, integration, device };
+          // The embed is `integration:manufacturer_integrations(*)`, so each
+          // audit row carried the full credential set - a second exposure of
+          // the same table through a different path, which is exactly what a
+          // redactor applied only at the obvious read would have missed.
+          return { log, integration: toIntegrationView(integration), device };
         }),
         200,
         req,
@@ -200,7 +283,7 @@ export default async function handler(req: Request) {
 
       return createCorsResponse(
         {
-          ...integration,
+          ...toIntegrationView(integration),
           connected: integration.is_active,
           configured: true,
         },
@@ -209,32 +292,45 @@ export default async function handler(req: Request) {
       );
     }
 
-    // POST /manufacturer-integrations/:manufacturer/connect - Connect integration
+    /**
+     * POST /manufacturer-integrations/:manufacturer/connect
+     *
+     * This branch upserted ten columns the table does not have, so it has
+     * never stored a connection - and it is where the phantom names the
+     * redactor above was built from came from. The credentials are one jsonb
+     * blob, which is what `_shared/manufacturer-adapters.ts` reads.
+     *
+     * THERE IS NO UNIQUE CONSTRAINT to upsert on: `(tenant_id, manufacturer)`
+     * carries an INDEX, not a unique index, so `.upsert()` with no onConflict
+     * behaved as a plain insert and connecting twice would have piled up
+     * duplicate rows. Look the existing row up and update it.
+     */
     if (req.method === 'POST' && manufacturer && endpoint === 'connect') {
-      const body = await req.json();
+      const body = await req.json().catch(() => ({}));
+      const plan = buildManufacturerConnect(manufacturer, body, tenantId);
+      if (plan.error) {
+        return createCorsResponse({ error: plan.error, code: 'INVALID_CONNECTION' }, 400, req);
+      }
 
-      const { data: integration, error } = await admin
+      const { data: existing } = await admin
         .from('manufacturer_integrations')
-        .upsert({
-          tenant_id: tenantId,
-          manufacturer: manufacturer,
-          api_key: body.apiKey || body.api_key,
-          api_secret: body.apiSecret || body.api_secret,
-          client_id: body.clientId || body.client_id,
-          client_secret: body.clientSecret || body.client_secret,
-          access_token: body.accessToken || body.access_token,
-          refresh_token: body.refreshToken || body.refresh_token,
-          token_expires_at: body.tokenExpiresAt || body.token_expires_at,
-          dealer_id: body.dealerId || body.dealer_id,
-          is_active: true,
-          connected_at: new Date().toISOString(),
-          connected_by: user.id,
-          updated_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
+        .select('id')
+        .eq('tenant_id', tenantId)
+        .eq('manufacturer', manufacturer)
+        .maybeSingle();
+
+      const query = existing?.id
+        ? admin
+            .from('manufacturer_integrations')
+            .update(plan.row)
+            .eq('id', existing.id)
+            .eq('tenant_id', tenantId)
+        : admin.from('manufacturer_integrations').insert(plan.row);
+
+      const { data: integration, error } = await query.select().single();
 
       if (error) {
+        console.error('Error connecting manufacturer integration:', error);
         return createCorsResponse({ error: 'Failed to connect integration' }, 500, req);
       }
 
@@ -242,7 +338,10 @@ export default async function handler(req: Request) {
         {
           success: true,
           message: `Connected to ${manufacturer}`,
-          integration,
+          integration: toIntegrationView(integration),
+          // COP-B06: a write that quietly narrows what it stores turns a
+          // schema mismatch into invisible data loss.
+          ignoredFields: plan.ignoredFields,
         },
         200,
         req,

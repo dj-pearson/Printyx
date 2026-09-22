@@ -4,6 +4,26 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { denyWithoutPermission } from '../_shared/rbac.ts';
+import { toCamelShallow } from '../_shared/case.ts';
+
+/**
+ * SEC-EDGE-001: the tenant's own enabled-product catalogue, same permission as
+ * the seven catalogue functions next door.
+ *
+ * `enabled_products` is what a rep's quote builder picks from, so the READ is
+ * every rep's and stays open - `/product-hub`, its only caller, is gated on
+ * `operations.inventory.view` plus `sales.customer.view_own`.
+ *
+ * The writes are a different act and had no gate at all. Worth recording what
+ * checking the callers changed: ProductHubUnified only GETs this prefix and
+ * invalidates it - every enable, bulk-enable, CSV import and pricing edit goes
+ * through `/api/catalog`, which has required a role level since SEC-EDGE-001's
+ * earlier batches. So these three branches are live HTTP endpoints that no
+ * client tree exercises, which makes gating them free rather than risky, and
+ * makes leaving them open the sort of gap nobody would ever notice.
+ */
+const WRITE_PERMISSION = 'operations.inventory.manage';
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -40,7 +60,11 @@ export default async function handler(req: Request) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
     }
 
-    // Use service_role client for database operations
+    // All three non-GET branches write the catalogue.
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      const denied = await denyWithoutPermission(admin, user, WRITE_PERMISSION);
+      if (denied) return createCorsResponse(denied, 403, req);
+    }
 
     const url = new URL(req.url);
     // server.ts strips the function-name segment before invoking this handler,
@@ -62,7 +86,14 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: error.message }, 500, req);
       }
 
-      return createCorsResponse({ data: products || [], total: products?.length || 0 }, 200, req);
+      // PROD-008: the rows went back in snake_case while ProductHubUnified -
+      // this prefix's only caller - matches on `masterProductId` and renders
+      // `customName`, `dealerCost` and `companyPrice`. Every one of those was
+      // undefined, so no catalogue row ever showed as enabled in production
+      // and the Enabled Products tab rendered empty cells.
+      const rows = (products || []).map((row: Record<string, unknown>) => toCamelShallow(row));
+
+      return createCorsResponse({ data: rows, total: rows.length }, 200, req);
     }
 
     // GET /enabled-products/:id - Get single enabled product
@@ -79,7 +110,7 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: error.message }, 404, req);
       }
 
-      return createCorsResponse(product, 200, req);
+      return createCorsResponse(toCamelShallow(product as Record<string, unknown>), 200, req);
     }
 
     // POST /enabled-products - Enable a product for this tenant

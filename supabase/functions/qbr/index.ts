@@ -42,6 +42,8 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { ROLE_LEVEL, RbacError, requireRoleLevel } from '../_shared/rbac.ts';
+import type { AuthContext } from '../_shared/auth.ts';
 import { toCamelShallow } from '../_shared/case.ts';
 import { assembleContent, renderHtml, currentQuarter } from './content.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
@@ -126,10 +128,50 @@ export default async function handler(req: Request) {
     const second = parts[1];
     const method = req.method.toUpperCase();
 
+    /**
+     * SEC-EDGE-001. A QBR is a management artefact: generating, editing or deleting one
+     * speaks for the dealer to a customer.
+     *
+     * The gate is on the BRANCH, not the function: reading a QBR is arguably a rep's own work on their own
+     * account; creating, generating and deleting are not.
+     * A LEVEL check rather than a permission code (SEC-EDGE-002).
+     */
+    const requireManager = () => {
+      requireRoleLevel(
+        {
+          userId: user.id,
+          tenantId,
+          email: user.email,
+          jwt: jwt ?? '',
+          supabaseUser: user,
+        } as AuthContext,
+        ROLE_LEVEL.MANAGER,
+      );
+    };
+    const denyManager = (err: unknown) => {
+      if (err instanceof RbacError) {
+        return createCorsResponse(
+          {
+            error: 'Creating or deleting a QBR requires a manager role',
+            code: 'INSUFFICIENT_ROLE',
+            details: err.details,
+          },
+          403,
+          req,
+        );
+      }
+      throw err;
+    };
+
     // --- POST /generate --------------------------------------------------
     // Literal segments are matched BEFORE the /:id routes; otherwise 'generate'
     // and 'suppressions' would be read as report ids.
     if (method === 'POST' && first === 'generate') {
+      try {
+        requireManager();
+      } catch (err) {
+        return denyManager(err);
+      }
       return await handleGenerate(req, admin, tenantId, user.id);
     }
 
@@ -191,6 +233,11 @@ export default async function handler(req: Request) {
       // (tenant, customer) and answered { success: true } whether or not a row
       // matched; a missing branch here fell through to the trailing 404.
       if (method === 'DELETE') {
+        try {
+          requireManager();
+        } catch (err) {
+          return denyManager(err);
+        }
         const customerId = typeof second === 'string' ? second.trim() : '';
         if (!customerId) {
           return createCorsResponse(

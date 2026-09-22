@@ -14,12 +14,18 @@ import {
 } from '@shared/task-workflow-state';
 
 /**
- * EDGE-024. These decide what a running workflow does next — which stage is
+ * EDGE-024. These decide what a running workflow does next - which stage is
  * current, whether completing a step cascades into an advance, and what a
- * regress resets. They exist in TWO runtimes: shared/task-workflow-state.ts
- * (imported by server/services/task-workflow/engine.ts) and an inline replica
- * in supabase/functions/task-workflows/. This suite pins the transitions so the
- * replica has an exact specification, and so a Node-side drift fails CI.
+ * regress resets. ONE implementation serves both runtimes: the Express engine
+ * imports it through @shared, the task-workflows edge function through a
+ * relative specifier.
+ *
+ * This suite pins the transitions themselves. What it CANNOT tell you is
+ * whether either host still calls them - it used to say it pinned an inline
+ * replica in supabase/functions/task-workflows/, and nothing compared the two,
+ * so it was green while three implementations existed. That half is
+ * server/tests/unit/task-workflow-shared-state.test.ts; the two are only
+ * meaningful together.
  */
 const step = (id: string, stageIndex: number, status: string): StateStep => ({
   id,

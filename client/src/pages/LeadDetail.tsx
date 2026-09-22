@@ -1,94 +1,71 @@
-import { useState, useEffect } from 'react';
+/**
+ * Lead record page (CRM-008 AC10).
+ *
+ * This used to be 2,305 lines, of which about 1,400 were a hand-rolled form:
+ * four collapsible cards on an `isEditing` flag, every field written out twice
+ * - once as a read-only span and once as an Input - plus a 30-key `editForm`
+ * mirror of the record and a bulk Save.
+ *
+ * All of it is `propertyFields` now. The layout engine renders the sections,
+ * `onFieldSave` writes one field at a time, and which sections exist is
+ * per-tenant configuration rather than JSX. DealDetail has worked this way
+ * since CRM-008 shipped; this is the other half of its AC10.
+ *
+ * THE BULK SAVE IS GONE ON PURPOSE, and not only because inline editing is what
+ * AC4 asks for: `editForm` was 30 camelCase keys posted in one body, and
+ * COP-M01 found that PUT /leads/:id spread the body straight into PostgREST, so
+ * that button answered "Failed to update lead" in production every single time.
+ * Per-field saves go through the same endpoint, now mapped and whitelisted.
+ */
+import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Skeleton } from '@/components/ui/skeleton';
 import { ActivityForm } from '@/components/forms/ActivityForms';
 import { ActivityTimeline } from '@/components/ActivityTimeline';
 import { NotesPanel } from '@/components/crm/NotesPanel';
 import { ContactManager } from '@/components/ContactManager';
 import { LeadProposals } from '@/components/leads/LeadProposals';
 import { EnrollInSequenceDialog } from '@/components/leads/EnrollInSequenceDialog';
+import { BookingLinkPicker } from '@/components/booking/BookingLinkPicker';
 import { LeadQuotes } from '@/components/leads/LeadQuotes';
 import { LeadDeals } from '@/components/leads/LeadDeals';
+import BANTAssessment, { useBantAssessment } from '@/components/leads/BANTAssessment';
+import { statusLabel, statusTone } from '@shared/bant-score';
+import {
+  RecordPageLayout,
+  RecordStageBar,
+  type RecordStage,
+} from '@/components/crm/RecordPageLayout';
 import { format } from 'date-fns';
 import {
   ArrowLeft,
-  Clock,
-  Building2,
-  Phone,
-  Mail,
-  Globe,
-  MapPin,
-  Calendar,
-  Users,
-  DollarSign,
-  Edit,
-  Plus,
-  MessageSquare,
-  PhoneCall,
-  FileText,
-  User,
-  CheckCircle2,
-  Save,
-  X,
-  AlertCircle,
-  Target,
-  Activity,
-  UserPlus,
-  StickyNote,
-  MoreHorizontal,
-  Eye,
-  TrendingUp,
-  Award,
-  Star,
-  ExternalLink,
-  Copy,
-  ChevronDown,
-  ChevronRight,
-  Settings,
   Briefcase,
-  CreditCard,
-  Truck,
-  Calculator,
-  Shield,
-  Zap,
-  BarChart3,
-  FileCheck,
-  Clock3,
+  Calendar,
+  CalendarClock,
   CheckSquare,
+  FileText,
+  Mail,
+  PhoneCall,
+  Plus,
   Send,
-  BookOpen,
-  Quote,
+  StickyNote,
+  UserPlus,
 } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import MainLayout from '@/components/layout/main-layout';
 import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 import { useBreadcrumbs } from '@/hooks/useBreadcrumbs';
-
 // Lead Contact Form Component
 function LeadContactForm({
   leadId,
@@ -127,18 +104,21 @@ function LeadContactForm({
     setIsLoading(true);
 
     try {
-      const response = await apiRequest(`/api/leads/${leadId}/contacts`, {
+      await apiRequest(`/api/leads/${leadId}/contacts`, {
         method: 'POST',
         body: formData,
       });
 
       onSuccess();
-    } catch (error: any) {
-      console.error('Error creating lead contact:', error);
-      console.error('Error details:', error.response?.data || error.message);
+    } catch (error) {
+      // apiRequest throws an Error carrying the server's message; there is no
+      // `.response` on it, so the old `error.response?.data?.message` chain was
+      // always undefined and every failure read "Failed to create contact".
+      const message = error instanceof Error ? error.message : String(error);
+      console.error('Error creating lead contact:', message);
       toast({
         title: 'Error',
-        description: error.response?.data?.message || 'Failed to create contact. Please try again.',
+        description: message || 'Failed to create contact. Please try again.',
         variant: 'destructive',
       });
     } finally {
@@ -218,231 +198,219 @@ function LeadContactForm({
   );
 }
 
+/** Shape of GET /api/crm/record-counts (CRM-008 AC6). A null count is unknown, not zero. */
+interface RecordCounts {
+  recordId: string;
+  counts: {
+    contacts: number | null;
+    deals: number | null;
+    proposals: number | null;
+    quotes: number | null;
+  };
+  scopeTier: string;
+  coversWholeTenant: boolean;
+}
+
 export default function LeadDetailHubspot() {
   const { slug } = useParams();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Use slug as the ID (slug contains the UUID from the URL path)
+  // The slug IS the uuid on this route.
   const id = slug ?? '';
-  const [isEditing, setIsEditing] = useState(false);
-  const [expandedSections, setExpandedSections] = useState({
-    company: true,
-    contact: true,
-    address: true,
-    pipeline: true,
-    external: false,
-    financial: false,
-    preferences: false,
-  });
-
-  // Dialog states
-  // WF-S-04
   const [showEnrollDialog, setShowEnrollDialog] = useState(false);
+  const [showBookingLink, setShowBookingLink] = useState(false);
   const [dialogs, setDialogs] = useState({
     note: false,
     email: false,
     call: false,
     meeting: false,
     task: false,
-    editRecord: false,
+    addContact: false,
   });
 
-  // Fetch lead details (with fallback for snake_case/camelCase)
   const { data: leadRaw, isLoading } = useQuery({
     queryKey: ['/api/leads', id],
     queryFn: async () => apiRequest(`/api/leads/${id}`),
     enabled: !!id,
   });
 
-  // Normalize lead data to handle both snake_case and camelCase from API
-  // Handle both array response [{}] and single object response {}
+  /**
+   * GET /leads/:id returns the RAW row - it is the one read path in that
+   * function with no toCamel - so the page normalises it. The layout's
+   * propertyFields name the keys this produces, and anything it names that is
+   * missing comes back in the engine's `unknownFields` rather than rendering as
+   * a blank row (CRM-008 rule 3).
+   *
+   * `??` and not `||`: a lead score of 0 and an estimated value of 0 are real
+   * values, and `||` sent both to the undefined camelCase key, so a zero
+   * rendered as empty.
+   */
   const rawData = Array.isArray(leadRaw) ? leadRaw[0] : leadRaw;
   const lead = rawData
     ? {
         ...rawData,
-        companyName: rawData.company_name || rawData.companyName,
-        primaryContactName: rawData.primary_contact_name || rawData.primaryContactName,
-        primaryContactEmail: rawData.primary_contact_email || rawData.primaryContactEmail,
-        primaryContactPhone: rawData.primary_contact_phone || rawData.primaryContactPhone,
-        primaryContactTitle: rawData.primary_contact_title || rawData.primaryContactTitle,
-        addressLine1: rawData.address_line1 || rawData.addressLine1,
-        addressLine2: rawData.address_line2 || rawData.addressLine2,
-        postalCode: rawData.postal_code || rawData.postalCode,
-        recordType: rawData.record_type || rawData.recordType,
-        leadScore: rawData.lead_score || rawData.leadScore,
-        estimatedDealValue: rawData.estimated_deal_value || rawData.estimatedDealValue,
-        closeDate: rawData.close_date || rawData.closeDate,
-        ownerId: rawData.owner_id || rawData.ownerId,
-        assignedSalesRep: rawData.assigned_sales_rep || rawData.assignedSalesRep,
-        customerNumber: rawData.customer_number || rawData.customerNumber,
-        customerSince: rawData.customer_since || rawData.customerSince,
-        lastContactDate: rawData.last_contact_date || rawData.lastContactDate,
-        nextFollowUp: rawData.next_follow_up || rawData.nextFollowUp,
-        nextFollowUpDate: rawData.next_follow_up_date || rawData.nextFollowUpDate,
-        createdAt: rawData.created_at || rawData.createdAt,
-        updatedAt: rawData.updated_at || rawData.updatedAt,
-        createdBy: rawData.created_by || rawData.createdBy,
-        updatedBy: rawData.updated_by || rawData.updatedBy,
-        employeeCount: rawData.employee_count || rawData.employeeCount,
-        annualRevenue: rawData.annual_revenue || rawData.annualRevenue,
-        tenantId: rawData.tenant_id || rawData.tenantId,
-        taxId: rawData.tax_id || rawData.taxId,
-        customerTier: rawData.customer_tier || rawData.customerTier,
+        companyName: rawData.company_name ?? rawData.companyName,
+        primaryContactName: rawData.primary_contact_name ?? rawData.primaryContactName,
+        primaryContactEmail: rawData.primary_contact_email ?? rawData.primaryContactEmail,
+        primaryContactPhone: rawData.primary_contact_phone ?? rawData.primaryContactPhone,
+        primaryContactTitle: rawData.primary_contact_title ?? rawData.primaryContactTitle,
+        addressLine1: rawData.address_line1 ?? rawData.addressLine1,
+        addressLine2: rawData.address_line2 ?? rawData.addressLine2,
+        postalCode: rawData.postal_code ?? rawData.postalCode,
+        recordType: rawData.record_type ?? rawData.recordType,
+        leadScore: rawData.lead_score ?? rawData.leadScore,
+        estimatedDealValue: rawData.estimated_deal_value ?? rawData.estimatedDealValue,
+        closeDate: rawData.close_date ?? rawData.closeDate,
+        ownerId: rawData.owner_id ?? rawData.ownerId,
+        assignedSalesRep: rawData.assigned_sales_rep ?? rawData.assignedSalesRep,
+        interestLevel: rawData.interest_level ?? rawData.interestLevel,
+        customerNumber: rawData.customer_number ?? rawData.customerNumber,
+        lastContactDate: rawData.last_contact_date ?? rawData.lastContactDate,
+        nextFollowUpDate: rawData.next_follow_up_date ?? rawData.nextFollowUpDate,
+        createdAt: rawData.created_at ?? rawData.createdAt,
+        updatedAt: rawData.updated_at ?? rawData.updatedAt,
+        employeeCount: rawData.employee_count ?? rawData.employeeCount,
+        annualRevenue: rawData.annual_revenue ?? rawData.annualRevenue,
+        creditLimit: rawData.credit_limit ?? rawData.creditLimit,
+        paymentTerms: rawData.payment_terms ?? rawData.paymentTerms,
+        taxId: rawData.tax_id ?? rawData.taxId,
+        customerTier: rawData.customer_tier ?? rawData.customerTier,
       }
     : null;
 
-  // Form state for editing
-  const [editForm, setEditForm] = useState({
-    // Basic Information
-    companyName: '',
-    accountNumber: '',
-    accountType: 'Prospect',
-    website: '',
-    industry: '',
-    companySize: '',
-    employeeCount: null as number | null,
-    annualRevenue: null as number | null,
-
-    // Contact Information
-    primaryContactName: '',
-    primaryContactEmail: '',
-    primaryContactPhone: '',
-    primaryContactTitle: '',
-
-    // Billing Contact
-    billingContactName: '',
-    billingContactEmail: '',
-    billingContactPhone: '',
-
-    // Address Information
-    addressLine1: '',
-    addressLine2: '',
-    city: '',
-    state: '',
-    postalCode: '',
-    country: 'US',
-
-    // Billing Address
-    billingAddressLine1: '',
-    billingAddressLine2: '',
-    billingCity: '',
-    billingState: '',
-    billingPostalCode: '',
-    billingCountry: 'US',
-
-    // Shipping Address
-    shippingAddressLine1: '',
-    shippingAddressLine2: '',
-    shippingCity: '',
-    shippingState: '',
-    shippingPostalCode: '',
-    shippingCountry: 'US',
-
-    // Communication
-    phone: '',
-    fax: '',
-    preferredContactMethod: 'email',
-
-    // Pipeline Information
-    leadSource: 'website',
-    estimatedAmount: null as number | null,
-    probability: 50,
-    closeDate: '',
-    salesStage: 'new',
-    interestLevel: 'warm',
-
-    // Assignment & Ownership
-    ownerId: '',
-    assignedSalesRep: '',
-    territory: '',
-    accountManagerId: '',
-    leadScore: 0,
-    priority: 'medium',
-
-    // Salesforce-specific Fields
-    customerRating: 'Warm',
-    parentAccountId: '',
-    customerPriority: 'Medium',
-    slaLevel: 'Standard',
-    upsellOpportunity: '',
-    accountNotes: '',
-
-    // External System Integration
-    externalCustomerId: '',
-    externalSystemId: '',
-    externalSalesforceId: '',
-    externalLeadId: '',
-    migrationStatus: '',
-
-    // Financial Information
-    creditLimit: null as number | null,
-    paymentTerms: 'Net 30',
-    billingTerms: '',
-    taxExempt: false,
-    taxId: '',
-    customerTier: '',
-
-    // System Tracking
-    notes: '',
-  });
-
-  // Initialize form when lead data loads
-  useEffect(() => {
-    if (lead) {
-      setEditForm(lead);
-    }
-  }, [lead]);
-
-  // Breadcrumb navigation
   const breadcrumbItems = useBreadcrumbs({
     currentLabel: lead?.companyName || 'Lead Detail',
   });
 
-  // Update mutation
-  const updateMutation = useMutation({
-    mutationFn: async (data: any) => {
-      return await apiRequest(`/api/leads/${id}`, 'PUT', data);
+  /**
+   * One field at a time, which is what the layout engine hands us.
+   *
+   * The endpoint maps camelCase to columns and reports what it could not write
+   * (COP-M01), so a field this page sends under a name the table does not carry
+   * comes back in `ignoredFields` instead of vanishing.
+   */
+  /**
+   * CRM-008 AC8 on the lead side. DealDetail has had the stage picker since the
+   * story shipped and this page rendered `status` as a read-only Badge, so a
+   * rep could not advance a lead from its own record - they had to find it on a
+   * board.
+   *
+   * The vocabulary comes from GET /api/sales-pipeline/stages, which COP-E02
+   * made the ONE source for it: these ids are `business_records.status` values,
+   * NOT `pipeline_stages` uuids, and comparing the two silently yields -1 (that
+   * story's original defect advanced every record to the first stage). Asking
+   * the server rather than hardcoding the list is what keeps this page and the
+   * board on the same nine words.
+   */
+  const { data: stageRows = [] } = useQuery<Array<{ id: string; name: string }>>({
+    queryKey: ['/api/sales-pipeline/stages'],
+    queryFn: async () => {
+      // The endpoint answers a bare array; tolerate the two envelope shapes the
+      // other CRM reads use rather than assuming one.
+      const raw = (await apiRequest('/api/sales-pipeline/stages')) as
+        | unknown[]
+        | { data?: unknown[]; stages?: unknown[] }
+        | null;
+      const list: unknown[] = Array.isArray(raw)
+        ? raw
+        : ((raw?.data ?? raw?.stages ?? []) as unknown[]);
+      return list.filter(
+        (row): row is { id: string; name: string } =>
+          typeof row === 'object' &&
+          row !== null &&
+          typeof (row as { id?: unknown }).id === 'string',
+      );
     },
-    onSuccess: () => {
-      toast({
-        title: 'Lead Updated',
-        description: 'Lead information has been successfully updated.',
-      });
-      queryClient.invalidateQueries({
-        queryKey: ['/api/leads', id],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ['/api/leads'],
-      });
-      setIsEditing(false);
+    staleTime: 5 * 60_000,
+  });
+
+  /**
+   * A status outside the vocabulary belongs to no stage, and leaving it out
+   * would render the bar with nothing highlighted - which reads as "not
+   * started" rather than "this word is not one of ours". It is appended instead
+   * so the rep can see where the record actually is, the same way the board
+   * lists those rows rather than dropping them.
+   */
+  const stages = useMemo<RecordStage[]>(() => {
+    const known = stageRows.map((s) => ({ id: s.id, name: s.name }));
+    const current = lead?.status;
+    if (current && !known.some((s) => s.id === current)) {
+      known.push({ id: current, name: current });
+    }
+    return known;
+  }, [stageRows, lead?.status]);
+
+  const saveField = useMutation({
+    mutationFn: async (patch: Record<string, unknown>) =>
+      apiRequest(`/api/leads/${id}`, 'PUT', patch),
+    onSuccess: (result: { ignoredFields?: string[]; refusedFields?: string[] }) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/leads', id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/leads'] });
+      const dropped = [...(result?.ignoredFields ?? []), ...(result?.refusedFields ?? [])];
+      if (dropped.length > 0) {
+        toast({
+          title: 'Saved, but not everything',
+          description: `The server did not store: ${dropped.join(', ')}.`,
+          variant: 'destructive',
+        });
+        return;
+      }
+      toast({ title: 'Saved' });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
-        title: 'Update Failed',
-        description: error.message || 'Failed to update lead information.',
+        title: 'Update failed',
+        description: error.message || 'Failed to update this lead.',
         variant: 'destructive',
       });
     },
   });
 
-  const handleSave = () => {
-    updateMutation.mutate(editForm);
-  };
+  /**
+   * AC6's counts.
+   *
+   * One request rather than four list fetches: Radix unmounts an inactive tab,
+   * so a count lifted out of each child would only appear once a rep had
+   * clicked through all four - a number that shows up after you look is worth
+   * less than none. `GET /crm/record-counts` answers all four as exact
+   * PostgREST head counts under the SAME ownership scope each list applies, so
+   * the badge and the rows below it describe one set.
+   */
+  const { data: counts } = useQuery<RecordCounts>({
+    queryKey: ['/api/crm/record-counts', id],
+    queryFn: () => apiRequest(`/api/crm/record-counts?recordId=${encodeURIComponent(id!)}`),
+    enabled: Boolean(id),
+  });
 
-  const toggleSection = (section: string) => {
-    setExpandedSections((prev) => ({
-      ...prev,
-      [section]: !prev[section as keyof typeof prev],
-    }));
-  };
+  /**
+   * WF-S-09. The same cache entry BANTAssessment reads, so the glance card and
+   * the form below it cannot disagree. Declared with the other queries and
+   * ABOVE the early returns: a hook added beside the JSX it feeds would land
+   * after `if (!lead)` and crash on the render where the record resolves
+   * (CRM-008 round 66 - eslint is the only thing that reports it).
+   */
+  const { data: bant, isError: bantFailed } = useBantAssessment(id);
+
+  /** Renders nothing while loading or when the count failed - never a 0. */
+  const countBadge = (value: number | null | undefined) =>
+    typeof value === 'number' ? (
+      <span className="ml-1.5 text-xs text-muted-foreground">{value}</span>
+    ) : null;
 
   if (isLoading) {
+    // Skeletons in the shape of the page, matching DealDetail. A spinner tells
+    // the rep nothing about what is coming.
     return (
-      <MainLayout title="Lead Details" description="Loading lead information...">
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <MainLayout>
+        <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-4">
+          <Skeleton className="h-8 w-40" />
+          <Skeleton className="h-28 w-full" />
+          <div className="grid gap-4 lg:grid-cols-3">
+            <Skeleton className="h-64 lg:col-span-2" />
+            <Skeleton className="h-64" />
+          </div>
         </div>
       </MainLayout>
     );
@@ -454,7 +422,7 @@ export default function LeadDetailHubspot() {
         <div className="text-center py-12">
           <h3 className="text-lg font-medium text-gray-900 mb-2">Lead not found</h3>
           <p className="text-gray-600 mb-4">
-            The lead you're looking for doesn't exist or has been removed.
+            The lead you&apos;re looking for doesn&apos;t exist or has been removed.
           </p>
           <Button onClick={() => setLocation('/leads-management')}>
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -465,1800 +433,247 @@ export default function LeadDetailHubspot() {
     );
   }
 
+  const openDialog = (key: keyof typeof dialogs) =>
+    setDialogs((prev) => ({ ...prev, [key]: true }));
+  const closeDialog = (key: keyof typeof dialogs) =>
+    setDialogs((prev) => ({ ...prev, [key]: false }));
+
+  const timelineSlot = (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <Button variant="outline" size="sm" onClick={() => openDialog('note')}>
+          <Plus className="h-4 w-4 mr-1" /> Note
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => openDialog('call')}>
+          <PhoneCall className="h-4 w-4 mr-1" /> Log call
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => openDialog('email')}>
+          <Mail className="h-4 w-4 mr-1" /> Log email
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => openDialog('meeting')}>
+          <Calendar className="h-4 w-4 mr-1" /> Meeting
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => openDialog('task')}>
+          <CheckSquare className="h-4 w-4 mr-1" /> Task
+        </Button>
+      </div>
+      <NotesPanel parentType="lead" parentId={id} />
+      <ActivityTimeline businessRecordId={id} />
+    </div>
+  );
+
+  const relatedSlot = (
+    <Tabs defaultValue="contacts" className="w-full">
+      <TabsList>
+        <TabsTrigger value="contacts">Contacts{countBadge(counts?.counts.contacts)}</TabsTrigger>
+        <TabsTrigger value="deals">Deals{countBadge(counts?.counts.deals)}</TabsTrigger>
+        <TabsTrigger value="proposals">Proposals{countBadge(counts?.counts.proposals)}</TabsTrigger>
+        <TabsTrigger value="quotes">Quotes{countBadge(counts?.counts.quotes)}</TabsTrigger>
+      </TabsList>
+      <TabsContent value="contacts" className="mt-4">
+        {/* WF-S-03: business_records has no company_id column, so a contact's
+            company_id references the lead's own id - which is this record. */}
+        <ContactManager companyId={lead.id ?? ''} companyName={lead.companyName || 'Unknown'} />
+      </TabsContent>
+      <TabsContent value="deals" className="mt-4">
+        <LeadDeals leadId={lead.id ?? ''} leadName={lead.companyName || 'Unknown Lead'} />
+      </TabsContent>
+      <TabsContent value="proposals" className="mt-4">
+        <LeadProposals leadId={lead.id ?? ''} leadName={lead.companyName || 'Unknown Lead'} />
+      </TabsContent>
+      <TabsContent value="quotes" className="mt-4">
+        <LeadQuotes leadId={lead.id ?? ''} leadName={lead.companyName || 'Unknown Lead'} />
+      </TabsContent>
+    </Tabs>
+  );
+
+  const stamp = (value: unknown) => (value ? format(new Date(String(value)), 'MMM d, yyyy') : '—');
+
+  const glanceSlot = (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm">At a glance</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3 text-sm">
+        <div className="flex items-center justify-between">
+          <span className="text-muted-foreground">Lead score</span>
+          <Badge variant={lead.leadScore > 70 ? 'default' : 'secondary'}>
+            {lead.leadScore ?? 0}/100
+          </Badge>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-muted-foreground">BANT</span>
+          {bantFailed ? (
+            // A failed read must not render as "Not assessed": that is the one
+            // reading a rep would act on (CR-033).
+            <span className="text-xs text-destructive">Could not load</span>
+          ) : bant ? (
+            <Badge className={statusTone(bant.qualificationStatus)}>
+              {bant.totalBantScore ?? 0}/100 {statusLabel(bant.qualificationStatus)}
+            </Badge>
+          ) : (
+            <span className="text-xs text-muted-foreground">Not assessed</span>
+          )}
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-muted-foreground">Interest</span>
+          <Badge variant={lead.interestLevel === 'hot' ? 'destructive' : 'secondary'}>
+            {lead.interestLevel || 'not set'}
+          </Badge>
+        </div>
+        <Separator />
+        <div className="flex items-center justify-between">
+          <span className="text-muted-foreground">Created</span>
+          <span>{stamp(lead.createdAt)}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-muted-foreground">Last contact</span>
+          <span>{stamp(lead.lastContactDate)}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-muted-foreground">Next follow-up</span>
+          <span>{stamp(lead.nextFollowUpDate)}</span>
+        </div>
+        <Separator />
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full"
+          onClick={() => openDialog('addContact')}
+        >
+          <UserPlus className="h-4 w-4 mr-1" /> Add contact
+        </Button>
+      </CardContent>
+    </Card>
+  );
+
   return (
     <MainLayout>
-      <div className="max-w-7xl mx-auto">
-        {/* Breadcrumb Navigation */}
+      <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-4">
         <Breadcrumbs items={breadcrumbItems} />
 
-        {/* Mobile-Optimized Header */}
-        <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border mb-6">
-          {/* Top Row: Back Button and Edit Button */}
-          <div className="flex items-center justify-between mb-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setLocation('/leads-management')}
-              className="px-2 sm:px-3"
-            >
-              <ArrowLeft className="h-4 w-4 mr-1 sm:mr-2" />
-              <span className="hidden sm:inline">Back to Leads</span>
-              <span className="sm:hidden">Back</span>
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsEditing(!isEditing)}
-              className="px-2 sm:px-3"
-            >
-              <Edit className="h-4 w-4 mr-1 sm:mr-2" />
-              {isEditing ? 'Cancel' : 'Edit'}
-            </Button>
-          </div>
-
-          {/* Quick Action CTAs */}
-          <div className="mb-6">
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  // Switch to deals tab first
-                  const dealsTab = document.querySelector(
-                    '[data-state="inactive"][value="deals"]',
-                  ) as HTMLElement;
-                  if (dealsTab) {
-                    dealsTab.click();
-                    // Small delay to ensure tab is active before triggering action
-                    setTimeout(() => {
-                      const event = new CustomEvent('leadTabAction', {
-                        detail: { action: 'createDeal' },
-                      });
-                      window.dispatchEvent(event);
-                    }, 100);
-                  }
-                }}
-                className="text-xs"
-              >
-                <Briefcase className="h-3 w-3 mr-1" />
-                Create Deal
-              </Button>
-              {/*
-                WF-S-08: a red "🔴 API TEST" button sat here, between Create Deal
-                and Log Activity, on every lead record.
-
-                It was not only debug UI. It raised three raw browser alerts
-                ("Button clicked! Check console for API test results...",
-                "SUCCESS: Contact created!", "ERROR: ...") AND it POSTed a real
-                contact - first name Test, last name Contact,
-                test@test.com - into the tenant's database through the live
-                /api/leads/:id/contacts endpoint. Anyone who pressed it out of
-                curiosity wrote a junk contact onto that lead.
-              */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setDialogs((prev) => ({ ...prev, note: true }))}
-                className="text-xs"
-              >
-                <StickyNote className="h-3 w-3 mr-1" />
-                Log Activity
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  setLocation(
-                    '/demo-scheduling?leadId=' +
-                      id +
-                      '&companyName=' +
-                      encodeURIComponent(lead.companyName || ''),
-                  )
-                }
-                className="text-xs"
-              >
-                <Calendar className="h-3 w-3 mr-1" />
-                Schedule Demo
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  // Route through deals - switch to deals tab and trigger quote creation
-                  const dealsTab = document.querySelector(
-                    '[data-state="inactive"][value="deals"]',
-                  ) as HTMLElement;
-                  if (dealsTab) {
-                    dealsTab.click();
-                    setTimeout(() => {
-                      const event = new CustomEvent('leadTabAction', {
-                        detail: {
-                          action: 'createQuote',
-                          leadId: id,
-                          companyName: lead.companyName || '',
-                        },
-                      });
-                      window.dispatchEvent(event);
-                    }, 100);
-                  }
-                }}
-                className="text-xs"
-              >
-                <Quote className="h-3 w-3 mr-1" />
-                Create Quote
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  // Route through deals - switch to deals tab and trigger proposal creation
-                  const dealsTab = document.querySelector(
-                    '[data-state="inactive"][value="deals"]',
-                  ) as HTMLElement;
-                  if (dealsTab) {
-                    dealsTab.click();
-                    setTimeout(() => {
-                      const event = new CustomEvent('leadTabAction', {
-                        detail: {
-                          action: 'createProposal',
-                          leadId: id,
-                          companyName: lead.companyName || '',
-                        },
-                      });
-                      window.dispatchEvent(event);
-                    }, 100);
-                  }
-                }}
-                className="text-xs"
-              >
-                <FileText className="h-3 w-3 mr-1" />
-                Build Proposal
-              </Button>
-            </div>
-          </div>
-
-          {/* Company Info */}
-          <div className="flex items-start space-x-3 mb-4">
-            <Avatar className="h-10 w-10 sm:h-12 sm:w-12 flex-shrink-0">
-              <AvatarFallback className="bg-blue-100 text-blue-600 text-base sm:text-lg font-semibold">
-                {lead.companyName?.[0] || 'L'}
-              </AvatarFallback>
-            </Avatar>
-            <div className="min-w-0 flex-1">
-              <h1 className="text-lg sm:text-2xl font-semibold text-gray-900 truncate">
-                {lead.companyName || 'Unnamed Lead'}
-              </h1>
-              <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-gray-600 mt-1">
-                <Badge
-                  variant={lead.status === 'qualified' ? 'default' : 'secondary'}
-                  className="text-xs"
-                >
-                  {lead.status || 'New'}
-                </Badge>
-                <span className="hidden sm:inline">•</span>
-                <span>Lead score: {lead.leadScore || 0}</span>
-                <span className="hidden sm:inline">•</span>
-                <span className="hidden sm:inline">
-                  Created{' '}
-                  {lead.createdAt ? format(new Date(lead.createdAt), 'MMM d, yyyy') : 'Recently'}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Action Buttons - Mobile Grid Layout */}
-          <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setDialogs((prev) => ({ ...prev, call: true }))}
-              className="justify-center sm:justify-start"
-            >
-              <PhoneCall className="h-4 w-4 mr-1 sm:mr-2" />
-              Call
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setDialogs((prev) => ({ ...prev, email: true }))}
-              className="justify-center sm:justify-start"
-            >
-              <Mail className="h-4 w-4 mr-1 sm:mr-2" />
-              Email
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setDialogs((prev) => ({ ...prev, meeting: true }))}
-              className="justify-center sm:justify-start"
-            >
-              <Calendar className="h-4 w-4 mr-1 sm:mr-2" />
-              Meeting
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setDialogs((prev) => ({ ...prev, note: true }))}
-              className="justify-center sm:justify-start"
-            >
-              <FileText className="h-4 w-4 mr-1 sm:mr-2" />
-              Note
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setDialogs((prev) => ({ ...prev, task: true }))}
-              className="justify-center sm:justify-start"
-            >
-              <CheckSquare className="h-4 w-4 mr-1 sm:mr-2" />
-              Task
-            </Button>
-            {/* WF-S-04: enrolment lived only on EmailSequencesPage, a
-                standalone campaign screen. This is the same endpoint, offered
-                where the rep decides to nurture. */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowEnrollDialog(true)}
-              className="justify-center sm:justify-start"
-            >
-              <Send className="h-4 w-4 mr-1 sm:mr-2" />
-              Sequence
-            </Button>
-            {isEditing && (
-              <Button
-                size="sm"
-                onClick={handleSave}
-                disabled={updateMutation.isPending}
-                className="col-span-2 sm:col-span-1 justify-center sm:justify-start"
-              >
-                <Save className="h-4 w-4 mr-1 sm:mr-2" />
-                Save Changes
-              </Button>
-            )}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
-          {/* Left Column - Main Information */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Lead Management Tabs */}
-            <Tabs defaultValue="overview" className="w-full" id="lead-tabs">
-              <div className="border-b border-gray-200">
-                <TabsList className="h-auto p-0 bg-transparent space-x-0">
-                  <div className="flex flex-wrap gap-1 p-1">
-                    <TabsTrigger
-                      value="overview"
-                      className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:border-blue-300 border border-transparent rounded-md px-3 py-2 text-sm font-medium transition-colors flex items-center gap-2"
-                    >
-                      <BookOpen className="h-4 w-4" />
-                      <span>Overview</span>
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="activities"
-                      className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:border-blue-300 border border-transparent rounded-md px-3 py-2 text-sm font-medium transition-colors flex items-center gap-2"
-                    >
-                      <Activity className="h-4 w-4" />
-                      <span>Activities</span>
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="contacts"
-                      className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:border-blue-300 border border-transparent rounded-md px-3 py-2 text-sm font-medium transition-colors flex items-center gap-2"
-                    >
-                      <Users className="h-4 w-4" />
-                      <span>Contacts</span>
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="deals"
-                      className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:border-blue-300 border border-transparent rounded-md px-3 py-2 text-sm font-medium transition-colors flex items-center gap-2"
-                    >
-                      <Target className="h-4 w-4" />
-                      <span>Deals</span>
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="proposals"
-                      className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:border-blue-300 border border-transparent rounded-md px-3 py-2 text-sm font-medium transition-colors flex items-center gap-2"
-                    >
-                      <FileCheck className="h-4 w-4" />
-                      <span>Proposals</span>
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="quotes"
-                      className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:border-blue-300 border border-transparent rounded-md px-3 py-2 text-sm font-medium transition-colors flex items-center gap-2"
-                    >
-                      <Quote className="h-4 w-4" />
-                      <span>Quotes</span>
-                    </TabsTrigger>
-                  </div>
-                </TabsList>
-              </div>
-
-              <TabsContent value="overview" className="space-y-6 mt-6">
-                {/* Company Information */}
-                <Card>
-                  <CardHeader className="cursor-pointer" onClick={() => toggleSection('company')}>
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="flex items-center">
-                        <Building2 className="h-5 w-5 mr-2" />
-                        Company Information
-                      </CardTitle>
-                      {expandedSections.company ? (
-                        <ChevronDown className="h-4 w-4" />
-                      ) : (
-                        <ChevronRight className="h-4 w-4" />
-                      )}
-                    </div>
-                  </CardHeader>
-
-                  {expandedSections.company && (
-                    <CardContent className="space-y-4">
-                      <div className="grid grid-cols-1 gap-4">
-                        <div>
-                          <Label htmlFor="companyName">Company Name *</Label>
-                          {isEditing ? (
-                            <Input
-                              id="companyName"
-                              value={editForm.companyName}
-                              onChange={(e) =>
-                                setEditForm((prev) => ({
-                                  ...prev,
-                                  companyName: e.target.value,
-                                }))
-                              }
-                            />
-                          ) : (
-                            <p className="text-sm text-gray-900 mt-1">{lead.companyName || '--'}</p>
-                          )}
-                        </div>
-
-                        <div>
-                          <Label htmlFor="accountNumber">Account Number</Label>
-                          {isEditing ? (
-                            <Input
-                              id="accountNumber"
-                              value={editForm.accountNumber}
-                              onChange={(e) =>
-                                setEditForm((prev) => ({
-                                  ...prev,
-                                  accountNumber: e.target.value,
-                                }))
-                              }
-                            />
-                          ) : (
-                            <p className="text-sm text-gray-900 mt-1">
-                              {lead.accountNumber || '--'}
-                            </p>
-                          )}
-                        </div>
-
-                        <div>
-                          <Label htmlFor="accountType">Account Type</Label>
-                          {isEditing ? (
-                            <Select
-                              value={editForm.accountType}
-                              onValueChange={(value) =>
-                                setEditForm((prev) => ({
-                                  ...prev,
-                                  accountType: value,
-                                }))
-                              }
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="Prospect">Prospect</SelectItem>
-                                <SelectItem value="Customer">Customer</SelectItem>
-                                <SelectItem value="Partner">Partner</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          ) : (
-                            <p className="text-sm text-gray-900 mt-1">{lead.accountType || '--'}</p>
-                          )}
-                        </div>
-
-                        <div>
-                          <Label htmlFor="website">Website</Label>
-                          {isEditing ? (
-                            <Input
-                              id="website"
-                              type="url"
-                              value={editForm.website}
-                              onChange={(e) =>
-                                setEditForm((prev) => ({
-                                  ...prev,
-                                  website: e.target.value,
-                                }))
-                              }
-                            />
-                          ) : (
-                            <p className="text-sm text-gray-900 mt-1">
-                              {lead.website ? (
-                                <a
-                                  href={lead.website}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-blue-600 hover:underline flex items-center"
-                                >
-                                  {lead.website}
-                                  <ExternalLink className="h-3 w-3 ml-1" />
-                                </a>
-                              ) : (
-                                '--'
-                              )}
-                            </p>
-                          )}
-                        </div>
-
-                        <div>
-                          <Label htmlFor="industry">Industry</Label>
-                          {isEditing ? (
-                            <Select
-                              value={editForm.industry}
-                              onValueChange={(value) =>
-                                setEditForm((prev) => ({
-                                  ...prev,
-                                  industry: value,
-                                }))
-                              }
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select industry" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="Healthcare">Healthcare</SelectItem>
-                                <SelectItem value="Education">Education</SelectItem>
-                                <SelectItem value="Manufacturing">Manufacturing</SelectItem>
-                                <SelectItem value="Financial Services">
-                                  Financial Services
-                                </SelectItem>
-                                <SelectItem value="Government">Government</SelectItem>
-                                <SelectItem value="Legal">Legal</SelectItem>
-                                <SelectItem value="Technology">Technology</SelectItem>
-                                <SelectItem value="Real Estate">Real Estate</SelectItem>
-                                <SelectItem value="Other">Other</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          ) : (
-                            <p className="text-sm text-gray-900 mt-1">{lead.industry || '--'}</p>
-                          )}
-                        </div>
-
-                        <div>
-                          <Label htmlFor="companySize">Company Size</Label>
-                          {isEditing ? (
-                            <Select
-                              value={editForm.companySize}
-                              onValueChange={(value) =>
-                                setEditForm((prev) => ({
-                                  ...prev,
-                                  companySize: value,
-                                }))
-                              }
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select size" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="1-10">1-10 employees</SelectItem>
-                                <SelectItem value="11-50">11-50 employees</SelectItem>
-                                <SelectItem value="51-200">51-200 employees</SelectItem>
-                                <SelectItem value="201-500">201-500 employees</SelectItem>
-                                <SelectItem value="501-1000">501-1000 employees</SelectItem>
-                                <SelectItem value="1000+">1000+ employees</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          ) : (
-                            <p className="text-sm text-gray-900 mt-1">{lead.companySize || '--'}</p>
-                          )}
-                        </div>
-
-                        <div>
-                          <Label htmlFor="employeeCount">Employee Count</Label>
-                          {isEditing ? (
-                            <Input
-                              id="employeeCount"
-                              type="number"
-                              value={editForm.employeeCount || ''}
-                              onChange={(e) =>
-                                setEditForm((prev) => ({
-                                  ...prev,
-                                  employeeCount: e.target.value ? parseInt(e.target.value) : null,
-                                }))
-                              }
-                            />
-                          ) : (
-                            <p className="text-sm text-gray-900 mt-1">
-                              {lead.employeeCount || '--'}
-                            </p>
-                          )}
-                        </div>
-
-                        <div>
-                          <Label htmlFor="annualRevenue">Annual Revenue</Label>
-                          {isEditing ? (
-                            <Input
-                              id="annualRevenue"
-                              type="number"
-                              value={editForm.annualRevenue || ''}
-                              onChange={(e) =>
-                                setEditForm((prev) => ({
-                                  ...prev,
-                                  annualRevenue: e.target.value ? parseFloat(e.target.value) : null,
-                                }))
-                              }
-                            />
-                          ) : (
-                            <p className="text-sm text-gray-900 mt-1">
-                              {lead.annualRevenue
-                                ? `$${Number(lead.annualRevenue).toLocaleString()}`
-                                : '--'}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </CardContent>
-                  )}
-                </Card>
-
-                {/* Contact Information */}
-                <Card>
-                  <CardHeader className="cursor-pointer" onClick={() => toggleSection('contact')}>
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="flex items-center">
-                        <User className="h-5 w-5 mr-2" />
-                        Primary Contact Information
-                      </CardTitle>
-                      {expandedSections.contact ? (
-                        <ChevronDown className="h-4 w-4" />
-                      ) : (
-                        <ChevronRight className="h-4 w-4" />
-                      )}
-                    </div>
-                  </CardHeader>
-
-                  {expandedSections.contact && (
-                    <CardContent className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="primaryContactName">Contact Name</Label>
-                          {isEditing ? (
-                            <Input
-                              id="primaryContactName"
-                              value={editForm.primaryContactName}
-                              onChange={(e) =>
-                                setEditForm((prev) => ({
-                                  ...prev,
-                                  primaryContactName: e.target.value,
-                                }))
-                              }
-                            />
-                          ) : (
-                            <p className="text-sm text-gray-900 mt-1">
-                              {lead.primaryContactName || '--'}
-                            </p>
-                          )}
-                        </div>
-
-                        <div>
-                          <Label htmlFor="primaryContactTitle">Title</Label>
-                          {isEditing ? (
-                            <Input
-                              id="primaryContactTitle"
-                              value={editForm.primaryContactTitle}
-                              onChange={(e) =>
-                                setEditForm((prev) => ({
-                                  ...prev,
-                                  primaryContactTitle: e.target.value,
-                                }))
-                              }
-                            />
-                          ) : (
-                            <p className="text-sm text-gray-900 mt-1">
-                              {lead.primaryContactTitle || '--'}
-                            </p>
-                          )}
-                        </div>
-
-                        <div>
-                          <Label htmlFor="primaryContactEmail">Email</Label>
-                          {isEditing ? (
-                            <Input
-                              id="primaryContactEmail"
-                              type="email"
-                              value={editForm.primaryContactEmail}
-                              onChange={(e) =>
-                                setEditForm((prev) => ({
-                                  ...prev,
-                                  primaryContactEmail: e.target.value,
-                                }))
-                              }
-                            />
-                          ) : (
-                            <p className="text-sm text-gray-900 mt-1">
-                              {lead.primaryContactEmail ? (
-                                <a
-                                  href={`mailto:${lead.primaryContactEmail}`}
-                                  className="text-blue-600 hover:underline"
-                                >
-                                  {lead.primaryContactEmail}
-                                </a>
-                              ) : (
-                                '--'
-                              )}
-                            </p>
-                          )}
-                        </div>
-
-                        <div>
-                          <Label htmlFor="primaryContactPhone">Phone</Label>
-                          {isEditing ? (
-                            <Input
-                              id="primaryContactPhone"
-                              type="tel"
-                              value={editForm.primaryContactPhone}
-                              onChange={(e) =>
-                                setEditForm((prev) => ({
-                                  ...prev,
-                                  primaryContactPhone: e.target.value,
-                                }))
-                              }
-                            />
-                          ) : (
-                            <p className="text-sm text-gray-900 mt-1">
-                              {lead.primaryContactPhone ? (
-                                <a
-                                  href={`tel:${lead.primaryContactPhone}`}
-                                  className="text-blue-600 hover:underline"
-                                >
-                                  {lead.primaryContactPhone}
-                                </a>
-                              ) : (
-                                '--'
-                              )}
-                            </p>
-                          )}
-                        </div>
-
-                        <div>
-                          <Label htmlFor="phone">Company Phone</Label>
-                          {isEditing ? (
-                            <Input
-                              id="phone"
-                              type="tel"
-                              value={editForm.phone}
-                              onChange={(e) =>
-                                setEditForm((prev) => ({
-                                  ...prev,
-                                  phone: e.target.value,
-                                }))
-                              }
-                            />
-                          ) : (
-                            <p className="text-sm text-gray-900 mt-1">
-                              {lead.phone ? (
-                                <a
-                                  href={`tel:${lead.phone}`}
-                                  className="text-blue-600 hover:underline"
-                                >
-                                  {lead.phone}
-                                </a>
-                              ) : (
-                                '--'
-                              )}
-                            </p>
-                          )}
-                        </div>
-
-                        <div>
-                          <Label htmlFor="fax">Fax</Label>
-                          {isEditing ? (
-                            <Input
-                              id="fax"
-                              value={editForm.fax}
-                              onChange={(e) =>
-                                setEditForm((prev) => ({
-                                  ...prev,
-                                  fax: e.target.value,
-                                }))
-                              }
-                            />
-                          ) : (
-                            <p className="text-sm text-gray-900 mt-1">{lead.fax || '--'}</p>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Billing Contact Section */}
-                      <Separator />
-                      <h4 className="text-sm font-medium text-gray-900">Billing Contact</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                          <Label htmlFor="billingContactName">Name</Label>
-                          {isEditing ? (
-                            <Input
-                              id="billingContactName"
-                              value={editForm.billingContactName}
-                              onChange={(e) =>
-                                setEditForm((prev) => ({
-                                  ...prev,
-                                  billingContactName: e.target.value,
-                                }))
-                              }
-                            />
-                          ) : (
-                            <p className="text-sm text-gray-900 mt-1">
-                              {lead.billingContactName || '--'}
-                            </p>
-                          )}
-                        </div>
-
-                        <div>
-                          <Label htmlFor="billingContactEmail">Email</Label>
-                          {isEditing ? (
-                            <Input
-                              id="billingContactEmail"
-                              type="email"
-                              value={editForm.billingContactEmail}
-                              onChange={(e) =>
-                                setEditForm((prev) => ({
-                                  ...prev,
-                                  billingContactEmail: e.target.value,
-                                }))
-                              }
-                            />
-                          ) : (
-                            <p className="text-sm text-gray-900 mt-1">
-                              {lead.billingContactEmail ? (
-                                <a
-                                  href={`mailto:${lead.billingContactEmail}`}
-                                  className="text-blue-600 hover:underline"
-                                >
-                                  {lead.billingContactEmail}
-                                </a>
-                              ) : (
-                                '--'
-                              )}
-                            </p>
-                          )}
-                        </div>
-
-                        <div>
-                          <Label htmlFor="billingContactPhone">Phone</Label>
-                          {isEditing ? (
-                            <Input
-                              id="billingContactPhone"
-                              type="tel"
-                              value={editForm.billingContactPhone}
-                              onChange={(e) =>
-                                setEditForm((prev) => ({
-                                  ...prev,
-                                  billingContactPhone: e.target.value,
-                                }))
-                              }
-                            />
-                          ) : (
-                            <p className="text-sm text-gray-900 mt-1">
-                              {lead.billingContactPhone ? (
-                                <a
-                                  href={`tel:${lead.billingContactPhone}`}
-                                  className="text-blue-600 hover:underline"
-                                >
-                                  {lead.billingContactPhone}
-                                </a>
-                              ) : (
-                                '--'
-                              )}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </CardContent>
-                  )}
-                </Card>
-
-                {/* Address Information */}
-                <Card>
-                  <CardHeader className="cursor-pointer" onClick={() => toggleSection('address')}>
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="flex items-center">
-                        <MapPin className="h-5 w-5 mr-2" />
-                        Address Information
-                      </CardTitle>
-                      {expandedSections.address ? (
-                        <ChevronDown className="h-4 w-4" />
-                      ) : (
-                        <ChevronRight className="h-4 w-4" />
-                      )}
-                    </div>
-                  </CardHeader>
-
-                  {expandedSections.address && (
-                    <CardContent className="space-y-6">
-                      {/* Primary Address */}
-                      <div>
-                        <h4 className="text-sm font-medium text-gray-900 mb-3">Primary Address</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="md:col-span-2">
-                            <Label htmlFor="addressLine1">Address Line 1</Label>
-                            {isEditing ? (
-                              <Input
-                                id="addressLine1"
-                                value={editForm.addressLine1}
-                                onChange={(e) =>
-                                  setEditForm((prev) => ({
-                                    ...prev,
-                                    addressLine1: e.target.value,
-                                  }))
-                                }
-                              />
-                            ) : (
-                              <p className="text-sm text-gray-900 mt-1">
-                                {lead.addressLine1 || '--'}
-                              </p>
-                            )}
-                          </div>
-
-                          <div className="md:col-span-2">
-                            <Label htmlFor="addressLine2">Address Line 2</Label>
-                            {isEditing ? (
-                              <Input
-                                id="addressLine2"
-                                value={editForm.addressLine2}
-                                onChange={(e) =>
-                                  setEditForm((prev) => ({
-                                    ...prev,
-                                    addressLine2: e.target.value,
-                                  }))
-                                }
-                              />
-                            ) : (
-                              <p className="text-sm text-gray-900 mt-1">
-                                {lead.addressLine2 || '--'}
-                              </p>
-                            )}
-                          </div>
-
-                          <div>
-                            <Label htmlFor="city">City</Label>
-                            {isEditing ? (
-                              <Input
-                                id="city"
-                                value={editForm.city}
-                                onChange={(e) =>
-                                  setEditForm((prev) => ({
-                                    ...prev,
-                                    city: e.target.value,
-                                  }))
-                                }
-                              />
-                            ) : (
-                              <p className="text-sm text-gray-900 mt-1">{lead.city || '--'}</p>
-                            )}
-                          </div>
-
-                          <div>
-                            <Label htmlFor="state">State</Label>
-                            {isEditing ? (
-                              <Input
-                                id="state"
-                                value={editForm.state}
-                                onChange={(e) =>
-                                  setEditForm((prev) => ({
-                                    ...prev,
-                                    state: e.target.value,
-                                  }))
-                                }
-                              />
-                            ) : (
-                              <p className="text-sm text-gray-900 mt-1">{lead.state || '--'}</p>
-                            )}
-                          </div>
-
-                          <div>
-                            <Label htmlFor="postalCode">Postal Code</Label>
-                            {isEditing ? (
-                              <Input
-                                id="postalCode"
-                                value={editForm.postalCode}
-                                onChange={(e) =>
-                                  setEditForm((prev) => ({
-                                    ...prev,
-                                    postalCode: e.target.value,
-                                  }))
-                                }
-                              />
-                            ) : (
-                              <p className="text-sm text-gray-900 mt-1">
-                                {lead.postalCode || '--'}
-                              </p>
-                            )}
-                          </div>
-
-                          <div>
-                            <Label htmlFor="country">Country</Label>
-                            {isEditing ? (
-                              <Select
-                                value={editForm.country}
-                                onValueChange={(value) =>
-                                  setEditForm((prev) => ({
-                                    ...prev,
-                                    country: value,
-                                  }))
-                                }
-                              >
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="US">United States</SelectItem>
-                                  <SelectItem value="CA">Canada</SelectItem>
-                                  <SelectItem value="MX">Mexico</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            ) : (
-                              <p className="text-sm text-gray-900 mt-1">{lead.country || 'US'}</p>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      <Separator />
-
-                      {/* Billing Address */}
-                      <div>
-                        <h4 className="text-sm font-medium text-gray-900 mb-3">Billing Address</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="md:col-span-2">
-                            <Label htmlFor="billingAddressLine1">Billing Address Line 1</Label>
-                            {isEditing ? (
-                              <Input
-                                id="billingAddressLine1"
-                                value={editForm.billingAddressLine1}
-                                onChange={(e) =>
-                                  setEditForm((prev) => ({
-                                    ...prev,
-                                    billingAddressLine1: e.target.value,
-                                  }))
-                                }
-                              />
-                            ) : (
-                              <p className="text-sm text-gray-900 mt-1">
-                                {lead.billingAddressLine1 || '--'}
-                              </p>
-                            )}
-                          </div>
-
-                          <div className="md:col-span-2">
-                            <Label htmlFor="billingAddressLine2">Billing Address Line 2</Label>
-                            {isEditing ? (
-                              <Input
-                                id="billingAddressLine2"
-                                value={editForm.billingAddressLine2}
-                                onChange={(e) =>
-                                  setEditForm((prev) => ({
-                                    ...prev,
-                                    billingAddressLine2: e.target.value,
-                                  }))
-                                }
-                              />
-                            ) : (
-                              <p className="text-sm text-gray-900 mt-1">
-                                {lead.billingAddressLine2 || '--'}
-                              </p>
-                            )}
-                          </div>
-
-                          <div>
-                            <Label htmlFor="billingCity">City</Label>
-                            {isEditing ? (
-                              <Input
-                                id="billingCity"
-                                value={editForm.billingCity}
-                                onChange={(e) =>
-                                  setEditForm((prev) => ({
-                                    ...prev,
-                                    billingCity: e.target.value,
-                                  }))
-                                }
-                              />
-                            ) : (
-                              <p className="text-sm text-gray-900 mt-1">
-                                {lead.billingCity || '--'}
-                              </p>
-                            )}
-                          </div>
-
-                          <div>
-                            <Label htmlFor="billingState">State</Label>
-                            {isEditing ? (
-                              <Input
-                                id="billingState"
-                                value={editForm.billingState}
-                                onChange={(e) =>
-                                  setEditForm((prev) => ({
-                                    ...prev,
-                                    billingState: e.target.value,
-                                  }))
-                                }
-                              />
-                            ) : (
-                              <p className="text-sm text-gray-900 mt-1">
-                                {lead.billingState || '--'}
-                              </p>
-                            )}
-                          </div>
-
-                          <div>
-                            <Label htmlFor="billingPostalCode">Postal Code</Label>
-                            {isEditing ? (
-                              <Input
-                                id="billingPostalCode"
-                                value={editForm.billingPostalCode}
-                                onChange={(e) =>
-                                  setEditForm((prev) => ({
-                                    ...prev,
-                                    billingPostalCode: e.target.value,
-                                  }))
-                                }
-                              />
-                            ) : (
-                              <p className="text-sm text-gray-900 mt-1">
-                                {lead.billingPostalCode || '--'}
-                              </p>
-                            )}
-                          </div>
-
-                          <div>
-                            <Label htmlFor="billingCountry">Country</Label>
-                            {isEditing ? (
-                              <Select
-                                value={editForm.billingCountry}
-                                onValueChange={(value) =>
-                                  setEditForm((prev) => ({
-                                    ...prev,
-                                    billingCountry: value,
-                                  }))
-                                }
-                              >
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="US">United States</SelectItem>
-                                  <SelectItem value="CA">Canada</SelectItem>
-                                  <SelectItem value="MX">Mexico</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            ) : (
-                              <p className="text-sm text-gray-900 mt-1">
-                                {lead.billingCountry || 'US'}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  )}
-                </Card>
-
-                {/* Pipeline Information */}
-                <Card>
-                  <CardHeader className="cursor-pointer" onClick={() => toggleSection('pipeline')}>
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="flex items-center">
-                        <Target className="h-5 w-5 mr-2" />
-                        Pipeline & Sales Information
-                      </CardTitle>
-                      {expandedSections.pipeline ? (
-                        <ChevronDown className="h-4 w-4" />
-                      ) : (
-                        <ChevronRight className="h-4 w-4" />
-                      )}
-                    </div>
-                  </CardHeader>
-
-                  {expandedSections.pipeline && (
-                    <CardContent className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="leadSource">Lead Source</Label>
-                          {isEditing ? (
-                            <Select
-                              value={editForm.leadSource}
-                              onValueChange={(value) =>
-                                setEditForm((prev) => ({
-                                  ...prev,
-                                  leadSource: value,
-                                }))
-                              }
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="website">Website</SelectItem>
-                                <SelectItem value="referral">Referral</SelectItem>
-                                <SelectItem value="cold_call">Cold Call</SelectItem>
-                                <SelectItem value="trade_show">Trade Show</SelectItem>
-                                <SelectItem value="social_media">Social Media</SelectItem>
-                                <SelectItem value="advertising">Advertising</SelectItem>
-                                <SelectItem value="partner">Partner</SelectItem>
-                                <SelectItem value="other">Other</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          ) : (
-                            <p className="text-sm text-gray-900 mt-1">{lead.leadSource || '--'}</p>
-                          )}
-                        </div>
-
-                        <div>
-                          <Label htmlFor="salesStage">Sales Stage</Label>
-                          {isEditing ? (
-                            <Select
-                              value={editForm.salesStage}
-                              onValueChange={(value) =>
-                                setEditForm((prev) => ({
-                                  ...prev,
-                                  salesStage: value,
-                                }))
-                              }
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="new">New</SelectItem>
-                                <SelectItem value="contacted">Contacted</SelectItem>
-                                <SelectItem value="qualified">Qualified</SelectItem>
-                                <SelectItem value="proposal">Proposal</SelectItem>
-                                <SelectItem value="negotiation">Negotiation</SelectItem>
-                                <SelectItem value="closed_won">Closed Won</SelectItem>
-                                <SelectItem value="closed_lost">Closed Lost</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          ) : (
-                            <p className="text-sm text-gray-900 mt-1">{lead.salesStage || '--'}</p>
-                          )}
-                        </div>
-
-                        <div>
-                          <Label htmlFor="estimatedAmount">Estimated Deal Value</Label>
-                          {isEditing ? (
-                            <Input
-                              id="estimatedAmount"
-                              type="number"
-                              value={editForm.estimatedAmount || ''}
-                              onChange={(e) =>
-                                setEditForm((prev) => ({
-                                  ...prev,
-                                  estimatedAmount: e.target.value
-                                    ? parseFloat(e.target.value)
-                                    : null,
-                                }))
-                              }
-                            />
-                          ) : (
-                            <p className="text-sm text-gray-900 mt-1">
-                              {lead.estimatedAmount
-                                ? `$${Number(lead.estimatedAmount).toLocaleString()}`
-                                : '--'}
-                            </p>
-                          )}
-                        </div>
-
-                        <div>
-                          <Label htmlFor="probability">Probability (%)</Label>
-                          {isEditing ? (
-                            <Input
-                              id="probability"
-                              type="number"
-                              min="0"
-                              max="100"
-                              value={editForm.probability || ''}
-                              onChange={(e) =>
-                                setEditForm((prev) => ({
-                                  ...prev,
-                                  probability: e.target.value ? parseInt(e.target.value) : 0,
-                                }))
-                              }
-                            />
-                          ) : (
-                            <p className="text-sm text-gray-900 mt-1">{lead.probability || 0}%</p>
-                          )}
-                        </div>
-
-                        <div>
-                          <Label htmlFor="closeDate">Expected Close Date</Label>
-                          {isEditing ? (
-                            <Input
-                              id="closeDate"
-                              type="date"
-                              value={editForm.closeDate || ''}
-                              onChange={(e) =>
-                                setEditForm((prev) => ({
-                                  ...prev,
-                                  closeDate: e.target.value,
-                                }))
-                              }
-                            />
-                          ) : (
-                            <p className="text-sm text-gray-900 mt-1">
-                              {lead.closeDate
-                                ? format(new Date(lead.closeDate), 'MMM d, yyyy')
-                                : '--'}
-                            </p>
-                          )}
-                        </div>
-
-                        <div>
-                          <Label htmlFor="interestLevel">Interest Level</Label>
-                          {isEditing ? (
-                            <Select
-                              value={editForm.interestLevel}
-                              onValueChange={(value) =>
-                                setEditForm((prev) => ({
-                                  ...prev,
-                                  interestLevel: value,
-                                }))
-                              }
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="hot">Hot</SelectItem>
-                                <SelectItem value="warm">Warm</SelectItem>
-                                <SelectItem value="cold">Cold</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          ) : (
-                            <p className="text-sm text-gray-900 mt-1">
-                              {lead.interestLevel || '--'}
-                            </p>
-                          )}
-                        </div>
-
-                        <div>
-                          <Label htmlFor="leadScore">Lead Score</Label>
-                          {isEditing ? (
-                            <Input
-                              id="leadScore"
-                              type="number"
-                              min="0"
-                              max="100"
-                              value={editForm.leadScore || ''}
-                              onChange={(e) =>
-                                setEditForm((prev) => ({
-                                  ...prev,
-                                  leadScore: e.target.value ? parseInt(e.target.value) : 0,
-                                }))
-                              }
-                            />
-                          ) : (
-                            <p className="text-sm text-gray-900 mt-1">{lead.leadScore || 0}</p>
-                          )}
-                        </div>
-
-                        <div>
-                          <Label htmlFor="priority">Priority</Label>
-                          {isEditing ? (
-                            <Select
-                              value={editForm.priority}
-                              onValueChange={(value) =>
-                                setEditForm((prev) => ({
-                                  ...prev,
-                                  priority: value,
-                                }))
-                              }
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="high">High</SelectItem>
-                                <SelectItem value="medium">Medium</SelectItem>
-                                <SelectItem value="low">Low</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          ) : (
-                            <p className="text-sm text-gray-900 mt-1">{lead.priority || '--'}</p>
-                          )}
-                        </div>
-
-                        <div>
-                          <Label htmlFor="assignedSalesRep">Assigned Sales Rep</Label>
-                          {isEditing ? (
-                            <Input
-                              id="assignedSalesRep"
-                              value={editForm.assignedSalesRep}
-                              onChange={(e) =>
-                                setEditForm((prev) => ({
-                                  ...prev,
-                                  assignedSalesRep: e.target.value,
-                                }))
-                              }
-                            />
-                          ) : (
-                            <p className="text-sm text-gray-900 mt-1">
-                              {lead.assignedSalesRep || '--'}
-                            </p>
-                          )}
-                        </div>
-
-                        <div>
-                          <Label htmlFor="territory">Territory</Label>
-                          {isEditing ? (
-                            <Input
-                              id="territory"
-                              value={editForm.territory}
-                              onChange={(e) =>
-                                setEditForm((prev) => ({
-                                  ...prev,
-                                  territory: e.target.value,
-                                }))
-                              }
-                            />
-                          ) : (
-                            <p className="text-sm text-gray-900 mt-1">{lead.territory || '--'}</p>
-                          )}
-                        </div>
-                      </div>
-                    </CardContent>
-                  )}
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="activities" className="mt-6">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-medium">Activity Timeline</h3>
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setDialogs((prev) => ({ ...prev, note: true }))}
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add Note
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setDialogs((prev) => ({ ...prev, call: true }))}
-                      >
-                        <PhoneCall className="h-4 w-4 mr-2" />
-                        Log Call
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setDialogs((prev) => ({ ...prev, email: true }))}
-                      >
-                        <Mail className="h-4 w-4 mr-2" />
-                        Log Email
-                      </Button>
-                    </div>
-                  </div>
-                  <NotesPanel parentType="lead" parentId={id} />
-                  <ActivityTimeline businessRecordId={id} />
-                </div>
-              </TabsContent>
-
-              <TabsContent value="contacts" className="mt-6">
-                {/* WF-S-03: `lead.companyId` is not a field - business_records
-                    has no company_id column - so the fallback was the only
-                    branch that ever ran, and it is the right one:
-                    company_contacts.company_id references business_records.id,
-                    which is this lead. */}
-                <ContactManager
-                  companyId={lead?.id || ''}
-                  companyName={lead?.companyName || 'Unknown Company'}
-                />
-              </TabsContent>
-
-              <TabsContent value="deals" className="mt-6">
-                {/* WF-S-03: companyId is gone. business_records has no
-                    company_id column, so `lead.companyId` was always
-                    undefined and the fallback - the lead's own id - was the
-                    only branch that ever ran. */}
-                <LeadDeals leadId={lead?.id || ''} leadName={lead?.companyName || 'Unknown Lead'} />
-              </TabsContent>
-
-              <TabsContent value="proposals" className="mt-6">
-                <LeadProposals
-                  leadId={lead?.id || ''}
-                  leadName={lead?.companyName || 'Unknown Lead'}
-                />
-              </TabsContent>
-
-              <TabsContent value="quotes" className="mt-6">
-                <LeadQuotes
-                  leadId={lead?.id || ''}
-                  leadName={lead?.companyName || 'Unknown Lead'}
-                />
-              </TabsContent>
-            </Tabs>
-          </div>
-
-          {/* Right Column - Additional Information */}
-          <div className="space-y-6">
-            {/* Quick Info Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Quick Info</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Lead Score</span>
-                  <Badge
-                    variant={
-                      lead.leadScore > 70
-                        ? 'default'
-                        : lead.leadScore > 40
-                          ? 'secondary'
-                          : 'outline'
-                    }
-                  >
-                    {lead.leadScore || 0}/100
-                  </Badge>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Status</span>
-                  <Badge variant={lead.status === 'qualified' ? 'default' : 'secondary'}>
-                    {lead.status || 'New'}
-                  </Badge>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Interest Level</span>
-                  <Badge
-                    variant={
-                      lead.interestLevel === 'hot'
-                        ? 'destructive'
-                        : lead.interestLevel === 'warm'
-                          ? 'default'
-                          : 'secondary'
-                    }
-                  >
-                    {lead.interestLevel || 'Warm'}
-                  </Badge>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Priority</span>
-                  <Badge
-                    variant={
-                      lead.priority === 'high'
-                        ? 'destructive'
-                        : lead.priority === 'medium'
-                          ? 'default'
-                          : 'secondary'
-                    }
-                  >
-                    {lead.priority || 'Medium'}
-                  </Badge>
-                </div>
-
-                <Separator />
-
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Created</span>
-                    <span className="text-sm text-gray-900">
-                      {lead.createdAt ? format(new Date(lead.createdAt), 'MMM d, yyyy') : '--'}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Last Contact</span>
-                    <span className="text-sm text-gray-900">
-                      {lead.lastContactDate
-                        ? format(new Date(lead.lastContactDate), 'MMM d, yyyy')
-                        : '--'}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Next Follow-up</span>
-                    <span className="text-sm text-gray-900">
-                      {lead.nextFollowUpDate
-                        ? format(new Date(lead.nextFollowUpDate), 'MMM d, yyyy')
-                        : '--'}
-                    </span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Financial Information */}
-            <Card>
-              <CardHeader className="cursor-pointer" onClick={() => toggleSection('financial')}>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center text-lg">
-                    <DollarSign className="h-5 w-5 mr-2" />
-                    Financial Info
-                  </CardTitle>
-                  {expandedSections.financial ? (
-                    <ChevronDown className="h-4 w-4" />
-                  ) : (
-                    <ChevronRight className="h-4 w-4" />
-                  )}
-                </div>
-              </CardHeader>
-
-              {expandedSections.financial && (
-                <CardContent className="space-y-4">
-                  <div>
-                    <Label htmlFor="creditLimit">Credit Limit</Label>
-                    {isEditing ? (
-                      <Input
-                        id="creditLimit"
-                        type="number"
-                        value={editForm.creditLimit || ''}
-                        onChange={(e) =>
-                          setEditForm((prev) => ({
-                            ...prev,
-                            creditLimit: e.target.value ? parseFloat(e.target.value) : null,
-                          }))
-                        }
-                      />
-                    ) : (
-                      <p className="text-sm text-gray-900 mt-1">
-                        {lead.creditLimit ? `$${Number(lead.creditLimit).toLocaleString()}` : '--'}
-                      </p>
-                    )}
-                  </div>
-
-                  <div>
-                    <Label htmlFor="paymentTerms">Payment Terms</Label>
-                    {isEditing ? (
-                      <Select
-                        value={editForm.paymentTerms}
-                        onValueChange={(value) =>
-                          setEditForm((prev) => ({
-                            ...prev,
-                            paymentTerms: value,
-                          }))
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Net 15">Net 15</SelectItem>
-                          <SelectItem value="Net 30">Net 30</SelectItem>
-                          <SelectItem value="Net 45">Net 45</SelectItem>
-                          <SelectItem value="Net 60">Net 60</SelectItem>
-                          <SelectItem value="COD">COD</SelectItem>
-                          <SelectItem value="Prepaid">Prepaid</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <p className="text-sm text-gray-900 mt-1">{lead.paymentTerms || '--'}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <Label htmlFor="taxId">Tax ID</Label>
-                    {isEditing ? (
-                      <Input
-                        id="taxId"
-                        value={editForm.taxId}
-                        onChange={(e) =>
-                          setEditForm((prev) => ({
-                            ...prev,
-                            taxId: e.target.value,
-                          }))
-                        }
-                      />
-                    ) : (
-                      <p className="text-sm text-gray-900 mt-1">{lead.taxId || '--'}</p>
-                    )}
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    {isEditing ? (
-                      <Checkbox
-                        id="taxExempt"
-                        checked={editForm.taxExempt}
-                        onCheckedChange={(checked) =>
-                          setEditForm((prev) => ({
-                            ...prev,
-                            taxExempt: checked === true,
-                          }))
-                        }
-                      />
-                    ) : (
-                      <Checkbox id="taxExempt" checked={lead.taxExempt} disabled />
-                    )}
-                    <Label htmlFor="taxExempt">Tax Exempt</Label>
-                  </div>
-                </CardContent>
-              )}
-            </Card>
-
-            {/* External System Integration */}
-            <Card>
-              <CardHeader className="cursor-pointer" onClick={() => toggleSection('external')}>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center text-lg">
-                    <Zap className="h-5 w-5 mr-2" />
-                    External Systems
-                  </CardTitle>
-                  {expandedSections.external ? (
-                    <ChevronDown className="h-4 w-4" />
-                  ) : (
-                    <ChevronRight className="h-4 w-4" />
-                  )}
-                </div>
-              </CardHeader>
-
-              {expandedSections.external && (
-                <CardContent className="space-y-4">
-                  <div>
-                    <Label htmlFor="externalCustomerId">External Customer ID</Label>
-                    {isEditing ? (
-                      <Input
-                        id="externalCustomerId"
-                        value={editForm.externalCustomerId}
-                        onChange={(e) =>
-                          setEditForm((prev) => ({
-                            ...prev,
-                            externalCustomerId: e.target.value,
-                          }))
-                        }
-                      />
-                    ) : (
-                      <p className="text-sm text-gray-900 mt-1">
-                        {lead.externalCustomerId || '--'}
-                      </p>
-                    )}
-                  </div>
-
-                  <div>
-                    <Label htmlFor="externalSystemId">External System</Label>
-                    {isEditing ? (
-                      <Select
-                        value={editForm.externalSystemId}
-                        onValueChange={(value) =>
-                          setEditForm((prev) => ({
-                            ...prev,
-                            externalSystemId: value,
-                          }))
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select system" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="e-automate">E-Automate</SelectItem>
-                          <SelectItem value="salesforce">Salesforce</SelectItem>
-                          <SelectItem value="quickbooks">QuickBooks</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <p className="text-sm text-gray-900 mt-1">{lead.externalSystemId || '--'}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <Label htmlFor="migrationStatus">Migration Status</Label>
-                    {isEditing ? (
-                      <Select
-                        value={editForm.migrationStatus}
-                        onValueChange={(value) =>
-                          setEditForm((prev) => ({
-                            ...prev,
-                            migrationStatus: value,
-                          }))
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="pending">Pending</SelectItem>
-                          <SelectItem value="in_progress">In Progress</SelectItem>
-                          <SelectItem value="completed">Completed</SelectItem>
-                          <SelectItem value="failed">Failed</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <p className="text-sm text-gray-900 mt-1">{lead.migrationStatus || '--'}</p>
-                    )}
-                  </div>
-                </CardContent>
-              )}
-            </Card>
-
-            {/* Notes */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center text-lg">
-                  <StickyNote className="h-5 w-5 mr-2" />
-                  Notes
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {isEditing ? (
-                  <Textarea
-                    value={editForm.notes}
-                    onChange={(e) =>
-                      setEditForm((prev) => ({
-                        ...prev,
-                        notes: e.target.value,
-                      }))
-                    }
-                    placeholder="Add notes about this lead..."
-                    rows={4}
-                  />
-                ) : (
-                  <p className="text-sm text-gray-900 whitespace-pre-wrap">
-                    {lead.notes || 'No notes available.'}
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+        <Button variant="ghost" size="sm" onClick={() => setLocation('/leads-management')}>
+          <ArrowLeft className="h-4 w-4 mr-1" /> Back to leads
+        </Button>
+
+        <RecordPageLayout
+          objectType="leads"
+          record={lead as Record<string, unknown>}
+          title={lead.companyName || 'Unnamed Lead'}
+          titleField="companyName"
+          subtitle={lead.industry || undefined}
+          badges={
+            <>
+              <Badge variant={lead.status === 'qualified' ? 'default' : 'secondary'}>
+                {lead.status || 'new'}
+              </Badge>
+              {lead.customerNumber && <Badge variant="outline">{lead.customerNumber}</Badge>}
+            </>
+          }
+          headerContent={
+            <RecordStageBar
+              stages={stages}
+              currentStageId={lead.status}
+              onChange={(stageId) => saveField.mutate({ status: stageId })}
+              disabled={saveField.isPending}
+            />
+          }
+          quickActions={[
+            {
+              label: 'Create deal',
+              icon: <Briefcase className="h-4 w-4" />,
+              onClick: () =>
+                setLocation(
+                  `/crm/deals?leadId=${id}&companyName=${encodeURIComponent(lead.companyName || '')}`,
+                ),
+            },
+            {
+              label: 'Log activity',
+              icon: <StickyNote className="h-4 w-4" />,
+              onClick: () => openDialog('note'),
+            },
+            {
+              label: 'Schedule demo',
+              icon: <Calendar className="h-4 w-4" />,
+              onClick: () =>
+                setLocation(
+                  `/demo-scheduling?leadId=${id}&companyName=${encodeURIComponent(lead.companyName || '')}`,
+                ),
+            },
+            {
+              label: 'Build proposal',
+              icon: <FileText className="h-4 w-4" />,
+              onClick: () => setLocation(`/quotes/new?leadId=${id}`),
+            },
+            {
+              // WF-S-04: enrolment used to live only on the campaign screen.
+              label: 'Enroll in sequence',
+              icon: <Send className="h-4 w-4" />,
+              onClick: () => setShowEnrollDialog(true),
+            },
+            {
+              // COP-B14 AC5: the booking link was copyable only from the
+              // booking-pages admin, two navigations away from the prospect
+              // it is meant to be sent to.
+              label: 'Booking link',
+              icon: <CalendarClock className="h-4 w-4" />,
+              onClick: () => setShowBookingLink(true),
+            },
+          ]}
+          onFieldSave={async (field, value) => {
+            await saveField.mutateAsync({ [field]: value === '' ? null : value });
+          }}
+          slots={{
+            'lead-timeline': timelineSlot,
+            'lead-related': relatedSlot,
+            'lead-qualification': <BANTAssessment leadId={lead.id ?? ''} />,
+            'lead-associations': glanceSlot,
+          }}
+        />
       </div>
 
-      {/* Activity Forms */}
       <ActivityForm
         isOpen={dialogs.call}
-        onClose={() => setDialogs((prev) => ({ ...prev, call: false }))}
+        onClose={() => closeDialog('call')}
         businessRecordId={id}
         activityType="call"
         recordType="lead"
         recordName={lead.companyName}
       />
-
       <ActivityForm
         isOpen={dialogs.email}
-        onClose={() => setDialogs((prev) => ({ ...prev, email: false }))}
+        onClose={() => closeDialog('email')}
         businessRecordId={id}
         activityType="email"
         recordType="lead"
         recordName={lead.companyName}
       />
-
       <ActivityForm
         isOpen={dialogs.meeting}
-        onClose={() => setDialogs((prev) => ({ ...prev, meeting: false }))}
+        onClose={() => closeDialog('meeting')}
         businessRecordId={id}
         activityType="meeting"
         recordType="lead"
         recordName={lead.companyName}
       />
-
       <ActivityForm
         isOpen={dialogs.note}
-        onClose={() => setDialogs((prev) => ({ ...prev, note: false }))}
+        onClose={() => closeDialog('note')}
         businessRecordId={id}
         activityType="note"
         recordType="lead"
         recordName={lead.companyName}
       />
-
       <ActivityForm
         isOpen={dialogs.task}
-        onClose={() => setDialogs((prev) => ({ ...prev, task: false }))}
+        onClose={() => closeDialog('task')}
         businessRecordId={id}
         activityType="task"
         recordType="lead"
         recordName={lead.companyName}
       />
 
-      {/* Contact Creation Dialog */}
-      <Dialog
-        open={dialogs.editRecord}
-        onOpenChange={(open) => {
-          setDialogs((prev) => ({ ...prev, editRecord: open }));
-        }}
-      >
+      <Dialog open={dialogs.addContact} onOpenChange={(open) => !open && closeDialog('addContact')}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Add New Contact</DialogTitle>
@@ -2266,20 +681,14 @@ export default function LeadDetailHubspot() {
           <LeadContactForm
             leadId={id}
             onSuccess={() => {
-              setDialogs((prev) => ({ ...prev, editRecord: false }));
-              // Contacts come back inside the lead payload; there is no
-              // ['/api/leads', id, 'contacts'] query, and a key LONGER than an
-              // existing one is not a prefix of it, so this matched nothing and
-              // a newly created contact did not appear until a reload.
+              closeDialog('addContact');
+              // Contacts come back inside the lead payload; a key LONGER than
+              // an existing one is not a prefix of it, so an
+              // ['/api/leads', id, 'contacts'] key would match nothing.
               queryClient.invalidateQueries({ queryKey: ['/api/leads', id] });
-              toast({
-                title: 'Success',
-                description: 'Contact created successfully',
-              });
+              toast({ title: 'Success', description: 'Contact created successfully' });
             }}
-            onCancel={() => {
-              setDialogs((prev) => ({ ...prev, editRecord: false }));
-            }}
+            onCancel={() => closeDialog('addContact')}
           />
         </DialogContent>
       </Dialog>
@@ -2300,6 +709,9 @@ export default function LeadDetailHubspot() {
             : []
         }
       />
+
+      {/* COP-B14 AC5 */}
+      <BookingLinkPicker open={showBookingLink} onOpenChange={setShowBookingLink} />
     </MainLayout>
   );
 }

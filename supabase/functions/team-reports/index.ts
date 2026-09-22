@@ -4,10 +4,39 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { toNumber } from '../_shared/quote-math.ts';
-import { displayName, USER_NAME_COLUMNS, type UserRow } from '../_shared/user-profile.ts';
 import { fetchAllRows } from '../_shared/paged-select.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { ROLE_LEVEL, RbacError, requireRoleLevel } from '../_shared/rbac.ts';
+import type { AuthContext } from '../_shared/auth.ts';
+import { resolveScope } from '../_shared/scope.ts';
+import {
+  findNoTouchAlerts,
+  memberName,
+  rankTeamLeaderboard,
+  rollUpActivity,
+  summariseTeamPipeline,
+  teamActivityByRep,
+  type DealSummaryRow,
+  type TeamMember,
+} from '../../../shared/team-rollup.ts';
 
+// PROD-008: the ONLY caller of /api/team-reports is the iOS manager reports
+// screen - nothing in client/src requests this prefix - and all four of its
+// cards were blank, in two different ways. `activities` and `no-touch` 404'd
+// (the branch below is spelled `activity`, singular, and no-touch was never
+// written), while `pipeline` and `leaderboard` answered 200 under key names
+// ManagerReportsModels.swift does not read, so every field decoded to nil. The
+// second half is the harder one to notice: the request succeeds and nothing
+// logs. Those four branches now read `deals` and `business_record_activities`
+// and answer the shapes the app decodes.
+//
+// STILL ON THE PHANTOM TABLES, and left that way deliberately: `summary`,
+// `performance` and `comparison` read `activities` and `team_members`, neither
+// of which exists in any schema, and NO client of any kind calls them. Fixing a
+// report nobody requests is a different story from serving the one somebody
+// does; both tables are already in docs/phantom-tables-baseline.json against
+// this file.
+//
 // COP-M01: this file addressed business_records as deal_value / assigned_to /
 // pipeline_stage. The columns are estimated_deal_value, assigned_sales_rep and
 // sales_stage, so every query here answered 42703, `deals` came back undefined,
@@ -40,6 +69,33 @@ export default async function handler(req: Request) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
     }
 
+    // SEC-EDGE-001. Reports about OTHER people's work - team performance and per-rep analytics. Row scoping cannot substitute for a role check when the whole point of the endpoint is to see across a team. MANAGER is the level the team surfaces use elsewhere.
+    try {
+      requireRoleLevel(
+        {
+          userId: user.id,
+          tenantId,
+          email: user.email,
+          jwt: jwt ?? '',
+          supabaseUser: user,
+        } as AuthContext,
+        ROLE_LEVEL.MANAGER,
+      );
+    } catch (err) {
+      if (err instanceof RbacError) {
+        return createCorsResponse(
+          {
+            error: 'Requires role level 4 or higher',
+            code: 'INSUFFICIENT_ROLE',
+            details: err.details,
+          },
+          403,
+          req,
+        );
+      }
+      throw err;
+    }
+
     const url = new URL(req.url);
     // server.ts strips the function-name segment before invoking this handler,
     // so the resource is at parts[0]. normalizePath strips an OPTIONAL leading
@@ -66,6 +122,52 @@ export default async function handler(req: Request) {
       default:
         startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     }
+
+    /**
+     * Whose rows this manager may see.
+     *
+     * The ROLE gate above is the access decision - level 4 or higher, because
+     * every report here is about other people's work. resolveScope is the
+     * narrowing on top of it, so a manager whose org structure records no
+     * reports sees themselves rather than a 403: the crm/team-rollup handler
+     * answers 403 for scope 'own' because there the scope IS the check, and
+     * here it is not.
+     */
+    const scope = await resolveScope(admin, {
+      userId: user.id,
+      tenantId,
+      appMetadata: user.app_metadata,
+      requestedScope: url.searchParams.get('scope'),
+    });
+    // A manager is part of their own team's numbers.
+    const memberIds =
+      scope.userIds === null ? null : Array.from(new Set([...scope.userIds, user.id]));
+
+    const loadMembers = async (): Promise<TeamMember[]> => {
+      let q = admin
+        .from('users')
+        .select('id, first_name, last_name, email')
+        .eq('tenant_id', tenantId);
+      if (memberIds) q = q.in('id', memberIds);
+      const { data, error } = await q;
+      if (error) throw error;
+      // deno-lint-ignore no-explicit-any
+      return (data ?? []).map((u: any) => ({ userId: String(u.id), name: memberName(u) }));
+    };
+
+    /** Deal rows in the shape shared/team-rollup reads. */
+    // deno-lint-ignore no-explicit-any
+    const toDealRow = (d: any): DealSummaryRow => ({
+      id: d.id,
+      title: d.title,
+      ownerId: d.owner_id,
+      amount: d.amount,
+      probability: d.probability,
+      status: d.status,
+      actualCloseDate: d.actual_close_date,
+      companyName: d.company_name,
+      createdAt: d.created_at,
+    });
 
     // GET /team-reports/summary - Team summary report
     if (req.method === 'GET' && reportType === 'summary') {
@@ -123,129 +225,162 @@ export default async function handler(req: Request) {
     }
 
     // GET /team-reports/leaderboard - Team leaderboard
+    // GET /team-reports/leaderboard - closed-won by rep, ranked
+    //
+    // Was `business_records` filtered on `status = 'won'` and returned
+    // {userId, name, count, value}; the app reads closedWonAmount,
+    // closedWonCount and rank, so two of its five fields decoded and the
+    // numbers it exists to show did not. `deals.status` is the discriminator
+    // because the canonical stage-move path (pipeline-config) writes status,
+    // probability and actual_close_date together when a card enters a
+    // closed-won stage.
     if (req.method === 'GET' && reportType === 'leaderboard') {
-      const metric = url.searchParams.get('metric') || 'deals';
-
-      let query;
-      if (metric === 'deals') {
-        query = admin
-          .from('business_records')
-          .select('assigned_sales_rep, estimated_deal_value')
+      const members = await loadMembers();
+      const wonDeals = await fetchAllRows<any>(() => {
+        let q = admin
+          .from('deals')
+          .select('id, owner_id, amount, status, actual_close_date')
           .eq('tenant_id', tenantId)
           .eq('status', 'won')
-          .gte('created_at', startDate.toISOString());
-      } else if (metric === 'activities') {
-        query = admin
-          .from('activities')
-          .select('user_id')
+          .gte('actual_close_date', startDate.toISOString());
+        if (memberIds) q = q.in('owner_id', memberIds);
+        return q;
+      });
+
+      return createCorsResponse(rankTeamLeaderboard(wonDeals.map(toDealRow), members), 200, req);
+    }
+
+    // GET /team-reports/activities (and /activity) - per-rep interaction counts
+    //
+    // TWO DEFECTS IN ONE BRANCH. It read `.from('activities')`, a table in no
+    // schema and no migration, and DISCARDED the error - so the report always
+    // said the team had logged nothing, which is indistinguishable from a quiet
+    // week. And it answered only the SINGULAR spelling while the app asks for
+    // `activities`, so the app never reached even that. The real table is
+    // `business_record_activities`, which is what both the web record timeline
+    // and the iOS quick-log write to.
+    if (req.method === 'GET' && (reportType === 'activities' || reportType === 'activity')) {
+      const members = await loadMembers();
+      // `days` is what the app sends; `period` is what the older web-facing
+      // branches take. Either narrows the same window.
+      const daysParam = Number(url.searchParams.get('days'));
+      const since =
+        Number.isFinite(daysParam) && daysParam > 0
+          ? new Date(Date.now() - Math.min(daysParam, 365) * 86_400_000)
+          : startDate;
+
+      const activities = await fetchAllRows<any>(() => {
+        let q = admin
+          .from('business_record_activities')
+          .select('created_by, activity_type, created_at')
           .eq('tenant_id', tenantId)
-          .gte('created_at', startDate.toISOString());
+          // `created_at` is an INSTANT, so it is compared to one - no day
+          // snapping (DATE-LOCAL-002 draws that line).
+          .gte('created_at', since.toISOString());
+        if (memberIds) q = q.in('created_by', memberIds);
+        return q;
+      });
+
+      const rollup = rollUpActivity(
+        activities.map((a: any) => ({ createdBy: a.created_by, activityType: a.activity_type })),
+        members,
+      );
+
+      return createCorsResponse(teamActivityByRep(rollup), 200, req);
+    }
+
+    // GET /team-reports/pipeline - the manager pipeline card
+    //
+    // Was `business_records` filtered on `record_type = 'opportunity'` and
+    // answered {totalDeals, totalValue, byStage}; the app reads pipelineValue,
+    // weightedValue, openOpportunityCount, closedWonThisMonth and
+    // closedWonCount, so every field decoded to nil and the card was blank on a
+    // 200. The canonical pipeline table is `deals` (docs/crm-canonical-model.md).
+    if (req.method === 'GET' && reportType === 'pipeline') {
+      const deals = await fetchAllRows<any>(() => {
+        let q = admin
+          .from('deals')
+          .select('id, owner_id, amount, probability, status, actual_close_date')
+          .eq('tenant_id', tenantId);
+        if (memberIds) q = q.in('owner_id', memberIds);
+        return q;
+      });
+
+      return createCorsResponse(summariseTeamPipeline(deals.map(toDealRow), new Date()), 200, req);
+    }
+
+    // GET /team-reports/no-touch - open opportunities nobody has worked
+    //
+    // New. `deals.last_activity_date` looks like the column for this and is
+    // written by NOTHING - read in four places, set in none - so an alert built
+    // on it would flag every open deal in the tenant forever. The touch date
+    // comes from the activity rows: `deal_activities` for the card itself, and
+    // `business_record_activities` for the ACCOUNT behind it, because a rep who
+    // logs a call against the customer has touched the opportunity whether or
+    // not they logged it twice. The later of the two wins; a deal with neither
+    // is measured from the day it was raised, and the row says which.
+    if (req.method === 'GET' && reportType === 'no-touch') {
+      const days = Math.min(Math.max(Number(url.searchParams.get('days')) || 3, 1), 365);
+      const members = await loadMembers();
+
+      const openDeals = await fetchAllRows<any>(() => {
+        let q = admin
+          .from('deals')
+          .select(
+            'id, title, owner_id, amount, status, company_name, created_at, source_business_record_id',
+          )
+          .eq('tenant_id', tenantId)
+          .eq('status', 'open');
+        if (memberIds) q = q.in('owner_id', memberIds);
+        return q;
+      });
+
+      const lastTouch = new Map<string, string>();
+      const record = (dealId: string, at: string | null | undefined) => {
+        if (!at) return;
+        const seen = lastTouch.get(dealId);
+        if (!seen || at > seen) lastTouch.set(dealId, at);
+      };
+
+      const dealIds = openDeals.map((d: any) => d.id).filter(Boolean);
+      // PostgREST rejects an .in() with no values, so an empty pipeline
+      // short-circuits rather than issuing a query that answers 400.
+      if (dealIds.length > 0) {
+        const dealActivity = await fetchAllRows<any>(() =>
+          admin
+            .from('deal_activities')
+            .select('deal_id, created_at')
+            .eq('tenant_id', tenantId)
+            .in('deal_id', dealIds),
+        );
+        for (const a of dealActivity) record(a.deal_id, a.created_at);
       }
 
-      const { data: records } = await query;
-
-      // Aggregate by user
-      const userStats = new Map<string, { count: number; value: number }>();
-      (records || []).forEach((r: any) => {
-        const userId = r.assigned_sales_rep || r.user_id;
-        const current = userStats.get(userId) || { count: 0, value: 0 };
-        userStats.set(userId, {
-          count: current.count + 1,
-          value: current.value + toNumber(r.estimated_deal_value),
-        });
-      });
-
-      // Get user details
-      const userIds = Array.from(userStats.keys());
-      const { data: users } = await admin
-        .from('users')
-        .select(`${USER_NAME_COLUMNS}, email`)
-        .in('id', userIds);
-
-      const leaderboard = Array.from(userStats.entries())
-        .map(([userId, stats]) => {
-          const userInfo = users?.find((u: any) => u.id === userId);
-          return {
-            userId,
-            name: displayName(userInfo as UserRow, userInfo?.email || 'Unknown'),
-            count: stats.count,
-            value: stats.value,
-          };
-        })
-        .sort((a, b) => (metric === 'deals' ? b.value - a.value : b.count - a.count))
-        .slice(0, 10);
-
-      return createCorsResponse(leaderboard, 200, req);
-    }
-
-    // GET /team-reports/activity - Activity breakdown
-    if (req.method === 'GET' && reportType === 'activity') {
-      const { data: activities } = await admin
-        .from('activities')
-        .select('activity_type, created_at')
-        .eq('tenant_id', tenantId)
-        .gte('created_at', startDate.toISOString());
-
-      // Group by type
-      const byType = new Map<string, number>();
-      (activities || []).forEach((a: any) => {
-        byType.set(a.activity_type, (byType.get(a.activity_type) || 0) + 1);
-      });
-
-      // Group by day
-      const byDay = new Map<string, number>();
-      (activities || []).forEach((a: any) => {
-        const day = a.created_at.split('T')[0];
-        byDay.set(day, (byDay.get(day) || 0) + 1);
-      });
+      const recordIds = [
+        ...new Set(openDeals.map((d: any) => d.source_business_record_id).filter(Boolean)),
+      ] as string[];
+      if (recordIds.length > 0) {
+        const accountActivity = await fetchAllRows<any>(() =>
+          admin
+            .from('business_record_activities')
+            .select('business_record_id, created_at')
+            .eq('tenant_id', tenantId)
+            .in('business_record_id', recordIds),
+        );
+        const byRecord = new Map<string, string>();
+        for (const a of accountActivity) {
+          const seen = byRecord.get(a.business_record_id);
+          if (!seen || a.created_at > seen) byRecord.set(a.business_record_id, a.created_at);
+        }
+        for (const d of openDeals) {
+          if (d.source_business_record_id) {
+            record(d.id, byRecord.get(d.source_business_record_id));
+          }
+        }
+      }
 
       return createCorsResponse(
-        {
-          total: activities?.length || 0,
-          byType: Array.from(byType.entries()).map(([type, count]) => ({ type, count })),
-          byDay: Array.from(byDay.entries())
-            .map(([date, count]) => ({ date, count }))
-            .sort((a, b) => a.date.localeCompare(b.date)),
-        },
-        200,
-        req,
-      );
-    }
-
-    // GET /team-reports/pipeline - Pipeline report
-    if (req.method === 'GET' && reportType === 'pipeline') {
-      const deals = await fetchAllRows<any>(() =>
-        admin
-          .from('business_records')
-          .select('status, estimated_deal_value, sales_stage')
-          .eq('tenant_id', tenantId)
-          .eq('record_type', 'opportunity'),
-      );
-
-      // Group by stage
-      const byStage = new Map<string, { count: number; value: number }>();
-      (deals || []).forEach((d: any) => {
-        const stage = d.sales_stage || d.status || 'unknown';
-        const current = byStage.get(stage) || { count: 0, value: 0 };
-        byStage.set(stage, {
-          count: current.count + 1,
-          value: current.value + toNumber(d.estimated_deal_value),
-        });
-      });
-
-      return createCorsResponse(
-        {
-          totalDeals: deals?.length || 0,
-          totalValue: (deals || []).reduce(
-            (sum: number, d: any) => sum + toNumber(d.estimated_deal_value),
-            0,
-          ),
-          byStage: Array.from(byStage.entries()).map(([stage, stats]) => ({
-            stage,
-            count: stats.count,
-            value: stats.value,
-          })),
-        },
+        findNoTouchAlerts(openDeals.map(toDealRow), lastTouch, members, days, new Date()),
         200,
         req,
       );

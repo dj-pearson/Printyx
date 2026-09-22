@@ -16,7 +16,7 @@
  * call /apollo/enrich separately before POSTing here.
  *
  * API key generation uses the existing `api_keys` table from Phase 5 US-021,
- * with key_type='integration' and service='chrome-extension'. The plaintext
+ * with key_type='integration' and metadata.service='chrome-extension'. The plaintext
  * key is returned ONCE on creation; subsequent lookups use the hash.
  */
 
@@ -226,14 +226,27 @@ export default async function handler(req: Request) {
 
       const { data, error } = await db
         .from('api_keys')
+        /**
+         * AUDIT-037: three of these were not columns on `api_keys`, so
+         * generating an extension key has always been a PGRST204 reported as
+         * "Failed to generate API key" - the feature has never worked.
+         *
+         *   user_id  -> `created_by` already records who made the key.
+         *   salt     -> the column is `key_salt`. Storing the salt under a
+         *               name the table does not have means the hash could
+         *               never be re-derived even if the insert had succeeded.
+         *   service  -> no such column. `metadata` is the jsonb the table
+         *               provides for exactly this, and the header's
+         *               "key_type='integration' and service='chrome-extension'"
+         *               still holds, one level in.
+         */
         .insert({
           tenant_id: auth.tenantId,
-          user_id: auth.userId,
           name: 'Chrome Extension',
           key_type: 'integration',
           key_hash: keyHash,
-          salt,
-          service: 'chrome-extension',
+          key_salt: salt,
+          metadata: { service: 'chrome-extension' },
           status: 'active',
           created_by: auth.userId,
         })

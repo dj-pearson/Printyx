@@ -62,36 +62,45 @@ export default async function handler(req: Request) {
       );
     }
 
-    // PUT /settings/user - Update user settings
+    /**
+     * PUT /settings/user - RETIRED (round 125).
+     *
+     * This upserted a `settings` jsonb column `user_settings` does not have -
+     * its columns are flat (theme, language, timezone, date_format,
+     * time_format, currency, plus notifications and accessibility jsonb) - so
+     * every save was a PGRST204. Nothing has ever called it: `/api/settings`
+     * appears in no client tree and this function is in
+     * docs/unreferenced-edge-fns-baseline.json.
+     *
+     * 410 rather than 501, because the capability is not missing: AUDIT-027
+     * moved it to `supabase/functions/user/`, which writes the real columns
+     * and is what the Settings page calls. A 501 here would say "nobody built
+     * this", which is how a second writer of one row gets built twice.
+     */
     if ((req.method === 'PUT' || req.method === 'PATCH') && settingType === 'user') {
-      const body = await req.json();
-
-      const settingsData = {
-        user_id: user.id,
-        tenant_id: tenantId,
-        settings: body.settings || body,
-        updated_at: new Date().toISOString(),
-      };
-
-      const { data: settings, error } = await admin
-        .from('user_settings')
-        .upsert(settingsData, { onConflict: 'user_id,tenant_id' })
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error updating user settings:', error);
-        return createCorsResponse({ error: 'Failed to update user settings' }, 500, req);
-      }
-
-      return createCorsResponse(settings, 200, req);
+      return createCorsResponse(
+        {
+          error: 'User settings moved to PUT /api/user/settings',
+          code: 'USE_USER_SETTINGS',
+        },
+        410,
+        req,
+      );
     }
 
-    // GET /settings/tenant - Get tenant settings
+    /**
+     * GET /settings/tenant - Get tenant settings.
+     *
+     * AUDIT-037: this read `tenants.settings`, which is not a column. The
+     * jsonb blob a tenant's settings live in is `metadata` - it is where
+     * auto-lead-routing already stores its configuration - so every read and
+     * write on this branch was a 42703 and tenant settings have never been
+     * readable or savable through it.
+     */
     if (req.method === 'GET' && settingType === 'tenant') {
       const { data: tenant, error } = await admin
         .from('tenants')
-        .select('settings')
+        .select('metadata')
         .eq('id', tenantId)
         .single();
 
@@ -100,7 +109,7 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to fetch tenant settings' }, 500, req);
       }
 
-      return createCorsResponse(tenant?.settings || {}, 200, req);
+      return createCorsResponse(tenant?.metadata || {}, 200, req);
     }
 
     // PUT /settings/tenant - Update tenant settings (admin only)
@@ -119,14 +128,38 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Insufficient permissions' }, 403, req);
       }
 
+      /**
+       * MERGED, NOT REPLACED, and that is the half that matters.
+       *
+       * Rebinding `settings` to `metadata` alone would turn a guaranteed
+       * 42703 into silent data loss: `metadata` is a SHARED blob - auto-lead
+       * routing keeps its configuration there, and anything else that lands
+       * on a tenant row will too - so writing `body.settings` over the top
+       * would erase every key this caller did not happen to send. That is the
+       * WhiteLabelDashboard defect one table over, where a blind overwrite
+       * wiped a tenant's branding on the first save.
+       *
+       * Read-then-merge is not atomic. Two admins saving different settings in
+       * the same second would lose one of the two, which is worth knowing and
+       * is a far smaller failure than the blanket overwrite it replaces.
+       */
+      const { data: existing } = await admin
+        .from('tenants')
+        .select('metadata')
+        .eq('id', tenantId)
+        .single();
+
+      const incoming = (body.settings || body) as Record<string, unknown>;
+      const merged = { ...((existing?.metadata as Record<string, unknown>) ?? {}), ...incoming };
+
       const { data: tenant, error } = await admin
         .from('tenants')
         .update({
-          settings: body.settings || body,
+          metadata: merged,
           updated_at: new Date().toISOString(),
         })
         .eq('id', tenantId)
-        .select('settings')
+        .select('metadata')
         .single();
 
       if (error) {
@@ -134,7 +167,7 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to update tenant settings' }, 500, req);
       }
 
-      return createCorsResponse(tenant?.settings || {}, 200, req);
+      return createCorsResponse(tenant?.metadata || {}, 200, req);
     }
 
     // GET /settings/dashboard - Get dashboard layout
@@ -159,28 +192,27 @@ export default async function handler(req: Request) {
     }
 
     // PUT /settings/dashboard - Update dashboard layout
+    /**
+     * PUT /settings/dashboard - RETIRED (round 125).
+     *
+     * `dashboard_layouts.layout` was dropped by migration 0002 (CRM-LAYOUT-001);
+     * the row stores `widgets`, `columns` and `gap`. So this was a PGRST204,
+     * and rebinding it would have made it the THIRD writer claiming "the one
+     * custom layout per user" - `dashboard-widgets`' /user-layout and
+     * `dashboard/handlers/layouts.ts` already contest that row, which
+     * CLAUDE.md records as an open defect rather than a pattern to follow.
+     * Nothing calls this one, so retiring it is free and adding to the
+     * contest is not.
+     */
     if ((req.method === 'PUT' || req.method === 'PATCH') && settingType === 'dashboard') {
-      const body = await req.json();
-
-      const layoutData = {
-        user_id: user.id,
-        tenant_id: tenantId,
-        layout: body.layout || body,
-        updated_at: new Date().toISOString(),
-      };
-
-      const { data: layout, error } = await admin
-        .from('dashboard_layouts')
-        .upsert(layoutData, { onConflict: 'user_id,tenant_id' })
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error updating dashboard layout:', error);
-        return createCorsResponse({ error: 'Failed to update dashboard layout' }, 500, req);
-      }
-
-      return createCorsResponse(layout, 200, req);
+      return createCorsResponse(
+        {
+          error: 'Dashboard layouts moved to PUT /api/dashboard/user-layout',
+          code: 'USE_DASHBOARD_USER_LAYOUT',
+        },
+        410,
+        req,
+      );
     }
 
     return createCorsResponse({ error: 'Invalid settings type or method' }, 400, req);

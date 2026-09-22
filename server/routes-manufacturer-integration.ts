@@ -17,6 +17,16 @@ import {
 import { manufacturerIntegrationService } from './manufacturer-integration-service';
 
 import { getUserId, getTenantId } from './utils/auth-helpers';
+// Round 125: these three handlers returned the raw Drizzle row, `credentials`
+// jsonb and all, so the dealer's manufacturer API keys left this host in plain
+// text for any authenticated tenant member. The edge function had a redactor
+// naming seven columns the table does not have, which redacted nothing - so
+// the leak was open on both hosts while appearing closed on one. The view is
+// shared for exactly that reason.
+import {
+  toManufacturerIntegrationView,
+  toManufacturerIntegrationViews,
+} from '@shared/manufacturer-integration-view';
 export function registerManufacturerIntegrationRoutes(app: Express) {
   // Get all integrations for a tenant
   app.get('/api/manufacturer-integrations', async (req: any, res) => {
@@ -32,7 +42,7 @@ export function registerManufacturerIntegrationRoutes(app: Express) {
         .where(eq(manufacturerIntegrations.tenantId, tenantId))
         .orderBy(desc(manufacturerIntegrations.createdAt));
 
-      res.json(integrations);
+      res.json(toManufacturerIntegrationViews(integrations));
     } catch (error) {
       log.error('Error fetching manufacturer integrations:', error);
       res.status(500).json({ message: 'Failed to fetch integrations' });
@@ -58,7 +68,7 @@ export function registerManufacturerIntegrationRoutes(app: Express) {
         validatedData,
       );
 
-      res.json(integration);
+      res.json(toManufacturerIntegrationView(integration));
     } catch (error) {
       log.error('Error creating manufacturer integration:', error);
       res.status(500).json({ message: 'Failed to create integration' });
@@ -210,7 +220,7 @@ export function registerManufacturerIntegrationRoutes(app: Express) {
         return res.status(404).json({ message: 'Integration not found' });
       }
 
-      res.json(integration[0]);
+      res.json(toManufacturerIntegrationView(integration[0]));
     } catch (error) {
       log.error('Error fetching integration:', error);
       res.status(500).json({ message: 'Failed to fetch integration' });
@@ -242,7 +252,7 @@ export function registerManufacturerIntegrationRoutes(app: Express) {
         return res.status(404).json({ message: 'Integration not found' });
       }
 
-      res.json(updatedIntegration);
+      res.json(toManufacturerIntegrationView(updatedIntegration));
     } catch (error) {
       log.error('Error updating integration:', error);
       res.status(500).json({ message: 'Failed to update integration' });

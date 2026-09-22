@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { MainLayout } from '@/components/layout/main-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,7 +20,19 @@ import {
 } from '@/components/ui/dialog';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
-import { Layers, Plus, Mail, Linkedin, Sparkles, Trash2, Save, AlertCircle } from 'lucide-react';
+import {
+  Layers,
+  Plus,
+  Mail,
+  Linkedin,
+  Sparkles,
+  Trash2,
+  Save,
+  AlertCircle,
+  CalendarClock,
+} from 'lucide-react';
+import { BookingLinkPicker } from '@/components/booking/BookingLinkPicker';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 interface Sequence {
   id: string;
@@ -68,6 +80,7 @@ function channelLabel(channel: string) {
 
 export default function SequenceStudio() {
   const { toast } = useToast();
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -307,10 +320,13 @@ export default function SequenceStudio() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => {
-                          if (confirm('Delete this sequence and all its steps?')) {
-                            deleteSequenceMutation.mutate(detailData.sequence.id);
-                          }
+                        onClick={async () => {
+                          const ok = await confirm({
+                            title: 'Delete this sequence?',
+                            description: 'Every step in it is deleted too.',
+                          });
+                          if (!ok) return;
+                          deleteSequenceMutation.mutate(detailData.sequence.id);
                         }}
                       >
                         <Trash2 className="h-4 w-4" />
@@ -348,7 +364,30 @@ function StepEditor({
   const [subject, setSubject] = useState(step.subjectTemplate || '');
   const [body, setBody] = useState(step.bodyTemplate);
   const [showVariants, setShowVariants] = useState(false);
+  const [showBookingLink, setShowBookingLink] = useState(false);
+  const bodyRef = useRef<HTMLTextAreaElement | null>(null);
   const dirty = subject !== (step.subjectTemplate || '') || body !== step.bodyTemplate;
+
+  /**
+   * COP-B14 AC5: insert at the caret, not at the end. A sequence body is
+   * written as a paragraph with a call to action in the middle of it, and an
+   * insert that always appends means the rep moves the URL by hand every time.
+   * The caret is read off the textarea because `body` state carries no
+   * selection; when the field was never focused, selectionStart is 0 and the
+   * fallback puts the link at the end rather than silently at the top.
+   */
+  function insertBookingLink(url: string) {
+    const el = bodyRef.current;
+    const caret = el && el.selectionStart > 0 ? el.selectionStart : body.length;
+    const next = `${body.slice(0, caret)}${url}${body.slice(caret)}`;
+    setBody(next);
+    // Put the caret after what was just inserted, so typing continues there.
+    requestAnimationFrame(() => {
+      if (!el) return;
+      el.focus();
+      el.setSelectionRange(caret + url.length, caret + url.length);
+    });
+  }
 
   return (
     <Card>
@@ -378,8 +417,13 @@ function StepEditor({
           </div>
         )}
         <div>
-          <Label className="text-xs">Body template</Label>
-          <Textarea rows={6} value={body} onChange={(e) => setBody(e.target.value)} />
+          <div className="flex items-center justify-between">
+            <Label className="text-xs">Body template</Label>
+            <Button variant="ghost" size="sm" onClick={() => setShowBookingLink(true)}>
+              <CalendarClock className="h-4 w-4 mr-1" /> Insert booking link
+            </Button>
+          </div>
+          <Textarea ref={bodyRef} rows={6} value={body} onChange={(e) => setBody(e.target.value)} />
           <div className="text-xs text-muted-foreground mt-1">
             Tokens: {'{{firstName}}'} {'{{companyName}}'} {'{{title}}'} {'{{industry}}'}{' '}
             {'{{triggerSignal}}'} {'{{city}}'}
@@ -443,6 +487,12 @@ function StepEditor({
             <Save className="h-4 w-4 mr-1" /> Save step
           </Button>
         </div>
+
+        <BookingLinkPicker
+          open={showBookingLink}
+          onOpenChange={setShowBookingLink}
+          onInsert={insertBookingLink}
+        />
       </CardContent>
     </Card>
   );

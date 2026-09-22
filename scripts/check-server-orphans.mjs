@@ -22,8 +22,20 @@
  * importer, so a one-level grep says it is used. Its importer is security-index,
  * which has none. Only a walk from the real entry point answers this.
  *
- * THE ROOT is server/index.ts - the process entry. Everything the server runs
- * is reachable from it, through registerRoutes and the registry.
+ * THE ROOTS ARE server/index.ts AND EVERY npm SCRIPT, because a repo has as
+ * many entry points as it has ways to start. The walk began at index.ts alone,
+ * which made every CLI a dead file: `npm run db:migrate` runs
+ * server/lib/migrate.ts, `npm run seed:demo` runs
+ * server/seeds/seed-all-demo-data.ts, and seed:rbac, seed:kpis, seed:reports
+ * and ten more are the same shape. All 14 sat in the baseline - a list whose
+ * own header calls it a TODO, so a tenth of the todos were "delete this
+ * working tool".
+ *
+ * It surfaced sideways, which is the part worth keeping: a passing story named
+ * `server/lib/migrate.ts` as a verified deliverable, `check:story-orphans`
+ * asked this guard whether anything reached it, and got "no". The same shape
+ * `check:unreferenced-edge-fns` had to learn when pg_cron turned out to be a
+ * caller - a reachability walk is only as good as its list of front doors.
  *
  * DYNAMIC MOUNTS ARE COLLECTED HEURISTICALLY. routes-registry.ts mounts a dozen
  * routers through `for (const [path, mod] of table) await import(mod)`, where
@@ -58,6 +70,33 @@ const BASELINE = join(ROOT, 'docs', 'server-orphans-baseline.json');
 const UPDATE = process.argv.includes('--update-baseline');
 
 const ENTRY = join(SERVER, 'index.ts');
+
+/**
+ * Every server file a package.json script executes, as an additional root.
+ *
+ * Derived rather than listed: a new `"seed:whatever": "tsx server/seeds/x.ts"`
+ * becomes a root the moment it exists, so this cannot go stale the way a
+ * hand-kept exclusion list would. Matches any server/ path ending .ts or .tsx
+ * anywhere in the command, which covers `tsx server/lib/migrate.ts status` and
+ * `NODE_ENV=x tsx server/seeds/y.ts --force` alike.
+ */
+export function serverFilesInScripts(scripts) {
+  const out = new Set();
+  for (const command of Object.values(scripts ?? {})) {
+    for (const m of String(command).matchAll(/server\/[A-Za-z0-9_./-]+\.tsx?/g)) out.add(m[0]);
+  }
+  return [...out];
+}
+
+function npmScriptEntries() {
+  const scripts = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).scripts ?? {};
+  // Existence is checked HERE and not in the pure half: a script naming a file
+  // that was deleted is its own (different) defect, and the extraction should
+  // be testable without a filesystem.
+  return serverFilesInScripts(scripts)
+    .map((rel) => join(ROOT, rel))
+    .filter((abs) => existsSync(abs));
+}
 const EXTENSIONS = ['.ts', '.tsx', '/index.ts', '/index.tsx', '.js'];
 
 const stripComments = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
@@ -133,7 +172,8 @@ function allServerSources() {
   return files;
 }
 
-const reachable = walk([ENTRY]);
+const scriptEntries = npmScriptEntries();
+const reachable = walk([ENTRY, ...scriptEntries]);
 
 // A second walk from the test tree, to mark test-only files rather than excuse
 // them - source reached only from a test is dead product code with a different
@@ -150,20 +190,33 @@ for (const file of allServerSources()) {
 }
 orphans.sort();
 
+const DEFAULT_NOTE =
+  'server/*.ts files reachable from NEITHER server/index.ts NOR any package.json script, ' +
+  'by any static or dynamic import. Dead product code: it cannot run. "(test-only)" marks a ' +
+  'file reached only from server/tests, which is dead product code a test still pins. A TODO ' +
+  'list, not settled debt - each entry is wire it, delete it, or record why it is loaded some ' +
+  'other way. See scripts/check-server-orphans.mjs.';
+
+/**
+ * Keep a hand-written note rather than regenerating the default over it
+ * (round 82's finding: a ratchet's note is the difference between a worklist
+ * and an undifferentiated list, and a writer that rebuilds its header discards
+ * whatever anybody explained there).
+ */
+function existingNote() {
+  try {
+    const note = JSON.parse(readFileSync(BASELINE, 'utf8')).note;
+    return typeof note === 'string' && note.length > 0 ? note : null;
+  } catch {
+    return null;
+  }
+}
+
 if (UPDATE) {
   writeFileSync(
     BASELINE,
     JSON.stringify(
-      {
-        note:
-          'server/*.ts files not reachable from server/index.ts by any static or dynamic import. ' +
-          'Dead product code: it cannot run. "(test-only)" marks a file reached only from ' +
-          'server/tests, which is dead product code a test still pins. A TODO list, not settled ' +
-          'debt - each entry is wire it, delete it, or record why it is loaded some other way. ' +
-          'See scripts/check-server-orphans.mjs.',
-        total: orphans.length,
-        orphans,
-      },
+      { note: existingNote() ?? DEFAULT_NOTE, total: orphans.length, orphans },
       null,
       2,
     ) + '\n',

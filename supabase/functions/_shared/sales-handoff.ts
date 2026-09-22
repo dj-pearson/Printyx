@@ -381,3 +381,70 @@ export function handoffProgress(
     requiredComplete: required.length > 0 && required.every(done),
   };
 }
+
+/**
+ * The columns a PUT /handoff-task-templates/:id may set, from the body it was
+ * given (SEC-EDGE-001 round 91).
+ *
+ * WRITE ONLY THE FIELDS THE CALLER SENT (COP-B03). The edge function used to
+ * build one blanket object, and `handoff_type: normalizeHandoffType(undefined)`
+ * is NULL rather than undefined - JSON.stringify drops an undefined key and
+ * keeps a null one - so a rename-only PUT sent exactly `handoff_type = NULL`
+ * into a NOT NULL column. Proven on Postgres 16: 23502, surfaced to the caller
+ * as a generic 500. Every partial edit of a template was impossible.
+ *
+ * It is a pure function so the property can be tested with real inputs rather
+ * than by reading the handler as text, which is how a mutant hides behind a
+ * constant that is still present in the file.
+ *
+ * NOT NULL columns refuse an explicit null instead of letting the database do
+ * it, and an unrecognised handoff type is refused here the way the create path
+ * already refuses one - the update path used to normalise it to null.
+ */
+export function buildTemplateUpdate(body: Record<string, unknown>): {
+  update: Record<string, unknown>;
+  refused: string[];
+} {
+  const sent = (...keys: string[]) =>
+    keys.some((k) => Object.prototype.hasOwnProperty.call(body, k));
+  const firstOf = (...keys: string[]) => {
+    for (const k of keys) {
+      if (Object.prototype.hasOwnProperty.call(body, k)) return body[k];
+    }
+    return undefined;
+  };
+
+  const update: Record<string, unknown> = {};
+  const refused: string[] = [];
+
+  if (sent('templateName', 'template_name', 'name')) {
+    const value = firstOf('templateName', 'template_name', 'name');
+    if (typeof value !== 'string' || value.trim() === '') refused.push('templateName');
+    else update.template_name = value;
+  }
+
+  if (sent('handoffType', 'handoff_type')) {
+    const normalized = normalizeHandoffType(firstOf('handoffType', 'handoff_type'));
+    if (!normalized) refused.push('handoffType');
+    else update.handoff_type = normalized;
+  }
+
+  if (sent('description')) update.description = body.description ?? null;
+
+  if (sent('tasks')) {
+    if (!Array.isArray(body.tasks)) refused.push('tasks');
+    else update.tasks = body.tasks;
+  }
+
+  if (sent('isActive', 'is_active')) {
+    update.is_active = firstOf('isActive', 'is_active') !== false;
+  }
+
+  // is_default was absent from the old map entirely, so the template a tenant
+  // bootstraps on its first handoff could never be replaced through the API.
+  if (sent('isDefault', 'is_default')) {
+    update.is_default = firstOf('isDefault', 'is_default') === true;
+  }
+
+  return { update, refused };
+}

@@ -1,7 +1,8 @@
 /**
  * DealInsightsPanel (COP-B11).
  *
- * Renders the deal health score from shared/deal-score.ts. Two things it
+ * Renders the deal health score from shared/deal-score.ts, plus the AI
+ * narrative over the deal's real interaction history. Three things it
  * deliberately does NOT do:
  *
  *  - It never shows a number when the deal is too sparse to justify one. A
@@ -9,18 +10,25 @@
  *  - It does not hide its reasoning. Every contributing factor is listed with
  *    the plain-language reason that earned it, so a rep can disagree with the
  *    score instead of ignoring it.
- *
- * The AI narrative half of COP-B11 is not here: it needs an LLM endpoint over
- * the deal's real interaction history, which is not wired up. That absence is
- * stated rather than filled with generated-sounding filler.
+ *  - It does not generate a narrative on render. The summary is read from the
+ *    cache and labelled out of date when the deal has moved since; writing a
+ *    new one is a click, because an LLM call per page view is a bill nobody
+ *    agreed to (AC6).
  */
 import { useMemo } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { scoreDeal, PLANNED_FACTORS, type DealScoreBand } from '@shared/deal-score';
+import { apiRequest } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, Info, TrendingDown, TrendingUp } from 'lucide-react';
+import { InlineQueryError } from '@/components/ui/inline-query-error';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { AlertTriangle, Info, RefreshCw, Sparkles, TrendingDown, TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface DealLike {
+  id?: string | null;
   status?: string | null;
   amount?: string | null;
   probability?: number | null;
@@ -33,6 +41,25 @@ interface DealLike {
   primaryContactEmail?: string | null;
   primaryContactPhone?: string | null;
   contactCount?: number | null;
+  // COP-M04 copier facts. The deals edge function returns all three.
+  incumbentVendor?: string | null;
+  leaseBuyoutExposure?: string | number | null;
+  forecastCategory?: string | null;
+  // COP-B02: the deal's most recent live quote, fed by /api/deals/:id.
+  quoteMarginPct?: number | null;
+  quoteDiscountPct?: number | null;
+}
+
+interface DealSummaryResponse {
+  summary: string | null;
+  generatedAt: string | null;
+  model: string | null;
+  sourceEntryCount: number | null;
+  /** The stored summary describes an older version of this deal. */
+  stale: boolean;
+  /** False when there is no interaction history to write a summary from. */
+  canGenerate: boolean;
+  entryCount: number;
 }
 
 const BAND_STYLES: Record<DealScoreBand, { label: string; className: string }> = {
@@ -50,6 +77,38 @@ export function DealInsightsPanel({
   /** Timeline length, used only to note when there is nothing to read from. */
   activityCount?: number;
 }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const dealId = deal.id ?? undefined;
+
+  // Read-only. The endpoint never generates on GET, so opening a deal costs
+  // one cheap row read and no model call.
+  const summaryQuery = useQuery<DealSummaryResponse>({
+    queryKey: [`/api/deals/${dealId}/summary`],
+    queryFn: () => apiRequest(`/api/deals/${dealId}/summary`),
+    enabled: Boolean(dealId),
+    staleTime: 60_000,
+  });
+
+  const generateSummary = useMutation({
+    mutationFn: () => apiRequest(`/api/deals/${dealId}/summary`, 'POST'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/deals/${dealId}/summary`] });
+    },
+    onError: (err: unknown) => {
+      // The endpoint's refusals are meaningful - no history to summarise, no
+      // model configured - so the message is shown rather than swallowed into
+      // a generic failure toast.
+      toast({
+        title: 'Could not write a summary',
+        description: err instanceof Error ? err.message : 'The summary model did not answer.',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const summary = summaryQuery.data;
+
   const result = useMemo(
     () =>
       scoreDeal({
@@ -65,6 +124,11 @@ export function DealInsightsPanel({
         contactCount: deal.contactCount,
         primaryContactEmail: deal.primaryContactEmail,
         primaryContactPhone: deal.primaryContactPhone,
+        incumbentVendor: deal.incumbentVendor,
+        leaseBuyoutExposure: deal.leaseBuyoutExposure,
+        forecastCategory: deal.forecastCategory,
+        quoteMarginPct: deal.quoteMarginPct,
+        quoteDiscountPct: deal.quoteDiscountPct,
       }),
     [deal],
   );
@@ -143,10 +207,64 @@ export function DealInsightsPanel({
         </p>
       )}
 
-      <p className="text-xs text-muted-foreground border-t pt-2">
-        Coming with the copier deal fields: {PLANNED_FACTORS.join(', ')}. An AI narrative summary
-        needs an LLM over this deal&apos;s interaction history, which is not connected yet.
-      </p>
+      {/* ── The narrative, over what actually happened ────────────── */}
+      <div className="border-t pt-3 space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+            <Sparkles className="h-3.5 w-3.5" /> Summary
+          </p>
+          {summary?.canGenerate && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 px-2 text-xs"
+              disabled={generateSummary.isPending}
+              onClick={() => generateSummary.mutate()}
+            >
+              <RefreshCw
+                className={cn('h-3.5 w-3.5 mr-1', generateSummary.isPending && 'animate-spin')}
+              />
+              {summary.summary ? 'Rewrite' : 'Write one'}
+            </Button>
+          )}
+        </div>
+
+        {summaryQuery.isLoading ? (
+          <Skeleton className="h-12 w-full" />
+        ) : summaryQuery.isError ? (
+          /* CR-033: without this the failure fell through to "this deal has
+             none", which tells a rep their colleague logged nothing. */
+          <InlineQueryError label="the deal summary" onRetry={summaryQuery.refetch} />
+        ) : summary && !summary.canGenerate ? (
+          <p className="text-xs text-muted-foreground">
+            Nothing to summarise yet. A summary is written from the deal&apos;s logged calls,
+            emails, meetings and notes, and this deal has none.
+          </p>
+        ) : summary?.summary ? (
+          <>
+            <p className="text-sm leading-relaxed">{summary.summary}</p>
+            <p className="text-xs text-muted-foreground">
+              {summary.stale
+                ? 'This deal has changed since the summary was written.'
+                : `Written from ${summary.sourceEntryCount ?? 0} timeline ${
+                    summary.sourceEntryCount === 1 ? 'entry' : 'entries'
+                  }.`}
+            </p>
+          </>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            No summary has been written for this deal yet.
+          </p>
+        )}
+      </div>
+
+      {/* Only when there IS an unbacked signal. Every one has a producer as
+          of COP-B02's deal-to-quote link, so this normally renders nothing. */}
+      {PLANNED_FACTORS.length > 0 && (
+        <p className="text-xs text-muted-foreground border-t pt-2">
+          Not yet scored, because nothing produces it: {PLANNED_FACTORS.join(', ')}.
+        </p>
+      )}
     </div>
   );
 }

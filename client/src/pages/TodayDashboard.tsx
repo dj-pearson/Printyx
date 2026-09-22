@@ -1,3 +1,4 @@
+import type { ComponentType, ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { apiRequest } from '@/lib/queryClient';
@@ -6,8 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useLocation } from 'wouter';
-import { format, formatDistance, isToday, isPast, isFuture } from 'date-fns';
+import { Link, useLocation } from 'wouter';
+import { format, formatDistance } from 'date-fns';
 import {
   AlertCircle,
   Calendar,
@@ -23,11 +24,15 @@ import {
   AlertTriangle,
   Sparkles,
   ArrowRight,
-  MessageSquare,
   RefreshCw,
+  FileText,
 } from 'lucide-react';
 import { EmptyState } from '@/components/ui/empty-state';
-import { cn } from '@/lib/utils';
+import { SuggestedTasksCard } from '@/components/crm/SuggestedTasksCard';
+import { MyDayCardBoundary, MyDayCustomizer, useMyDayLayout } from '@/components/crm/MyDayLayout';
+import { RadarPlaysCard } from '@/components/crm/RadarPlaysCard';
+import { TeamActivityCard, TeamPipelineCard } from '@/components/crm/TeamRollupCards';
+import { cn, formatCurrencyWhole } from '@/lib/utils';
 
 interface Activity {
   id: string;
@@ -66,6 +71,29 @@ interface Deal {
   staleReason?: string;
 }
 
+/** COP-B01: a quote sent and not answered. */
+interface AwaitingSignature {
+  id: string;
+  proposalNumber: string | null;
+  title: string | null;
+  totalAmount: string | null;
+  dealId: string | null;
+  companyName: string | null;
+  validUntil: string | null;
+  /** Null when the quote carries no expiry — not a guessed zero. */
+  daysUntilExpiry: number | null;
+  sentAt: string | null;
+}
+
+interface MeetingFollowUp {
+  id: string;
+  subject: string;
+  businessRecordId: string;
+  accountName: string | null;
+  metAt: string;
+  daysSince: number;
+}
+
 interface TodayViewData {
   overdue: Activity[];
   today: Activity[];
@@ -73,6 +101,18 @@ interface TodayViewData {
   hotLeads: Lead[];
   pipelineAlerts: Deal[];
   recentWins: Deal[];
+  awaitingSignature?: AwaitingSignature[];
+  /**
+   * Null when the derivation failed, [] when nothing is waiting. The card
+   * renders nothing for null and an honest empty state for [] - "no meetings
+   * are waiting on you" and "we could not look" are different answers.
+   */
+  meetingsNeedingFollowUp?: MeetingFollowUp[] | null;
+  /** Meetings with no account, so no follow-up could be looked for. */
+  unlinkedMeetings?: number | null;
+  /** COP-I06: printed when the list was narrowed, so a short list is explicable. */
+  scopeTier?: string;
+  scopeDegradedFrom?: string | null;
   stats: {
     // Nullable on purpose. Both are a SUM over the tenant's whole deals table,
     // which the production backend cannot compute without either truncating
@@ -108,6 +148,12 @@ export default function TodayDashboard() {
     enabled: isAuthenticated,
     refetchInterval: 60000, // Refresh every minute
   });
+
+  // COP-B01 AC2/AC6. Order and visibility come from the rep's saved layout,
+  // resolved against their LIVE role level on every read - so a promotion adds
+  // the team cards immediately and a demotion withholds them immediately,
+  // whatever the saved layout says.
+  const { mainCards, sideCards, layout, save, isSaving, usingDefaultLayout } = useMyDayLayout();
 
   const handleCompleteActivity = async (activityId: string) => {
     try {
@@ -164,8 +210,13 @@ export default function TodayDashboard() {
     today = [],
     upcoming = [],
     hotLeads = [],
+    awaitingSignature = [],
     pipelineAlerts = [],
     recentWins = [],
+    meetingsNeedingFollowUp = null,
+    unlinkedMeetings = null,
+    scopeTier,
+    scopeDegradedFrom = null,
     stats = {
       // null, not 0, for the two the backend may not be able to compute: a zero
       // here is indistinguishable from an empty pipeline.
@@ -176,44 +227,330 @@ export default function TodayDashboard() {
     },
   } = data || {};
 
+  /**
+   * COP-B01 AC2 and AC5: the workspace's cards, keyed by the id the saved
+   * layout orders them by. Each renders inside its own boundary, so a card
+   * whose query fails degrades ALONE rather than blanking the page.
+   *
+   * `overdue` is deliberately NOT one of these: it is the banner above the
+   * grid, and an overdue task a rep can hide is the one failure this screen
+   * exists to prevent.
+   */
+  const cardSlots: Record<string, ReactNode> = {
+    overdue:
+      overdue.length === 0 ? null : (
+        <Card className="border-red-200 bg-red-50">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-red-600" />
+              <CardTitle className="text-red-900">
+                {overdue.length} Overdue {overdue.length === 1 ? 'Task' : 'Tasks'}
+              </CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {overdue.slice(0, 3).map((activity) => (
+                <ActivityItem
+                  key={activity.id}
+                  activity={activity}
+                  onComplete={handleCompleteActivity}
+                  onNavigate={handleCallCustomer}
+                  isOverdue
+                />
+              ))}
+              {overdue.length > 3 && (
+                /* UI-DEAD-BUTTONS-001: this was a <Button variant="link"> with
+                   no handler at all, on the page's most prominent alert - the
+                   one control a rep with a backlog reaches for. TaskHub is the
+                   list; it takes no overdue filter, so this links there rather
+                   than to a query parameter nothing reads (AUDIT-014 found nine
+                   of those). */
+                <Button variant="link" className="h-auto p-0 text-red-600" asChild>
+                  <Link href="/tasks">View all {overdue.length} overdue tasks &rarr;</Link>
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      ),
+    'due-today': (
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-blue-600" />
+              <CardTitle>Today&apos;s Schedule</CardTitle>
+              <Badge variant="secondary">{today.length} tasks</Badge>
+            </div>
+            {/* UI-DEAD-BUTTONS-001: this had no handler at all. TaskHub owns the
+                create-task dialog, and `?action=new` is the established way to
+                open one from elsewhere (use-action-param, six pages) - wired on
+                that side in the same change, because AUDIT-014 found nine of
+                these links dropping the user on a list and doing nothing. */}
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/tasks?action=new">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Task
+              </Link>
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {today.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <CheckCircle2 className="h-12 w-12 mx-auto mb-3 text-green-500" />
+              <p className="text-lg font-medium">All caught up!</p>
+              <p className="text-sm">No tasks scheduled for today.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {today.map((activity) => (
+                <ActivityItem
+                  key={activity.id}
+                  activity={activity}
+                  onComplete={handleCompleteActivity}
+                  onNavigate={handleCallCustomer}
+                />
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    ),
+    'installed-base-radar': <RadarPlaysCard />,
+    // AC6: both were declared, role-gated and rendering nothing until COP-B01
+    // round 67 gave them an endpoint.
+    'team-pipeline': <TeamPipelineCard />,
+    'team-activity': <TeamActivityCard />,
+    'suggested-tasks': <SuggestedTasksCard />,
+    'awaiting-signature':
+      awaitingSignature.length > 0 ? (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-muted-foreground" />
+              <CardTitle>Awaiting signature</CardTitle>
+              <Badge variant="outline" className="font-normal">
+                {awaitingSignature.length}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {awaitingSignature.map((quote) => (
+              <button
+                key={quote.id}
+                type="button"
+                onClick={() =>
+                  navigate(quote.dealId ? `/crm/deals/${quote.dealId}` : `/quotes/${quote.id}`)
+                }
+                className="w-full text-left flex items-center justify-between gap-3 rounded-lg border p-3 hover:bg-muted/50"
+              >
+                <div className="min-w-0">
+                  <div className="font-medium truncate">
+                    {quote.companyName ?? quote.title ?? quote.proposalNumber ?? 'Quote'}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {quote.proposalNumber}
+                    {/* Silent when the quote states no validity: it has
+                        not "expired in 0 days". */}
+                    {quote.daysUntilExpiry != null &&
+                      (quote.daysUntilExpiry < 0
+                        ? ` · expired ${Math.abs(quote.daysUntilExpiry)} days ago`
+                        : ` · valid ${quote.daysUntilExpiry} more days`)}
+                  </div>
+                </div>
+                <span className="tabular-nums text-sm shrink-0">
+                  {quote.totalAmount == null ? '—' : formatCurrencyWhole(Number(quote.totalAmount))}
+                </span>
+              </button>
+            ))}
+          </CardContent>
+        </Card>
+      ) : null,
+    'stalled-deals':
+      pipelineAlerts.length > 0 ? (
+        <Card className="border-orange-200 bg-orange-50">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-orange-600" />
+              <CardTitle className="text-orange-900">Pipeline Alerts</CardTitle>
+              <Badge variant="secondary" className="bg-orange-200">
+                {pipelineAlerts.length}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {pipelineAlerts.map((deal) => (
+                <DealAlertItem key={deal.id} deal={deal} />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      ) : null,
+    'recent-wins':
+      recentWins.length > 0 ? (
+        <Card className="border-green-200 bg-green-50">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Trophy className="h-5 w-5 text-green-600" />
+              <CardTitle className="text-green-900">Recent Wins 🎉</CardTitle>
+              <Badge variant="secondary" className="bg-green-200">
+                {recentWins.length}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {recentWins.map((deal) => (
+                <WinItem key={deal.id} deal={deal} />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      ) : null,
+    'hot-leads': (
+      <Card className="border-purple-200 bg-purple-50">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-purple-600" />
+            <CardTitle className="text-purple-900">Hot Leads</CardTitle>
+          </div>
+          <p className="text-sm text-purple-700">AI-scored high-value opportunities</p>
+        </CardHeader>
+        <CardContent>
+          {hotLeads.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">No hot leads right now</p>
+          ) : (
+            <div className="space-y-3">
+              {hotLeads.map((lead) => (
+                <HotLeadItem key={lead.id} lead={lead} />
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    ),
+    'meetings-followup':
+      meetingsNeedingFollowUp === null ? null : (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-amber-600" />
+              <CardTitle>Meetings needing follow-up</CardTitle>
+              {meetingsNeedingFollowUp.length > 0 && (
+                <Badge variant="secondary">{meetingsNeedingFollowUp.length}</Badge>
+              )}
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Met in the last 14 days with nothing logged since
+            </p>
+          </CardHeader>
+          <CardContent>
+            {meetingsNeedingFollowUp.length === 0 ? (
+              /* An honest empty state, not a hidden card. The slot used to
+                 render null when its list was empty, and a null slot inside
+                 MyDayCardBoundary is a blank card a rep reads as a quiet week. */
+              <div className="py-8 text-center text-muted-foreground">
+                <CheckCircle2 className="mx-auto mb-3 h-10 w-10 text-green-500" />
+                <p className="font-medium">Every meeting followed up</p>
+                <p className="text-sm">Nothing from the last 14 days is waiting on you.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {meetingsNeedingFollowUp.map((meeting) => (
+                  /* AC3 wants every card actionable in place. This row is a
+                     LINK to the account, which is where the activity composer
+                     CRM-008 built lives - the one place a follow-up can be
+                     logged. What it replaced had hover styling and no handler,
+                     which promises an action and is worse than a plain row. */
+                  <Link
+                    key={meeting.id}
+                    href={`/customers/${meeting.businessRecordId}`}
+                    className="flex items-start gap-3 rounded-md p-2 transition-colors hover:bg-amber-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <Clock className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium">{meeting.subject}</p>
+                      {meeting.accountName && (
+                        <p className="truncate text-xs text-muted-foreground">
+                          {meeting.accountName}
+                        </p>
+                      )}
+                      <p className="text-xs text-muted-foreground">
+                        {meeting.daysSince === 0
+                          ? 'Earlier today'
+                          : `${meeting.daysSince} day${meeting.daysSince === 1 ? '' : 's'} ago`}
+                      </p>
+                    </div>
+                  </Link>
+                ))}
+                {unlinkedMeetings !== null && unlinkedMeetings > 0 && (
+                  /* Named rather than folded into the count: these carry no
+                     account, so nothing could be looked for on them. */
+                  <p className="pt-1 text-xs text-muted-foreground">
+                    {unlinkedMeetings} meeting{unlinkedMeetings === 1 ? '' : 's'} not linked to an
+                    account, so follow-up could not be checked.
+                  </p>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      ),
+    upcoming:
+      upcoming.length > 0 ? (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-gray-600" />
+              <CardTitle>Coming Up</CardTitle>
+            </div>
+            <p className="text-sm text-muted-foreground">Next 3 days</p>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {upcoming.slice(0, 5).map((activity) => (
+                <div
+                  key={activity.id}
+                  className="flex items-start gap-2 text-sm p-2 rounded-md hover:bg-gray-50 transition-colors"
+                >
+                  <div className="mt-0.5">
+                    {activityTypeIcons[activity.type] && (
+                      <span className="text-gray-500">
+                        {activityTypeIcons[activity.type]({ className: 'h-4 w-4' })}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">{activity.title}</p>
+                    {activity.customerName && (
+                      <p className="text-xs text-muted-foreground truncate">
+                        {activity.customerName}
+                      </p>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      {activity.scheduledDate &&
+                        formatDistance(new Date(activity.scheduledDate), new Date(), {
+                          addSuffix: true,
+                        })}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      ) : null,
+  };
+
   return (
     <MainLayout
       title="Today"
       description={`Good ${getTimeOfDay()}, ${user?.firstName || 'there'}! Here's your day at a glance.`}
     >
       <div className="space-y-6">
-        {/* Overdue Alert Banner */}
-        {overdue.length > 0 && (
-          <Card className="border-red-200 bg-red-50">
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-2">
-                <AlertCircle className="h-5 w-5 text-red-600" />
-                <CardTitle className="text-red-900">
-                  {overdue.length} Overdue {overdue.length === 1 ? 'Task' : 'Tasks'}
-                </CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {overdue.slice(0, 3).map((activity) => (
-                  <ActivityItem
-                    key={activity.id}
-                    activity={activity}
-                    onComplete={handleCompleteActivity}
-                    onNavigate={handleCallCustomer}
-                    isOverdue
-                  />
-                ))}
-                {overdue.length > 3 && (
-                  <Button variant="link" className="text-red-600 p-0 h-auto">
-                    View all {overdue.length} overdue tasks →
-                  </Button>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
         {/* Quick Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
@@ -253,162 +590,46 @@ export default function TodayDashboard() {
             subtitle="Today"
           />
         </div>
+        <div className="flex items-center justify-end gap-3">
+          {/* CR-033: the layout request failing falls back to the default card
+              set, which is right - but a user whose hidden cards had all come
+              back deserves to know why rather than assume their preferences
+              were lost. */}
+          {usingDefaultLayout && (
+            <p className="text-xs text-muted-foreground">
+              Showing the default cards - your saved layout could not be loaded.
+            </p>
+          )}
+          {/* COP-I06: a narrowed list that does not say it was narrowed is a
+              wrong answer, not a safe one. Only shown when the tier DEGRADED -
+              a rep correctly seeing their own work needs no explanation, while
+              a manager seeing only theirs because the org structure could not
+              resolve a team does. */}
+          {scopeDegradedFrom && scopeTier && (
+            <p className="text-xs text-muted-foreground">
+              Showing your own work only - we could not resolve your {scopeDegradedFrom} team, so
+              these cards are narrowed to you.
+            </p>
+          )}
+          <MyDayCustomizer layout={layout} onSave={save} isSaving={isSaving} />
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Today's Schedule - Main Column */}
+          {/* Main column: the cards the rep works, in their own order. */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Today's Schedule */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-5 w-5 text-blue-600" />
-                    <CardTitle>Today's Schedule</CardTitle>
-                    <Badge variant="secondary">{today.length} tasks</Badge>
-                  </div>
-                  <Button variant="outline" size="sm">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Task
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {today.length === 0 ? (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <CheckCircle2 className="h-12 w-12 mx-auto mb-3 text-green-500" />
-                    <p className="text-lg font-medium">All caught up!</p>
-                    <p className="text-sm">No tasks scheduled for today.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {today.map((activity) => (
-                      <ActivityItem
-                        key={activity.id}
-                        activity={activity}
-                        onComplete={handleCompleteActivity}
-                        onNavigate={handleCallCustomer}
-                      />
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Pipeline Alerts */}
-            {pipelineAlerts.length > 0 && (
-              <Card className="border-orange-200 bg-orange-50">
-                <CardHeader>
-                  <div className="flex items-center gap-2">
-                    <AlertTriangle className="h-5 w-5 text-orange-600" />
-                    <CardTitle className="text-orange-900">Pipeline Alerts</CardTitle>
-                    <Badge variant="secondary" className="bg-orange-200">
-                      {pipelineAlerts.length}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {pipelineAlerts.map((deal) => (
-                      <DealAlertItem key={deal.id} deal={deal} />
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Recent Wins */}
-            {recentWins.length > 0 && (
-              <Card className="border-green-200 bg-green-50">
-                <CardHeader>
-                  <div className="flex items-center gap-2">
-                    <Trophy className="h-5 w-5 text-green-600" />
-                    <CardTitle className="text-green-900">Recent Wins 🎉</CardTitle>
-                    <Badge variant="secondary" className="bg-green-200">
-                      {recentWins.length}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {recentWins.map((deal) => (
-                      <WinItem key={deal.id} deal={deal} />
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            {mainCards.map((card) => (
+              <MyDayCardBoundary key={card.id} title={card.title}>
+                {cardSlots[card.id] ?? null}
+              </MyDayCardBoundary>
+            ))}
           </div>
 
-          {/* Sidebar - Hot Leads & Upcoming */}
           <div className="space-y-6">
-            {/* Hot Leads */}
-            <Card className="border-purple-200 bg-purple-50">
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Sparkles className="h-5 w-5 text-purple-600" />
-                  <CardTitle className="text-purple-900">Hot Leads</CardTitle>
-                </div>
-                <p className="text-sm text-purple-700">AI-scored high-value opportunities</p>
-              </CardHeader>
-              <CardContent>
-                {hotLeads.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    No hot leads right now
-                  </p>
-                ) : (
-                  <div className="space-y-3">
-                    {hotLeads.map((lead) => (
-                      <HotLeadItem key={lead.id} lead={lead} />
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Upcoming (Next 3 Days) */}
-            {upcoming.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-5 w-5 text-gray-600" />
-                    <CardTitle>Coming Up</CardTitle>
-                  </div>
-                  <p className="text-sm text-muted-foreground">Next 3 days</p>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {upcoming.slice(0, 5).map((activity) => (
-                      <div
-                        key={activity.id}
-                        className="flex items-start gap-2 text-sm p-2 rounded-md hover:bg-gray-50 transition-colors"
-                      >
-                        <div className="mt-0.5">
-                          {activityTypeIcons[activity.type] && (
-                            <span className="text-gray-500">
-                              {activityTypeIcons[activity.type]({ className: 'h-4 w-4' })}
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">{activity.title}</p>
-                          {activity.customerName && (
-                            <p className="text-xs text-muted-foreground truncate">
-                              {activity.customerName}
-                            </p>
-                          )}
-                          <p className="text-xs text-muted-foreground">
-                            {activity.scheduledDate &&
-                              formatDistance(new Date(activity.scheduledDate), new Date(), {
-                                addSuffix: true,
-                              })}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            {sideCards.map((card) => (
+              <MyDayCardBoundary key={card.id} title={card.title}>
+                {cardSlots[card.id] ?? null}
+              </MyDayCardBoundary>
+            ))}
           </div>
         </div>
       </div>
@@ -424,7 +645,7 @@ function StatCard({
   color,
   subtitle,
 }: {
-  icon: any;
+  icon: ComponentType<{ className?: string }>;
   label: string;
   value: string;
   color: string;
@@ -567,9 +788,13 @@ function DealAlertItem({ deal }: { deal: Deal }) {
           {deal.staleReason}
         </p>
       )}
-      <Button size="sm" variant="outline" className="w-full mt-3">
-        <MessageSquare className="h-3 w-3 mr-1" /> Log Activity
-      </Button>
+      {/* UI-DEAD-BUTTONS-001: "Log Activity" had no handler and there is nowhere
+          for it to go from here - /activities is not a route, and the activity
+          composer lives on the deal record (CRM-008). The enclosing card already
+          navigates to that deal, so the button promised something more specific
+          than it could do while duplicating its parent's action, and a button
+          nested inside a clickable div is its own problem. Deleted rather than
+          repointed at the destination the card already has - AUDIT-016's rule. */}
     </div>
   );
 }

@@ -53,6 +53,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { format, formatDistance } from 'date-fns';
+import { bucketTabs, filterByBucket } from '@/lib/activity-timeline-filters';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 
@@ -84,11 +85,11 @@ interface ActivityTimelineProps {
 }
 
 export function ActivityTimeline({ businessRecordId, className }: ActivityTimelineProps) {
-  console.log('🔍 ActivityTimeline - businessRecordId:', businessRecordId);
-
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  // CRM-008 AC5: which type tab is selected. `all` until a rep picks one.
+  const [bucket, setBucket] = useState('all');
   const [activityToDelete, setActivityToDelete] = useState<string | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [activityToEdit, setActivityToEdit] = useState<Activity | null>(null);
@@ -112,20 +113,12 @@ export function ActivityTimeline({ businessRecordId, className }: ActivityTimeli
   } = useQuery<Activity[]>({
     queryKey: [`/api/companies/${businessRecordId}/activities`],
     queryFn: async () => {
-      console.log('🔍 ActivityTimeline - Fetching activities for company:', businessRecordId);
+      // The four console.logs that were here printed every fetched activity -
+      // subjects, call notes, email bodies - into the browser console on each
+      // render of a customer's timeline. They were left in from debugging the
+      // date fields, which were undefined for the reason the edge function's
+      // own comment now records: the endpoint answered snake_case.
       const data = await apiRequest(`/api/companies/${businessRecordId}/activities`);
-      console.log('🔍 ActivityTimeline - Fetched activities:', data);
-
-      // Log first activity for debugging date issues
-      if (Array.isArray(data) && data.length > 0) {
-        console.log('🔍 ActivityTimeline - First activity dates:', {
-          createdAt: data[0].createdAt,
-          scheduledDate: data[0].scheduledDate,
-          dueDate: data[0].dueDate,
-          followUpDate: data[0].followUpDate,
-        });
-      }
-
       return Array.isArray(data) ? data : [];
     },
     enabled: !!businessRecordId, // Only run query if businessRecordId is defined
@@ -219,8 +212,11 @@ export function ActivityTimeline({ businessRecordId, className }: ActivityTimeli
 
     // Add optional fields if they have values
     if (editFormData.direction) updateData.direction = editFormData.direction;
-    if (editFormData.callDuration) updateData.durationMinutes = parseInt(editFormData.callDuration);
-    if (editFormData.callOutcome) updateData.outcome = editFormData.callOutcome;
+    if (editFormData.callDuration) updateData.callDuration = parseInt(editFormData.callDuration);
+    // callOutcome has its own column. It used to be written into `outcome`,
+    // which the line below then overwrote, so editing a call's outcome did
+    // nothing and silently changed the general outcome on the way.
+    if (editFormData.callOutcome) updateData.callOutcome = editFormData.callOutcome;
     if (editFormData.outcome) updateData.outcome = editFormData.outcome;
     if (editFormData.nextAction) updateData.nextAction = editFormData.nextAction;
 
@@ -358,11 +354,41 @@ export function ActivityTimeline({ businessRecordId, className }: ActivityTimeli
     );
   }
 
+  const tabs = bucketTabs(activities);
+  const visible = filterByBucket(activities, bucket);
+
   return (
     <div className={`space-y-4 ${className}`}>
-      {activities.map((activity, index) => {
+      {/* AC5: type filter. Counts come off the same list the rows do, so a tab
+          can never advertise entries the timeline below will not show. */}
+      <div className="flex flex-wrap items-center gap-1" role="tablist" aria-label="Activity type">
+        {tabs.map((tab) => (
+          <Button
+            key={tab.id}
+            role="tab"
+            aria-selected={bucket === tab.id}
+            variant={bucket === tab.id ? 'secondary' : 'ghost'}
+            size="sm"
+            className="h-7 px-2 text-xs"
+            onClick={() => setBucket(tab.id)}
+          >
+            {tab.label}
+            <span className="ml-1 text-muted-foreground">{tab.count}</span>
+          </Button>
+        ))}
+      </div>
+
+      {visible.length === 0 && (
+        <Card>
+          <CardContent className="p-6 text-center text-sm text-gray-500">
+            No activities of this type on this record.
+          </CardContent>
+        </Card>
+      )}
+
+      {visible.map((activity, index) => {
         const { distance, formatted } = formatActivityTime(activity.createdAt);
-        const isLast = index === activities.length - 1;
+        const isLast = index === visible.length - 1;
 
         return (
           <div key={activity.id} className="relative">

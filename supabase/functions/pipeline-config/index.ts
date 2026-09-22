@@ -40,11 +40,14 @@ import { requireAuth, AuthError } from '../_shared/auth.ts';
 import { getDb } from '../_shared/db.ts';
 import { errorResponse, generateRequestId, jsonResponse } from '../_shared/http.ts';
 import { createLogger } from '../_shared/logger.ts';
+import { ROLE_LEVEL, RbacError, requireRoleLevel } from '../_shared/rbac.ts';
 import { flagsToStageType, stageTypeToFlags } from '../_shared/pipeline-stage-type.ts';
 import { dispatchWorkflowEventSafe } from '../_shared/workflow-dispatch.ts';
 import { createHandoff } from '../_shared/handoff-create.ts';
 import { handoffTypeFor } from '../_shared/sales-handoff.ts';
 import { resolveStage, type CanonicalStage } from '../_shared/canonical-stage.ts';
+import { syncRenewalOutcomeFromDeal } from '../_shared/renewal-deal.ts';
+import { completionOf } from '../_shared/playbook.ts';
 
 const log = createLogger('pipeline-config');
 
@@ -168,6 +171,44 @@ export default async function handler(req: Request) {
     const ctx = await requireAuth(req);
     const db = getDb();
 
+    /**
+     * SEC-EDGE-001: the stage vocabulary is the board every rep works on.
+     *
+     * A template or stage write changes what the deals board looks like for the
+     * whole tenant - renaming a stage, changing its default probability (which
+     * COP-M07 made the forecast weighting), flipping include_in_forecast, or
+     * deleting one - and none of it was gated, so any authenticated member
+     * could rebuild the pipeline for everybody. `/pipeline-config` is minLevel
+     * 4 in navigation-permissions, so MANAGER mirrors the page.
+     *
+     * THE DEAL BRANCHES ARE DELIBERATELY NOT GATED. `/deals/:id/move` and
+     * `/deals/:id/transition` are what a rep does all day on that board, and
+     * this function is where they land - gating the FILE would have taken drag
+     * and drop with it. That is the whole reason the gate goes on the branch
+     * (SEC-EDGE-001), and the reads stay open for the same reason: a rep has to
+     * fetch the stages to render the columns.
+     */
+    const requireBoardAdmin = () => {
+      requireRoleLevel(ctx, ROLE_LEVEL.MANAGER);
+    };
+    const denyBoardAdmin = (err: unknown) => {
+      // Only a role refusal answers 403; anything else is rethrown so a
+      // database outage is not reported as an insufficient role.
+      if (err instanceof RbacError) {
+        return jsonResponse(
+          {
+            message: 'Changing the pipeline configuration requires a manager role',
+            code: 'INSUFFICIENT_ROLE',
+            details: err.details,
+          },
+          403,
+          req,
+          requestId,
+        );
+      }
+      throw err;
+    };
+
     // ─── GET /templates ─────────────────────────────────────────────────────
     if (path === '/templates' && method === 'GET') {
       const { data, error } = await db
@@ -189,6 +230,11 @@ export default async function handler(req: Request) {
 
     // ─── POST /templates ────────────────────────────────────────────────────
     if (path === '/templates' && method === 'POST') {
+      try {
+        requireBoardAdmin();
+      } catch (err) {
+        return denyBoardAdmin(err);
+      }
       const body = await req.json().catch(() => null);
       if (!body) {
         return errorResponse(400, 'Invalid JSON body', req, { code: 'INVALID_JSON', requestId });
@@ -319,6 +365,11 @@ export default async function handler(req: Request) {
 
     // ─── PUT /templates/:id ─────────────────────────────────────────────────
     if (tplGet && method === 'PUT') {
+      try {
+        requireBoardAdmin();
+      } catch (err) {
+        return denyBoardAdmin(err);
+      }
       const id = tplGet[1];
       const body = await req.json().catch(() => null);
       if (!body) {
@@ -383,6 +434,11 @@ export default async function handler(req: Request) {
 
     // ─── DELETE /templates/:id (soft delete) ────────────────────────────────
     if (tplGet && method === 'DELETE') {
+      try {
+        requireBoardAdmin();
+      } catch (err) {
+        return denyBoardAdmin(err);
+      }
       const id = tplGet[1];
 
       // Guard: refuse if any active deals use it.
@@ -458,6 +514,11 @@ export default async function handler(req: Request) {
     // ─── POST /templates/:id/clone ──────────────────────────────────────────
     const tplClone = path.match(/^\/templates\/([^/]+)\/clone$/);
     if (tplClone && method === 'POST') {
+      try {
+        requireBoardAdmin();
+      } catch (err) {
+        return denyBoardAdmin(err);
+      }
       const id = tplClone[1];
       const body = await req.json().catch(() => null);
       const newName = body?.name as string | undefined;
@@ -504,6 +565,11 @@ export default async function handler(req: Request) {
     // Reorder path must be checked BEFORE the :id pattern — /stages/reorder
     // would otherwise match the generic GET.
     if (path === '/stages/reorder' && method === 'PUT') {
+      try {
+        requireBoardAdmin();
+      } catch (err) {
+        return denyBoardAdmin(err);
+      }
       const body = await req.json().catch(() => null);
       if (!body || !Array.isArray(body.stages)) {
         return errorResponse(400, 'Stages array is required', req, {
@@ -553,6 +619,11 @@ export default async function handler(req: Request) {
 
     // ─── POST /stages ───────────────────────────────────────────────────────
     if (path === '/stages' && method === 'POST') {
+      try {
+        requireBoardAdmin();
+      } catch (err) {
+        return denyBoardAdmin(err);
+      }
       const body = await req.json().catch(() => null);
       if (!body) {
         return errorResponse(400, 'Invalid JSON body', req, {
@@ -584,6 +655,11 @@ export default async function handler(req: Request) {
 
     // ─── PUT /stages/:id ────────────────────────────────────────────────────
     if (stagesList && method === 'PUT') {
+      try {
+        requireBoardAdmin();
+      } catch (err) {
+        return denyBoardAdmin(err);
+      }
       const id = stagesList[1];
       const body = await req.json().catch(() => null);
       if (!body) {
@@ -619,6 +695,11 @@ export default async function handler(req: Request) {
 
     // ─── DELETE /stages/:id ─────────────────────────────────────────────────
     if (stagesList && method === 'DELETE') {
+      try {
+        requireBoardAdmin();
+      } catch (err) {
+        return denyBoardAdmin(err);
+      }
       const id = stagesList[1];
 
       const { count, error: countErr } = await db
@@ -722,6 +803,60 @@ export default async function handler(req: Request) {
       const fromStageId: string | null = deal.stage_id ?? null;
       const fromStage = resolve(fromStageId);
 
+      // COP-B13 AC4: a playbook an admin marked as gating must be complete
+      // before the deal leaves the stage that triggered it.
+      //
+      // CHECKED BEFORE THE UPDATE, not after: a gate that reports a failure
+      // once the move has already happened is not a gate. Best-effort on the
+      // READ - if the playbook tables are unreachable the move proceeds, since
+      // a discovery checklist must not be able to freeze a pipeline - but a
+      // gate that DOES resolve and is incomplete refuses the move.
+      try {
+        const { data: gating } = await db
+          .from('sales_playbooks')
+          .select('id, name, questions')
+          .eq('tenant_id', ctx.tenantId)
+          .eq('is_active', true)
+          .eq('gates_stage_advance', true)
+          .eq('applies_to', 'deal')
+          .eq('trigger_stage_id', fromStageId ?? '');
+
+        const gatingPlaybooks = (gating ?? []) as Array<Record<string, any>>;
+        if (gatingPlaybooks.length > 0 && !toStage?.is_closed_lost) {
+          const { data: runs } = await db
+            .from('sales_playbook_runs')
+            .select('playbook_id, answers')
+            .eq('tenant_id', ctx.tenantId)
+            .eq('parent_type', 'deal')
+            .eq('parent_id', dealId);
+          const answersByPlaybook = new Map(
+            ((runs ?? []) as Array<Record<string, any>>).map((r) => [
+              r.playbook_id,
+              r.answers ?? {},
+            ]),
+          );
+
+          const blocking = gatingPlaybooks.filter(
+            (p) => !completionOf(p.questions ?? [], answersByPlaybook.get(p.id) ?? {}).isComplete,
+          );
+          if (blocking.length > 0) {
+            return errorResponse(
+              409,
+              `Finish ${blocking.map((p) => p.name).join(' and ')} before moving this deal on.`,
+              req,
+              {
+                code: 'PLAYBOOK_INCOMPLETE',
+                details: { playbooks: blocking.map((p) => ({ id: p.id, name: p.name })) },
+                requestId,
+              },
+            );
+          }
+        }
+      } catch (err) {
+        // A gate that cannot be read is not a gate that blocks.
+        log.error?.('playbook gate check failed', { err: String(err), requestId });
+      }
+
       // deno-lint-ignore no-explicit-any
       const patch: Record<string, any> = {
         stage_id: toStageId,
@@ -753,6 +888,52 @@ export default async function handler(req: Request) {
           details: updateError,
           requestId,
         });
+      }
+
+      // COP-B13 AC5: entering a stage starts the playbooks bound to it, so the
+      // discovery questions are already open when the rep gets to the record.
+      // Idempotent through the run's own (tenant, playbook, record) unique
+      // constraint, so re-entering a stage resumes rather than wiping answers.
+      try {
+        const { data: triggered } = await db
+          .from('sales_playbooks')
+          .select('id')
+          .eq('tenant_id', ctx.tenantId)
+          .eq('is_active', true)
+          .eq('applies_to', 'deal')
+          .eq('trigger_stage_id', toStageId);
+        const rows = ((triggered ?? []) as Array<Record<string, any>>).map((p) => ({
+          tenant_id: ctx.tenantId,
+          playbook_id: p.id,
+          parent_type: 'deal',
+          parent_id: dealId,
+          started_by: ctx.userId,
+        }));
+        if (rows.length > 0) {
+          // The surrounding try/catch cannot see this: PostgREST returns
+          // { error } rather than throwing, so a failed enrolment was logged
+          // as a success and the rep got no playbook on a stage change.
+          const { error: enrolError } = await db.from('sales_playbook_runs').upsert(rows, {
+            onConflict: 'tenant_id,playbook_id,parent_type,parent_id',
+            ignoreDuplicates: true,
+          });
+          if (enrolError) {
+            log.error?.('playbook enrolment failed', {
+              err: enrolError.message,
+              dealId,
+              requestId,
+            });
+          }
+        }
+      } catch (err) {
+        log.error?.('playbook stage trigger failed', { err: String(err), requestId });
+      }
+
+      // COP-M06: closing a renewal deal IS the renewal's outcome. This is the
+      // endpoint the board and the deal page actually move deals with, so
+      // wiring only PATCH /deals/:id would have recorded an outcome for nobody.
+      if (patch.status === 'won' || patch.status === 'lost') {
+        await syncRenewalOutcomeFromDeal(db, ctx.tenantId, updated);
       }
 
       // Stage history (references canonical pipeline_stages ids).

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Palette, Mail, Eye, Settings, Sparkles, Check, X } from 'lucide-react';
+import { Palette, Eye, Settings, Sparkles, Check, X } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 
@@ -73,25 +73,42 @@ export default function WhiteLabelDashboard() {
     },
   });
 
-  // Update form data when config loads
-  useState(() => {
-    if (config) {
-      setFormData({
-        companyName: config.companyName || '',
-        companyTagline: config.companyTagline || '',
-        logoUrl: config.logoUrl || '',
-        colorPrimary: config.colorPrimary || '#6366f1',
-        colorSecondary: config.colorSecondary || '#8b5cf6',
-        colorAccent: config.colorAccent || '#ec4899',
-        welcomeTitle: config.welcomeTitle || '',
-        welcomeMessage: config.welcomeMessage || '',
-        supportEmail: config.supportEmail || '',
-        supportPhone: config.supportPhone || '',
-        customDomain: config.customDomain || '',
-        features: config.features || formData.features,
-      });
-    }
-  });
+  /**
+   * Load the saved configuration into the form once it arrives.
+   *
+   * This was `useState(() => { ... })`, which is not an effect: the initializer
+   * runs ONCE, during the first render, when the query has not resolved and
+   * `config` is still undefined. So the `if (config)` never fired, the form kept
+   * its blank defaults whatever the tenant had saved, and pressing Save wrote
+   * those blanks plus the three placeholder colours over the real branding - the
+   * edge function's PUT passes empty strings straight through to the column.
+   *
+   * Hydrating only on the FIRST config to arrive matters as much as hydrating at
+   * all: a plain dependency on `config` would re-run on every refetch and throw
+   * away whatever the user had typed since.
+   */
+  const hydrated = useRef(false);
+  useEffect(() => {
+    if (!config || hydrated.current) return;
+    hydrated.current = true;
+    setFormData((current) => ({
+      companyName: config.companyName || '',
+      companyTagline: config.companyTagline || '',
+      logoUrl: config.logoUrl || '',
+      colorPrimary: config.colorPrimary || '#6366f1',
+      colorSecondary: config.colorSecondary || '#8b5cf6',
+      colorAccent: config.colorAccent || '#ec4899',
+      welcomeTitle: config.welcomeTitle || '',
+      welcomeMessage: config.welcomeMessage || '',
+      supportEmail: config.supportEmail || '',
+      supportPhone: config.supportPhone || '',
+      customDomain: config.customDomain || '',
+      // `features` is jsonb and a stored row may carry only some of the five
+      // keys, so merge over the defaults rather than replacing them - a missing
+      // key would otherwise render its Switch as undefined/uncontrolled.
+      features: { ...current.features, ...(config.features ?? {}) },
+    }));
+  }, [config]);
 
   const handleSave = () => {
     updateMutation.mutate(formData);

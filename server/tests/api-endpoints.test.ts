@@ -35,13 +35,9 @@ const createTestApp = async () => {
     next();
   });
 
-  const [aiRoutes, taskRoutes] = await Promise.all([
-    import('../routes/ai-routes-simple').then((m) => m.default),
-    import('../routes/task-routes').then((m) => m.default),
-  ]);
+  const aiRoutes = await import('../routes/ai-routes-simple').then((m) => m.default);
 
   app.use('/api/ai', aiRoutes);
-  app.use('/api/tasks', taskRoutes);
 
   return app;
 };
@@ -108,258 +104,44 @@ describe('Motion AI API Endpoints', () => {
   // client tree called /api/calendar. Tests that pin a mock's shape go with it;
   // keeping them would have meant keeping the mock to satisfy them.
 
-  describe('Task Routes', () => {
-    describe('GET /api/tasks', () => {
-      test('should return tasks list', async () => {
-        const response = await request(app).get('/api/tasks').expect(200);
-
-        expect(response.body).toHaveProperty('tasks');
-        expect(response.body).toHaveProperty('total');
-        expect(response.body).toHaveProperty('limit');
-        expect(response.body).toHaveProperty('offset');
-        expect(Array.isArray(response.body.tasks)).toBe(true);
-      });
-
-      test('should support filtering by status', async () => {
-        const response = await request(app)
-          .get('/api/tasks')
-          .query({ status: 'pending' })
-          .expect(200);
-
-        expect(response.body).toHaveProperty('tasks');
-        expect(Array.isArray(response.body.tasks)).toBe(true);
-      });
-
-      test('should support filtering by priority', async () => {
-        const response = await request(app)
-          .get('/api/tasks')
-          .query({ priority: 'high' })
-          .expect(200);
-
-        expect(response.body).toHaveProperty('tasks');
-      });
-
-      test('should support pagination', async () => {
-        const response = await request(app)
-          .get('/api/tasks')
-          .query({ limit: 10, offset: 0 })
-          .expect(200);
-
-        expect(response.body).toHaveProperty('limit', 10);
-        expect(response.body).toHaveProperty('offset', 0);
-      });
-    });
-
-    describe('POST /api/tasks', () => {
-      test('should create new task', async () => {
-        const taskData = {
-          title: 'Test Task',
-          description: 'Test task description',
-          priority: 'medium',
-          estimatedDuration: 60,
-        };
-
-        const response = await request(app).post('/api/tasks').send(taskData).expect(200);
-
-        expect(response.body).toHaveProperty('id');
-        expect(response.body).toHaveProperty('title', 'Test Task');
-        expect(response.body).toHaveProperty('priority', 'medium');
-        expect(response.body).toHaveProperty('status', 'pending');
-        expect(response.body).toHaveProperty('aiPriorityScore');
-        expect(response.body).toHaveProperty('aiComplexityScore');
-      });
-
-      test('should validate required fields', async () => {
-        const response = await request(app).post('/api/tasks').send({}).expect(400);
-
-        expect(response.body).toHaveProperty('error');
-      });
-
-      test('should set default values', async () => {
-        const taskData = {
-          title: 'Minimal Task',
-        };
-
-        const response = await request(app).post('/api/tasks').send(taskData).expect(200);
-
-        expect(response.body).toHaveProperty('status', 'pending');
-        expect(response.body).toHaveProperty('priority', 'medium');
-        expect(response.body).toHaveProperty('estimatedDuration', 30);
-      });
-    });
-
-    describe('POST /api/tasks/schedule', () => {
-      test('should schedule tasks with AI', async () => {
-        const scheduleData = {
-          taskIds: ['task-1', 'task-2'],
-          startDate: '2025-09-26T00:00:00Z',
-          endDate: '2025-09-30T23:59:59Z',
-          preferences: {
-            workHoursStart: '09:00',
-            workHoursEnd: '17:00',
-          },
-        };
-
-        const response = await request(app)
-          .post('/api/tasks/schedule')
-          .send(scheduleData)
-          .expect(200);
-
-        expect(response.body).toHaveProperty('scheduledTasks');
-        expect(response.body).toHaveProperty('unscheduledTasks');
-        expect(response.body).toHaveProperty('optimizationInsights');
-        expect(response.body).toHaveProperty('totalScheduledDuration');
-        expect(response.body).toHaveProperty('utilizationPercentage');
-
-        expect(Array.isArray(response.body.scheduledTasks)).toBe(true);
-        expect(Array.isArray(response.body.unscheduledTasks)).toBe(true);
-        expect(Array.isArray(response.body.optimizationInsights)).toBe(true);
-      });
-
-      test('should validate required scheduling parameters', async () => {
-        const response = await request(app).post('/api/tasks/schedule').send({}).expect(400);
-
-        expect(response.body).toHaveProperty('error');
-      });
-
-      test('should handle empty task list', async () => {
-        const scheduleData = {
-          taskIds: [],
-          startDate: '2025-09-26T00:00:00Z',
-          endDate: '2025-09-30T23:59:59Z',
-        };
-
-        const response = await request(app)
-          .post('/api/tasks/schedule')
-          .send(scheduleData)
-          .expect(200);
-
-        expect(response.body.scheduledTasks).toHaveLength(0);
-        expect(response.body.unscheduledTasks).toHaveLength(0);
-      });
-    });
-
-    describe('GET /api/tasks/categories', () => {
-      test('should return task categories', async () => {
-        const response = await request(app).get('/api/tasks/categories').expect(200);
-
-        expect(Array.isArray(response.body)).toBe(true);
-
-        if (response.body.length > 0) {
-          const category = response.body[0];
-          expect(category).toHaveProperty('id');
-          expect(category).toHaveProperty('name');
-          expect(category).toHaveProperty('color');
-          expect(category).toHaveProperty('icon');
-        }
-      });
-    });
-
-    describe('GET /api/tasks/suggestions', () => {
-      test('should return AI task suggestions', async () => {
-        const response = await request(app).get('/api/tasks/suggestions').expect(200);
-
-        expect(Array.isArray(response.body)).toBe(true);
-
-        if (response.body.length > 0) {
-          const suggestion = response.body[0];
-          expect(suggestion).toHaveProperty('id');
-          expect(suggestion).toHaveProperty('suggestedTask');
-          expect(suggestion).toHaveProperty('suggestionReason');
-          expect(suggestion).toHaveProperty('confidenceScore');
-          expect(suggestion).toHaveProperty('status');
-        }
-      });
-    });
-
-    describe('POST /api/tasks/suggestions/:suggestionId/accept', () => {
-      test('should accept task suggestion', async () => {
-        const response = await request(app)
-          .post('/api/tasks/suggestions/suggestion-1/accept')
-          .expect(200);
-
-        expect(response.body).toHaveProperty('success', true);
-        expect(response.body).toHaveProperty('createdTask');
-        expect(response.body).toHaveProperty('suggestionId');
-        expect(response.body).toHaveProperty('status', 'accepted');
-      });
-    });
-
-    describe('POST /api/tasks/:taskId/time-entry', () => {
-      test('should start time tracking', async () => {
-        const response = await request(app)
-          .post('/api/tasks/task-1/time-entry')
-          .send({ action: 'start' })
-          .expect(200);
-
-        expect(response.body).toHaveProperty('id');
-        expect(response.body).toHaveProperty('taskId', 'task-1');
-        expect(response.body).toHaveProperty('action', 'start');
-        expect(response.body).toHaveProperty('timestamp');
-      });
-
-      test('should stop time tracking', async () => {
-        const response = await request(app)
-          .post('/api/tasks/task-1/time-entry')
-          .send({ action: 'stop' })
-          .expect(200);
-
-        expect(response.body).toHaveProperty('action', 'stop');
-      });
-
-      test('should validate action parameter', async () => {
-        const response = await request(app)
-          .post('/api/tasks/task-1/time-entry')
-          .send({ action: 'invalid' })
-          .expect(400);
-
-        expect(response.body).toHaveProperty('error');
-      });
-    });
-  });
+  // server/routes/task-routes.ts is deleted, and the tests that exercised it go
+  // with it - the same call the calendar note above records.
+  //
+  // It was 452 lines of "Mock tasks data" returning hardcoded suggestions,
+  // categories and time entries. It was registered NOWHERE: the only import in
+  // the tree was this file's, so the suite was the sole thing keeping it
+  // reachable, and every assertion here pinned a mock's shape to itself. That
+  // is worse than no coverage, because it makes dead code look tested.
+  //
+  // /api/tasks is proxied to supabase/functions/tasks, which is a strict
+  // superset: it serves categories, schedule and suggestions like this one, and
+  // also bulk, stats, comments, time-entries, and the timer - none of which the
+  // Express copy had. Deleting it is safe by the PROD-008c test (check the edge
+  // function covers the same endpoints first), and 6 TypeScript errors went
+  // with it, all of them `req.user` reads in a router nothing mounted.
 
   describe('Error Handling', () => {
     test('should handle 404 for non-existent endpoints', async () => {
-      const response = await request(app).get('/api/non-existent').expect(404);
+      await request(app).get('/api/non-existent').expect(404);
     });
 
-    test('should handle malformed JSON', async () => {
-      const response = await request(app).post('/api/tasks').send('invalid json').expect(400);
-    });
-
-    test('should handle large request payloads gracefully', async () => {
-      const largeData = {
-        title: 'A'.repeat(10000), // Very long title
-        description: 'B'.repeat(50000), // Very long description
-      };
-
-      const response = await request(app).post('/api/tasks').send(largeData);
-
-      // Should either accept or reject gracefully, not crash
-      expect([200, 400, 413]).toContain(response.status);
-    });
+    // The other two tests here posted to /api/tasks to exercise express.json()
+    // and the payload limit. Both are properties of the middleware rather than
+    // of any router, and both went with the mock they were aimed at.
   });
 
-  describe('Performance Tests', () => {
-    test('should handle concurrent requests', async () => {
-      const requests = Array.from({ length: 10 }, () => request(app).get('/api/tasks'));
-
-      const responses = await Promise.all(requests);
-
-      responses.forEach((response) => {
-        expect(response.status).toBe(200);
-      });
-    });
-
-    test('should respond within acceptable time limits', async () => {
-      const startTime = Date.now();
-
-      await request(app).get('/api/tasks').expect(200);
-
-      const responseTime = Date.now() - startTime;
-      expect(responseTime).toBeLessThan(1000); // Should respond within 1 second
-    });
-  });
+  // The "Performance Tests" block is gone, and it is worth saying what it was
+  // measuring: ten concurrent GETs and one timed GET against /api/tasks, which
+  // returned a hardcoded array. So it asserted that an in-memory literal can be
+  // served in under a second.
+  //
+  // IT WAS ALSO THE FLAKE. `expect(responseTime).toBeLessThan(1000)` is a
+  // wall-clock budget on a shared container running the whole suite in
+  // parallel; a full run failed once in seven with a single unattributed
+  // failure, and this is the only assertion in the tree that can do that. A
+  // timing budget belongs in scripts/bench-crm-lists.mjs, which measures real
+  // queries against a seeded database and says what it does not cover - not in
+  // a unit suite, and never against a fixture.
 });
 
 // Test data generators

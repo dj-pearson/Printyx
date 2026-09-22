@@ -45,10 +45,25 @@ Every file is idempotent: each `cron.schedule(...)` call is preceded by a condit
 | `billing-meter-aggregate-daily`   | billing.sql           | `0 4 * * *`    | HTTP | POST `/billing/meters/aggregate-daily`                                       |
 | `contract-renewal-notifications`  | contract-renewals.sql | `0 6 * * *`    | HTTP | POST `/contracts/renewals/send-notices`                                      |
 | `lease-payment-due-notices`       | leases.sql            | `0 7 * * *`    | HTTP | POST `/leases/payments/send-due-notices`                                     |
-| `mileage-auto-generate-nightly`   | mileage.sql           | `0 5 * * *`    | HTTP | POST `/field-service/mileage/auto-generate`                                  |
+| `mileage-auto-generate-nightly`   | mileage.sql           | `0 5 * * *`    | HTTP | POST `/field-service/auto-generate`                                          |
 | `scheduled-reports-dispatch`      | reports.sql           | `*/15 * * * *` | HTTP | POST `/reports/schedule/dispatch-due` (reports edge function pending US-023) |
+| `booking-reminders`               | booking-reminders.sql | `15 * * * *`   | HTTP | POST `/booking-pages/reminders/sweep` (COP-B14 AC6)                          |
+| `booking-attempts-prune`          | booking-reminders.sql | `40 3 * * *`   | SQL  | Delete `public_booking_attempts` older than 2 days (COP-B14 AC4)             |
+| `opportunity-radar-scan`          | opportunity-radar.sql | `20 4 * * *`   | HTTP | POST `/opportunity-radar/scan/all` — every tenant's installed base (COP-B04) |
+| `deal-desk-sla-check`             | deal-desk-sla.sql     | `35 * * * *`   | HTTP | POST `/deal-desk/check-sla/all` — approval SLA breaches, hourly              |
+| `platform-cs-health-scores`       | platform-cs.sql       | `50 3 * * *`   | HTTP | POST `/platform-cs/health-scores/calculate-all` — rescore every tenant account         |
+| `suggested-tasks-sweep`           | suggested-tasks.sql   | `50 4 * * *`   | HTTP | POST `/suggested-tasks/sweep/all` — every tenant's suggestions (COP-B03)              |
 
-**Total: 16 jobs.**
+**Total: 22 jobs.**
+
+<!--
+  That number said 16 while the table listed 19. It is asserted now rather than
+  maintained by hand: `server/tests/unit/deal-desk-sla-schedule.test.ts` checks
+  that the jobs `cron.schedule`d across this directory, the rows in the table
+  above, and this total are all the same set and the same size. A count nobody
+  checks drifts, and this file is the one place that answers "what runs on a
+  schedule here".
+-->
 
 Times are UTC. Retention jobs are clustered in the 02:00–03:00 UTC window because that's the low-traffic quiet period for our customer base.
 

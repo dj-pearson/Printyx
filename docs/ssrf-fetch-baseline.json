@@ -1,0 +1,29 @@
+{
+  "note": "SEC-002. Outbound fetches in edge functions whose URL is not a constant. An edge function runs inside the deployment's network with the service-role key in scope, so a request to a URL a caller or a tenant chose is a request from there to anywhere the cluster can reach - and the ones that hand the response back are a read primitive, not a blind request. The control is supabase/functions/_shared/safe-fetch.ts: scheme allowlist, private and reserved ranges, DNS resolution (what stops a public hostname pointing at 127.0.0.1), a timeout, all re-run on every redirect hop. Use safeFetch, or assertSafeUrl when the caller must OBSERVE a redirect rather than follow one.\n\nTHIS IS A WORKLIST, NOT SETTLED DEBT, and the entries are not one problem. Roughly three groups. (1) A TENANT-CONFIGURED ENDPOINT: manufacturer-adapters' apiEndpoint, the WordPress and Ghost CMS base URLs, blog-platform-api's and blog-serp's stored hook URLs, manufacturer-orders' api_endpoint. Someone with admin rights typed these, so the blast radius is smaller than a request body - and a role is not a network boundary, which is the whole finding in the two that were fixed this round. (2) A URL FOUND IN CONTENT: blog-prepublish-qa's link checker and the proposals PDF image fetches walk URLs out of a document. (3) A PROVIDER CALL the walk could not prove constant - calendar-oauth's provider.tokenUrl comes from a table this repo seeds, dataforseo's base is a parameter.\n\nFIXED IN THE ROUND THAT ADDED THIS GUARD: supabase/functions/seo/ (the URL came straight off the request body and the endpoint returned the response headers and the redirect chain) and supabase/functions/webhooks/ (the test delivery stored response_body in webhook_logs, where the caller can read it). Those two were the read primitives; the rest are requests.",
+  "entries": [
+    "supabase/functions/_shared/blog/cms/ghost.ts::url",
+    "supabase/functions/_shared/blog/cms/wordpress.ts::url",
+    "supabase/functions/_shared/blog/keyword/dataforseo.ts::`${base}${path}`",
+    "supabase/functions/_shared/manufacturer-adapters.ts::`${this.apiEndpoint}/api/devices/${deviceId}/meters`",
+    "supabase/functions/_shared/manufacturer-adapters.ts::`${this.apiEndpoint}/api/devices`",
+    "supabase/functions/_shared/manufacturer-adapters.ts::`${this.apiEndpoint}/api/login`",
+    "supabase/functions/_shared/manufacturer-adapters.ts::`${this.apiEndpoint}/auth/validate`",
+    "supabase/functions/_shared/manufacturer-adapters.ts::`${this.apiEndpoint}/auth`",
+    "supabase/functions/_shared/manufacturer-adapters.ts::`${this.apiEndpoint}/devices/${deviceId}/metrics`",
+    "supabase/functions/_shared/manufacturer-adapters.ts::`${this.apiEndpoint}/devices/${deviceId}/usage`",
+    "supabase/functions/_shared/manufacturer-adapters.ts::`${this.apiEndpoint}/devices`",
+    "supabase/functions/_shared/manufacturer-adapters.ts::`${this.apiEndpoint}/oauth/token`",
+    "supabase/functions/blog-platform-api/index.ts::String(hook.url)",
+    "supabase/functions/blog-prepublish-qa/index.ts::raw",
+    "supabase/functions/blog-serp/index.ts::o.url",
+    "supabase/functions/calendar-oauth/index.ts::provider.tokenUrl",
+    "supabase/functions/manufacturer-orders/handlers/connections.ts::String(conn.api_endpoint)",
+    "supabase/functions/proposals/_html-to-pdf.ts::src",
+    "supabase/functions/proposals/_pdf.ts::url",
+    "supabase/functions/sso/index.ts::String(provider.oidc_token_url)",
+    "supabase/functions/sso/index.ts::String(provider.oidc_userinfo_url)",
+    "supabase/functions/sso/index.ts::String(provider.saml_sso_url)",
+    "supabase/functions/sso/index.ts::wk",
+    "supabase/functions/voice-ticket-close/index.ts::args.audioUrl"
+  ]
+}

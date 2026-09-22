@@ -93,18 +93,73 @@ describe('the findings are recorded as findings', () => {
     ss.map((s) => `${d}/${s}`),
   );
 
-  it('has no deep shapes left in the baseline', () => {
-    // This used to assert at least 19 of them, which was an assertion about
-    // DEBT: equipment/:id/meter-readings was the worked example, and the rest
-    // were the same shape elsewhere. PA-052 and the ports after it closed every
-    // one, so the count is 0 and asserting a floor made the story's own success
-    // look like a regression.
-    //
-    // The guard that FINDS them is locked by the describe above, which is the
-    // part that has to survive. A new deep shape appearing here is not a silent
-    // pass either way - check:edge-coverage gates the baseline against growth.
-    expect(flat.filter((p) => p.includes('/:id/'))).toEqual([]);
+  /**
+   * The deep shapes currently in the baseline, BY NAME.
+   *
+   * This assertion has been wrong twice in opposite directions, and both times
+   * because it was a claim about DEBT rather than about a property. It first
+   * demanded at least 19 of them, so closing them made the story that closed
+   * them look like a regression; it was then relaxed to exactly zero, so
+   * PROD-008 widening the guard's corpus to the native client trees - which
+   * found three real ones - looked like a regression too.
+   *
+   * All three were paths only a native client calls, which is precisely what
+   * that widening exists to surface, and ALL THREE ARE NOW CLOSED - the list
+   * shrank rather than being relaxed, one entry at a time:
+   *   service-tickets/:id/attachments  round 110
+   *   proposals/:id/send               round 111
+   *   equipment/:id/service-history    round 115
+   *
+   * EMPTY IS NOT THE SAME AS RELAXED. The assertion below is unchanged and
+   * still bites: a deep shape appearing in the baseline fails until somebody
+   * examines it and puts it here. Listed rather than counted, and asserted in
+   * both directions, so it cannot rot into a pre-forgiveness for whatever is
+   * added next.
+   */
+  const KNOWN_DEEP_SHAPES: string[] = [];
+
+  it('the deep shapes in the baseline are exactly the ones that were examined', () => {
+    const deep = flat.filter((p) => p.includes('/:id/')).sort();
+    expect(deep).toEqual([...KNOWN_DEEP_SHAPES].sort());
     expect(flat.length).toBeGreaterThan(0);
+  });
+
+  it('every deep entry is a shape, not a bare word', () => {
+    // The property the guard actually owns: a deep finding names the whole path
+    // a caller uses, so the report says where the gap is rather than leaving a
+    // segment that could belong to any depth.
+    //
+    // With every deep shape closed this loop has nothing to iterate, so it is
+    // run over the real entries AND over the three that were closed - which are
+    // the exact strings the guard emitted - rather than being left to pass on
+    // an empty array. The mechanism that produces them is asserted separately
+    // against the script's source above.
+    const CLOSED_SHAPES = [
+      'service-tickets/:id/attachments',
+      'proposals/:id/send',
+      'equipment/:id/service-history',
+    ];
+    const entries = [...flat.filter((p) => p.includes('/:id/')), ...CLOSED_SHAPES];
+    expect(CLOSED_SHAPES.length).toBe(3);
+    // COUNTED INSIDE THE LOOP, not asserted about the array beside it. A floor
+    // on `entries.length` does not bind to the iteration: a mutant that walks
+    // an empty list instead still satisfies it, which is the vacuous pass this
+    // file's own note is about, one level in.
+    let checked = 0;
+    for (const entry of entries) {
+      checked += 1;
+      const segs = entry.split('/').slice(1);
+      expect({ entry, hasPlaceholder: segs.includes(':id') }).toEqual({
+        entry,
+        hasPlaceholder: true,
+      });
+      expect({ entry, literalLeaf: /^[a-z0-9][a-z0-9-]*$/.test(segs[segs.length - 1]) }).toEqual({
+        entry,
+        literalLeaf: true,
+      });
+    }
+    expect(checked).toBe(entries.length);
+    expect(checked).toBeGreaterThanOrEqual(CLOSED_SHAPES.length);
   });
 
   it('keeps the depth-1 entries alongside them in one list', () => {

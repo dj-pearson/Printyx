@@ -4,6 +4,7 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { buildSearchOr, COMPANY_LIST_SPEC, parseCrmListQuery } from '../_shared/crm-list-query.ts';
 import { applyUserScope, resolveScope } from '../_shared/scope.ts';
+import { toCamelShallow } from '../_shared/case.ts';
 
 /**
  * camelCase aliases for the companies columns the CRM surfaces read.
@@ -588,7 +589,9 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to create activity', details: error }, 500, req);
       }
 
-      return createCorsResponse(activity, 201, req);
+      // Same shape as the GET beside it, so a caller that reads the created row
+      // does not get a different spelling from the one it lists.
+      return createCorsResponse(toCamelShallow(activity), 201, req);
     }
 
     // GET /companies/:id/activities - Get company activities
@@ -607,7 +610,25 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to fetch activities' }, 500, req);
       }
 
-      return createCorsResponse(activities || [], 200, req);
+      /**
+       * CRM-008 AC5: the rows go out camelCase because that is what reads them.
+       *
+       * This was a bare `select('*')`, so every consumer got snake_case while
+       * ActivityTimeline (the lead and customer timelines) reads
+       * `activityType`, `createdAt`, `callDuration` and nine more camelCase
+       * keys. All of them resolved to undefined against live data, which does
+       * not look like a failure: the type Badge renders empty, the icon falls
+       * to the generic one, the call and email detail blocks never open, and
+       * every entry is stamped "Unknown time" - a timeline of blanks, not an
+       * error. The POST beside this writes an explicit snake_case column map
+       * and always worked, so activities were being stored correctly and
+       * displayed as nothing.
+       *
+       * SHALLOW on purpose: `related_records` and `attachments` are jsonb of
+       * arbitrary shape and a deep convert would rewrite the customer's own
+       * keys inside them.
+       */
+      return createCorsResponse((activities || []).map(toCamelShallow), 200, req);
     }
 
     // POST /companies/:id/contacts - Add contact to existing company

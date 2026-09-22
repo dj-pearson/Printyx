@@ -20,6 +20,21 @@ import {
   type DealStageRow,
 } from '../_shared/deal-stage.ts';
 import { applyUserScope, resolveScope } from '../_shared/scope.ts';
+import { summariseBulkWrite } from '../../../shared/bulk-result.ts';
+import {
+  buildDealFingerprint,
+  buildDealSummaryPrompt,
+  hasEnoughHistory,
+  MAX_TIMELINE_ENTRIES,
+  type DealSummaryEntry,
+} from '../_shared/deal-summary.ts';
+import {
+  GPT5_CONFIGS,
+  buildResponsesRequest,
+  extractResponseText,
+} from '../_shared/gpt5-prompts.ts';
+import { syncRenewalOutcomeFromDeal } from '../_shared/renewal-deal.ts';
+import { isMissingColumnError } from '../_shared/postgrest-errors.ts';
 
 /** The tenant's pipeline stages. Small table; read once per request. */
 async function loadStages(admin: any, tenantId: string): Promise<DealStageRow[]> {
@@ -217,6 +232,94 @@ async function fillDealFromInstalledBase(
   }
 }
 
+/**
+ * The deal and its timeline, in the shape the summary module wants. One read of
+ * each, because both the GET (staleness) and the POST (generation) need them.
+ */
+async function loadSummarySource(
+  admin: ReturnType<typeof createSupabaseServiceClient>,
+  tenantId: string,
+  dealId: string,
+): Promise<{ deal: Record<string, any>; entries: DealSummaryEntry[] } | null> {
+  const { data: deal } = await admin
+    .from('deals')
+    .select('*')
+    .eq('id', dealId)
+    .eq('tenant_id', tenantId)
+    .maybeSingle();
+  if (!deal) return null;
+
+  // Two sources, because the deal's history is written to two tables: calls,
+  // emails, meetings and stage changes land in deal_activities, and what the
+  // rep typed lands in crm_notes (CRMX-006). Summarising only the first would
+  // leave out the half a rep actually wrote.
+  //
+  // Both capped at the query, not in memory: a deal with 900 logged calls must
+  // not pull 900 rows over the wire to throw 860 of them away.
+  const [activityResult, noteResult] = await Promise.all([
+    admin
+      .from('deal_activities')
+      .select('id, type, subject, description, outcome, created_at')
+      .eq('deal_id', dealId)
+      .eq('tenant_id', tenantId)
+      .order('created_at', { ascending: false })
+      .limit(MAX_TIMELINE_ENTRIES),
+    admin
+      .from('crm_notes')
+      .select('id, body, created_at')
+      .eq('tenant_id', tenantId)
+      .eq('parent_type', 'deal')
+      .eq('parent_id', dealId)
+      .order('created_at', { ascending: false })
+      .limit(MAX_TIMELINE_ENTRIES),
+  ]);
+
+  const activities: DealSummaryEntry[] = (activityResult.data ?? []).map(
+    (r: Record<string, any>) => ({
+      id: r.id,
+      type: r.type,
+      subject: r.subject,
+      description: r.description,
+      outcome: r.outcome,
+      createdAt: r.created_at,
+    }),
+  );
+
+  const notes: DealSummaryEntry[] = (noteResult.data ?? []).map((r: Record<string, any>) => ({
+    id: r.id,
+    type: 'note',
+    description: r.body,
+    createdAt: r.created_at,
+  }));
+
+  // Merged newest-first, which is the order boundedTimeline expects. An undated
+  // row sorts last rather than jumping to the front of the story.
+  const entries = [...activities, ...notes].sort((a, b) =>
+    (b.createdAt ?? '').localeCompare(a.createdAt ?? ''),
+  );
+
+  return { deal, entries };
+}
+
+/** The deal fields the narrative and the fingerprint read, in camelCase. */
+function toSummaryDeal(deal: Record<string, any>, stageNames: Record<string, string>) {
+  return {
+    id: deal.id,
+    title: deal.title,
+    companyName: deal.company_name,
+    amount: deal.amount,
+    stage: stageNames[deal.stage_id] ?? null,
+    status: deal.status,
+    expectedCloseDate: deal.expected_close_date,
+    nextFollowUpDate: deal.next_follow_up_date,
+    lastActivityDate: deal.last_activity_date,
+    incumbentVendor: deal.incumbent_vendor,
+    forecastCategory: deal.forecast_category,
+    leaseBuyoutExposure: deal.lease_buyout_exposure,
+    dealMotion: deal.deal_motion,
+  };
+}
+
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
@@ -367,6 +470,222 @@ export default async function handler(req: Request) {
       }
 
       return createCorsResponse({ error: 'Method not allowed' }, 405, req);
+    }
+
+    // ─── /deals/:id/quotes (COP-B02) ───────────────────────────────────────
+    //
+    // The deal's own quotes. `proposals.deal_id` landed with COP-B02; before it
+    // this tab could not exist, because an account's newest proposal is not
+    // attributable to one of its deals the moment the account has two.
+    //
+    // Tolerates the column being absent: migration 0088 is committed and
+    // unapplied, and a deal record that 500s because one migration has not run
+    // is worse than one whose Quotes tab is empty.
+    if (dealId && subResource === 'quotes' && req.method === 'GET') {
+      const { data, error } = await admin
+        .from('proposals')
+        .select(
+          'id, proposal_number, title, status, total_amount, subtotal, discount_amount, discount_percentage, total_margin_percentage, valid_until, created_at, updated_at',
+        )
+        .eq('tenant_id', tenantId)
+        .eq('deal_id', dealId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        if (isMissingColumnError(error)) {
+          return createCorsResponse(
+            {
+              data: [],
+              unbacked: [
+                'Quotes cannot be linked to a deal on this database yet: migration 0088 adds proposals.deal_id and has not been applied.',
+              ],
+            },
+            200,
+            req,
+          );
+        }
+        console.error('Error fetching deal quotes:', error);
+        return createCorsResponse({ error: 'Failed to fetch quotes' }, 500, req);
+      }
+
+      return createCorsResponse(
+        {
+          data: (data ?? []).map((q: Record<string, any>) => ({
+            id: q.id,
+            proposalNumber: q.proposal_number,
+            title: q.title,
+            status: q.status,
+            totalAmount: q.total_amount,
+            subtotal: q.subtotal,
+            discountAmount: q.discount_amount,
+            discountPercentage: q.discount_percentage,
+            marginPercentage: q.total_margin_percentage,
+            validUntil: q.valid_until,
+            createdAt: q.created_at,
+          })),
+          unbacked: [],
+        },
+        200,
+        req,
+      );
+    }
+
+    // ─── /deals/:id/summary (COP-B11) ──────────────────────────────────────
+    //
+    // The AI narrative half of the insights panel. Two verbs on purpose:
+    //
+    //   GET  reads the cached summary and says whether it still describes the
+    //        deal as it stands. It NEVER generates. A GET that quietly called
+    //        an LLM would bill the tenant for every page view of a deal that
+    //        changed, which is the cost bound AC6 asks for.
+    //   POST generates and stores, when a rep asks for it.
+    //
+    // Refusing to generate is a normal outcome: a deal with no logged
+    // interaction has nothing to narrate, and a model handed six fields and no
+    // events writes fluent sales fiction (COP-I07).
+    if (dealId && subResource === 'summary') {
+      if (req.method !== 'GET' && req.method !== 'POST') {
+        return createCorsResponse({ error: 'Method not allowed' }, 405, req);
+      }
+
+      const source = await loadSummarySource(admin, tenantId, dealId);
+      if (!source) {
+        return createCorsResponse({ error: 'Deal not found' }, 404, req);
+      }
+
+      const stageNames = buildStageNameMap(await loadStages(admin, tenantId));
+      const summaryDeal = toSummaryDeal(source.deal, stageNames);
+      const fingerprint = buildDealFingerprint(summaryDeal, source.entries);
+      const enoughHistory = hasEnoughHistory(source.entries);
+
+      const { data: cached } = await admin
+        .from('deal_ai_summaries')
+        .select('summary, fingerprint, model, generated_at, source_entry_count')
+        .eq('tenant_id', tenantId)
+        .eq('deal_id', dealId)
+        .maybeSingle();
+
+      if (req.method === 'GET') {
+        return createCorsResponse(
+          {
+            summary: cached?.summary ?? null,
+            generatedAt: cached?.generated_at ?? null,
+            model: cached?.model ?? null,
+            sourceEntryCount: cached?.source_entry_count ?? null,
+            // Out of date rather than absent: the rep can still read what was
+            // written, knowing the deal has moved since.
+            stale: cached ? cached.fingerprint !== fingerprint : false,
+            canGenerate: enoughHistory,
+            entryCount: source.entries.length,
+          },
+          200,
+          req,
+        );
+      }
+
+      if (!enoughHistory) {
+        return createCorsResponse(
+          {
+            error: 'Nothing to summarise',
+            code: 'NO_INTERACTION_HISTORY',
+            detail:
+              'This deal has no logged activity. A summary written from the record alone would be invention, not a summary.',
+          },
+          422,
+          req,
+        );
+      }
+
+      const apiKey = Deno.env.get('OPENAI_API_KEY');
+      if (!apiKey) {
+        // 503, not 500: the request is well formed and works the moment the key
+        // is configured in this environment.
+        return createCorsResponse(
+          { error: 'Summary generation is not configured', code: 'LLM_NOT_CONFIGURED' },
+          503,
+          req,
+        );
+      }
+
+      // LEAD_ANALYSIS, not BUSINESS_ANALYTICS: gpt-5-mini at medium effort and
+      // medium verbosity. This is a 3-to-5 sentence recap of a timeline, and
+      // BUSINESS_ANALYTICS is gpt-5 at high/high - paying for deep reasoning and
+      // a long answer would work against both halves of AC6.
+      const config = GPT5_CONFIGS.LEAD_ANALYSIS;
+      let payload: any = null;
+      try {
+        const res = await fetch('https://api.openai.com/v1/responses', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(
+            buildResponsesRequest(buildDealSummaryPrompt(summaryDeal, source.entries), config),
+          ),
+        });
+        payload = await res.json().catch(() => null);
+        if (!res.ok) {
+          const message = payload?.error?.message || `OpenAI request failed (${res.status})`;
+          console.error('Error generating the deal summary:', message);
+          return createCorsResponse({ error: message, code: 'LLM_ERROR' }, 502, req);
+        }
+      } catch (err) {
+        console.error('Error calling the summary model:', err);
+        return createCorsResponse(
+          { error: 'Could not reach the summary model', code: 'LLM_UNREACHABLE' },
+          502,
+          req,
+        );
+      }
+
+      const text = extractResponseText(payload).trim();
+      if (!text) {
+        // An empty completion is not a summary. Storing it would replace a
+        // readable stale one with a blank.
+        return createCorsResponse(
+          { error: 'The model returned nothing', code: 'LLM_EMPTY' },
+          502,
+          req,
+        );
+      }
+
+      const row = {
+        tenant_id: tenantId,
+        deal_id: dealId,
+        summary: text,
+        fingerprint,
+        source_entry_count: source.entries.length,
+        model: config.model ?? null,
+        total_tokens: payload?.usage?.total_tokens ?? null,
+        generated_by: user.id,
+        generated_at: new Date().toISOString(),
+      };
+
+      const { error: writeError } = await admin
+        .from('deal_ai_summaries')
+        .upsert(row, { onConflict: 'tenant_id,deal_id' });
+
+      if (writeError) {
+        console.error('Error storing the deal summary:', writeError);
+        // The text is still returned: the rep asked a question and got an
+        // answer, and a cache write is not what they asked for.
+      }
+
+      return createCorsResponse(
+        {
+          summary: text,
+          generatedAt: row.generated_at,
+          model: row.model,
+          sourceEntryCount: source.entries.length,
+          stale: false,
+          canGenerate: true,
+          entryCount: source.entries.length,
+          cached: !writeError,
+        },
+        200,
+        req,
+      );
     }
 
     // ─── /deals/:id/equipment (COP-M05) ────────────────────────────────────
@@ -646,6 +965,11 @@ export default async function handler(req: Request) {
       ownerId: 'owner_id',
       customerId: 'customer_id',
       companyName: 'company_name',
+      // COP-I06: the recurring half of a copier deal. The column has existed
+      // since 0000 and was READ in four places and written by NOTHING, so the
+      // recurring side of every forecast was structurally empty - it was not
+      // in this map, so no PATCH could set it.
+      estimatedMonthlyValue: 'estimated_monthly_value',
       source: 'source',
       dealType: 'deal_type',
       lostReason: 'lost_reason',
@@ -661,6 +985,15 @@ export default async function handler(req: Request) {
       targetCpcBlack: 'target_cpc_black',
       targetCpcColor: 'target_cpc_color',
       replacesContractId: 'replaces_contract_id',
+      // CRM-008: the fields the record page's editable property groups expose.
+      // They are real columns and were read everywhere, but absent from this
+      // map - so a PATCH setting a next step or a contact answered 200 having
+      // changed nothing, which is the worst shape a write can take.
+      nextFollowUpDate: 'next_follow_up_date',
+      primaryContactName: 'primary_contact_name',
+      primaryContactEmail: 'primary_contact_email',
+      primaryContactPhone: 'primary_contact_phone',
+      productsInterested: 'products_interested',
     };
 
     if (req.method === 'POST' && dealId === 'bulk-update') {
@@ -694,12 +1027,35 @@ export default async function handler(req: Request) {
       if (ids.length === 0) {
         return createCorsResponse({ error: 'dealIds required' }, 400, req);
       }
-      const { error } = await admin.from('deals').delete().in('id', ids).eq('tenant_id', tenantId);
+      // The bulk-UPDATE branch two dozen lines above already measured what it
+      // touched (`.select('id')` then `data?.length`); this one reported the
+      // request back to the caller. Same file, same shape, opposite answer.
+      const { data: deleted, error } = await admin
+        .from('deals')
+        .delete()
+        .in('id', ids)
+        .eq('tenant_id', tenantId)
+        .select('id');
       if (error) {
         console.error('Error bulk-deleting deals:', error);
         return createCorsResponse({ error: 'Failed to bulk-delete deals' }, 500, req);
       }
-      return createCorsResponse({ success: true, deleted: ids.length }, 200, req);
+      const outcome = summariseBulkWrite(
+        ids,
+        (deleted ?? []).map((row: any) => row.id),
+        'deal',
+        'deleted',
+      );
+      return createCorsResponse(
+        {
+          success: true,
+          deleted: outcome.affectedCount,
+          notFound: outcome.notFound,
+          message: outcome.message,
+        },
+        200,
+        req,
+      );
     }
 
     // GET /deals - List deals
@@ -788,6 +1144,15 @@ export default async function handler(req: Request) {
     }
 
     // GET /deals/:id - Get single deal
+    // An unknown sub-resource answers 404 rather than the parent record.
+    // PA-020's rule: falling through to the row is what makes the NEXT missing
+    // branch invisible - a component mapping over an object renders an empty
+    // list and reports nothing, so the gap reads as "no data yet". Non-GET
+    // methods already reach the terminal refusal below.
+    if (req.method === 'GET' && dealId && subResource) {
+      return createCorsResponse({ error: `Unknown deal sub-resource: ${subResource}` }, 404, req);
+    }
+
     if (req.method === 'GET' && dealId) {
       // Select deal without FK joins to avoid schema cache errors
       const { data: deal, error } = await admin
@@ -856,7 +1221,77 @@ export default async function handler(req: Request) {
         console.error('Error loading the deal lease:', err);
       }
 
-      return createCorsResponse({ ...toDealResponse(deal, stageNames), contract, lease }, 200, req);
+      // COP-B11: contact coverage. The score treats single-threading as a risk
+      // and could not read it, because a deal carries one primary contact and
+      // the committee lives in crm_associations. Counted in both directions,
+      // because an association is written from whichever side made the link.
+      // Best-effort: a failure here costs one signal, not the page.
+      let contactCount: number | null = null;
+      try {
+        const { data: contactLinks } = await admin
+          .from('crm_associations')
+          .select('source_type, source_id, target_type, target_id')
+          .eq('tenant_id', tenantId)
+          .or(
+            `and(source_type.eq.deal,source_id.eq.${dealId},target_type.eq.contact),` +
+              `and(target_type.eq.deal,target_id.eq.${dealId},source_type.eq.contact)`,
+          );
+        const linked = new Set(
+          (contactLinks ?? []).map((l: Record<string, any>) =>
+            l.source_type === 'contact' ? l.source_id : l.target_id,
+          ),
+        );
+        // The primary contact is a person on the deal whether or not anybody
+        // associated them. Counted only when no association carries the deal,
+        // so a committee that already includes them is not inflated by one.
+        if (linked.size === 0 && (deal.primary_contact_email || deal.primary_contact_phone)) {
+          contactCount = 1;
+        } else {
+          contactCount = linked.size;
+        }
+      } catch (err) {
+        console.error('Error counting deal contacts:', err);
+      }
+
+      // COP-B11's last planned signal, now that COP-B02 has given a quote a
+      // deal to belong to. The deal's most recent LIVE quote - a rejected or
+      // superseded one is not what the deal is being sold at, and scoring the
+      // margin of a quote nobody is considering would be worse than scoring
+      // none. Best-effort, and tolerant of the unapplied migration.
+      let quoteMarginPct: number | null = null;
+      let quoteDiscountPct: number | null = null;
+      try {
+        const { data: quote, error: quoteError } = await admin
+          .from('proposals')
+          .select('total_margin_percentage, discount_percentage, status, created_at')
+          .eq('tenant_id', tenantId)
+          .eq('deal_id', dealId)
+          .not('status', 'in', '("rejected","expired","superseded")')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (!quoteError && quote) {
+          const margin = Number((quote as Record<string, any>).total_margin_percentage);
+          const discount = Number((quote as Record<string, any>).discount_percentage);
+          quoteMarginPct = Number.isFinite(margin) ? margin : null;
+          quoteDiscountPct = Number.isFinite(discount) ? discount : null;
+        }
+      } catch (err) {
+        console.error('Error reading the deal quote margin:', err);
+      }
+
+      return createCorsResponse(
+        {
+          ...toDealResponse(deal, stageNames),
+          contract,
+          lease,
+          contactCount,
+          quoteMarginPct,
+          quoteDiscountPct,
+        },
+        200,
+        req,
+      );
     }
 
     // POST /deals - Create deal
@@ -1029,6 +1464,14 @@ export default async function handler(req: Request) {
           },
           { dedupeKey: `stage:${deal.id}:${updateData.stage_id}`, initiatedBy: user.id },
         );
+      }
+
+      // COP-M06: a renewal deal closing is the renewal's outcome. Tracked on
+      // renewal_auto_quotes, which the rep no longer visits now that the draft
+      // lands on the board, so the deal has to carry the answer back. No-ops
+      // for any deal that is not a renewal.
+      if (updateData.status) {
+        await syncRenewalOutcomeFromDeal(admin, tenantId, deal);
       }
 
       return createCorsResponse(deal, 200, req);

@@ -35,6 +35,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { insertSupplySchema, type Supply, type InsertSupply } from '@shared/schema';
 import { apiRequest } from '@/lib/queryClient';
+import { bulkDelete, bulkDeleteToast } from '@/lib/bulk-delete';
+import { useRecordDialog } from '@/hooks/use-record-dialog';
 import { useToast } from '@/hooks/use-toast';
 import MainLayout from '@/components/layout/main-layout';
 import ManagementToolbar from '@/components/product-management/ManagementToolbar';
@@ -43,8 +45,6 @@ import { formatCurrency } from '@/lib/utils';
 export default function Supplies() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [selectedSupply, setSelectedSupply] = useState<Supply | null>(null);
   const [bulkMode, setBulkMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
@@ -61,17 +61,18 @@ export default function Supplies() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/supplies'] });
-      setDialogOpen(false);
-      form.reset();
+      dialog.close();
       toast({
         title: 'Success',
         description: 'Supply product created successfully',
       });
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       toast({
         title: 'Error',
-        description: 'Failed to create supply product',
+        // apiRequest throws a plain Error carrying the server's reason, and
+        // discarding it left every failure looking identical (CRM-008).
+        description: error.message || 'Failed to create supply product',
         variant: 'destructive',
       });
     },
@@ -111,7 +112,42 @@ export default function Supplies() {
     },
   });
 
+  /**
+   * THE EDIT BUTTON SET STATE NOTHING READ, so it did nothing - the same dead
+   * control ManagedServices and ProfessionalServices carried, and reported by
+   * eslint only as an unused variable. The mode now lives in one hook that
+   * resets the form with it, so Add after a cancelled Edit cannot patch the row
+   * the user was last looking at (which is what EnhancedProductAccessories did).
+   */
+  const dialog = useRecordDialog<Supply>({
+    reset: (row) => (row ? form.reset(row as unknown as InsertSupply) : form.reset()),
+  });
+
+  const updateSupplyMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: InsertSupply }) => {
+      // PATCH, which the edge function accepts as of this change - it served
+      // PUT only while Express served PATCH, so one host always 404'd.
+      return await apiRequest(`/api/supplies/${id}`, 'PATCH', data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/supplies'] });
+      dialog.close();
+      toast({ title: 'Saved', description: 'Supply product updated' });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update supply product',
+        variant: 'destructive',
+      });
+    },
+  });
+
   const onSubmit = (data: InsertSupply) => {
+    if (dialog.editing) {
+      updateSupplyMutation.mutate({ id: dialog.editing.id, data });
+      return;
+    }
     createSupplyMutation.mutate(data);
   };
 
@@ -138,15 +174,15 @@ export default function Supplies() {
 
   const handleBulkDelete = async () => {
     const ids = Array.from(selectedIds);
-    for (const id of ids) {
-      try {
-        await apiRequest(`/api/supplies/${id}`, 'DELETE');
-      } catch {}
-    }
+    // Was a loop of `catch {}` followed by `Deleted ${ids.length}` regardless,
+    // so every failure reported as a success - and in production this endpoint
+    // was missing entirely. See client/src/lib/bulk-delete.ts.
+    const outcome = await bulkDelete(ids, (id) => apiRequest(`/api/supplies/${id}`, 'DELETE'));
     queryClient.invalidateQueries({ queryKey: ['/api/supplies'] });
-    setSelectedIds(new Set());
-    setBulkMode(false);
-    toast({ title: 'Deleted', description: `Deleted ${ids.length} supplies` });
+    // Failures stay selected so a retry does not mean finding them again.
+    setSelectedIds(new Set(outcome.failed));
+    if (outcome.failed.length === 0) setBulkMode(false);
+    toast(bulkDeleteToast(outcome, 'supplies'));
   };
 
   // Get unique categories from supplies for filtering
@@ -263,7 +299,7 @@ export default function Supplies() {
               </div>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => setSelectedSupply(supply)}>
+              <Button variant="outline" size="sm" onClick={() => dialog.startEdit(supply)}>
                 <Edit3 className="h-4 w-4 mr-1" />
                 View
               </Button>
@@ -291,7 +327,7 @@ export default function Supplies() {
             searchPlaceholder="Search supplies..."
             searchTerm={searchTerm}
             onSearchTermChange={setSearchTerm}
-            onAddClick={() => setDialogOpen(true)}
+            onAddClick={dialog.startCreate}
             productTypeForImport="supplies"
             bulkMode={bulkMode}
             onToggleBulkMode={() => setBulkMode(!bulkMode)}
@@ -299,13 +335,17 @@ export default function Supplies() {
             totalCount={supplies.length}
             onBulkDelete={handleBulkDelete}
           />
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <Dialog {...dialog.dialogProps}>
             <DialogTrigger asChild>
               <span />
             </DialogTrigger>
             <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>New Price Book List: Supply</DialogTitle>
+                <DialogTitle>
+                  {dialog.isEditing
+                    ? 'Edit Price Book List: Supply'
+                    : 'New Price Book List: Supply'}
+                </DialogTitle>
                 <DialogDescription>Create a new supply product for your catalog</DialogDescription>
               </DialogHeader>
               <Form {...form}>
@@ -802,7 +842,7 @@ export default function Supplies() {
                   </div>
 
                   <div className="flex justify-end space-x-2">
-                    <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                    <Button type="button" variant="outline" onClick={dialog.close}>
                       Cancel
                     </Button>
                     <Button type="button" variant="outline">
@@ -874,7 +914,7 @@ export default function Supplies() {
                 : 'Get started by adding your first supply product to the catalog.'}
             </p>
             {!searchTerm && selectedCategory === 'all' && (
-              <Button onClick={() => setDialogOpen(true)}>
+              <Button onClick={dialog.startCreate}>
                 <Plus className="h-4 w-4 mr-2" />
                 Add First Supply
               </Button>

@@ -564,3 +564,151 @@ describe('the integration and import surfaces are gated', () => {
     }
   });
 });
+
+/**
+ * The last of the needs-gate worklist (SEC-EDGE-001, eighth batch).
+ *
+ * These eight are gated per BRANCH rather than per function, because each one
+ * mixes a surface every rep uses with a handful of writes that decide something
+ * for the whole tenant: reading the chatbot console or the renewal book is a
+ * rep's own work, connecting a Slack workspace or renewing a contract is not.
+ * A function-wide `req.method !== 'GET'` gate would have been quicker and would
+ * have closed pages that are level 1 on purpose.
+ *
+ * A LEVEL check, not a permission code (SEC-EDGE-002): the codes these Express
+ * ancestors named are not codes any seeder creates, so a copied permission gate
+ * denies everyone below platform admin.
+ */
+describe('the branch-gated surfaces gate writes and only writes', () => {
+  /** Write branches that must carry the gate, by the predicate that opens them. */
+  const BRANCH_GATED: Record<string, string[]> = {
+    chatbot: [
+      "if (req.method === 'POST' && resource === 'connect' && !id) {",
+      "if ((req.method === 'PUT' || req.method === 'PATCH') && resource === 'connections' && id) {",
+      "if (req.method === 'DELETE' && resource === 'connections' && id) {",
+      "if (req.method === 'POST' && resource === 'links' && !id) {",
+      "if (req.method === 'DELETE' && resource === 'links' && id) {",
+    ],
+    'company-ids': [
+      "if (req.method === 'POST' && first === 'backfill') {",
+      "if (req.method === 'POST' && first === 'generate' && second) {",
+      "if (req.method === 'PUT' && first) {",
+    ],
+  };
+
+  const ALL = [
+    'accessories',
+    'apollo',
+    'auto-supply-replenishment',
+    'catalog',
+    'chatbot',
+    'company-ids',
+    'contract-renewal',
+    'email-autopilot',
+  ];
+
+  for (const fn of ALL) {
+    const src = code(`supabase/functions/${fn}/index.ts`);
+
+    it(`${fn} imports the level helper it calls`, () => {
+      // Nothing typechecks the edge tree, so a call with no import is a
+      // ReferenceError the first time the branch runs - which, for a gate,
+      // means a 500 instead of a 403 and an endpoint nobody can use.
+      expect(src).toContain("from '../_shared/rbac.ts'");
+      expect(src).toMatch(/requireRoleLevel\(/);
+      expect(src).toContain('ROLE_LEVEL.MANAGER');
+    });
+
+    it(`${fn} denies with a level, not a swallowed error`, () => {
+      // RbacError -> 403 INSUFFICIENT_ROLE; anything else rethrows. A catch
+      // that answered 403 for every failure would turn a database outage into
+      // "your role is too low".
+      expect(src).toContain('err instanceof RbacError');
+      expect(src).toContain("code: 'INSUFFICIENT_ROLE'");
+      expect(src).toMatch(/throw err;/);
+    });
+
+    it(`${fn} leaves the read path open`, () => {
+      // The gate is per branch. If it had been hoisted above the dispatcher it
+      // would read every GET too, and these pages are level 1 for a reason.
+      const firstGate = src.indexOf('requireManager();');
+      const firstGet = src.search(/if \(req\.method === 'GET'/);
+      expect(firstGate).toBeGreaterThan(0);
+      if (firstGet > 0) expect(firstGate).toBeGreaterThan(firstGet);
+    });
+  }
+
+  for (const [fn, branches] of Object.entries(BRANCH_GATED)) {
+    const src = code(`supabase/functions/${fn}/index.ts`);
+
+    it(`${fn} gates all ${branches.length} of its write branches and no more`, () => {
+      for (const branch of branches) {
+        const at = src.indexOf(branch);
+        expect(at, branch).toBeGreaterThan(0);
+        // Immediately after the brace - before the body reads a payload or
+        // touches a row. A gate further down guards whatever follows it only.
+        expect(src.slice(at, at + branch.length + 140)).toContain('requireManager();');
+      }
+      // Exactly as many calls as branches: a ninth would mean a read was caught
+      // in the sweep, and one fewer means a branch was missed.
+      expect(src.match(/requireManager\(\);/g)).toHaveLength(branches.length);
+    });
+  }
+
+  it('none of the eight is still recorded as open to all roles', () => {
+    const baseline = JSON.parse(read('docs/edge-rbac-baseline.json'));
+    for (const fn of ALL) expect(baseline.openToAllRoles, fn).not.toContain(fn);
+  });
+
+  it('address-books is open by design, and the triage says why', () => {
+    // CORRECTED from needs-gate by reading the handlers: nothing here pushes to
+    // a device, and the page is minLevel 1 because editing the book for the
+    // machine in front of you is the technician job the feature exists for.
+    const triage = JSON.parse(read('docs/edge-rbac-triage.json'));
+    const entry = triage.triage.find((e: { fn: string }) => e.fn === 'address-books');
+    expect(entry.verdict).toBe('open-by-design');
+    expect(entry.reason).toContain('minLevel 1');
+    const nav = read('client/src/lib/navigation-permissions.ts');
+    const at = nav.indexOf("'/service/address-books': {");
+    expect(nav.slice(at, at + 200)).toContain('minLevel: 1');
+  });
+
+  /**
+   * WIDENED 2026-09-20. This asserted the worklist was exactly `['ai-gpt5']`,
+   * and a round that EXAMINED a function and honestly filed it as needs-gate
+   * broke it - the test failed for the list growing correctly, which is the
+   * opposite of what it exists to catch. Pinning membership is the same shape
+   * as pinning a count: it measures the list's size rather than its quality.
+   *
+   * The property is that a needs-gate entry is NAMED rather than quietly
+   * reclassified, and says why a level check would not be the fix. Both
+   * current entries hold it for different reasons:
+   *   - ai-gpt5: every call costs money at OpenAI and a manager can run up the
+   *     same bill, so a level gate would look like a fix and change nothing.
+   *     It wants a rate limit or a spend cap.
+   *   - contract-tiered-rates: its page is minLevel 2, so mirroring navigation
+   *     would constrain nobody while gating higher would lock out the billing
+   *     staff the page exists for. It wants an approval on a rate change.
+   */
+  it('every worklist entry says why a role gate would not fix it', () => {
+    const triage = JSON.parse(read('docs/edge-rbac-triage.json'));
+    const open = triage.triage.filter((e: { verdict: string }) => e.verdict === 'needs-gate');
+
+    /**
+     * The floor stays; the MEMBERSHIP pin is gone. Last round widened this away
+     * from `toEqual(['ai-gpt5'])` and left `toContain('ai-gpt5')` behind, which
+     * broke the moment that entry was RESOLVED - ai-gpt5 got the per-tenant
+     * rate limit it had always been filed as wanting, so it left the worklist
+     * correctly and the test failed for it. Naming a member is naming a count
+     * with extra steps, whichever direction the list moves.
+     */
+    expect(open.length).toBeGreaterThan(0);
+
+    for (const entry of open) {
+      expect(
+        entry.reason,
+        `${entry.fn} is marked needs-gate without saying why a level check is not the answer`,
+      ).toMatch(/spend cap|rate limit|approval|NOT GATED/i);
+    }
+  });
+});

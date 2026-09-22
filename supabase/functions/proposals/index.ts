@@ -291,6 +291,8 @@ const LINE_ITEM_COLUMNS = [
   'is_customizable',
   'configuration_options',
   'alternative_options',
+  // COP-B06: the installed machine this line displaces (equipment.id).
+  'replaces_equipment_id',
 ];
 
 // camelCase (what the UI sends) → snake_case column. `productType` is the UI's
@@ -315,6 +317,7 @@ const LINE_ITEM_FIELD_MAP: Record<string, string> = {
   isCustomizable: 'is_customizable',
   configurationOptions: 'configuration_options',
   alternativeOptions: 'alternative_options',
+  replacesEquipmentId: 'replaces_equipment_id',
 };
 
 // Normalize an inbound line item (camelCase OR snake_case) into a clean insert row.
@@ -1083,12 +1086,248 @@ function buildProposalUpdate(body: Record<string, unknown>): Record<string, unkn
 // Proposals columns added by pending migrations (0019). Until the migration is
 // applied, writes including them fail with PGRST204 — retry without them so a
 // drifted database degrades gracefully instead of 500-ing the whole save.
-const PROPOSAL_DRIFT_COLUMNS = ['discount_reason', 'discount_reason_note'];
+// Columns that exist in the schema but may not be on a given database yet, so
+// an insert naming one retries without it rather than failing the whole save.
+// deal_id joins the list because migration 0088 is committed and UNAPPLIED:
+// until it runs, a quote still saves and simply carries no deal link.
+const PROPOSAL_DRIFT_COLUMNS = ['discount_reason', 'discount_reason_note', 'deal_id'];
 
 function stripProposalDriftColumns(row: Record<string, unknown>): Record<string, unknown> {
   const out = { ...row };
   for (const col of PROPOSAL_DRIFT_COLUMNS) delete out[col];
   return out;
+}
+
+/**
+ * QUOTE-006/016: may this caller send this quote?
+ *
+ * Extracted from the PATCH /:id/status branch by PROD-008 rather than copied
+ * into the new POST /:id/send. The guardrail lived inline in exactly one
+ * branch, which meant any second way of sending a quote would have been an
+ * unguarded one - and `send` is the endpoint the iOS swipe action uses, so the
+ * copy would have been the bypass rather than a duplicate.
+ *
+ * Returns a Response to answer with, or null when the send may proceed.
+ */
+async function pricingGateRefusal(
+  db: SB,
+  ctx: { tenantId: string },
+  gateCtx: SB,
+  proposalId: string,
+  req: Request,
+  requestId: string,
+): Promise<Response | null> {
+  if (!isSalesOnlyRole(gateCtx)) return null;
+
+  const { data: cur } = await db
+    .from('proposals')
+    .select('subtotal, discount_amount, total_dealer_cost, pricing_approval_id')
+    .eq('id', proposalId)
+    .eq('tenant_id', ctx.tenantId)
+    .maybeSingle();
+  if (!cur || hasPricingApproval(cur)) return null;
+
+  const revenue = toNum(cur.subtotal) - toNum(cur.discount_amount);
+  const cost = toNum(cur.total_dealer_cost);
+  const margin = revenue > 0 ? ((revenue - cost) / revenue) * 100 : 0;
+  const minMargin = await getMinMarginPolicy(db, ctx.tenantId);
+  if (cost > 0 && margin < minMargin) {
+    return errorResponse(
+      409,
+      `Margin ${margin.toFixed(1)}% is below the ${minMargin}% minimum and requires manager approval.`,
+      req,
+      { code: 'PRICING_APPROVAL_REQUIRED', details: { margin, minMargin }, requestId },
+    );
+  }
+
+  const maxDiscount = await getMaxDiscountPolicy(db, ctx.tenantId);
+  if (maxDiscount > 0) {
+    const { data: gateItems } = await db
+      .from('proposal_line_items')
+      .select('quantity, unit_price, discount')
+      .eq('proposal_id', proposalId)
+      .eq('tenant_id', ctx.tenantId);
+    // Canonical formula, not a local re-derivation: the inline version used
+    // `(quantity || 1)`, so a zero/null-quantity line counted as one unit,
+    // inflating gross and shrinking the effective discount - the guardrail was
+    // more permissive than the figure shown in the builder.
+    const effectivePct = effectiveDiscountPct(
+      (gateItems ?? []).map(toDiscountedLine),
+      toNum(cur.discount_amount),
+    );
+    if (effectivePct > maxDiscount) {
+      return errorResponse(
+        409,
+        `Effective discount ${effectivePct.toFixed(1)}% (including line discounts) exceeds the ${maxDiscount}% maximum and requires manager approval.`,
+        req,
+        {
+          code: 'PRICING_APPROVAL_REQUIRED',
+          details: { effectiveDiscountPct: effectivePct, maxDiscount },
+          requestId,
+        },
+      );
+    }
+  }
+
+  return null;
+}
+
+interface ProposalEmailOutcome {
+  ok: boolean;
+  /** Set when ok is false - the response the handler should answer with. */
+  response?: Response;
+  to?: string;
+  messageId?: string;
+  simulated?: boolean;
+  proposal?: Record<string, any>;
+}
+
+/**
+ * Render the customer-facing PDF and email it.
+ *
+ * Shared by POST /:id/email (the web "email quote" action) and POST /:id/send
+ * (the iOS swipe action), because the alternative is two copies of a PDF render
+ * and a SendGrid call that would drift on the first branding change.
+ */
+async function emailProposalPdf(
+  db: SB,
+  ctx: { tenantId: string },
+  id: string,
+  body: Record<string, any>,
+  req: Request,
+  requestId: string,
+): Promise<ProposalEmailOutcome> {
+  const { data: proposal } = await db
+    .from('proposals')
+    .select('*')
+    .eq('id', id)
+    .eq('tenant_id', ctx.tenantId)
+    .maybeSingle();
+  if (!proposal) {
+    return {
+      ok: false,
+      response: errorResponse(404, 'Proposal not found', req, {
+        code: 'NOT_FOUND',
+        requestId,
+      }),
+    };
+  }
+
+  const customer = await fetchCustomer(db, ctx.tenantId, proposal.business_record_id);
+
+  let contact: any = null;
+  if (proposal.contact_id) {
+    const r = await db
+      .from('company_contacts')
+      .select('first_name, last_name, email')
+      .eq('id', proposal.contact_id)
+      .eq('tenant_id', ctx.tenantId)
+      .maybeSingle();
+    contact = r.data;
+  }
+
+  const recipient: string | null = body.to || contact?.email || (customer as any)?.email || null;
+  if (!recipient) {
+    return {
+      ok: false,
+      response: errorResponse(400, 'No recipient email available for this quote', req, {
+        code: 'NO_RECIPIENT',
+        requestId,
+      }),
+    };
+  }
+
+  const { data: lineItems } = await db
+    .from('proposal_line_items')
+    .select('*')
+    .eq('proposal_id', id)
+    .eq('tenant_id', ctx.tenantId)
+    .order('line_number', { ascending: true });
+
+  const emailBranding = await loadBrandingForPdf(db, ctx.tenantId);
+  const emailSections = await loadProposalSections(db, ctx.tenantId, id);
+
+  let pdfBase64: string;
+  try {
+    const pdfBytes = await renderProposalPDF({
+      proposal,
+      lineItems: lineItems ?? [],
+      company: customer,
+      contact,
+      isManager: false,
+      branding: emailBranding,
+      sections: emailSections,
+    });
+    pdfBase64 = bytesToBase64(pdfBytes);
+  } catch (renderErr) {
+    log.error({ requestId, err: String(renderErr) }, 'email_pdf_render_failed');
+    return {
+      ok: false,
+      response: errorResponse(500, 'Failed to render quote PDF', req, {
+        code: 'PDF_RENDER_ERROR',
+        requestId,
+      }),
+    };
+  }
+
+  const fromEmail =
+    Deno.env.get('QUOTE_FROM_EMAIL') || Deno.env.get('DEFAULT_FROM_EMAIL') || 'quotes@printyx.net';
+  const customerName = (customer as any)?.company_name || 'there';
+  const message: string =
+    body.message ||
+    `Hello ${customerName},\n\nPlease find your quote ${proposal.proposal_number} attached.`;
+  const safeHtml = `<p>${String(message)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/\n/g, '<br/>')}</p>`;
+
+  let result;
+  try {
+    result = await sendEmail({
+      to: recipient,
+      from: fromEmail,
+      fromName: 'Printyx',
+      subject: body.subject || `Quote ${proposal.proposal_number}`,
+      html: safeHtml,
+      text: String(message),
+      attachments: [
+        {
+          content: pdfBase64,
+          filename: `Quote-${proposal.proposal_number}.pdf`,
+          type: 'application/pdf',
+        },
+      ],
+    });
+  } catch (sendErr) {
+    log.error({ requestId, err: String(sendErr) }, 'email_send_failed');
+    return {
+      ok: false,
+      response: errorResponse(502, 'Failed to send email', req, {
+        code: 'EMAIL_SEND_FAILED',
+        requestId,
+      }),
+    };
+  }
+
+  // Best-effort analytics event
+  await db.from('proposal_analytics').insert({
+    tenant_id: ctx.tenantId,
+    proposal_id: id,
+    event_type: 'emailed',
+    event_details: {
+      to: recipient,
+      messageId: result.messageId,
+      simulated: !!result.simulated,
+    },
+  });
+
+  return {
+    ok: true,
+    to: recipient,
+    messageId: result.messageId,
+    simulated: !!result.simulated,
+    proposal,
+  };
 }
 
 export default async function handler(req: Request) {
@@ -1138,17 +1377,40 @@ export default async function handler(req: Request) {
         }
         const now = new Date().toISOString();
         const signer = (body.name ?? '').toString().slice(0, 200);
+        /**
+         * AUDIT-037 follow-up: BOTH of these updates used to set
+         * `customer_feedback`, which migration 0002 DROPPED from `proposals`.
+         * So every accept and every decline from the public share page was a
+         * PGRST204 - and the result was never checked, which is what made it
+         * invisible and made it serious: the decline silently did nothing, and
+         * the accept fell straight through to creating a WON DEAL and a
+         * CONTRACT for a proposal whose status never moved. The record and the
+         * pipeline disagreed and neither said why.
+         *
+         * The signer is not lost by dropping the column: the analytics row
+         * below already carries it in `event_details.name`, which is where
+         * AUDIT-037 put the visitor cookie for the same reason.
+         */
         if (action === 'accept') {
-          await db
+          const { error: acceptError } = await db
             .from('proposals')
             .update({
               status: 'accepted',
               accepted_at: now,
-              customer_feedback: signer ? `Accepted by ${signer}` : 'Accepted online',
               updated_at: now,
             })
             .eq('id', proposal.id)
             .eq('tenant_id', tenantId);
+          if (acceptError) {
+            log.error({ requestId, err: acceptError.message }, 'public_accept_failed');
+            // Never fall through to the deal and the contract on a failed
+            // accept: that is how a won deal appears for a proposal still
+            // sitting in 'sent'.
+            return errorResponse(500, 'Could not record the acceptance', req, {
+              code: 'DB_ERROR',
+              requestId,
+            });
+          }
           try {
             const acceptedDealId = await upsertDealForProposal(
               db,
@@ -1162,16 +1424,22 @@ export default async function handler(req: Request) {
             log.warn({ requestId, err: String(syncErr) }, 'public_accept_sync_failed');
           }
         } else {
-          await db
+          const { error: declineError } = await db
             .from('proposals')
             .update({
               status: 'rejected',
               rejected_at: now,
-              customer_feedback: signer ? `Declined by ${signer}` : 'Declined online',
               updated_at: now,
             })
             .eq('id', proposal.id)
             .eq('tenant_id', tenantId);
+          if (declineError) {
+            log.error({ requestId, err: declineError.message }, 'public_decline_failed');
+            return errorResponse(500, 'Could not record the decline', req, {
+              code: 'DB_ERROR',
+              requestId,
+            });
+          }
         }
         await db.from('proposal_analytics').insert({
           tenant_id: tenantId,
@@ -1807,6 +2075,10 @@ export default async function handler(req: Request) {
         proposal_type: body.proposalType || body.proposal_type || 'quote',
         business_record_id: body.businessRecordId || body.business_record_id || null,
         contact_id: body.contactId || body.contact_id || null,
+        // COP-B02: the opportunity this quote is for, when it was raised from
+        // one. Without it the deal record cannot list its own quotes and
+        // COP-B11 cannot score quote margin.
+        deal_id: body.dealId || body.deal_id || null,
         template_id: body.templateId || body.template_id || null,
         subtotal: body.subtotal ?? 0,
         discount_amount: body.discountAmount || body.discount_amount || 0,
@@ -1858,6 +2130,7 @@ export default async function handler(req: Request) {
       }
 
       // Optional inline line items
+      let droppedLineItemColumns = false;
       const lineItems = Array.isArray(body.lineItems) ? body.lineItems : [];
       if (lineItems.length > 0) {
         const rows = lineItems.map((item: Record<string, unknown>, index: number) =>
@@ -1872,9 +2145,26 @@ export default async function handler(req: Request) {
         } else {
           await recalculateProposalTotals(db, (proposal as { id: string }).id, ctx.tenantId);
         }
+        droppedLineItemColumns = insertItems.droppedColumns === true;
       }
 
-      return jsonResponse(proposal, 201, req, requestId);
+      // COP-B06: the self-healing retry drops every non-core column, which
+      // includes `replaces_equipment_id`. A rep who attached serials and got a
+      // 201 would otherwise never learn the links were discarded, so the
+      // response says it rather than only the log.
+      return jsonResponse(
+        droppedLineItemColumns
+          ? {
+              ...(proposal as Record<string, unknown>),
+              lineItemColumnsDropped: true,
+              warning:
+                'Line items saved with optional columns dropped - the database is behind the schema. Fleet replacement links were not stored.',
+            }
+          : proposal,
+        201,
+        req,
+        requestId,
+      );
     }
 
     // Match /:id for GET/PUT/PATCH/DELETE — and /:id/sub for sub-resources below
@@ -1974,6 +2264,7 @@ export default async function handler(req: Request) {
       }
 
       // Replace line items if provided — matches Express PUT/PATCH semantics
+      let droppedLineItemColumns = false;
       if (Array.isArray(lineItemsToUpdate) && lineItemsToUpdate.length > 0) {
         await db
           .from('proposal_line_items')
@@ -1993,9 +2284,22 @@ export default async function handler(req: Request) {
         } else {
           await recalculateProposalTotals(db, id, ctx.tenantId);
         }
+        droppedLineItemColumns = insertItems.droppedColumns === true;
       }
 
-      return jsonResponse(proposal, 200, req, requestId);
+      return jsonResponse(
+        droppedLineItemColumns
+          ? {
+              ...(proposal as Record<string, unknown>),
+              lineItemColumnsDropped: true,
+              warning:
+                'Line items saved with optional columns dropped - the database is behind the schema. Fleet replacement links were not stored.',
+            }
+          : proposal,
+        200,
+        req,
+        requestId,
+      );
     }
 
     // DELETE /proposals/:id
@@ -2125,60 +2429,9 @@ export default async function handler(req: Request) {
       // approved still could not, because approval only moved
       // approval_requests.status. The bypass is now the stamp the deal-desk
       // function writes on final approve, read from the row itself.
-      if (status === 'sent' && isSalesOnlyRole(ctx)) {
-        const { data: cur } = await db
-          .from('proposals')
-          .select('subtotal, discount_amount, total_dealer_cost, pricing_approval_id')
-          .eq('id', subMatch[1])
-          .eq('tenant_id', ctx.tenantId)
-          .maybeSingle();
-        if (cur && !hasPricingApproval(cur)) {
-          const revenue = toNum(cur.subtotal) - toNum(cur.discount_amount);
-          const cost = toNum(cur.total_dealer_cost);
-          const margin = revenue > 0 ? ((revenue - cost) / revenue) * 100 : 0;
-          const minMargin = await getMinMarginPolicy(db, ctx.tenantId);
-          if (cost > 0 && margin < minMargin) {
-            return errorResponse(
-              409,
-              `Margin ${margin.toFixed(1)}% is below the ${minMargin}% minimum and requires manager approval.`,
-              req,
-              {
-                code: 'PRICING_APPROVAL_REQUIRED',
-                details: { margin, minMargin },
-                requestId,
-              },
-            );
-          }
-
-          const maxDiscount = await getMaxDiscountPolicy(db, ctx.tenantId);
-          if (maxDiscount > 0) {
-            const { data: gateItems } = await db
-              .from('proposal_line_items')
-              .select('quantity, unit_price, discount')
-              .eq('proposal_id', subMatch[1])
-              .eq('tenant_id', ctx.tenantId);
-            // Canonical formula, not a local re-derivation: the inline version
-            // used `(quantity || 1)`, so a zero/null-quantity line counted as one
-            // unit, inflating gross and shrinking the effective discount — the
-            // guardrail was more permissive than the figure shown in the builder.
-            const effectivePct = effectiveDiscountPct(
-              (gateItems ?? []).map(toDiscountedLine),
-              toNum(cur.discount_amount),
-            );
-            if (effectivePct > maxDiscount) {
-              return errorResponse(
-                409,
-                `Effective discount ${effectivePct.toFixed(1)}% (including line discounts) exceeds the ${maxDiscount}% maximum and requires manager approval.`,
-                req,
-                {
-                  code: 'PRICING_APPROVAL_REQUIRED',
-                  details: { effectiveDiscountPct: effectivePct, maxDiscount },
-                  requestId,
-                },
-              );
-            }
-          }
-        }
+      if (status === 'sent') {
+        const refusal = await pricingGateRefusal(db, ctx, ctx, id, req, requestId);
+        if (refusal) return refusal;
       }
 
       const nowIso = new Date().toISOString();
@@ -2295,122 +2548,115 @@ export default async function handler(req: Request) {
     if (subMatch && method === 'POST' && subMatch[2] === 'email') {
       const id = subMatch[1];
       const body = (await req.json().catch(() => ({}))) as Record<string, any>;
-
-      const { data: proposal } = await db
-        .from('proposals')
-        .select('*')
-        .eq('id', id)
-        .eq('tenant_id', ctx.tenantId)
-        .maybeSingle();
-      if (!proposal) {
-        return errorResponse(404, 'Proposal not found', req, { code: 'NOT_FOUND', requestId });
-      }
-
-      const customer = await fetchCustomer(db, ctx.tenantId, proposal.business_record_id);
-
-      let contact: any = null;
-      if (proposal.contact_id) {
-        const r = await db
-          .from('company_contacts')
-          .select('first_name, last_name, email')
-          .eq('id', proposal.contact_id)
-          .eq('tenant_id', ctx.tenantId)
-          .maybeSingle();
-        contact = r.data;
-      }
-
-      const recipient: string | null =
-        body.to || contact?.email || (customer as any)?.email || null;
-      if (!recipient) {
-        return errorResponse(400, 'No recipient email available for this quote', req, {
-          code: 'NO_RECIPIENT',
-          requestId,
-        });
-      }
-
-      const { data: lineItems } = await db
-        .from('proposal_line_items')
-        .select('*')
-        .eq('proposal_id', id)
-        .eq('tenant_id', ctx.tenantId)
-        .order('line_number', { ascending: true });
-
-      const emailBranding = await loadBrandingForPdf(db, ctx.tenantId);
-      const emailSections = await loadProposalSections(db, ctx.tenantId, id);
-
-      let pdfBase64: string;
-      try {
-        const pdfBytes = await renderProposalPDF({
-          proposal,
-          lineItems: lineItems ?? [],
-          company: customer,
-          contact,
-          isManager: false,
-          branding: emailBranding,
-          sections: emailSections,
-        });
-        pdfBase64 = bytesToBase64(pdfBytes);
-      } catch (renderErr) {
-        log.error({ requestId, err: String(renderErr) }, 'email_pdf_render_failed');
-        return errorResponse(500, 'Failed to render quote PDF', req, {
-          code: 'PDF_RENDER_ERROR',
-          requestId,
-        });
-      }
-
-      const fromEmail =
-        Deno.env.get('QUOTE_FROM_EMAIL') ||
-        Deno.env.get('DEFAULT_FROM_EMAIL') ||
-        'quotes@printyx.net';
-      const customerName = (customer as any)?.company_name || 'there';
-      const message: string =
-        body.message ||
-        `Hello ${customerName},\n\nPlease find your quote ${proposal.proposal_number} attached.`;
-      const safeHtml = `<p>${String(message).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/\n/g, '<br/>')}</p>`;
-
-      let result;
-      try {
-        result = await sendEmail({
-          to: recipient,
-          from: fromEmail,
-          fromName: 'Printyx',
-          subject: body.subject || `Quote ${proposal.proposal_number}`,
-          html: safeHtml,
-          text: String(message),
-          attachments: [
-            {
-              content: pdfBase64,
-              filename: `Quote-${proposal.proposal_number}.pdf`,
-              type: 'application/pdf',
-            },
-          ],
-        });
-      } catch (sendErr) {
-        log.error({ requestId, err: String(sendErr) }, 'email_send_failed');
-        return errorResponse(502, 'Failed to send email', req, {
-          code: 'EMAIL_SEND_FAILED',
-          requestId,
-        });
-      }
-
-      // Best-effort analytics event
-      await db.from('proposal_analytics').insert({
-        tenant_id: ctx.tenantId,
-        proposal_id: id,
-        event_type: 'emailed',
-        event_details: {
-          to: recipient,
-          messageId: result.messageId,
-          simulated: !!result.simulated,
-        },
-      });
-
+      const outcome = await emailProposalPdf(db, ctx, id, body, req, requestId);
+      if (!outcome.ok) return outcome.response!;
       return jsonResponse(
         {
           success: true,
-          to: recipient,
-          messageId: result.messageId,
-          simulated: !!result.simulated,
+          to: outcome.to,
+          messageId: outcome.messageId,
+          simulated: outcome.simulated,
+        },
+        200,
+        req,
+        requestId,
+      );
+    }
+
+    // POST /proposals/:id/send — email the quote AND mark it sent
+    //
+    // PROD-008. This is the iOS quote list's swipe action, which appears on a
+    // DRAFT and afterwards sets the row to `.sent` with today's date. Nothing
+    // served it: the branches here are status, track-view, email,
+    // generate-from-template, share, line-items and comments, so the request
+    // fell past all of them to the trailing 404 and a rep could not send a
+    // quote from their phone.
+    //
+    // THE GATE IS THE POINT, not the two calls. QUOTE-006/016 lived inline in
+    // the PATCH /:id/status branch and nowhere else, so an endpoint that sends
+    // a quote without going through it would have been a way around the
+    // pricing policy rather than a convenience - a rep with an over-policy
+    // discount swiping Send on a phone. `pricingGateRefusal` is that check,
+    // extracted rather than copied, and both callers are the same code.
+    //
+    // ORDER MATTERS TWICE. The gate runs before anything is sent, because a
+    // refusal after the customer has the PDF is not a refusal; and the status
+    // moves only AFTER the email succeeds, because a quote marked sent that
+    // nobody received is worse than an error the rep can act on.
+    if (subMatch && method === 'POST' && subMatch[2] === 'send') {
+      const id = subMatch[1];
+      const body = (await req.json().catch(() => ({}))) as Record<string, any>;
+
+      const refusal = await pricingGateRefusal(db, ctx, ctx, id, req, requestId);
+      if (refusal) return refusal;
+
+      const outcome = await emailProposalPdf(db, ctx, id, body, req, requestId);
+      if (!outcome.ok) return outcome.response!;
+
+      const nowIso = new Date().toISOString();
+      // Only a quote that has not been answered moves to `sent`. Re-sending an
+      // accepted or rejected quote is legitimate - a customer asking for the
+      // PDF again - and walking its status backwards would erase the answer.
+      const current = String(outcome.proposal?.status ?? '');
+      const movesToSent = current !== 'accepted' && current !== 'rejected';
+
+      let proposal = outcome.proposal ?? null;
+      if (movesToSent) {
+        const { data: updated, error } = await db
+          .from('proposals')
+          .update({ status: 'sent', sent_at: nowIso, updated_at: nowIso })
+          .eq('id', id)
+          .eq('tenant_id', ctx.tenantId)
+          .select()
+          .maybeSingle();
+        if (error) {
+          // The customer already has the quote, so this is not a failed send -
+          // it is a send whose status did not stick, and saying so beats a 500
+          // that invites the rep to send it twice.
+          log.error({ requestId, err: error }, 'send_status_update_failed');
+          return jsonResponse(
+            {
+              success: true,
+              to: outcome.to,
+              messageId: outcome.messageId,
+              simulated: outcome.simulated,
+              statusUpdated: false,
+              warning: 'The quote was emailed but its status could not be updated.',
+            },
+            200,
+            req,
+            requestId,
+          );
+        }
+        proposal = updated ?? proposal;
+
+        // Pipeline sync, best-effort and non-fatal - the same semantics the
+        // status branch applies when it moves a quote to sent.
+        try {
+          await upsertDealForProposal(db, proposal, ctx.userId, ctx.tenantId);
+        } catch (syncError) {
+          log.warn({ requestId, err: syncError }, 'Deal upsert failed (send)');
+        }
+
+        const analyticsInsert = await db.from('proposal_analytics').insert({
+          tenant_id: ctx.tenantId,
+          proposal_id: id,
+          event_type: 'status_sent',
+          event_details: { previousStatus: current, newStatus: 'sent' },
+        });
+        if (analyticsInsert.error) {
+          log.warn({ requestId, err: analyticsInsert.error }, 'Analytics insert failed');
+        }
+      }
+
+      return jsonResponse(
+        {
+          ...(proposal ?? {}),
+          success: true,
+          to: outcome.to,
+          messageId: outcome.messageId,
+          simulated: outcome.simulated,
+          statusUpdated: movesToSent,
         },
         200,
         req,

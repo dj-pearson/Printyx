@@ -35,6 +35,7 @@ import { SlashCommand } from './SlashCommand';
 import { AssetImagePickerDialog } from './AssetImagePickerDialog';
 import 'tippy.js/dist/tippy.css';
 import 'highlight.js/styles/github-dark.css';
+import { useTextPrompt } from '@/components/ui/confirm-dialog';
 
 const lowlight = createLowlight(common);
 
@@ -80,6 +81,7 @@ export function BlogEditor({
   readOnly = false,
   bare = false,
 }: BlogEditorProps) {
+  const textPrompt = useTextPrompt();
   const initialHtml = useMemo(() => markdownToHtml(value ?? ''), [value]);
 
   const editor = useEditor({
@@ -185,10 +187,15 @@ export function BlogEditor({
 
   // Cleanup on unmount handled by useEditor
 
-  const setLink = useCallback(() => {
+  const setLink = useCallback(async () => {
     if (!editor) return;
     const previous = editor.getAttributes('link').href as string | undefined;
-    const url = window.prompt('Link URL', previous ?? 'https://');
+    const url = await textPrompt({
+      title: 'Add a link',
+      label: 'Link URL',
+      defaultValue: previous ?? 'https://',
+      confirmLabel: 'Apply',
+    });
     if (url === null) return; // cancelled
     if (url === '') {
       editor.chain().focus().extendMarkRange('link').unsetLink().run();

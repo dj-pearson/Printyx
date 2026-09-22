@@ -1,14 +1,39 @@
 /**
- * Session Timeout Enforcement Middleware
+ * Session inventory and per-tenant session configuration.
  *
- * Automatically terminates sessions after configurable timeout periods.
- * Supports absolute and idle timeouts with tenant-specific settings.
+ * THE ENFORCEMENT HALF OF THIS FILE WAS DELETED BY AUDIT-034, and what it lost
+ * is worth stating so nobody rebuilds it by hand. `enforceSessionTimeout`,
+ * `extendSessionOnActivity`, `initializeSession`, `updateSessionActivity`,
+ * `isSessionExpired` and `getTimeUntilWarning` implemented an idle and absolute
+ * session timeout that COULD NOT RUN, for three independent reasons:
+ *
+ *   1. `isSessionExpired` returned `{ expired: false }` whenever
+ *      `session.sessionMetadata` was absent, and the only thing that set it was
+ *      `initializeSession`, which had no callers anywhere in the tree. Mounting
+ *      the middleware was therefore a complete no-op, not a pending rollout.
+ *   2. Its guard was `req.session.userId`, which the product's real login never
+ *      sets. The web app authenticates through Supabase GoTrue
+ *      (`supabase.auth.signInWithPassword`); `req.session.userId` is written
+ *      only by POST /api/auth/login and POST /api/auth/verify-email, and in
+ *      production `/api/auth` resolves to an edge-function directory that does
+ *      not exist.
+ *   3. express-session already caps the cookie at 24h (`cookie.maxAge` in
+ *      server/routes.ts), so the absolute half was duplicated by the cookie.
+ *
+ *   And had it ever fired, it cleared `connect.sid` while this app names its
+ *   cookie `sid`, so an expired session would have kept its cookie.
+ *
+ * What remains is real and reachable: server/routes-session-management.ts
+ * imports getActiveSessions, terminateSession, logoutOtherSessions and
+ * getSessionConfig, and serves the session inventory from `security_sessions`.
+ * getSessionConfig reads compliance_settings.session_timeout_minutes, which
+ * exists; nothing writes it today (the admin edge function is its only writer
+ * and has no caller), so it is the shipped default in practice.
  */
 
-import { Request, Response, NextFunction } from 'express';
 import { db } from '../db';
-import { securitySessions, complianceSettings } from '../../shared/security-schema';
-import { eq, and, lt, isNull } from 'drizzle-orm';
+import { securitySessions } from '../../shared/security-schema';
+import { eq, and, lt, ne } from 'drizzle-orm';
 import { getComplianceSettings } from '../storage/security-storage';
 import { createModuleLogger } from '../lib/logger';
 const log = createModuleLogger('session-timeout');
@@ -36,21 +61,6 @@ interface SessionTimeoutConfig {
   maxConcurrentSessions: number;
   sensitiveOperationTimeoutMinutes: number;
   rememberMeTimeoutDays: number;
-}
-
-// Session metadata storage
-interface SessionMetadata {
-  createdAt: number;
-  lastActivity: number;
-  absoluteExpiry: number;
-  idleExpiry: number;
-  isRememberMe: boolean;
-  userId: string;
-  tenantId?: string;
-  deviceInfo?: {
-    userAgent: string;
-    ip: string;
-  };
 }
 
 /**
@@ -84,252 +94,27 @@ export async function getSessionConfig(tenantId?: string): Promise<SessionTimeou
 }
 
 /**
- * Initialize session metadata
- */
-export function initializeSession(
-  session: any,
-  userId: string,
-  tenantId?: string,
-  isRememberMe: boolean = false,
-  deviceInfo?: { userAgent: string; ip: string },
-): void {
-  const now = Date.now();
-  const config = { ...DEFAULT_SESSION_CONFIG };
-
-  const idleTimeoutMs = config.idleTimeoutMinutes * 60 * 1000;
-  const absoluteTimeoutMs = isRememberMe
-    ? config.rememberMeTimeoutDays * 24 * 60 * 60 * 1000
-    : config.absoluteTimeoutHours * 60 * 60 * 1000;
-
-  session.sessionMetadata = {
-    createdAt: now,
-    lastActivity: now,
-    absoluteExpiry: now + absoluteTimeoutMs,
-    idleExpiry: now + idleTimeoutMs,
-    isRememberMe,
-    userId,
-    tenantId,
-    deviceInfo,
-  } as SessionMetadata;
-}
-
-/**
- * Update session activity timestamp
- */
-export function updateSessionActivity(session: any, tenantConfig?: SessionTimeoutConfig): void {
-  if (!session.sessionMetadata) {
-    return;
-  }
-
-  const config = tenantConfig || { ...DEFAULT_SESSION_CONFIG };
-  const now = Date.now();
-  const idleTimeoutMs = config.idleTimeoutMinutes * 60 * 1000;
-
-  session.sessionMetadata.lastActivity = now;
-  session.sessionMetadata.idleExpiry = now + idleTimeoutMs;
-}
-
-/**
- * Check if session is expired
- */
-export function isSessionExpired(session: any): {
-  expired: boolean;
-  reason?: 'idle' | 'absolute';
-} {
-  if (!session.sessionMetadata) {
-    return { expired: false };
-  }
-
-  const now = Date.now();
-  const metadata = session.sessionMetadata as SessionMetadata;
-
-  // Check absolute timeout
-  if (now >= metadata.absoluteExpiry) {
-    return { expired: true, reason: 'absolute' };
-  }
-
-  // Check idle timeout
-  if (now >= metadata.idleExpiry) {
-    return { expired: true, reason: 'idle' };
-  }
-
-  return { expired: false };
-}
-
-/**
- * Get time until session warning should be shown
- */
-export function getTimeUntilWarning(session: any, config?: SessionTimeoutConfig): number | null {
-  if (!session.sessionMetadata) {
-    return null;
-  }
-
-  const { warningBeforeTimeoutMinutes } = config || DEFAULT_SESSION_CONFIG;
-  const metadata = session.sessionMetadata as SessionMetadata;
-  const now = Date.now();
-
-  // Use the closer expiry time
-  const nextExpiry = Math.min(metadata.absoluteExpiry, metadata.idleExpiry);
-  const warningTime = nextExpiry - warningBeforeTimeoutMinutes * 60 * 1000;
-
-  if (now >= warningTime) {
-    return 0; // Warning should be shown now
-  }
-
-  return warningTime - now;
-}
-
-/**
- * Session timeout enforcement middleware
+ * Revoke every OTHER active session for a user, and report how many.
  *
- * Usage:
- *   app.use(enforceSessionTimeout());
- */
-export function enforceSessionTimeout(options?: {
-  excludePaths?: string[];
-  onTimeout?: (req: Request, reason: string) => void;
-}) {
-  const { excludePaths = [], onTimeout } = options || {};
-
-  return async (req: Request, res: Response, next: NextFunction) => {
-    // Skip for excluded paths
-    if (excludePaths.some((path) => req.path.startsWith(path))) {
-      return next();
-    }
-
-    // Skip for unauthenticated requests
-    const session = req.session as any;
-    if (!session?.userId) {
-      return next();
-    }
-
-    try {
-      // Get tenant-specific config
-      const config = await getSessionConfig(session.tenantId);
-
-      // Check if session is expired
-      const { expired, reason } = isSessionExpired(session);
-
-      if (expired) {
-        // Log the timeout
-        log.info(`[SESSION] Session expired due to ${reason} timeout for user ${session.userId}`);
-
-        // Call custom callback if provided
-        if (onTimeout) {
-          onTimeout(req, reason || 'unknown');
-        }
-
-        // Record session termination in database
-        await recordSessionTermination(session, reason || 'timeout');
-
-        // Destroy session
-        return new Promise<void>((resolve) => {
-          session.destroy((err: any) => {
-            if (err) {
-              log.error('Session destroy error:', err);
-            }
-            res.clearCookie('connect.sid');
-            res.status(401).json({
-              error: 'Session expired',
-              code: 'SESSION_EXPIRED',
-              reason: reason === 'idle' ? 'inactivity' : 'maximum_duration',
-              message:
-                reason === 'idle'
-                  ? 'Your session has expired due to inactivity. Please log in again.'
-                  : 'Your session has reached its maximum duration. Please log in again.',
-            });
-            resolve();
-          });
-        });
-      }
-
-      // Check for warning state
-      const timeUntilWarning = getTimeUntilWarning(session, config);
-      if (
-        timeUntilWarning !== null &&
-        timeUntilWarning <= 0 &&
-        !session.sessionMetadata.warningShown
-      ) {
-        // Set header to indicate session is about to expire
-        res.setHeader('X-Session-Expiring-Soon', 'true');
-        res.setHeader(
-          'X-Session-Expires-In',
-          Math.floor((session.sessionMetadata.idleExpiry - Date.now()) / 1000).toString(),
-        );
-        session.sessionMetadata.warningShown = true;
-      }
-
-      // Update activity timestamp
-      updateSessionActivity(session, config);
-
-      // Continue to next middleware
-      next();
-    } catch (error) {
-      log.error('Session timeout check error:', error);
-      next();
-    }
-  };
-}
-
-/**
- * Record session termination in database
- */
-async function recordSessionTermination(session: any, reason: string): Promise<void> {
-  try {
-    const metadata = session.sessionMetadata as SessionMetadata;
-    if (!metadata) return;
-
-    await db
-      .insert(securitySessions)
-      .values({
-        sessionId: session.id || 'unknown',
-        userId: metadata.userId,
-        tenantId: metadata.tenantId || '',
-        ipAddress: metadata.deviceInfo?.ip || 'unknown',
-        userAgent: metadata.deviceInfo?.userAgent,
-        createdAt: new Date(metadata.createdAt),
-        lastActivity: new Date(metadata.lastActivity),
-        expiresAt: new Date(Math.min(metadata.absoluteExpiry, metadata.idleExpiry)),
-        terminatedAt: new Date(),
-        terminationReason: reason,
-        isActive: false,
-      })
-      .onConflictDoNothing();
-  } catch (error) {
-    log.error('Failed to record session termination:', error);
-  }
-}
-
-/**
- * Middleware to extend session on user activity
+ * Two defects fixed by AUDIT-034 while retiring the rest of this file, both in
+ * the one endpoint somebody reaches for after losing a laptop
+ * (POST /api/sessions/revoke-all):
  *
- * Usage:
- *   app.use('/api', extendSessionOnActivity());
- */
-export function extendSessionOnActivity() {
-  return async (req: Request, res: Response, next: NextFunction) => {
-    const session = req.session as any;
-
-    if (session?.sessionMetadata && session?.userId) {
-      try {
-        const config = await getSessionConfig(session.tenantId);
-        updateSessionActivity(session, config);
-
-        // Reset warning flag on activity
-        if (session.sessionMetadata.warningShown) {
-          session.sessionMetadata.warningShown = false;
-        }
-      } catch (error) {
-        log.error('Error extending session:', error);
-      }
-    }
-
-    next();
-  };
-}
-
-/**
- * Force logout all other sessions for a user
+ *   - It did not exclude the current session. `currentSessionId` was accepted
+ *     and dropped under a comment claiming session ids could not easily be
+ *     compared - `security_sessions.session_id` is a varchar holding exactly
+ *     the value express hands you as `req.sessionID`. So "log out my other
+ *     sessions" logged the caller out too.
+ *   - It returned the literal `1` under a comment reading "Return count of
+ *     affected sessions", and the route reports that straight back as
+ *     `revokedCount`. One stolen session and nine read the same, and so did
+ *     zero. A count nobody measured is worse here than none, because the number
+ *     is the only confirmation the user gets that anything happened.
+ *
+ * `tenantId` was accepted and dropped as well. It narrows the write now; it was
+ * never a cross-tenant leak, because the write is scoped to one user and a user
+ * belongs to one tenant, but an accepted-and-ignored scope argument reads as a
+ * filter that is there.
  */
 export async function logoutOtherSessions(
   currentSessionId: string,
@@ -337,26 +122,24 @@ export async function logoutOtherSessions(
   tenantId?: string,
 ): Promise<number> {
   try {
-    // Update all other active sessions for this user
-    const result = await db
+    const filters = [eq(securitySessions.userId, userId), eq(securitySessions.isActive, true)];
+    // An empty session id must not become `sessionId <> ''`, which would match
+    // every row and revoke the caller's own session along with the rest.
+    if (currentSessionId) filters.push(ne(securitySessions.sessionId, currentSessionId));
+    if (tenantId) filters.push(eq(securitySessions.tenantId, tenantId));
+
+    const revoked = await db
       .update(securitySessions)
       .set({
         isActive: false,
         terminatedAt: new Date(),
         terminationReason: 'logout_other_sessions',
       })
-      .where(
-        and(
-          eq(securitySessions.userId, userId),
-          eq(securitySessions.isActive, true),
-          // Don't terminate current session
-          // Note: We can't easily compare session IDs here, so we terminate all
-          // The current session will be re-validated on next request
-        ),
-      );
+      .where(and(...filters))
+      .returning({ id: securitySessions.id });
 
-    log.info(`[SESSION] Logged out other sessions for user ${userId}`);
-    return 1; // Return count of affected sessions
+    log.info(`[SESSION] Revoked ${revoked.length} other session(s) for user ${userId}`);
+    return revoked.length;
   } catch (error) {
     log.error('Failed to logout other sessions:', error);
     return 0;
@@ -370,17 +153,20 @@ export async function cleanupExpiredSessions(): Promise<number> {
   try {
     const now = new Date();
 
-    const result = await db
+    // Same fabricated count as logoutOtherSessions had: this returned 1
+    // whether it closed a thousand sessions or none.
+    const closed = await db
       .update(securitySessions)
       .set({
         isActive: false,
         terminatedAt: now,
         terminationReason: 'expired_cleanup',
       })
-      .where(and(eq(securitySessions.isActive, true), lt(securitySessions.expiresAt, now)));
+      .where(and(eq(securitySessions.isActive, true), lt(securitySessions.expiresAt, now)))
+      .returning({ id: securitySessions.id });
 
-    log.info('[SESSION] Cleaned up expired sessions');
-    return 1;
+    log.info(`[SESSION] Cleaned up ${closed.length} expired session(s)`);
+    return closed.length;
   } catch (error) {
     log.error('Failed to cleanup expired sessions:', error);
     return 0;
@@ -447,12 +233,6 @@ export async function terminateSession(
 }
 
 export default {
-  enforceSessionTimeout,
-  extendSessionOnActivity,
-  initializeSession,
-  updateSessionActivity,
-  isSessionExpired,
-  getTimeUntilWarning,
   getSessionConfig,
   logoutOtherSessions,
   cleanupExpiredSessions,

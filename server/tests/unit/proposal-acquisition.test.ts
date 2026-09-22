@@ -277,7 +277,12 @@ describe('the surfaces that capture and show it', () => {
     expect(page).toContain('label="Lessor"');
     const deals = strip(readFileSync('supabase/functions/deals/index.ts', 'utf8'));
     expect(deals).toContain("from('leases')");
-    expect(deals).toContain('contract, lease');
+    // Both keys are on the single-deal response. Asserted SEPARATELY rather
+    // than as the literal 'contract, lease': that spelling only held while the
+    // return happened to fit on one line, and COP-B02 adding two more keys to
+    // the same object broke the assertion without changing the behaviour.
+    expect(deals).toMatch(/\bcontract,/);
+    expect(deals).toMatch(/\blease,/);
   });
 
   it('the migration is journalled and adds all five columns', () => {

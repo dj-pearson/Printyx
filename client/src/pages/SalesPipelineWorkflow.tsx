@@ -1,3 +1,28 @@
+/**
+ * Sales Pipeline board.
+ *
+ * COP-E02 exists to retire this page in favour of the canonical deals board,
+ * and it CANNOT be retired yet - COP-B00 first.
+ *
+ * This board reads `business_records`, through /api/sales-pipeline. Every other
+ * canonical CRM surface reads `companies`: /crm/leads calls
+ * /api/business-records, whose own header describes it as "a
+ * backwards-compatible wrapper that delegates to the companies table". Both
+ * tables have live writers, so the split runs in both directions - an account
+ * created through the CRM list lands in `companies` and never appears here,
+ * and a lead created by `public-booking` (a prospect self-scheduling a meeting)
+ * lands in `business_records` and never appears on the canonical Leads list.
+ *
+ * So deleting this page would make records invisible, which is exactly what
+ * COP-E02's own AC3 forbids. server/tests/unit/crm-table-split.test.ts locks
+ * the finding and is designed to FAIL the day the two tables are reconciled,
+ * which is the day this page can go.
+ *
+ * COP-E02 already fixed the defect that mattered while it stays: the stage
+ * vocabulary. `/api/sales-pipeline/stages` is the one source, the write path
+ * validates against it, and "move to next stage" no longer advances every
+ * record to index 0 by comparing two different stage models.
+ */
 import { percentOfOr } from '@/lib/utils';
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';

@@ -4,7 +4,7 @@
  * config from the public endpoint, shows day + slot pickers, and submits a
  * booking. Slots are rendered in the visitor's local timezone.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { getApiUrl } from '@/lib/config';
 
 // PROD-014: these are UNAUTHENTICATED pages, so the calls below go through
@@ -96,7 +96,18 @@ export default function PublicBooking() {
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
 
-  const [form, setForm] = useState({ name: '', email: '', phone: '', company: '', notes: '' });
+  const [form, setForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    company: '',
+    notes: '',
+    // COP-B14 AC4 honeypot. Not a real field: it is hidden from sight and from
+    // assistive technology, so anything in it was put there by a form-filler.
+    website: '',
+  });
+  /** When this visitor opened the page, for the server's minimum fill time. */
+  const formOpenedAtRef = useRef<string>(new Date().toISOString());
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmed, setConfirmed] = useState<{
@@ -183,6 +194,13 @@ export default function PublicBooking() {
           inviteeCompany: form.company.trim() || undefined,
           inviteeNotes: form.notes.trim() || undefined,
           inviteeTimezone: visitorTz,
+          // COP-B14 AC4, the commodity-bot half. `website` is a field a real
+          // visitor never sees and a form-filler fills; formOpenedAt lets the
+          // server reject a submission faster than a person can type. Both are
+          // client-supplied and therefore advisory - the server-side rate limit
+          // is the control that actually holds.
+          website: form.website,
+          formOpenedAt: formOpenedAtRef.current,
         }),
       });
       const data = await res.json();
@@ -339,6 +357,31 @@ export default function PublicBooking() {
                       rows={3}
                       value={form.notes}
                       onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                    />
+                    {/* COP-B14 AC4 honeypot. Hidden from sight AND from
+                        assistive technology (aria-hidden + tabIndex -1), and
+                        autocomplete off so a browser does not fill it for a
+                        real person - a honeypot that traps humans is worse
+                        than none. */}
+                    <input
+                      type="text"
+                      name="website"
+                      tabIndex={-1}
+                      autoComplete="off"
+                      aria-hidden="true"
+                      value={form.website}
+                      onChange={(e) => setForm({ ...form, website: e.target.value })}
+                      style={{
+                        position: 'absolute',
+                        width: 1,
+                        height: 1,
+                        padding: 0,
+                        margin: -1,
+                        overflow: 'hidden',
+                        clip: 'rect(0 0 0 0)',
+                        whiteSpace: 'nowrap',
+                        border: 0,
+                      }}
                     />
                     {error ? <p className="text-sm text-red-600">{error}</p> : null}
                     <button

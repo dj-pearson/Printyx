@@ -34,6 +34,7 @@ import {
 } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MapPin, Plus, Edit, Trash2, Users, Building2, Globe, Filter } from 'lucide-react';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 // Mirrors platform_sales_territories (shared/platform-crm-schema.ts) in the
 // camelCase the platform-crm function returns. PA-052: the previous shape used
@@ -140,6 +141,7 @@ const EMPTY_FORM: TerritoryFormData = {
 
 export default function PlatformTerritories() {
   const { toast } = useToast();
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTerritory, setEditingTerritory] = useState<Territory | null>(null);
@@ -291,10 +293,9 @@ export default function PlatformTerritories() {
     }
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm('Are you sure you want to delete this territory?')) {
-      deleteMutation.mutate(id);
-    }
+  const handleDelete = async (id: string) => {
+    if (!(await confirm({ title: 'Delete this territory?' }))) return;
+    deleteMutation.mutate(id);
   };
 
   const managerName = (id: string) => managers.find((m) => m.id === id)?.name ?? id;

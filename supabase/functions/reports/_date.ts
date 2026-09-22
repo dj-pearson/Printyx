@@ -5,6 +5,8 @@
 // shapes to a `{ start, end, period? }` triple so handlers don't repeat the
 // branching.
 
+import { subtractUtcMonths, subtractUtcYears } from '../_shared/date-months.ts';
+
 export type Period = 'week' | 'month' | 'quarter' | 'year';
 
 const PERIODS: ReadonlySet<string> = new Set(['week', 'month', 'quarter', 'year']);
@@ -22,19 +24,30 @@ export function parsePeriod(value: string | null | undefined): Period {
 
 export function rangeForPeriod(period: Period, now: Date = new Date()): DateRange {
   const end = new Date(now);
-  const start = new Date(now);
+  // REPORTS-CHARTS-002. These three cases used setUTCMonth/setUTCFullYear with
+  // the overflowing getUTC* idiom, which is the SAME defect DATE-SETMONTH-001
+  // closed for setMonth - `check:month-arithmetic` simply did not know about
+  // the UTC twin, so the ban had a hole the width of every UTC caller.
+  //
+  // On 31 March, `period=month` asked for "31 February" and got 3 MARCH, so the
+  // window was a 28-day span entirely inside the current month with February
+  // excluded. Every handler taking its range from here was wrong together, on
+  // the last three days of any long month. `period=year` had the leap-day
+  // version: 29 February minus a year resolved to 1 March.
+  let start: Date;
   switch (period) {
     case 'week':
+      start = new Date(now);
       start.setUTCDate(start.getUTCDate() - 7);
       break;
     case 'month':
-      start.setUTCMonth(start.getUTCMonth() - 1);
+      start = subtractUtcMonths(now, 1);
       break;
     case 'quarter':
-      start.setUTCMonth(start.getUTCMonth() - 3);
+      start = subtractUtcMonths(now, 3);
       break;
     case 'year':
-      start.setUTCFullYear(start.getUTCFullYear() - 1);
+      start = subtractUtcYears(now, 1);
       break;
   }
   return { start, end, period };

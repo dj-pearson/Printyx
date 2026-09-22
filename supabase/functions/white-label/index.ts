@@ -191,10 +191,19 @@ export default async function handler(req: Request) {
     // Presets are global (no tenant_id column), so this is the one read that
     // does not need a tenant.
     if (resource === 'presets' && req.method === 'GET') {
+      // Ordered by name because nothing else here can order them: the Express
+      // service this replaced sorted by `usage_count`, which is a VARCHAR, so
+      // '10' sorted before '9'. That column is also written by nothing now -
+      // neither this branch nor /apply-preset increments it - so it holds
+      // whatever it was seeded with. No client reads it; a read-modify-write
+      // counter would lose updates under concurrent applies (COP-B14) and
+      // measure nothing anybody looks at, so it is named here rather than
+      // faked.
       const { data, error } = await admin
         .from('white_label_presets')
         .select('*')
-        .eq('is_public', true);
+        .eq('is_public', true)
+        .order('preset_name', { ascending: true });
       if (error) throw new Error(error.message);
       const presets = camelRows(data as Row[]);
       return createCorsResponse({ presets, count: presets.length }, 200, req);

@@ -43,20 +43,32 @@ export default async function handler(req: Request) {
 
     // GET /cross-module/status - Get integration status
     if (req.method === 'GET' && endpoint === 'status') {
+      /**
+       * NOTHING HERE IS MEASURED, AND IT USED TO SAY OTHERWISE.
+       *
+       * This answered `healthy: true`, five modules each `'connected'`, and a
+       * `lastSync` of `new Date()` - so the card built on it rendered "100%
+       * Healthy" over a full progress bar and a last-sync time that always read
+       * as a moment ago, on every request, for every tenant. The Express copy
+       * returned the same object and was shadowed by the proxy, so the two
+       * hosts agreed and nobody looked.
+       *
+       * The claim could not be true in the sense it was read: these "modules"
+       * are tables in one database, not services that can be disconnected, so
+       * there is no link whose health this could report. And the two counters
+       * need a cross-module event table, which no schema or migration declares.
+       * Both are null and named, rather than zeroed - a 0 here reads as "no
+       * backlog", which is a measurement.
+       */
       return createCorsResponse(
         {
-          healthy: true,
-          status: 'healthy',
-          modules: {
-            customer: { status: 'connected', lastSync: new Date().toISOString() },
-            service: { status: 'connected', lastSync: new Date().toISOString() },
-            inventory: { status: 'connected', lastSync: new Date().toISOString() },
-            billing: { status: 'connected', lastSync: new Date().toISOString() },
-            equipment: { status: 'connected', lastSync: new Date().toISOString() },
-          },
-          pendingEvents: 0,
-          processedToday: 0,
-          lastSync: new Date().toISOString(),
+          pendingEvents: null,
+          processedToday: null,
+          unbacked: [
+            'healthy / module connection status: the modules are tables in this database, not external services, so there is no connection to report on.',
+            'pendingEvents and processedToday: no cross-module event table exists in any schema or migration.',
+            'lastSync: nothing records when a cross-module trigger last ran.',
+          ],
         },
         200,
         req,
@@ -359,26 +371,22 @@ export default async function handler(req: Request) {
 
     // POST /cross-module/log-event - Log cross-module event
     if (req.method === 'POST' && endpoint === 'log-event') {
-      const body = await req.json();
-      const { sourceModule, targetModule, eventType, data } = body;
-
-      // Log the event (could store in a dedicated events table if needed)
-      console.log('Cross-module event:', {
-        tenantId,
-        sourceModule,
-        targetModule,
-        eventType,
-        data,
-        timestamp: new Date().toISOString(),
-      });
-
+      /**
+       * 501 rather than the success this used to report. It wrote nothing - the
+       * comment beside the console.log said "could store in a dedicated events
+       * table if needed" - and answered 200 with an `eventId` of
+       * `EVT-<Date.now()>`, which reads exactly like a row a caller could go and
+       * fetch. An endpoint that discards its input and hands back an identifier
+       * for what it discarded is worse than one that refuses.
+       */
       return createCorsResponse(
         {
-          success: true,
-          eventId: `EVT-${Date.now()}`,
-          timestamp: new Date().toISOString(),
+          error: 'Cross-module event logging is not implemented',
+          code: 'NOT_IMPLEMENTED',
+          details:
+            'No cross-module event table exists. This endpoint previously returned a fabricated event id without storing anything.',
         },
-        200,
+        501,
         req,
       );
     }

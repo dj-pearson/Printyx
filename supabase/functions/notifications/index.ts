@@ -207,6 +207,19 @@ export default async function handler(req: Request) {
     }
 
     // GET /notifications/:id - Get single notification
+    // An unknown sub-resource answers 404 rather than the parent record.
+    // PA-020's rule: falling through to the row is what makes the NEXT missing
+    // branch invisible - a component mapping over an object renders an empty
+    // list and reports nothing, so the gap reads as "no data yet". Non-GET
+    // methods already reach the terminal refusal below.
+    if (req.method === 'GET' && notificationId && action) {
+      return createCorsResponse(
+        { error: `Unknown notification sub-resource: ${action}` },
+        404,
+        req,
+      );
+    }
+
     if (req.method === 'GET' && notificationId) {
       const { data: notification, error } = await admin
         .from('user_notifications')

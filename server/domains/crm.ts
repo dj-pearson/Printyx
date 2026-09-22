@@ -7,7 +7,6 @@ export { registerCompaniesRoutes } from '../routes-companies';
 export { registerBusinessRecordRoutes } from '../routes-business-records';
 export { registerCrmBulkRoutes } from '../routes-crm-bulk';
 export { registerBulkOperationsRoutes } from '../routes-bulk-operations';
-export { registerRecordLayoutRoutes } from '../routes-record-layout';
 export { registerCsvImportRoutes } from '../routes-csv-import';
 export { default as signupCrmRoutes } from '../routes-signup-crm';
 export { default as universalSearchRoutes } from '../routes-universal-search';

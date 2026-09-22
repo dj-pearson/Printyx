@@ -3,7 +3,127 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { ROLE_LEVEL, RbacError, requireRoleLevel } from '../_shared/rbac.ts';
+import type { AuthContext } from '../_shared/auth.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { isCronRequest } from '../_shared/cron-auth.ts';
+
+type Admin = ReturnType<typeof createSupabaseServiceClient>;
+
+/**
+ * Mark every approval request whose SLA deadline has passed (COP-B04's shape).
+ *
+ * This used to live inline in the POST /check-sla branch, and its own comment
+ * said a pg_cron entry was "Phase 6 US-026". It was not built, `drizzle/cron/`
+ * had no deal-desk file, and no client tree calls the endpoint - so a breached
+ * approval deadline was marked only when somebody ran a manual curl. An
+ * approval SLA that nobody checks is not an SLA; it is a column.
+ *
+ * PAGED RATHER THAN CAPPED. The inline version took `.limit(500)` and reported
+ * the count it found, so a tenant with more overdue approvals than that had the
+ * rest left unmarked with nothing saying so - and on a nightly schedule the
+ * backlog would never clear, because each run would re-find the same first 500.
+ * Now it loops until a page comes back short, which also makes the job
+ * self-healing after a night it did not run.
+ *
+ * IDEMPOTENT by its own filter: `.eq('sla_breached', false)` means a second run
+ * on the same day claims nothing, so a double fire or an overlapping manual
+ * call costs one wasted query rather than a second escalation timestamp.
+ */
+export async function runSlaCheck(
+  admin: Admin,
+  tenantId: string,
+): Promise<{ breached: number; breachedIds: string[]; checkedAt: string }> {
+  const nowIso = new Date().toISOString();
+  const PAGE = 500;
+  const breachedIds: string[] = [];
+
+  // Bounded so a defect that stops the filter from narrowing cannot spin
+  // forever inside a scheduled job; 100 pages is 50,000 overdue approvals for
+  // one tenant, which is a different problem than this loop.
+  for (let page = 0; page < 100; page++) {
+    const { data: overdue, error: fetchErr } = await admin
+      .from('approval_requests')
+      .select('id')
+      .eq('tenant_id', tenantId)
+      .in('status', ['pending', 'in_review'])
+      .lte('sla_deadline', nowIso)
+      .eq('sla_breached', false)
+      .limit(PAGE);
+
+    if (fetchErr) throw new Error(fetchErr.message);
+
+    const ids = (overdue ?? []).map((r: { id: string }) => r.id);
+    if (ids.length === 0) break;
+
+    const { error: updErr } = await admin
+      .from('approval_requests')
+      .update({ sla_breached: true, escalated_at: nowIso, updated_at: nowIso })
+      // SEC-TENANT-005: the id list is not the authorisation. A tenant filter
+      // on the write is what keeps this inside the tenant it was scoped to.
+      .eq('tenant_id', tenantId)
+      .in('id', ids);
+
+    if (updErr) throw new Error(updErr.message);
+
+    breachedIds.push(...ids);
+    // A short page means the filter is exhausted. No offset is needed, because
+    // the update removes each row from the next query's result set.
+    if (ids.length < PAGE) break;
+  }
+
+  return { breached: breachedIds.length, breachedIds, checkedAt: nowIso };
+}
+
+/**
+ * POST /deal-desk/check-sla/all - the scheduled sweep.
+ *
+ * Tenants run SEQUENTIALLY: each one issues its own paged scan, and running
+ * fifty at once multiplies the peak load on the database to finish a nightly
+ * job a few seconds sooner. A tenant that throws is recorded and stepped over,
+ * and a sweep where every tenant failed answers 500 rather than a 200 with a
+ * detail field nobody reads.
+ */
+async function sweepAllTenantsForSla(req: Request): Promise<Response> {
+  const admin = createSupabaseServiceClient();
+
+  const { data: tenantRows, error } = await admin.from('tenants').select('id').order('id');
+  if (error) {
+    return createCorsResponse({ error: 'Could not list tenants', detail: error.message }, 503, req);
+  }
+
+  const tenants = (tenantRows ?? []).map((t: { id: string }) => t.id);
+  const failures: Array<{ tenantId: string; error: string }> = [];
+  let swept = 0;
+  let breached = 0;
+
+  for (const tenantId of tenants) {
+    try {
+      const result = await runSlaCheck(admin, tenantId);
+      swept += 1;
+      breached += result.breached;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error(`[DEAL-DESK] SLA sweep failed for tenant ${tenantId}:`, message);
+      failures.push({ tenantId, error: message });
+    }
+  }
+
+  return createCorsResponse(
+    {
+      tenants: tenants.length,
+      swept,
+      breached,
+      failed: failures.length,
+      failures,
+      checkedAt: new Date().toISOString(),
+      followUp:
+        'Notification dispatch is still unbuilt - a breach is marked, and nobody is told. See the deal-desk notification story.',
+    },
+    failures.length > 0 && swept === 0 ? 500 : 200,
+    req,
+  );
+}
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -11,6 +131,31 @@ export default async function handler(req: Request) {
   if (corsResponse) return corsResponse;
 
   try {
+    /**
+     * POST /deal-desk/check-sla/all - the SCHEDULED sweep.
+     *
+     * Above auth.getUser deliberately: pg_cron carries the internal cron token
+     * and no user JWT, so `isCronRequest` is the whole authentication here -
+     * the ordering defect INTEG-WEBHOOK-001 found on the webhook receiver. No
+     * user fallback either, because a sweep across EVERY tenant is not
+     * something any user should trigger; a manager checks their own tenant
+     * through POST /check-sla.
+     */
+    {
+      const cronUrl = new URL(req.url);
+      const { parts: cronParts } = normalizePath(cronUrl.pathname, 'deal-desk');
+      if (cronParts[0] === 'check-sla' && cronParts[1] === 'all' && req.method === 'POST') {
+        if (!isCronRequest(req)) {
+          return createCorsResponse(
+            { error: 'This endpoint is for the scheduler', code: 'CRON_ONLY' },
+            403,
+            req,
+          );
+        }
+        return await sweepAllTenantsForSla(req);
+      }
+    }
+
     // Extract and validate JWT
     const authHeader = req.headers.get('Authorization');
     // ': undefined' not ': null' — auth.getUser takes string | undefined (CLAUDE.md).
@@ -529,6 +674,46 @@ export default async function handler(req: Request) {
 
     // POST /deal-desk/requests/:id/decision - Make approval decision
     if (req.method === 'POST' && resource === 'requests' && resourceId && action === 'decision') {
+      /**
+       * SEC-EDGE-001. TWO controls, and the second is the one that matters.
+       *
+       * Deciding an approval needs MANAGER - a LEVEL check, not a permission
+       * code (SEC-EDGE-002). But a role gate alone does not close this: a
+       * manager approving their OWN discount request is still self-approval,
+       * and the quote guardrails (QUOTE-006/016) route exactly the discounts
+       * that are over policy into this queue. So the requester is refused
+       * regardless of rank.
+       *
+       * Before this, any authenticated member of the tenant could POST a
+       * decision on any request - including their own - and the handler wrote
+       * `final_decision_by: user.id` and moved it to `approved`. Nothing
+       * checked that the caller was an approver at all.
+       */
+      try {
+        requireRoleLevel(
+          {
+            userId: user.id,
+            tenantId,
+            email: user.email,
+            jwt: jwt ?? '',
+            supabaseUser: user,
+          } as AuthContext,
+          ROLE_LEVEL.MANAGER,
+        );
+      } catch (err) {
+        if (err instanceof RbacError) {
+          return createCorsResponse(
+            {
+              error: 'Deciding an approval request requires a manager role',
+              code: 'INSUFFICIENT_ROLE',
+              details: err.details,
+            },
+            403,
+            req,
+          );
+        }
+        throw err;
+      }
       const body = await req.json();
       const { decision, comments } = body;
 
@@ -550,6 +735,20 @@ export default async function handler(req: Request) {
 
       if (fetchError || !request) {
         return createCorsResponse({ error: 'Approval request not found' }, 404, req);
+      }
+
+      // The requester cannot decide their own request, whatever their rank.
+      // This is the segregation of duties the approval queue exists to create;
+      // without it the queue is a formality a rep completes alone.
+      if (request.requested_by && request.requested_by === user.id) {
+        return createCorsResponse(
+          {
+            error: 'You cannot decide your own approval request.',
+            code: 'SELF_APPROVAL_REFUSED',
+          },
+          403,
+          req,
+        );
       }
 
       // Determine new status based on decision
@@ -920,70 +1119,37 @@ export default async function handler(req: Request) {
       );
     }
 
-    // POST /deal-desk/check-sla - mark any approval_requests whose sla_deadline
-    // has passed as breached. Returns the count of newly-breached rows.
-    //
-    // This is the single-tenant edge-function version of the job; Phase 6
-    // US-026 will add a pg_cron entry that calls this per-tenant on a
-    // schedule. The dispatch wrapper there will pass INTERNAL_CRON_TOKEN for
-    // auth. For now: safe to call ad-hoc from the UI or a manual curl.
+    /**
+     * POST /deal-desk/check-sla - this tenant's own SLA check.
+     *
+     * Shares `runSlaCheck` with the scheduled sweep above rather than keeping
+     * its own copy: two implementations of the same job drift, and only one of
+     * them gets looked at (COP-B04). The paging, the tenant-filtered write and
+     * the idempotent `sla_breached = false` filter therefore apply to both.
+     */
     if (req.method === 'POST' && resource === 'check-sla' && !resourceId) {
-      const nowIso = new Date().toISOString();
-
-      const { data: overdue, error: fetchErr } = await admin
-        .from('approval_requests')
-        .select('id, deal_id, quote_id, current_approval_level, approval_chain')
-        .eq('tenant_id', tenantId)
-        .in('status', ['pending', 'in_review'])
-        .lte('sla_deadline', nowIso)
-        .eq('sla_breached', false)
-        .limit(500);
-
-      if (fetchErr) {
-        console.error('check-sla fetch failed:', fetchErr);
+      try {
+        const result = await runSlaCheck(admin, tenantId);
         return createCorsResponse(
-          { error: 'Failed to scan overdue approvals', details: fetchErr },
+          {
+            breached: result.breached,
+            checkedAt: result.checkedAt,
+            breachedIds: result.breachedIds,
+            message: result.breached === 0 ? 'No SLA breaches' : undefined,
+            followUp: 'A breach is marked, and nobody is told - notification dispatch is unbuilt.',
+          },
+          200,
+          req,
+        );
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        console.error('check-sla failed:', message);
+        return createCorsResponse(
+          { error: 'Failed to scan overdue approvals', details: message },
           500,
           req,
         );
       }
-
-      const overdueRows = overdue ?? [];
-      if (overdueRows.length === 0) {
-        return createCorsResponse(
-          { breached: 0, checkedAt: nowIso, message: 'No SLA breaches' },
-          200,
-          req,
-        );
-      }
-
-      // Mark all in one UPDATE — cleaner than per-row loop and atomic.
-      const ids = overdueRows.map((r) => r.id as string);
-      const { error: updErr } = await admin
-        .from('approval_requests')
-        .update({ sla_breached: true, escalated_at: nowIso, updated_at: nowIso })
-        .in('id', ids)
-        .eq('tenant_id', tenantId);
-
-      if (updErr) {
-        console.error('check-sla update failed:', updErr);
-        return createCorsResponse({ error: 'Failed to mark breaches', details: updErr }, 500, req);
-      }
-
-      // Notification dispatch (email, push) is Phase 3+ territory. For now
-      // we return the breach summary so the caller (cron wrapper or UI)
-      // can surface it. When email lands, call the notification service
-      // here with `overdueRows` as input.
-      return createCorsResponse(
-        {
-          breached: ids.length,
-          checkedAt: nowIso,
-          breachedIds: ids,
-          followUp: 'Notification dispatch — Phase 3+ email-marketing / notifications service',
-        },
-        200,
-        req,
-      );
     }
 
     // ==================== Analytics: Discounts ====================

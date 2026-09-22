@@ -43,6 +43,7 @@ import {
   Sparkles,
   Activity,
 } from 'lucide-react';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 // Mirrors platform_lead_scoring_rules (shared/platform-crm-schema.ts) in the
 // camelCase the platform-crm function returns. PA-052: the previous shape used
@@ -171,6 +172,7 @@ const EMPTY_RULE_FORM: RuleFormData = {
 
 export default function PlatformLeadScoring() {
   const { toast } = useToast();
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
   const [isRuleDialogOpen, setIsRuleDialogOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<ScoringRule | null>(null);
@@ -291,10 +293,9 @@ export default function PlatformLeadScoring() {
     }
   };
 
-  const handleDeleteRule = (id: string) => {
-    if (confirm('Are you sure you want to delete this scoring rule?')) {
-      deleteRuleMutation.mutate(id);
-    }
+  const handleDeleteRule = async (id: string) => {
+    if (!(await confirm({ title: 'Delete this scoring rule?' }))) return;
+    deleteRuleMutation.mutate(id);
   };
 
   // Filter rules by category

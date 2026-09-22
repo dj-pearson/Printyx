@@ -279,10 +279,29 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to record reading' }, 500, req);
       }
 
-      // Update device last_seen
+      /**
+       * Update device last_seen.
+       *
+       * AUDIT-037: this wrote `status: 'online'`, and `monitored_devices` has
+       * no status column - the list two hundred lines up already says so and
+       * derives reachability from `enabled` plus `consecutive_failures`. An
+       * unknown column in a PostgREST update payload fails the WHOLE
+       * statement, so `last_seen` was never stamped either: a device could
+       * report readings every minute and still show as last seen whenever it
+       * was registered, on a list that ORDERS BY last_seen.
+       *
+       * `consecutive_failures` is reset rather than just dropped, because a
+       * device that has just delivered a reading is demonstrably reachable -
+       * which is what `status: 'online'` was reaching for, in the column the
+       * list actually reads.
+       */
       await admin
         .from('monitored_devices')
-        .update({ last_seen: new Date().toISOString(), status: 'online' })
+        .update({
+          last_seen: new Date().toISOString(),
+          last_successful_collection: new Date().toISOString(),
+          consecutive_failures: 0,
+        })
         .eq('id', body.deviceId || body.device_id)
         .eq('tenant_id', tenantId); // CR-002: scope device update to caller's tenant
 

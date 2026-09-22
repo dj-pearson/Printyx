@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { CRM_PAGE_SIZE } from '@shared/board-truncation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -86,6 +87,7 @@ import MainLayout from '@/components/layout/main-layout';
 import { useAuthContext } from '@/providers/AuthProvider';
 import MobileFAB from '@/components/layout/MobileFAB';
 import { relativeDate, todayLocalDate } from '@/lib/date-utils';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 // Contact form schema
 const contactFormSchema = z.object({
@@ -145,6 +147,7 @@ interface Contact {
 
 export default function Contacts() {
   const { toast } = useToast();
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
   const { user, getAccessToken } = useAuthContext();
   const [searchQuery, setSearchQuery] = useState('');
@@ -216,7 +219,11 @@ export default function Contacts() {
     enabled: !!tenantId,
     retry: 2,
     queryFn: async () => {
-      const response = await apiRequest('/api/companies?limit=500', 'GET');
+      // COP-I01: this asked for 500 against an endpoint that clamps to
+      // CRM_PAGE_SIZE (200), so the picker held the first 200 companies and the
+      // filter below searched only those - a company created after the 200th
+      // could not be selected at all.
+      const response = await apiRequest(`/api/companies?limit=${CRM_PAGE_SIZE}`, 'GET');
       return extractRecords<Record<string, any>>(response).map((row) => ({
         id: row.id,
         companyName: row.business_name ?? row.businessName,
@@ -386,12 +393,18 @@ export default function Contacts() {
     setPendingContactData(null);
   };
 
-  // Filter companies based on search term from form field
+  // Filter companies based on search term from form field.
+  //
+  // Still client-side, and that is now a STATED limit rather than an invisible
+  // one: the query above holds the first CRM_PAGE_SIZE companies, so this
+  // searches those. The dialog says so when the list is capped rather than
+  // letting a missing company read as a company that does not exist.
   const currentCompanyName = contactForm.watch('companyName') || '';
   const filteredCompanies =
     companies?.filter((company: any) =>
       company.companyName?.toLowerCase().includes(currentCompanyName.toLowerCase()),
     ) || [];
+  const companyPickerCapped = (companies?.length ?? 0) >= CRM_PAGE_SIZE;
 
   // Fetch all company contacts via API endpoint
   const {
@@ -532,26 +545,35 @@ export default function Contacts() {
   const totalContacts = contactsData?.total || 0;
   const totalPages = Math.ceil(totalContacts / pageSize);
 
-  // KPI calculations
-  const kpiStats = useMemo(() => {
-    const all = contacts;
-    const active = all.filter(
-      (c: Contact) =>
-        c.leadStatus && !['unqualified', 'inactive'].includes(c.leadStatus.toLowerCase()),
-    );
-    const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const newThisMonth = all.filter(
-      (c: Contact) => c.createdAt && new Date(c.createdAt) >= monthStart,
-    );
-    const unassigned = all.filter((c: Contact) => !c.ownerId);
-    return {
-      total: totalContacts,
-      active: active.length,
-      newThisMonth: newThisMonth.length,
-      unassigned: unassigned.length,
-    };
-  }, [contacts, totalContacts]);
+  /**
+   * The KPI cards, counted by the server over the whole book.
+   *
+   * These used to be computed HERE, over `contacts` - which is one PAGE, and
+   * pageSize defaults to 25. So a tenant with 1,000 contacts read "Total 1,000"
+   * beside "Active 18", "New This Month 3" and "Unassigned 7": three counts of
+   * twenty-five rows under labels claiming the same scope as the total next to
+   * them. Only the total was ever right.
+   *
+   * GET /contacts/stats answers all four as exact counts under the same
+   * ownership scope the list uses. While it is loading, or if it fails, the
+   * cards render an em dash rather than a number - a wrong KPI is worse than a
+   * missing one.
+   */
+  const { data: kpiStats, isLoading: kpiLoading } = useQuery<{
+    total: number;
+    active: number;
+    newThisMonth: number;
+    unassigned: number;
+    scope: 'own' | 'team';
+  }>({
+    queryKey: ['/api/contacts/stats', tenantId],
+    enabled: !!tenantId,
+    queryFn: async () => apiRequest('/api/contacts/stats', 'GET'),
+    staleTime: 60_000,
+  });
+
+  const kpi = (value: number | undefined) =>
+    kpiLoading || value === undefined ? '—' : value.toLocaleString('en-US');
 
   // Use the bulk selection hook
   const {
@@ -691,7 +713,7 @@ export default function Contacts() {
               <Users className="h-4 w-4 text-blue-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{kpiStats.total}</div>
+              <div className="text-2xl font-bold">{kpi(kpiStats?.total)}</div>
               <p className="text-xs text-muted-foreground">All contacts in system</p>
             </CardContent>
           </Card>
@@ -701,7 +723,7 @@ export default function Contacts() {
               <UserCheck className="h-4 w-4 text-green-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{kpiStats.active}</div>
+              <div className="text-2xl font-bold">{kpi(kpiStats?.active)}</div>
               <p className="text-xs text-muted-foreground">Engaged contacts</p>
             </CardContent>
           </Card>
@@ -711,7 +733,7 @@ export default function Contacts() {
               <UserPlus className="h-4 w-4 text-purple-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{kpiStats.newThisMonth}</div>
+              <div className="text-2xl font-bold">{kpi(kpiStats?.newThisMonth)}</div>
               <p className="text-xs text-muted-foreground">Added this month</p>
             </CardContent>
           </Card>
@@ -721,7 +743,7 @@ export default function Contacts() {
               <UserX className="h-4 w-4 text-amber-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{kpiStats.unassigned}</div>
+              <div className="text-2xl font-bold">{kpi(kpiStats?.unassigned)}</div>
               <p className="text-xs text-muted-foreground">Need an owner</p>
             </CardContent>
           </Card>
@@ -955,7 +977,20 @@ export default function Contacts() {
                                   currentCompanyName.toLowerCase(),
                               ) && (
                                 <div className="text-xs text-blue-600 mt-1">
-                                  ✨ New company "{currentCompanyName}" will be created as a lead
+                                  New company &quot;{currentCompanyName}&quot; will be created as a
+                                  lead
+                                  {companyPickerCapped && (
+                                    // The picker holds the first CRM_PAGE_SIZE
+                                    // companies. Saying "will be created"
+                                    // without this caveat is how an existing
+                                    // company past that cap becomes a duplicate
+                                    // record - the user is told it is new.
+                                    <span className="mt-1 block text-amber-700">
+                                      This list shows the first{' '}
+                                      {CRM_PAGE_SIZE.toLocaleString('en-US')} companies, so check
+                                      the company list before creating a duplicate.
+                                    </span>
+                                  )}
                                 </div>
                               )}
                             <FormMessage />
@@ -1558,16 +1593,13 @@ export default function Contacts() {
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                   className="text-red-600"
-                                  onClick={() => {
-                                    if (
-                                      confirm(
-                                        `Delete ${contact.firstName || ''} ${
-                                          contact.lastName
-                                        }? This cannot be undone.`,
-                                      )
-                                    ) {
-                                      deleteContactMutation.mutate(contact.id);
-                                    }
+                                  onClick={async () => {
+                                    const ok = await confirm({
+                                      title: `Delete ${contact.firstName || ''} ${contact.lastName}?`,
+                                      description: 'This cannot be undone.',
+                                    });
+                                    if (!ok) return;
+                                    deleteContactMutation.mutate(contact.id);
                                   }}
                                 >
                                   <Trash2 className="w-4 h-4 mr-2" />

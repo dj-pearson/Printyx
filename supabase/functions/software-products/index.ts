@@ -5,6 +5,10 @@ import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { parseBulkIds } from '../_shared/bulk-ops.ts';
 import { importCatalogCsv, readUploadedCsv } from '../_shared/catalog-import-runner.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { denyWithoutPermission } from '../_shared/rbac.ts';
+
+// SEC-EDGE-001: the same permission its sibling catalogue functions use.
+const WRITE_PERMISSION = 'operations.inventory.manage';
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -39,6 +43,28 @@ export default async function handler(req: Request) {
     if (!tenantId) {
       console.error('No tenant ID found for user:', user.id);
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
+    }
+
+    /**
+     * SEC-EDGE-001: the software catalogue is READ by everyone who builds a
+     * quote and EDITED by whoever maintains pricing.
+     *
+     * `product-models` next door has the identical shape, the identical nav
+     * rule in `navigation-permissions.ts` (`operations.inventory.view` plus
+     * minLevel 2) and has gated its writes with
+     * `operations.inventory.manage` since SEC-EDGE-001's first batch. This is
+     * the sibling nobody did: every POST, PUT and DELETE here - including the
+     * CSV import, the bulk delete and the dedupe - was open to any
+     * authenticated member of the tenant.
+     *
+     * A permission and not a level, matching the sibling: the seeder has a
+     * code that means exactly this and the page already names it. SEC-EDGE-002
+     * is what makes that safe, because before it landed the codes the Express
+     * gates named were ones no seeded role could hold.
+     */
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      const denied = await denyWithoutPermission(admin, user, WRITE_PERMISSION);
+      if (denied) return createCorsResponse(denied, 403, req);
     }
 
     // Use service_role client for database operations

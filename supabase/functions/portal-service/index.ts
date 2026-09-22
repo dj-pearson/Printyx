@@ -72,6 +72,33 @@ export default async function handler(req: Request) {
       return createCorsResponse({ message: 'Tenant ID is required' }, 400, req);
     }
 
+    /**
+     * THIS IS A CUSTOMER SURFACE AND EVERY BRANCH TRUSTED A CALLER-SUPPLIED ID
+     * (SEC-EDGE-001). The page is routed at /portal and its own header opens
+     * "the customer describes what's wrong"; all four endpoints take a
+     * `requestId` and looked it up filtered on `tenant_id` ALONE - and a portal
+     * customer is in the tenant. So one customer could pass another's request
+     * id and read its timeline, read the free text they typed, submit a star
+     * rating on their behalf, and - worst - run /classify against it, which
+     * OPENS A SERVICE TICKET on that customer's account, moves their request to
+     * 'assigned' and writes status history signed "AI Dispatch".
+     *
+     * The same defect and the same fix as customer-portal one function over:
+     * `app_metadata` ONLY, because the session holder writes `user_metadata`
+     * through supabase.auth.updateUser and every query below runs on the
+     * SERVICE ROLE client, which bypasses RLS.
+     *
+     * A caller carrying a claim is a portal customer and every lookup is
+     * narrowed to them. A caller with NO claim is internal staff and keeps the
+     * tenant-wide view, which is what the dealer's own service console needs.
+     *
+     * STATED PLAINLY BECAUSE IT CHANGES THE IMPACT: nothing in this repo sets
+     * `customer_id` on any user, so there are no portal customers yet and the
+     * staff branch is what runs today. This closes the door before the feature
+     * that opens it ships.
+     */
+    const claimedCustomerId = (user.app_metadata?.customer_id as string) || null;
+
     const url = new URL(req.url);
     // Idempotent — the dispatcher strips segment 0 before the handler runs.
     const { parts } = normalizePath(url.pathname, 'portal-service');
@@ -79,14 +106,24 @@ export default async function handler(req: Request) {
     const method = req.method.toUpperCase();
 
     if (method === 'POST' && first === 'classify') {
-      return await handleClassify(req, admin, tenantId, user.id);
+      return await handleClassify(req, admin, tenantId, user.id, claimedCustomerId);
     }
 
     if (method === 'POST' && first === 'rate') {
-      return await handleRate(req, admin, tenantId);
+      return await handleRate(req, admin, tenantId, claimedCustomerId);
     }
 
     if (method === 'GET' && first === 'classifications' && second) {
+      /**
+       * `portal_service_classifications` carries no customer column, so the
+       * REQUEST decides. Checked before the classification is read: a check
+       * afterwards has already answered whether one exists for that id, and the
+       * row holds the free text the other customer typed.
+       */
+      if (!(await ownsRequest(admin, tenantId, second, claimedCustomerId))) {
+        return createCorsResponse({ message: 'Service request not found' }, 404, req);
+      }
+
       const { data, error } = await admin
         .from('portal_service_classifications')
         .select('*')
@@ -102,7 +139,7 @@ export default async function handler(req: Request) {
     }
 
     if (method === 'GET' && first === 'timeline' && second) {
-      return await handleTimeline(admin, tenantId, second, req);
+      return await handleTimeline(admin, tenantId, second, req, claimedCustomerId);
     }
 
     return createCorsResponse({ error: 'Not found' }, 404, req);
@@ -117,6 +154,62 @@ export default async function handler(req: Request) {
   }
 }
 
+/**
+ * The column a `customer_service_requests` row is owned through.
+ *
+ * Named here rather than written inline at five call sites, and asserted
+ * against drizzle's own table config by
+ * server/tests/unit/portal-service-customer-scope.test.ts - which is the check
+ * that matters, because `check:phantom-cols` cannot resolve a column literal
+ * applied inside a helper. Its first version of this scoped with a literal
+ * `.eq('customer_id', ...)` in the helper body, and the guard attributed that
+ * to whatever `.from()` it had last seen, reporting
+ * `portal_service_classifications.customer_id` as phantom. The guard was wrong
+ * and the code was right, and a false positive in a hard gate is worth
+ * restructuring around rather than baselining.
+ */
+const CUSTOMER_OWNER_COLUMN = 'customer_id';
+
+/**
+ * Narrow a `customer_service_requests` query to the caller.
+ *
+ * A claim means a portal customer and the row must be theirs. No claim means
+ * internal staff and the tenant filter already on the query is the boundary.
+ * One definition so a fifth endpoint cannot resolve it differently - which is
+ * how customer-portal ended up with five copies of the same broken chain.
+ */
+function scopeToCustomer<Q>(query: Q, claimedCustomerId: string | null): Q {
+  return claimedCustomerId ? (query as any).eq(CUSTOMER_OWNER_COLUMN, claimedCustomerId) : query;
+}
+
+/**
+ * Does this caller own the request behind an id?
+ *
+ * Answers 404 rather than 403 at the call sites: distinguishing "not yours"
+ * from "does not exist" tells a customer which request ids are real on someone
+ * else's account.
+ */
+async function ownsRequest(
+  admin: ReturnType<typeof createSupabaseServiceClient>,
+  tenantId: string,
+  requestId: string,
+  claimedCustomerId: string | null,
+): Promise<boolean> {
+  const { data, error } = await scopeToCustomer(
+    admin
+      .from('customer_service_requests')
+      .select('id')
+      .eq('id', requestId)
+      .eq('tenant_id', tenantId)
+      .limit(1),
+    claimedCustomerId,
+  );
+  // Fail CLOSED: an ownership check that says yes when the database is
+  // unreachable is not a check.
+  if (error) return false;
+  return ((data ?? []) as unknown[]).length > 0;
+}
+
 // ---------------------------------------------------------------------------
 // Classify (+ best-effort dispatch)
 // ---------------------------------------------------------------------------
@@ -126,6 +219,7 @@ async function handleClassify(
   admin: ReturnType<typeof createSupabaseServiceClient>,
   tenantId: string,
   userId: string,
+  claimedCustomerId: string | null,
 ): Promise<Response> {
   const body = await safeJson(req);
 
@@ -151,12 +245,18 @@ async function handleClassify(
     return createCorsResponse({ classification, serviceTicketId: null }, 200, req);
   }
 
-  const { data: request } = await admin
-    .from('customer_service_requests')
-    .select('id, customer_id, title, equipment_id, status')
-    .eq('id', requestId)
-    .eq('tenant_id', tenantId)
-    .maybeSingle();
+  // Scoped BEFORE anything is created. This branch opens a service ticket,
+  // moves the request to 'assigned' and writes status history, so an unscoped
+  // lookup here is not a read leak - it is a write against another customer's
+  // account.
+  const { data: request } = await scopeToCustomer(
+    admin
+      .from('customer_service_requests')
+      .select('id, customer_id, title, equipment_id, status')
+      .eq('id', requestId)
+      .eq('tenant_id', tenantId),
+    claimedCustomerId,
+  ).maybeSingle();
   if (!request) {
     return createCorsResponse({ message: 'Service request not found' }, 404, req);
   }
@@ -187,17 +287,24 @@ async function handleClassify(
 
     const previousStatus = request.status;
 
-    const { error: updErr } = await admin
-      .from('customer_service_requests')
-      .update({
-        priority: toRequestPriority(classification.suggestedPriority),
-        ...(suggestedTechId ? { assigned_technician_id: suggestedTechId } : {}),
-        ...(serviceTicketId ? { service_ticket_id: serviceTicketId } : {}),
-        status: 'assigned',
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', requestId)
-      .eq('tenant_id', tenantId);
+    // Transitively scoped already - the read above proved ownership - but
+    // filtered again anyway: proving a preceding check is more expensive than
+    // repeating the filter, and the next edit that moves the read would not
+    // notice it had taken the boundary with it.
+    const { error: updErr } = await scopeToCustomer(
+      admin
+        .from('customer_service_requests')
+        .update({
+          priority: toRequestPriority(classification.suggestedPriority),
+          ...(suggestedTechId ? { assigned_technician_id: suggestedTechId } : {}),
+          ...(serviceTicketId ? { service_ticket_id: serviceTicketId } : {}),
+          status: 'assigned',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', requestId)
+        .eq('tenant_id', tenantId),
+      claimedCustomerId,
+    );
     if (updErr) throw updErr;
 
     const { error: histErr } = await admin.from('customer_service_request_status_history').insert({
@@ -286,6 +393,7 @@ async function handleRate(
   req: Request,
   admin: ReturnType<typeof createSupabaseServiceClient>,
   tenantId: string,
+  claimedCustomerId: string | null,
 ): Promise<Response> {
   const body = await safeJson(req);
 
@@ -302,15 +410,20 @@ async function handleRate(
     return createCorsResponse({ message: 'Invalid input', errors }, 400, req);
   }
 
-  const { data: updated, error } = await admin
-    .from('customer_service_requests')
-    .update({
-      customer_rating: rating,
-      ...(feedback ? { customer_feedback: feedback } : {}),
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', requestId)
-    .eq('tenant_id', tenantId)
+  // Scoped on the WRITE, not by a preceding read: a rating is one statement
+  // and the filter is the authorization (SEC-TENANT-005).
+  const { data: updated, error } = await scopeToCustomer(
+    admin
+      .from('customer_service_requests')
+      .update({
+        customer_rating: rating,
+        ...(feedback ? { customer_feedback: feedback } : {}),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', requestId)
+      .eq('tenant_id', tenantId),
+    claimedCustomerId,
+  )
     .select('id')
     .maybeSingle();
   if (error) throw error;
@@ -328,13 +441,16 @@ async function handleTimeline(
   tenantId: string,
   requestId: string,
   req: Request,
+  claimedCustomerId: string | null,
 ): Promise<Response> {
-  const { data: request } = await admin
-    .from('customer_service_requests')
-    .select('id, status')
-    .eq('id', requestId)
-    .eq('tenant_id', tenantId)
-    .maybeSingle();
+  const { data: request } = await scopeToCustomer(
+    admin
+      .from('customer_service_requests')
+      .select('id, status')
+      .eq('id', requestId)
+      .eq('tenant_id', tenantId),
+    claimedCustomerId,
+  ).maybeSingle();
   if (!request) return createCorsResponse({ message: 'Service request not found' }, 404, req);
 
   const { data: history, error } = await admin

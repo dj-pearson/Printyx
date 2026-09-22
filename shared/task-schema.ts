@@ -34,103 +34,32 @@ export const projectStatusEnum = pgEnum('project_status', [
 ]);
 
 // Tasks table - for both individual tasks and project tasks
-export const tasks = pgTable('tasks', {
-  id: varchar('id')
-    .primaryKey()
-    .default(sql`gen_random_uuid()`),
-  tenantId: varchar('tenant_id').notNull(),
-  title: varchar('title', { length: 255 }).notNull(),
-  description: text('description'),
-  status: taskStatusEnum('status').default('todo').notNull(),
-  priority: taskPriorityEnum('priority').default('medium').notNull(),
+/**
+ * `tasks` and `projects` are declared in `shared/schema.ts`, NOT here.
+ *
+ * Both were declared in this file too, and both described tables that do not
+ * exist. Measured against a real PostgreSQL with the chain replayed:
+ *
+ *   tasks     8 phantom columns (parent_task_id, start_date, dependencies,
+ *             watchers, time_tracked, comment_count, attachment_count,
+ *             custom_fields) and MISSING customer_id, deal_id, handoff_id -
+ *             deal_id being the column WF-P-08 added so a task can hang off a
+ *             deal, which is the whole point of the deal page's task panel.
+ *   projects  9 phantom, 6 missing.
+ *
+ * `shared/drizzle-schema.ts` already skipped both ("SKIPPED: defined in
+ * schema.ts"), so neither ever shaped a migration. THIS ONE HAD A LIVE
+ * IMPORTER, unlike the quote tables AUDIT-037 retired the same way:
+ * `server/services/team-collaboration-service.ts` reads `tasks` from here. It
+ * happens to touch only columns both declarations agree on, so it works - but
+ * tsc would have accepted `tasksTable.customFields` just as readily, and that
+ * is a 42703 the moment the query runs.
+ *
+ * The enums and the three tables below are genuinely this file's own.
+ */
+export { tasks, projects, insertTaskSchema, insertProjectSchema } from './schema';
+export type { Task, Project, InsertTask, InsertProject } from './schema';
 
-  // Assignment
-  assignedTo: varchar('assigned_to'), // User ID
-  createdBy: varchar('created_by').notNull(),
-
-  // Project relationship
-  projectId: varchar('project_id'), // Links to projects table
-  parentTaskId: varchar('parent_task_id'), // For subtasks
-
-  // Scheduling
-  dueDate: timestamp('due_date'),
-  startDate: timestamp('start_date'),
-  estimatedHours: integer('estimated_hours'),
-  actualHours: integer('actual_hours'),
-
-  // Progress
-  completionPercentage: integer('completion_percentage').default(0),
-
-  // Enhanced task management fields
-  dependencies: jsonb('dependencies').$type<string[]>().default([]), // Task IDs this task depends on
-  watchers: jsonb('watchers').$type<string[]>().default([]), // User IDs watching this task
-  timeTracked: integer('time_tracked').default(0), // Minutes tracked
-  commentCount: integer('comment_count').default(0),
-  attachmentCount: integer('attachment_count').default(0),
-
-  // Metadata
-  tags: jsonb('tags').$type<string[]>().default([]),
-  customFields: jsonb('custom_fields').$type<Record<string, any>>().default({}),
-
-  // Timestamps
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-  completedAt: timestamp('completed_at'),
-});
-
-// Projects table - for managing complex multi-step projects
-export const projects = pgTable('projects', {
-  id: varchar('id')
-    .primaryKey()
-    .default(sql`gen_random_uuid()`),
-  tenantId: varchar('tenant_id').notNull(),
-  name: varchar('name', { length: 255 }).notNull(),
-  description: text('description'),
-  status: projectStatusEnum('status').default('planning').notNull(),
-
-  // Management
-  projectManager: varchar('project_manager'), // User ID
-  createdBy: varchar('created_by').notNull(),
-
-  // Customer/Contract association
-  customerId: varchar('customer_id'), // Links to customers
-  contractId: varchar('contract_id'), // Links to contracts
-
-  // Scheduling
-  startDate: timestamp('start_date'),
-  endDate: timestamp('end_date'),
-  estimatedBudget: integer('estimated_budget'), // In cents
-  actualBudget: integer('actual_budget'), // In cents
-
-  // Progress
-  completionPercentage: integer('completion_percentage').default(0),
-
-  // Enhanced task management fields
-  color: varchar('color').default('#3b82f6'), // Project color
-  template: varchar('template'), // Project template used
-  workflow: jsonb('workflow')
-    .$type<
-      Array<{
-        id: string;
-        name: string;
-        color: string;
-        order: number;
-        tasks: string[];
-      }>
-    >()
-    .default([]),
-
-  // Metadata
-  tags: jsonb('tags').$type<string[]>().default([]),
-  customFields: jsonb('custom_fields').$type<Record<string, any>>().default({}),
-
-  // Timestamps
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-  completedAt: timestamp('completed_at'),
-});
-
-// Task comments for collaboration
 export const taskComments = pgTable('task_comments', {
   id: varchar('id')
     .primaryKey()
@@ -187,22 +116,16 @@ export const projectTemplates = pgTable('project_templates', {
 });
 
 // Insert schemas
-export const insertTaskSchema = createInsertSchema(tasks);
-export const insertProjectSchema = createInsertSchema(projects);
 export const insertTaskCommentSchema = createInsertSchema(taskComments);
 export const insertTimeEntrySchema = createInsertSchema(timeEntries);
 export const insertProjectTemplateSchema = createInsertSchema(projectTemplates);
 
 // Select types
-export type Task = typeof tasks.$inferSelect;
-export type Project = typeof projects.$inferSelect;
 export type TaskComment = typeof taskComments.$inferSelect;
 export type TimeEntry = typeof timeEntries.$inferSelect;
 export type ProjectTemplate = typeof projectTemplates.$inferSelect;
 
 // Insert types
-export type InsertTask = z.infer<typeof insertTaskSchema>;
-export type InsertProject = z.infer<typeof insertProjectSchema>;
 export type InsertTaskComment = z.infer<typeof insertTaskCommentSchema>;
 export type InsertTimeEntry = z.infer<typeof insertTimeEntrySchema>;
 export type InsertProjectTemplate = z.infer<typeof insertProjectTemplateSchema>;

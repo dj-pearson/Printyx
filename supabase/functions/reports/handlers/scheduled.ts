@@ -31,6 +31,35 @@ import { addMonths, daysInMonth } from '../../_shared/date-months.ts';
 import { toCamelShallow } from '../../_shared/case.ts';
 import type { HandlerCtx } from '../_context.ts';
 
+/**
+ * WHAT A RUN RECORDS WHEN NOTHING WAS DELIVERED.
+ *
+ * `runScheduleNow` used to insert `status: 'success'` and increment
+ * `run_count` for a report it never generated and never sent - while the
+ * RESPONSE it returned said `degraded: { emailDelivery: true }`. The honest
+ * disclaimer was in the body, which nothing persists, and the claim was in the
+ * row, which everything reads afterwards: ScheduledReportsDashboard renders
+ * `runCount` as "N sent", sums it into a "Delivered" card, prints it at 6xl
+ * under "Reports Delivered Automatically", and multiplies it by 0.25 to claim
+ * hours of manual work saved.
+ *
+ * The sibling handler in this same function already had it right:
+ * reporting-engine.ts records `status: 'failed'` with
+ * `error_message: 'execute_degraded: ...'` and an error_code. Two handlers in
+ * one edge function disagreeing about whether the same missing capability is a
+ * success is the shape to grep for (round 132 found the same thing between a
+ * bulk update and the bulk delete twenty lines below it).
+ *
+ * `report_status` is ('success','failed','running','timeout','cancelled') -
+ * checked against migration 0000, not assumed - so 'failed' is the only member
+ * that can carry "this did not happen".
+ */
+export const DELIVERY_DEGRADED_CODE = 'DELIVERY_DEGRADED';
+export const DELIVERY_DEGRADED_MESSAGE =
+  'delivery_degraded: report generation and email delivery are not implemented; no file was produced and nothing was sent';
+export const DELIVERY_DEGRADED_REASON =
+  'Export-to-Storage and email delivery are not implemented. The run was recorded as failed rather than counted as a delivery: run_count is what this page renders as "sent".';
+
 const VALID_FREQUENCIES = new Set(['daily', 'weekly', 'monthly', 'quarterly', 'custom']);
 const VALID_FORMATS = new Set(['csv', 'xlsx', 'pdf']);
 
@@ -82,7 +111,7 @@ function buildCronExpression(
 
 // Simplified next-run: handles daily/weekly/monthly/quarterly patterns. UTC-only;
 // per-tenant timezone is honored at the cron-tick level by pg_cron, not here.
-function calculateNextRun(cronExpression: string): Date {
+export function calculateNextRun(cronExpression: string): Date {
   const now = new Date();
   const parts = cronExpression.split(' ');
   if (parts.length !== 5) {
@@ -400,9 +429,11 @@ async function runScheduleNow(req: Request, ctx: HandlerCtx, id: string): Promis
   }
   const s = schedule as Record<string, unknown>;
 
-  // Record execution. The actual export pipeline (file generation + email)
-  // is degraded — same blocker as the reporting engine /execute path. We
-  // record the attempt so audit trails and run counts stay accurate.
+  // Record the ATTEMPT. The export pipeline (file generation + email) is not
+  // implemented - the same blocker as the reporting engine's /execute path,
+  // which records this as a failure. Recording it as a success is what made
+  // the audit trail and the run count INACCURATE, which is the opposite of
+  // what the old comment here claimed.
   const now = new Date().toISOString();
   const { data: execution } = await db
     .from('report_executions')
@@ -414,10 +445,12 @@ async function runScheduleNow(req: Request, ctx: HandlerCtx, id: string): Promis
       parameters: s.parameters ?? {},
       filters: s.filters ?? {},
       export_format: s.export_format,
-      status: 'success',
+      status: 'failed',
       started_at: now,
       completed_at: now,
       execution_time_ms: 0,
+      error_message: DELIVERY_DEGRADED_MESSAGE,
+      error_code: DELIVERY_DEGRADED_CODE,
     })
     .select()
     .single();
@@ -427,8 +460,10 @@ async function runScheduleNow(req: Request, ctx: HandlerCtx, id: string): Promis
     .from('report_schedules')
     .update({
       last_run: now,
-      run_count: ((s.run_count as number | null) ?? 0) + 1,
-      last_status: 'success',
+      // run_count is NOT incremented: the page renders it as "N sent" and sums
+      // it into a Delivered card, so counting an undelivered run inflates a
+      // figure about mail that was never posted.
+      last_status: 'failed',
       next_run: calculateNextRun((s.cron_expression as string) || '0 9 * * *').toISOString(),
       updated_at: now,
     })
@@ -436,12 +471,12 @@ async function runScheduleNow(req: Request, ctx: HandlerCtx, id: string): Promis
 
   return jsonResponse(
     {
-      message: `Report "${s.name as string}" execution recorded. Email delivery pipeline degraded — see EDGE-002a/EDGE-005d follow-up.`,
+      message: `Report "${s.name as string}" was NOT delivered: report generation and email delivery are not implemented. The attempt is recorded as a failed run.`,
       executionId: (execution as Record<string, unknown> | null)?.id ?? null,
+      delivered: false,
       degraded: {
         emailDelivery: true,
-        reason:
-          'Export-to-Storage + sendgrid delivery not yet ported. Schedule + execution rows are recorded; actual file generation is pending the export pipeline port.',
+        reason: DELIVERY_DEGRADED_REASON,
       },
     },
     200,

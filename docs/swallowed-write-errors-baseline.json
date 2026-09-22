@@ -1,7 +1,7 @@
 {
   "note": "AUDIT-038. PostgREST returns { data, error } instead of throwing, so a write whose error is never read answers 200 while saving nothing. Shrink-only: keyed by file + table + write method, not line. This is a TODO list, not settled debt - work the entries in functions something actually calls first.",
   "generatedBy": "npm run check:swallowed-writes -- --update-baseline",
-  "count": 326,
+  "count": 316,
   "entries": [
     "supabase/functions/_shared/handoff-create.ts::sales_handoff_checklists::delete",
     "supabase/functions/_shared/stripe.ts::tenants::update",
@@ -18,8 +18,6 @@
     "supabase/functions/ai-search/handlers/search.ts::ai_search_queries::update",
     "supabase/functions/api-keys/index.ts::api_key_usage_logs::insert",
     "supabase/functions/api-keys/index.ts::api_keys::update",
-    "supabase/functions/apollo/index.ts::apollo_tenant_leads::upsert",
-    "supabase/functions/assign-lead/index.ts::lead_assignment_history::insert",
     "supabase/functions/auto-lead-routing/index.ts::?::update",
     "supabase/functions/auto-lead-routing/index.ts::business_records::update",
     "supabase/functions/auto-supply-replenishment/index.ts::supply_monitoring::update",
@@ -144,7 +142,6 @@
     "supabase/functions/branding-profiles/index.ts::company_branding_profiles::update",
     "supabase/functions/business-records/index.ts::company_contacts::insert",
     "supabase/functions/business-records/index.ts::company_contacts::update",
-    "supabase/functions/catalog/index.ts::product_accessory_compatibility::delete",
     "supabase/functions/churn-risk/scoring.ts::churn_risk_settings::insert",
     "supabase/functions/companies/index.ts::companies::delete",
     "supabase/functions/company-contacts/index.ts::company_contacts::update",
@@ -189,7 +186,6 @@
     "supabase/functions/knowledge-base/index.ts::knowledge_articles::update",
     "supabase/functions/knowledge-base/index.ts::knowledge_categories::update",
     "supabase/functions/knowledge-base/index.ts::knowledge_search_queries::insert",
-    "supabase/functions/lead-assignment-queue/index.ts::leads::update",
     "supabase/functions/lead-assignment/handlers/assign.ts::business_records::update",
     "supabase/functions/lead-assignment/handlers/assign.ts::lead_assignment_rules::update",
     "supabase/functions/lead-assignment/handlers/territories.ts::business_records::update",
@@ -268,10 +264,8 @@
     "supabase/functions/purchase-orders/index.ts::?::delete",
     "supabase/functions/purchase-orders/index.ts::inventory_items::update",
     "supabase/functions/purchase-orders/index.ts::purchase_orders::update",
-    "supabase/functions/quickbooks/index.ts::integration_sync_logs::insert",
     "supabase/functions/quotes/index.ts::quote_line_items::delete",
     "supabase/functions/quotes/index.ts::quote_line_items::insert",
-    "supabase/functions/rbac/index.ts::rbac_audit_log::insert",
     "supabase/functions/remote-monitoring/index.ts::monitored_devices::update",
     "supabase/functions/renewal-autoquote/index.ts::renewal_auto_quotes::insert",
     "supabase/functions/renewal-autoquote/index.ts::renewal_autoquote_settings::insert",
@@ -306,7 +300,6 @@
     "supabase/functions/social-media/index.ts::social_media_posts::update",
     "supabase/functions/sso/index.ts::sso_provider_configs::update",
     "supabase/functions/sso/index.ts::sso_sessions::delete",
-    "supabase/functions/sso/index.ts::sso_sessions::insert",
     "supabase/functions/subscriptions/index.ts::subscription_events::insert",
     "supabase/functions/subscriptions/index.ts::subscription_notifications::insert",
     "supabase/functions/task-workflows/index.ts::task_workflow_events::insert",
@@ -325,9 +318,6 @@
     "supabase/functions/voice-agent/index.ts::voice_agent_settings::insert",
     "supabase/functions/warehouse-operations/index.ts::inventory_transactions::insert",
     "supabase/functions/webhooks/index.ts::webhook_logs::delete",
-    "supabase/functions/webhooks/index.ts::webhook_logs::insert",
-    "supabase/functions/work-orders/index.ts::work_order_labor::delete",
-    "supabase/functions/work-orders/index.ts::work_order_notes::delete",
-    "supabase/functions/work-orders/index.ts::work_order_parts::delete"
+    "supabase/functions/webhooks/index.ts::webhook_logs::insert"
   ]
 }

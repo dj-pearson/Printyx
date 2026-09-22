@@ -104,7 +104,25 @@ for (const file of walk(clientSrc)) {
   if (!/\buseQuery[<(]/.test(src)) continue;
   const readsIsError = /\bisError\b/.test(src);
   const usesWrapper = /\bQueryStates?\b/.test(src);
-  if (!readsIsError && !usesWrapper) unhandled.push(rel(file));
+  /**
+   * `error` counts too, when it is READ rather than merely destructured.
+   *
+   * SystemMonitoring.tsx pulls `error` out of useQuery and renders
+   * `{error && <p>Could not load system health. {error.message}</p>}` - which is
+   * this guard's whole purpose, done better than an isError boolean because it
+   * shows the reason. It was reported as unhandled anyway, and a false positive
+   * in a gate teaches people to baseline rather than to fix.
+   *
+   * The second half of the test is what keeps it honest: destructuring `error`
+   * and ignoring it must NOT pass, so the identifier has to appear somewhere
+   * beyond the destructure that bound it.
+   */
+  const bindsError = /(?:^|[{,]\s*)error\s*[,}]/m.test(src);
+  const usesErrorElsewhere =
+    bindsError &&
+    (src.match(/\berror\b/g) ?? []).length >
+      (src.match(/(?:^|[{,]\s*)error\s*[,}]/gm) ?? []).length;
+  if (!readsIsError && !usesWrapper && !usesErrorElsewhere) unhandled.push(rel(file));
 }
 unhandled.sort();
 

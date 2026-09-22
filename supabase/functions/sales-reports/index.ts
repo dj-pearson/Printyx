@@ -167,9 +167,13 @@ export default async function handler(req: Request) {
 
     // GET /sales-reports/team/performance - Team performance report
     if (req.method === 'GET' && reportType === 'team' && subReport === 'performance') {
+      // AUDIT-037: `deal_value` is not a column on `deals` - the money column
+      // is `amount`, which CLAUDE.md names as a value eight edge functions
+      // have reached for under the wrong spelling. Selecting it was a 42703,
+      // so this report has never returned a row.
       const { data: teamDeals } = await admin
         .from('deals')
-        .select('owner_id, deal_value, status')
+        .select('owner_id, amount, status')
         .eq('tenant_id', tenantId);
 
       // Group by owner
@@ -183,10 +187,14 @@ export default async function handler(req: Request) {
           pipelineValue: 0,
           dealCount: 0,
         };
+        // A Drizzle decimal arrives as a string, so it is coerced rather than
+        // concatenated; an unparseable amount adds nothing instead of NaN,
+        // which would poison every total on the report.
+        const amount = Number(deal.amount) || 0;
         if (deal.status === 'won') {
-          current.wonValue += deal.deal_value || 0;
+          current.wonValue += amount;
         } else if (deal.status === 'open') {
-          current.pipelineValue += deal.deal_value || 0;
+          current.pipelineValue += amount;
         }
         current.dealCount++;
         ownerMap.set(deal.owner_id, current);

@@ -10,14 +10,6 @@ import { apiRequest, invalidateApiPath } from '@/lib/queryClient';
  * - Inventory → Service dispatch parts availability
  */
 
-export interface CrossModuleEvent {
-  sourceModule: string;
-  targetModule: string;
-  eventType: string;
-  data: Record<string, any>;
-  timestamp: string;
-}
-
 export interface ServiceIntegration {
   customerId: string;
   equipmentId?: string;
@@ -126,18 +118,17 @@ export function useCrossModuleIntegration() {
     refetchInterval: 30000, // Check every 30 seconds
   });
 
-  // Get cross-module integration status
+  /**
+   * The endpoint reports what it CANNOT measure (`unbacked`) and two null
+   * counters. It used to answer `healthy: true` plus five "connected" modules,
+   * which drove a "100% Healthy" badge and a last-sync time that always read as
+   * a moment ago; `isIntegrationHealthy` and `lastSyncTime` were derived from
+   * those constants and are gone with them.
+   */
   const integrationStatus = useQuery({
     queryKey: ['/api/cross-module/status'],
     queryFn: async () => {
       return await apiRequest('/api/cross-module/status', 'GET');
-    },
-  });
-
-  // Event logging and tracking
-  const logCrossModuleEvent = useMutation({
-    mutationFn: async (event: CrossModuleEvent) => {
-      return await apiRequest('/api/cross-module/log-event', 'POST', event);
     },
   });
 
@@ -151,13 +142,6 @@ export function useCrossModuleIntegration() {
     // Real-time data
     checkPartsAvailability,
     integrationStatus,
-
-    // Event tracking
-    logCrossModuleEvent,
-
-    // Helper functions
-    isIntegrationHealthy: integrationStatus.data?.healthy ?? false,
-    lastSyncTime: integrationStatus.data?.lastSync ?? null,
   };
 }
 

@@ -470,47 +470,23 @@ export const userReportActivity = pgTable(
 // DASHBOARD CONFIGURATION TABLES
 // =====================================================================
 
-// Dashboard Layouts - Store custom dashboard configurations
-export const dashboardLayouts = pgTable(
-  'dashboard_layouts',
-  {
-    id: varchar('id')
-      .primaryKey()
-      .default(sql`gen_random_uuid()`),
-    tenantId: varchar('tenant_id').notNull(),
-    userId: varchar('user_id'), // NULL for tenant-wide dashboards
-
-    // Dashboard Identification
-    name: varchar('name', { length: 255 }).notNull(),
-    description: text('description'),
-    category: reportCategoryEnum('category'),
-
-    // Layout Configuration
-    layout: jsonb('layout').notNull(), // Grid layout configuration
-    widgets: jsonb('widgets').notNull(), // Widget configurations
-
-    // Access Control
-    isPublic: boolean('is_public').default(false),
-    allowedRoles: jsonb('allowed_roles').default('[]'),
-    allowedUsers: jsonb('allowed_users').default('[]'),
-
-    // Display Settings
-    isDefault: boolean('is_default').default(false),
-    displayOrder: integer('display_order').default(0),
-
-    // Status
-    isActive: boolean('is_active').default(true),
-
-    createdBy: varchar('created_by').notNull(),
-    createdAt: timestamp('created_at').defaultNow(),
-    updatedAt: timestamp('updated_at').defaultNow(),
-  },
-  (table) => [
-    index('idx_dashboard_layouts_tenant').on(table.tenantId),
-    index('idx_dashboard_layouts_user').on(table.userId),
-    index('idx_dashboard_layouts_category').on(table.category),
-  ],
-);
+/**
+ * `dashboard_layouts` is declared in `shared/schema-dashboard.ts`, NOT here.
+ *
+ * A second declaration stood at this spot describing the table as migration
+ * 0000 created it: `layout`, `category`, `is_public`, `allowed_roles`,
+ * `allowed_users`, `display_order`, `is_active` and `created_by`. Migration
+ * 0002 DROPPED all eight and added `role_id`, `is_user_custom`, `columns` and
+ * `gap`, which is the shape `schema-dashboard.ts` carries and the shape a real
+ * database actually has - checked by replaying the chain, not read off the
+ * file.
+ *
+ * Nothing imported this copy, so nothing was broken; what it cost was the
+ * GUARD. `check:phantom-cols` skips a table declared twice with different
+ * shapes rather than guessing which is right, so every column literal any edge
+ * function aimed at `dashboard_layouts` went unchecked for as long as both
+ * declarations existed. Deleting the stale one puts the table back in scope.
+ */
 
 // =====================================================================
 // FOREIGN KEY RELATIONSHIPS (will be added to existing schema)

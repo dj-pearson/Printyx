@@ -236,10 +236,20 @@ describe('the edge function serves what the page calls', () => {
     }
   });
 
-  it('never writes to supply_orders, whose columns this payload does not have', () => {
+  it('never WRITES to supply_orders, whose columns this payload does not have', () => {
     // machine_id is NOT NULL there and device_id / order_type / items are not
     // columns at all, so the old insert could only ever be a PGRST204.
-    expect(edge).not.toContain("from('supply_orders')");
+    //
+    // Bound to the WRITE, not to the string: WF-V-06 added a read of
+    // supply_orders here for the cross-source pending view, and asserting the
+    // table is never mentioned reported that correct read as the defect. The
+    // property was always about inserting into it.
+    for (const at of [...edge.matchAll(/from\('supply_orders'\)/g)].map((m) => m.index ?? 0)) {
+      const chain = edge.slice(at, at + 400);
+      expect(chain, 'supply_orders is read, never written, in this function').not.toMatch(
+        /\.(insert|update|upsert|delete)\(/,
+      );
+    }
     expect(edge).not.toContain('order_type');
     expect(edge).not.toContain('requested_by');
   });

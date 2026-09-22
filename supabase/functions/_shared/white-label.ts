@@ -1,10 +1,14 @@
 // Shared white-label helpers for edge functions (PROD-014).
 //
-// KEEP IN SYNC with server/services/white-label-service.ts — this is the Deno
-// counterpart of the default email templates, the CSS-variable generator and the
-// template renderer, following the same duplicate-and-note idiom as
-// _shared/print-cost-calculator.ts. The tables are white_label_config,
-// white_label_email_templates and white_label_presets (migration 0000).
+// THIS IS THE ONLY COPY. It used to carry a "keep in sync with
+// server/services/white-label-service.ts" note; QUALITY-002 deleted that file,
+// because nothing imported it - not a route, not a script, not another service.
+// So the instruction asked for maintenance of a module nothing ran, while the
+// eight type errors it carried sat in the ratchet. supabase/functions/white-label
+// is a strict superset of what it did (it adds /config-by-domain, /css and a
+// template preview), and /api/white-label is proxied, so it serves dev as well
+// as production. The tables are white_label_config, white_label_email_templates
+// and white_label_presets (migration 0000).
 //
 // Rows here are raw PostgREST snake_case. Handlers convert to camelCase on the
 // way out, because every consuming page reads camelCase keys.
@@ -29,8 +33,7 @@ export interface DefaultEmailTemplate {
 }
 
 /**
- * The five templates seeded when a tenant's config is first created. Mirrors
- * WhiteLabelService.getDefaultTemplates().
+ * The five templates seeded when a tenant's config is first created.
  */
 export function defaultEmailTemplates(): DefaultEmailTemplate[] {
   return [
@@ -214,7 +217,7 @@ export function defaultEmailTemplates(): DefaultEmailTemplate[] {
 
 type Row = Record<string, any>;
 
-/** Mirrors WhiteLabelService.generateCssVariables(). */
+/** The CSS custom properties a branded portal is themed with. */
 export function generateCssVariables(config: Row): string {
   return `
 :root {
@@ -286,7 +289,7 @@ function wrapWithHeaderFooter(body: string, template: Row, config: Row): string 
     `.trim();
 }
 
-/** Mirrors WhiteLabelService.renderEmailTemplate(). */
+/** Substitute a template's {{variables}} and wrap it in the branded shell. */
 export function renderEmailTemplate(
   template: Row,
   variables: Record<string, string>,

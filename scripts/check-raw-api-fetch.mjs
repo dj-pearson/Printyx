@@ -131,14 +131,45 @@ if (list) {
   process.exit(0);
 }
 
+/**
+ * The hand-written note and the per-entry reasons survive a tighten.
+ *
+ * Round 82 records a writer regenerating its default note and silently
+ * discarding the paragraph that stopped a reader misreading the count. This
+ * baseline now carries BOTH a note and a `reasons` map, and both are what make
+ * it a worklist rather than a tally, so both are read back.
+ */
+function existingBaselineNote() {
+  try {
+    return JSON.parse(readFileSync(baselinePath, 'utf8')).note ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function existingReasons() {
+  try {
+    return JSON.parse(readFileSync(baselinePath, 'utf8')).reasons ?? {};
+  } catch {
+    return {};
+  }
+}
+
 if (update) {
   const allowed = [...new Set(liveFindings.map(key))].sort();
+  const keptReasons = Object.fromEntries(
+    Object.entries(existingReasons()).filter(([k]) => allowed.includes(k)),
+  );
+  const existingNote = existingBaselineNote();
   writeFileSync(
     baselinePath,
     `${JSON.stringify(
       {
-        note: 'PROD-013 raw-fetch ratchet. scripts/check-raw-api-fetch.mjs fails CI when a NEW bare fetch("/api/...") is added to a file reachable from App.tsx. Such a call skips getApiUrl (so it hits the static origin in production, not the edge function) and sends cookies instead of a Bearer JWT. Use apiRequest() from lib/queryClient, or a helper modelled on lib/invoice-pdf.ts for blob downloads. Shrink this list, never grow it: node scripts/check-raw-api-fetch.mjs --update-baseline',
+        note:
+          existingNote ??
+          'PROD-013 raw-fetch ratchet. scripts/check-raw-api-fetch.mjs fails CI when a NEW bare fetch("/api/...") is added to a file reachable from App.tsx. Such a call skips getApiUrl (so it hits the static origin in production, not the edge function) and sends cookies instead of a Bearer JWT. Use apiRequest() from lib/queryClient, or a helper modelled on lib/invoice-pdf.ts for blob downloads. Shrink this list, never grow it: node scripts/check-raw-api-fetch.mjs --update-baseline',
         allowed,
+        reasons: keptReasons,
       },
       null,
       2,
@@ -153,7 +184,24 @@ if (!existsSync(baselinePath)) {
   process.exit(1);
 }
 
-const allowed = new Set(JSON.parse(readFileSync(baselinePath, 'utf8')).allowed);
+const baseline = JSON.parse(readFileSync(baselinePath, 'utf8'));
+const allowed = new Set(baseline.allowed);
+
+// EVERY BASELINED ENTRY SAYS WHY IT IS STILL HERE. A flat list reads the same
+// whether a call site was examined and found unportable or whether nobody
+// looked - which is what let nine broken call sites sit here being quoted as
+// harmless. A reason under 40 characters is not one.
+const unreasoned = [...allowed].filter((k) => ((baseline.reasons ?? {})[k] ?? '').length < 40);
+if (unreasoned.length > 0) {
+  console.error(`✗ ${unreasoned.length} baselined raw fetch(es) with no reason:`);
+  for (const k of unreasoned) console.error(`    ${k}`);
+  console.error(
+    '  Add an entry to `reasons` in docs/raw-api-fetch-baseline.json saying what the host\n' +
+      '  production sends it to would answer, so the list stays a worklist.',
+  );
+  process.exit(1);
+}
+
 const added = liveFindings.filter((f) => !allowed.has(key(f)));
 const seenNow = new Set(liveFindings.map(key));
 const resolved = [...allowed].filter((k) => !seenNow.has(k));
@@ -174,7 +222,17 @@ if (resolved.length > 0) {
   for (const k of resolved) console.log(`    ${k}`);
   console.log('  Tighten with: node scripts/check-raw-api-fetch.mjs --update-baseline');
 } else {
+  // THE OLD WORDING WAS "(N baselined, M on unreachable files)" AND IT READ AS
+  // ONE FACT (round 128). The baseline holds LIVE findings only - `allowed` is
+  // built from liveFindings above - so the two numbers describe disjoint sets,
+  // and when both happened to be 9 the line read as "the nine baselined ones
+  // are the nine unreachable ones". CLAUDE.md quoted it exactly that way:
+  // "all of them now on unreachable files - no reachable page makes one",
+  // about nine raw fetches on ROUTED pages, each one broken in production.
+  // Say what each number is.
   console.log(
-    `✓ No new raw fetch call sites (${allowed.size} baselined, ${deadFindings.length} on unreachable files).`,
+    `✓ No new raw fetch call sites. ${allowed.size} baselined, and every one is on a page ` +
+      `reachable from App.tsx - they break in production until converted. ` +
+      `(${deadFindings.length} more sit on files nothing imports and are not baselined.)`,
   );
 }

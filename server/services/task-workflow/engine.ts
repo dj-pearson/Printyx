@@ -15,7 +15,7 @@
  *
  * Every lifecycle action appends a row to task_workflow_events (the activity log).
  */
-import { and, eq, asc } from 'drizzle-orm';
+import { and, eq, asc, inArray } from 'drizzle-orm';
 import { db } from '../../db';
 import {
   users,
@@ -27,14 +27,22 @@ import {
 } from '@shared/schema';
 import { notifyStepsAssigned } from './notifier';
 import { createModuleLogger } from '../../lib/logger';
-// EDGE-024: the stage math moved to shared/task-workflow-state.ts so this
-// engine and the task-workflows edge function make the same decisions, and so
-// the transitions are pinned by server/tests/unit/task-workflow-state.test.ts.
-// Behaviour here is unchanged — these are the same functions, re-homed.
+// EDGE-024: the stage math lives in shared/task-workflow-state.ts so this engine
+// and the task-workflows edge function make the same decisions, and so the
+// transitions are pinned by server/tests/unit/task-workflow-state.test.ts.
+//
+// EVERY transition comes from there. This engine used to import three of the
+// module's exports and hand-inline the rest, which meant the test that both files'
+// headers cite as pinning the transitions was exercising a copy neither host
+// ran. Do not re-inline one: server/tests/unit/task-workflow-shared-state.test.ts
+// fails if the completion, advance or regress math is rewritten here.
 import {
-  TERMINAL_STEP_STATUSES,
-  computeCurrentStageIndex as computeCurrentStageIndexShared,
-  stepsInStage as stepsInStageShared,
+  applyRegress,
+  applyStageSkip,
+  applyStepCompletion,
+  completionOutcome,
+  computeCurrentStageIndex,
+  stepsToActivate,
 } from '@shared/task-workflow-state';
 
 const log = createModuleLogger('task-workflow-engine');
@@ -79,23 +87,6 @@ async function actorName(userId?: string | null): Promise<string | undefined> {
     .limit(1);
   if (!u) return undefined;
   return [u.firstName, u.lastName].filter(Boolean).join(' ').trim() || undefined;
-}
-
-// ---------------------------------------------------------------------------
-// Stage math
-// ---------------------------------------------------------------------------
-
-/**
- * Lowest stageIndex that still has a non-terminal step; -1 if all are terminal.
- * Re-exported from the shared module so existing importers of this engine keep
- * working while there is only ONE implementation.
- */
-export function computeCurrentStageIndex(steps: TaskWorkflowStep[]): number {
-  return computeCurrentStageIndexShared(steps);
-}
-
-function stepsInStage(steps: TaskWorkflowStep[], stageIndex: number): TaskWorkflowStep[] {
-  return stepsInStageShared(steps, stageIndex);
 }
 
 // ---------------------------------------------------------------------------
@@ -149,18 +140,19 @@ async function activateStage(
   stageIndex: number,
   actorUserId?: string | null,
 ): Promise<void> {
-  const stage = stepsInStage(steps, stageIndex).filter(
-    (s) => !TERMINAL_STEP_STATUSES.has(s.status),
-  );
+  const stage = stepsToActivate(steps, stageIndex);
   if (stage.length === 0) return;
 
   const now = new Date();
-  for (const step of stage) {
-    await db
-      .update(taskWorkflowSteps)
-      .set({ status: 'active', updatedAt: now })
-      .where(eq(taskWorkflowSteps.id, step.id));
-  }
+  await db
+    .update(taskWorkflowSteps)
+    .set({ status: 'active', updatedAt: now })
+    .where(
+      inArray(
+        taskWorkflowSteps.id,
+        stage.map((s) => s.id),
+      ),
+    );
 
   const assignedBy = await actorName(actorUserId ?? workflow.projectManagerId ?? workflow.ownerId);
   const activated = stage.map((s) => ({ ...s, status: 'active' as const }));
@@ -284,17 +276,16 @@ export async function completeStep(
     note,
   });
 
-  // Recompute with this step completed
-  const updatedSteps = steps.map((s) =>
-    s.id === stepId ? { ...s, status: 'completed' as const } : s,
-  );
+  // Recompute with this step completed. completionOutcome is the SHARED
+  // decision about whether the stage finished and what comes next; the edge
+  // function asks the same function, so the two hosts cannot disagree.
+  const updatedSteps = applyStepCompletion(steps, stepId);
   const prevStage = step.stageIndex;
-  const stageSteps = stepsInStage(updatedSteps, prevStage);
-  const stageDone = stageSteps.every((s) => TERMINAL_STEP_STATUSES.has(s.status));
+  const outcome = completionOutcome(steps, stepId);
 
-  if (stageDone) {
-    const nextStage = computeCurrentStageIndex(updatedSteps);
-    if (nextStage >= 0) {
+  if (outcome.stageAdvanced) {
+    const nextStage = outcome.nextStage;
+    if (!outcome.workflowDone) {
       await setCurrentStage(workflow, nextStage);
       await recordEvent({
         tenantId,
@@ -385,20 +376,22 @@ export async function advanceWorkflow(
   if (current < 0) return data; // already complete
 
   const now = new Date();
-  for (const s of stepsInStage(steps, current)) {
-    if (!TERMINAL_STEP_STATUSES.has(s.status)) {
-      await db
-        .update(taskWorkflowSteps)
-        .set({ status: 'skipped', updatedAt: now })
-        .where(eq(taskWorkflowSteps.id, s.id));
-    }
+  // stepsToActivate is "the non-terminal steps in this stage" - exactly the set
+  // an advance skips, which is why the same helper answers both questions.
+  const toSkip = stepsToActivate(steps, current);
+  if (toSkip.length > 0) {
+    await db
+      .update(taskWorkflowSteps)
+      .set({ status: 'skipped', updatedAt: now })
+      .where(
+        inArray(
+          taskWorkflowSteps.id,
+          toSkip.map((s) => s.id),
+        ),
+      );
   }
 
-  const updatedSteps = steps.map((s) =>
-    s.stageIndex === current && !TERMINAL_STEP_STATUSES.has(s.status)
-      ? { ...s, status: 'skipped' as const }
-      : s,
-  );
+  const updatedSteps = applyStageSkip(steps, current);
   const nextStage = computeCurrentStageIndex(updatedSteps);
 
   await recordEvent({
@@ -441,14 +434,20 @@ export async function regressWorkflow(
   if (toStageIndex < 0) throw new Error('Invalid target stage');
 
   const now = new Date();
-  // Reset every step in stages >= target back to pending.
-  for (const s of steps) {
-    if (s.stageIndex >= toStageIndex) {
-      await db
-        .update(taskWorkflowSteps)
-        .set({ status: 'pending', completedAt: null, completedBy: null, updatedAt: now })
-        .where(eq(taskWorkflowSteps.id, s.id));
-    }
+  // Reset every step in stages >= target back to pending. applyRegress decides
+  // WHICH steps that is (completed ones included - that is the point of sending
+  // work back); this block only performs what it decided.
+  const resetSteps = applyRegress(steps, toStageIndex);
+  // The rows to write are the ones applyRegress actually changed, derived from
+  // its answer rather than by repeating its predicate here - repeating it is
+  // how the two hosts drifted in the first place.
+  const before = new Map(steps.map((s) => [s.id, s.status]));
+  const resetIds = resetSteps.filter((s) => before.get(s.id) !== s.status).map((s) => s.id);
+  if (resetIds.length > 0) {
+    await db
+      .update(taskWorkflowSteps)
+      .set({ status: 'pending', completedAt: null, completedBy: null, updatedAt: now })
+      .where(inArray(taskWorkflowSteps.id, resetIds));
   }
 
   await db
@@ -472,9 +471,6 @@ export async function regressWorkflow(
     note: note || 'Sent back for revisions by project manager',
   });
 
-  const resetSteps = steps.map((s) =>
-    s.stageIndex >= toStageIndex ? { ...s, status: 'pending' as const } : s,
-  );
   await activateStage({ ...workflow, status: 'active' }, resetSteps, toStageIndex, actorUserId);
 
   return (await getWorkflowWithSteps(tenantId, workflowId))!;

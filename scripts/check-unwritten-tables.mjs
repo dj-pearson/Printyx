@@ -41,6 +41,26 @@ import { readFileSync, writeFileSync, readdirSync, statSync, existsSync } from '
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+/**
+ * A note somebody WROTE survives --update-baseline.
+ *
+ * These baselines are worklists, and the prose at the top is what makes them
+ * one rather than an undifferentiated list - "each is a question, who fills
+ * this in", "a TODO list, not settled debt". Regenerating the default on every
+ * tighten silently discarded any annotation added since, which cost two rounds
+ * on check:raw-body-writes before a test caught it.
+ * server/tests/unit/baseline-notes-preserved.test.ts holds the property for
+ * every writer.
+ */
+function existingBaselineNote(p) {
+  try {
+    const note = JSON.parse(readFileSync(p, 'utf8')).note;
+    return typeof note === 'string' && note.length > 0 ? note : null;
+  } catch {
+    return null;
+  }
+}
+
 const repo = join(fileURLToPath(new URL('.', import.meta.url)), '..');
 const baselinePath = join(repo, 'docs', 'unwritten-tables-baseline.json');
 const update = process.argv.includes('--update-baseline');
@@ -142,10 +162,11 @@ if (update) {
     JSON.stringify(
       {
         note:
+          existingBaselineNote(baselinePath) ??
           'Declared tables (not views) that an edge function reads and that nothing anywhere ' +
-          'inserts into. Each is a question - who fills this in? - not a defect: the answer is ' +
-          'usually a UI that was never built, an importer never wired, or an external feed that ' +
-          'should be named in a comment. See scripts/check-unwritten-tables.mjs. Do not grow it.',
+            'inserts into. Each is a question - who fills this in? - not a defect: the answer is ' +
+            'usually a UI that was never built, an importer never wired, or an external feed that ' +
+            'should be named in a comment. See scripts/check-unwritten-tables.mjs. Do not grow it.',
         generated: new Date().toISOString().slice(0, 10),
         ofTablesRead: reads.size,
         tables: findings.map((f) => f.table),

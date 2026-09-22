@@ -1202,58 +1202,79 @@ export const userCustomerAssignments = pgTable('user_customer_assignments', {
  * Migration to fold this table's extra columns onto business_records is CRMX-007. Do not bind new
  * CRM screens here.
  */
-export const companies = pgTable('companies', {
-  id: varchar('id')
-    .primaryKey()
-    .default(sql`gen_random_uuid()`),
-  tenantId: varchar('tenant_id').notNull(),
+export const companies = pgTable(
+  'companies',
+  {
+    id: varchar('id')
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: varchar('tenant_id').notNull(),
 
-  // Business Record Information (based on your CRM screenshots)
-  businessRecordType: varchar('business_record_type').notNull().default('Customer'),
-  customerNumber: varchar('customer_number').unique(), // e.g., "10243"
-  businessName: varchar('business_name').notNull(), // e.g., "DES MOINES PUBLIC SCHOOLS"
-  businessSite: varchar('business_site'), // e.g., "MAURY BLDG 1"
-  parentBusiness: varchar('parent_business'),
-  industry: varchar('industry'),
-  activity: varchar('activity'),
-  description: text('description'),
+    // Business Record Information (based on your CRM screenshots)
+    businessRecordType: varchar('business_record_type').notNull().default('Customer'),
+    customerNumber: varchar('customer_number').unique(), // e.g., "10243"
+    businessName: varchar('business_name').notNull(), // e.g., "DES MOINES PUBLIC SCHOOLS"
+    businessSite: varchar('business_site'), // e.g., "MAURY BLDG 1"
+    parentBusiness: varchar('parent_business'),
+    industry: varchar('industry'),
+    activity: varchar('activity'),
+    description: text('description'),
 
-  // Contact Information
-  phone: varchar('phone'), // e.g., "515-242-7911"
-  fax: varchar('fax'), // e.g., "515-242-8295"
-  website: varchar('website'),
-  nextCallBack: timestamp('next_call_back'),
+    // Contact Information
+    phone: varchar('phone'), // e.g., "515-242-7911"
+    fax: varchar('fax'), // e.g., "515-242-8295"
+    website: varchar('website'),
+    nextCallBack: timestamp('next_call_back'),
 
-  // Address Information (matching your screenshots)
-  billingAddress: text('billing_address'), // "2100 FLEUR DR"
-  billingCity: varchar('billing_city'), // "DES MOINES"
-  billingState: varchar('billing_state'), // "IA"
-  billingZip: varchar('billing_zip'), // "50321"
-  shippingAddress: text('shipping_address'),
-  shippingCity: varchar('shipping_city'),
-  shippingState: varchar('shipping_state'),
-  shippingZip: varchar('shipping_zip'),
+    // Address Information (matching your screenshots)
+    billingAddress: text('billing_address'), // "2100 FLEUR DR"
+    billingCity: varchar('billing_city'), // "DES MOINES"
+    billingState: varchar('billing_state'), // "IA"
+    billingZip: varchar('billing_zip'), // "50321"
+    shippingAddress: text('shipping_address'),
+    shippingCity: varchar('shipping_city'),
+    shippingState: varchar('shipping_state'),
+    shippingZip: varchar('shipping_zip'),
 
-  // Business Details
-  customerSince: timestamp('customer_since'), // "11/15/2002"
-  employees: integer('employees'),
-  annualRevenue: decimal('annual_revenue', { precision: 12, scale: 2 }),
-  numberOfLocations: integer('number_of_locations'),
-  sicCode: varchar('sic_code'),
-  productServicesInterest: text('product_services_interest'),
-  numberOfStepsRights: integer('number_of_steps_rights'),
-  specialDeliveryInstructions: text('special_delivery_instructions'),
-  taxState: varchar('tax_state'),
-  elevator: varchar('elevator'),
+    // Business Details
+    customerSince: timestamp('customer_since'), // "11/15/2002"
+    employees: integer('employees'),
+    annualRevenue: decimal('annual_revenue', { precision: 12, scale: 2 }),
+    numberOfLocations: integer('number_of_locations'),
+    sicCode: varchar('sic_code'),
+    productServicesInterest: text('product_services_interest'),
+    numberOfStepsRights: integer('number_of_steps_rights'),
+    specialDeliveryInstructions: text('special_delivery_instructions'),
+    taxState: varchar('tax_state'),
+    elevator: varchar('elevator'),
 
-  // System Information
-  createdBy: varchar('created_by'), // "Informix Office Systems Administrator"
-  businessOwner: varchar('business_owner'), // "Nate Olivennus"
-  lastModifiedBy: varchar('last_modified_by'),
+    // System Information
+    createdBy: varchar('created_by'), // "Informix Office Systems Administrator"
+    businessOwner: varchar('business_owner'), // "Nate Olivennus"
+    lastModifiedBy: varchar('last_modified_by'),
 
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-});
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => ({
+    /**
+     * COP-I01 AC5. `companies` had NO index at all, not even on tenant_id, and
+     * it is the table the primary CRM account list reads in production.
+     *
+     * The sort is the one the endpoint issues: tenant first, created_at DESC
+     * second. A bare created_at index cannot serve that - it orders the whole
+     * table, so Postgres still has to visit every tenant's rows to find one
+     * tenant's newest hundred. Measured with scripts/bench-crm-lists.mjs.
+     */
+    tenantCreatedIdx: index('companies_tenant_created_idx').on(table.tenantId, table.createdAt),
+    tenantTypeIdx: index('companies_tenant_type_idx').on(table.tenantId, table.businessRecordType),
+    // The rep-scoping filter (WF-R-05 resolves ownership to created_by here).
+    tenantCreatedByIdx: index('companies_tenant_created_by_idx').on(
+      table.tenantId,
+      table.createdBy,
+    ),
+  }),
+);
 
 // Company Contacts - All contacts at a company (replaces separate contact/lead concept)
 export const companyContacts = pgTable('company_contacts', {
@@ -1466,6 +1487,12 @@ export const businessRecords = pgTable(
     displayIdIdx: index('business_records_display_id_idx').on(table.companyDisplayId),
     customerNumberIdx: index('business_records_customer_number_idx').on(table.customerNumber),
     createdAtIdx: index('business_records_created_at_idx').on(table.createdAt),
+    // COP-I01 AC5: the list sorts created_at DESC WITHIN a tenant, and the bare
+    // index above orders the whole table, so it cannot serve that.
+    tenantCreatedIdx: index('business_records_tenant_created_idx').on(
+      table.tenantId,
+      table.createdAt,
+    ),
   }),
 );
 
@@ -2643,6 +2670,18 @@ export const deals = pgTable(
     tenantStatusIdx: index('deals_tenant_status_idx').on(table.tenantId, table.status),
     tenantStageIdx: index('deals_tenant_stage_idx').on(table.tenantId, table.stageId),
     expectedCloseDateIdx: index('deals_expected_close_date_idx').on(table.expectedCloseDate),
+    /**
+     * COP-I01 AC5. Both of these are the tenant-scoped forms of a bare index
+     * above them, and the bare ones cannot serve the queries the app issues: a
+     * rep's board filters by tenant AND owner, and the forecast orders by close
+     * date WITHIN a tenant. An index on the column alone orders or groups the
+     * whole table, so one tenant's slice still costs every tenant's rows.
+     */
+    tenantOwnerIdx: index('deals_tenant_owner_idx').on(table.tenantId, table.ownerId),
+    tenantCloseDateIdx: index('deals_tenant_close_date_idx').on(
+      table.tenantId,
+      table.expectedCloseDate,
+    ),
   }),
 );
 
@@ -2675,6 +2714,46 @@ export const dealActivities = pgTable('deal_activities', {
 
   createdAt: timestamp('created_at').defaultNow(),
 });
+
+/**
+ * COP-B11: the cached AI narrative for a deal.
+ *
+ * One row per deal, not a history: a superseded summary is a description of a
+ * deal that no longer exists and nobody would read it twice.
+ *
+ * `fingerprint` is what makes AC6 ("regenerate on meaningful change, not on
+ * every render") enforceable rather than aspirational. It is computed from the
+ * deal's own fields plus its timeline, so a stored summary can be compared to
+ * the deal as it stands now and shown as current or as out of date. Generation
+ * is never implicit: an LLM call on every page view of a changed deal is a bill
+ * nobody agreed to, so the summary regenerates when a rep asks for it.
+ */
+export const dealAiSummaries = pgTable(
+  'deal_ai_summaries',
+  {
+    id: varchar('id')
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: varchar('tenant_id').notNull(),
+    dealId: varchar('deal_id').notNull(),
+
+    summary: text('summary').notNull(),
+    /** Hash of the deal state the summary describes. Stale when it disagrees. */
+    fingerprint: varchar('fingerprint', { length: 64 }).notNull(),
+    /** How many timeline entries the narrative was written from. */
+    sourceEntryCount: integer('source_entry_count'),
+    /** The model that wrote it, so a later reader knows what produced the text. */
+    model: varchar('model', { length: 60 }),
+    totalTokens: integer('total_tokens'),
+
+    generatedBy: varchar('generated_by'),
+    generatedAt: timestamp('generated_at').notNull().defaultNow(),
+  },
+  (table) => ({
+    // One summary per deal. The upsert on regeneration depends on this.
+    dealUnique: unique('deal_ai_summaries_deal_uq').on(table.tenantId, table.dealId),
+  }),
+);
 
 // The comprehensive customers table is defined above (line 448) with all necessary fields
 
@@ -6093,6 +6172,20 @@ export const proposals = pgTable(
     businessRecordId: varchar('business_record_id').notNull(),
     contactId: varchar('contact_id'), // Primary contact for this proposal
 
+    // COP-B02: the deal this quote is for.
+    //
+    // `proposals` knew its ACCOUNT and nothing about the opportunity, so the
+    // deal record could not list its own quotes and COP-B11 could not score
+    // quote margin - an account's newest proposal is not attributable to one of
+    // its deals the moment the account has two. A column rather than a
+    // crm_associations link, matching `contracts.deal_id` (WF-C-09): a quote
+    // belongs to exactly one deal, and the spine from deal to quote to contract
+    // should not change shape halfway along.
+    //
+    // Nullable, so every existing proposal stays valid and a quote raised from
+    // an account rather than a deal carries no false provenance.
+    dealId: varchar('deal_id'),
+
     // Assignment and Ownership
     createdBy: varchar('created_by').notNull(),
     assignedTo: varchar('assigned_to').notNull(),
@@ -6133,10 +6226,11 @@ export const proposals = pgTable(
     // Timestamps for status tracking
     sentAt: timestamp('sent_at'),
 
-    // WF-C-04: `proposals` is declared TWICE - here with 46 columns and in
-    // shared/quote-proposal-schema.ts with 52 - and check:phantom-cols resolves
-    // the ambiguity to whichever it sees, so a column added to one of them reads
-    // as phantom. One table in the database; both declarations carry it.
+    // WF-C-04 recorded that `proposals` was declared twice and said to keep both
+    // copies in sync. That advice never worked and could not: the two had
+    // drifted 15 columns apart, because migration 0002 reshaped these tables and
+    // quote-proposal-schema.ts was a snapshot of the world before it. This is
+    // now the ONLY declaration - see the header of shared/quote-proposal-schema.ts.
     pricingApprovalId: varchar('pricing_approval_id'),
     pricingApprovedAt: timestamp('pricing_approved_at'),
     viewedAt: timestamp('viewed_at'),
@@ -6161,7 +6255,6 @@ export const proposals = pgTable(
     discountReasonNote: text('discount_reason_note'),
     shareToken: varchar('share_token'),
     shareExpiresAt: timestamp('share_expires_at'),
-    customerFeedback: text('customer_feedback'),
 
     // WF-C-05: how the deal is paid.
     //
@@ -6192,6 +6285,8 @@ export const proposals = pgTable(
   (table) => ({
     // PA-026: tenant-scoped indexes (table had none).
     tenantStatusIdx: index('proposals_tenant_status_idx').on(table.tenantId, table.status),
+    // COP-B02: the deal record's Quotes tab filters on exactly this pair.
+    tenantDealIdx: index('proposals_tenant_deal_idx').on(table.tenantId, table.dealId),
     tenantCreatedIdx: index('proposals_tenant_created_idx').on(table.tenantId, table.createdAt),
     // AUDIT-009: `proposals` is the live quotes table and callers filter by
     // proposal_type='quote' BEFORE status, which (tenant_id, status) above cannot
@@ -6252,6 +6347,10 @@ export const proposalLineItems = pgTable(
 
     // Equipment-specific fields
     equipmentCondition: varchar('equipment_condition'), // new, refurbished, demo
+    // COP-B06: the installed machine this line displaces. `equipment.id`, not a
+    // product - the whole point is that Quote Builder's "equipment" has always
+    // meant product_models (what we sell) and never `equipment` (what they run).
+    replacesEquipmentId: varchar('replaces_equipment_id'),
     warrantyInfo: text('warranty_info'),
 
     // Configuration and Options
@@ -9419,6 +9518,17 @@ export * from './churn-risk-schema';
 export * from './contract-pnl-schema';
 // Renewal auto-quote generator (US-SUPER-010)
 export * from './renewal-autoquote-schema';
+export * from './competitor-schema';
+// Forecast commit-vs-actual history (COP-I06)
+export * from './forecast-snapshot-schema';
+// Copier sales playbooks (COP-B13)
+export * from './playbook-schema';
+// Installed-Base Opportunity Radar (COP-B04)
+export * from './opportunity-radar-schema';
+// Suggested Tasks (COP-B03)
+export * from './suggested-task-schema';
+export * from './fleet-assessment-schema';
+export * from './my-day-layout-schema';
 // Quarterly Business Review decks (US-SUPER-004)
 export * from './qbr-schema';
 // Predictive truck-stocking optimizer (US-SUPER-007)

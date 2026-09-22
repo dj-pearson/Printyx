@@ -307,9 +307,22 @@ export function computeParity(repo = repoDefault) {
   // array literals instead, then apply the prefix to each router's own paths.
   const registryPath = join(repo, 'server', 'routes-registry.ts');
   if (existsSync(registryPath)) {
-    const registrySrc = readFileSync(registryPath, 'utf-8');
+    const registryRaw = readFileSync(registryPath, 'utf-8');
+    // COMMENTS STRIPPED BEFORE THE ARRAY IS MATCHED, and this is load-bearing
+    // rather than tidy. The array body is captured NON-GREEDILY up to the first
+    // `]`, so a single bracket anywhere inside - including in prose - ends the
+    // capture early and every module path after it becomes invisible. AUDIT-035
+    // hit exactly that: an unmount note containing
+    // `/api/teams/:id[/members|/capacity|/insights]` cut the array off at its
+    // own comment, and this guard's count fell from 72 to 47 as if 25 routers
+    // had suddenly acquired callers. A ratchet improving a lot is a parse
+    // failure until proven otherwise.
+    const registrySrc = registryRaw
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/(^|[^:])\/\/.*$/gm, '$1');
     // Only bother if the registry really does mount something at bare '/api'.
     if (/app\.use\(\s*['"`]\/api['"`]\s*,/.test(registrySrc)) {
+      let rootMounted = 0;
       for (const arrMatch of registrySrc.matchAll(
         /(?:const|let)\s+\w+\s*:\s*string\[\]\s*=\s*\[([\s\S]*?)\]/g,
       )) {
@@ -325,6 +338,7 @@ export function computeParity(repo = repoDefault) {
           } catch {
             continue;
           }
+          rootMounted++;
           for (const r of modSrc.matchAll(
             /\b[A-Za-z_][A-Za-z0-9_]*\.(?:get|post|put|patch|delete|use|all)\(\s*['"`]\/([a-z0-9-]+)/g,
           )) {
@@ -332,6 +346,15 @@ export function computeParity(repo = repoDefault) {
             if (r[1] !== 'api') expressServed.add(r[1]);
           }
         }
+      }
+      // A registry that mounts at bare '/api' and resolves NO module is a parse
+      // failure, not an empty array. Silently reporting fewer domains is the
+      // vacuous pass every walk here carries a floor against.
+      if (rootMounted === 0) {
+        throw new Error(
+          'route-parity: routes-registry.ts mounts at /api but no root-mounted router ' +
+            'resolved. The array parse is broken - check for a stray bracket.',
+        );
       }
     }
   }

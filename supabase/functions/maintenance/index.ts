@@ -5,6 +5,8 @@ import { addMonths } from '../_shared/date-months.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { ROLE_LEVEL, RbacError, requireRoleLevel } from '../_shared/rbac.ts';
+import type { AuthContext } from '../_shared/auth.ts';
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -34,6 +36,57 @@ export default async function handler(req: Request) {
     if (!tenantId) {
       console.error('No tenant ID found for user:', user.id);
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
+    }
+
+    /**
+     * SEC-EDGE-001: TWO PAGES REACH THIS FUNCTION AND THEY ARE GATED
+     * DIFFERENTLY, which is what decides the seam.
+     *
+     * `/preventive-maintenance` is a view page with no minLevel;
+     * `/preventive-maintenance-automation` is minLevel 3 with
+     * `service.schedule.manage`, and it is the one that creates schedules,
+     * edits them and runs auto-generate. So the reads stay open - breaking
+     * the lower page would be the `webhooks` mistake, where gating at the
+     * higher of two pages locks out the one below - and every write takes
+     * SUPERVISOR, the level the automation page already claims.
+     *
+     * A schedule decides when a technician is dispatched to a customer site
+     * and auto-generate can create them in bulk, so this is not a preference.
+     */
+    const requireSupervisor = () =>
+      requireRoleLevel(
+        {
+          userId: user.id,
+          tenantId,
+          email: user.email,
+          jwt: jwt ?? '',
+          supabaseUser: user,
+        } as AuthContext,
+        ROLE_LEVEL.SUPERVISOR,
+      );
+    const denySupervisor = (err: unknown) => {
+      // Only an RbacError is a role refusal; anything else is rethrown, or a
+      // database outage reads as "your role is too low".
+      if (err instanceof RbacError) {
+        return createCorsResponse(
+          {
+            error: 'Creating or changing a maintenance schedule requires a supervisor role',
+            code: 'INSUFFICIENT_ROLE',
+            details: err.details,
+          },
+          403,
+          req,
+        );
+      }
+      throw err;
+    };
+
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      try {
+        requireSupervisor();
+      } catch (err) {
+        return denySupervisor(err);
+      }
     }
 
     // Use service_role client for database operations
@@ -258,7 +311,7 @@ export default async function handler(req: Request) {
       const rows = ownedList.map((e: Record<string, unknown>) => ({
         tenant_id: tenantId,
         equipment_id: e.id,
-        name: `Preventive maintenance — ${e.model_number ?? e.serial_number ?? e.id}`,
+        name: `Preventive maintenance - ${e.model_number ?? e.serial_number ?? e.id}`,
         maintenance_type: 'preventive',
         frequency,
         frequency_value: Number(body.frequencyValue ?? 1),

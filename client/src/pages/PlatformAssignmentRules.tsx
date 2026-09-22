@@ -34,6 +34,7 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { GitBranch, Plus, Edit, Trash2, Play, Users, MapPin, Settings } from 'lucide-react';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 // Mirrors platform_lead_assignment_rules (shared/platform-crm-schema.ts), in the
 // camelCase the platform-crm function returns. PA-052: the previous shape - name,
@@ -137,6 +138,7 @@ const EMPTY_FORM: RuleFormData = {
 
 export default function PlatformAssignmentRules() {
   const { toast } = useToast();
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<AssignmentRule | null>(null);
@@ -307,10 +309,9 @@ export default function PlatformAssignmentRules() {
     }
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm('Are you sure you want to delete this assignment rule?')) {
-      deleteMutation.mutate(id);
-    }
+  const handleDelete = async (id: string) => {
+    if (!(await confirm({ title: 'Delete this assignment rule?' }))) return;
+    deleteMutation.mutate(id);
   };
 
   const handleToggle = (id: string, currentStatus: boolean) => {

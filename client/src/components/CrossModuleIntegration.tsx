@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import {
@@ -37,13 +36,6 @@ export function CrossModuleIntegration({
   const crossModule = useCrossModuleIntegration();
   const workflows = useWorkflowAutomation();
 
-  // Integration health status
-  const integrationHealth = crossModule.integrationStatus.data?.healthy
-    ? 100
-    : crossModule.integrationStatus.isLoading
-      ? 0
-      : 75;
-
   const dataFlowSteps = [
     {
       id: 1,
@@ -57,7 +49,10 @@ export function CrossModuleIntegration({
       id: 2,
       name: 'Service Creation',
       description: 'Automated service ticket generation',
-      status: crossModule.isIntegrationHealthy ? 'complete' : 'pending',
+      // Was `crossModule.isIntegrationHealthy`, a constant the backend typed
+      // in, so this step rendered complete on every load whether or not a
+      // service ticket had been raised. The trigger's own result is the signal.
+      status: crossModule.triggerServiceFromCustomer.isSuccess ? 'complete' : 'pending',
       module: 'Service Dispatch',
       nextStep: 3,
       trigger: () =>
@@ -91,19 +86,6 @@ export function CrossModuleIntegration({
     },
   ];
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'complete':
-        return 'text-green-600';
-      case 'pending':
-        return 'text-yellow-600';
-      case 'error':
-        return 'text-red-600';
-      default:
-        return 'text-gray-600';
-    }
-  };
-
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'complete':
@@ -119,50 +101,34 @@ export function CrossModuleIntegration({
 
   return (
     <div className={`space-y-6 ${className}`}>
-      {/* Integration Health Status */}
+      {/*
+        The card that stood here reported "100% Healthy" over a full progress
+        bar and a last-sync time, all three read off constants the backend typed
+        in - `healthy: true`, five modules each "connected", and a `lastSync` of
+        the current instant. Those modules are tables in one database rather
+        than services that can be disconnected, so there was never a link whose
+        health it could describe. The endpoint now says what it cannot measure
+        and the claim is gone; what is left is the control that does something.
+      */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <GitBranch className="h-5 w-5" />
-              Cross-Module Integration Health
+              Cross-Module Automation
             </CardTitle>
-            <Badge
-              variant={
-                integrationHealth > 90
-                  ? 'default'
-                  : integrationHealth > 70
-                    ? 'secondary'
-                    : 'destructive'
-              }
-            >
-              {integrationHealth}% Healthy
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <Progress value={integrationHealth} className="h-2" />
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">
-                Last sync:{' '}
-                {crossModule.lastSyncTime
-                  ? new Date(crossModule.lastSyncTime).toLocaleTimeString()
-                  : 'Never'}
-              </span>
-              <div className="flex items-center gap-2">
-                <Switch
-                  checked={automationEnabled}
-                  onCheckedChange={setAutomationEnabled}
-                  id="automation-toggle"
-                />
-                <Label htmlFor="automation-toggle" className="text-sm">
-                  Auto-sync enabled
-                </Label>
-              </div>
+            <div className="flex items-center gap-2">
+              <Switch
+                checked={automationEnabled}
+                onCheckedChange={setAutomationEnabled}
+                id="automation-toggle"
+              />
+              <Label htmlFor="automation-toggle" className="text-sm">
+                Auto-sync enabled
+              </Label>
             </div>
           </div>
-        </CardContent>
+        </CardHeader>
       </Card>
 
       {/* Data Flow Pipeline */}

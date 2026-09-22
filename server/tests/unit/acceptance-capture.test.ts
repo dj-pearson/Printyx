@@ -183,9 +183,26 @@ describe('the acceptance screen', () => {
   const page = code('client/src/pages/DeliveryAcceptance.tsx');
 
   it('will not submit without a name, a signature and a clear checklist', () => {
-    expect(page).toContain(
-      'signerName.trim().length > 0 && Boolean(signature) && blockers.length === 0',
-    );
+    /**
+     * Bound to the CONJUNCTS, not to one line of source.
+     *
+     * This asserted the whole expression as a single string, which was true
+     * only while it fitted on one line - so CR-033's fix, which added the two
+     * clauses that stop a customer signing against a checklist that never
+     * loaded, failed a test it strictly strengthened. A guard failing on
+     * correct work is information about the guard.
+     */
+    const expr = page.slice(page.indexOf('const canSubmit'));
+    const gate = expr.slice(0, expr.indexOf(';')).replace(/\s+/g, ' ');
+    for (const clause of [
+      'signerName.trim().length > 0',
+      'Boolean(signature)',
+      'blockers.length === 0',
+    ]) {
+      expect({ clause, present: gate.includes(clause) }).toEqual({ clause, present: true });
+    }
+    // Every clause is required, none of them merely sufficient.
+    expect(gate).not.toContain('||');
   });
 
   it('saves the checklist BEFORE the signature', () => {

@@ -59,6 +59,7 @@ import {
 import { eq, and, desc, asc, sql, lt, gte, lte, or } from 'drizzle-orm';
 import { requireAuth } from './replitAuth';
 import { getTenantId } from './utils/auth-helpers';
+import { badRequest, notFound, serverError } from './lib/error-response';
 
 export function registerRenewalManagementRoutes(app: Express) {
   // ==================== Contract Renewals ====================
@@ -68,7 +69,7 @@ export function registerRenewalManagementRoutes(app: Express) {
     try {
       const tenantId = getTenantId(req);
       if (!tenantId) {
-        return res.status(400).json({ error: 'Tenant ID required' });
+        return badRequest(res, 'Tenant ID required');
       }
 
       const { status, riskLevel, ownerId, daysUntilRenewal } = req.query;
@@ -100,7 +101,7 @@ export function registerRenewalManagementRoutes(app: Express) {
       res.json(renewals);
     } catch (error) {
       log.error('Error fetching renewals:', error);
-      res.status(500).json({ error: 'Failed to fetch renewals' });
+      serverError(res, 'Failed to fetch renewals');
     }
   });
 
@@ -110,7 +111,7 @@ export function registerRenewalManagementRoutes(app: Express) {
       const { id } = req.params;
       const tenantId = getTenantId(req);
       if (!tenantId) {
-        return res.status(400).json({ error: 'Tenant ID required' });
+        return badRequest(res, 'Tenant ID required');
       }
 
       const renewal = await db.query.contractRenewals.findFirst({
@@ -118,7 +119,7 @@ export function registerRenewalManagementRoutes(app: Express) {
       });
 
       if (!renewal) {
-        return res.status(404).json({ error: 'Renewal not found' });
+        return notFound(res, 'Renewal not found');
       }
 
       // Get activities
@@ -130,7 +131,7 @@ export function registerRenewalManagementRoutes(app: Express) {
       res.json({ ...renewal, activities });
     } catch (error) {
       log.error('Error fetching renewal:', error);
-      res.status(500).json({ error: 'Failed to fetch renewal' });
+      serverError(res, 'Failed to fetch renewal');
     }
   });
 
@@ -139,7 +140,7 @@ export function registerRenewalManagementRoutes(app: Express) {
     try {
       const tenantId = getTenantId(req);
       if (!tenantId) {
-        return res.status(400).json({ error: 'Tenant ID required' });
+        return badRequest(res, 'Tenant ID required');
       }
 
       const renewalData: InsertContractRenewal = {
@@ -158,7 +159,7 @@ export function registerRenewalManagementRoutes(app: Express) {
       res.status(201).json(newRenewal);
     } catch (error) {
       log.error('Error creating renewal:', error);
-      res.status(500).json({ error: 'Failed to create renewal' });
+      serverError(res, 'Failed to create renewal');
     }
   });
 
@@ -168,7 +169,7 @@ export function registerRenewalManagementRoutes(app: Express) {
       const { id } = req.params;
       const tenantId = getTenantId(req);
       if (!tenantId) {
-        return res.status(400).json({ error: 'Tenant ID required' });
+        return badRequest(res, 'Tenant ID required');
       }
 
       const [updated] = await db
@@ -178,13 +179,13 @@ export function registerRenewalManagementRoutes(app: Express) {
         .returning();
 
       if (!updated) {
-        return res.status(404).json({ error: 'Renewal not found' });
+        return notFound(res, 'Renewal not found');
       }
 
       res.json(updated);
     } catch (error) {
       log.error('Error updating renewal:', error);
-      res.status(500).json({ error: 'Failed to update renewal' });
+      serverError(res, 'Failed to update renewal');
     }
   });
 
@@ -194,7 +195,7 @@ export function registerRenewalManagementRoutes(app: Express) {
       const { id } = req.params;
       const tenantId = getTenantId(req);
       if (!tenantId) {
-        return res.status(400).json({ error: 'Tenant ID required' });
+        return badRequest(res, 'Tenant ID required');
       }
       const { renewalWonReason, proposedMrr, proposedArr, proposedContractValue } = req.body;
 
@@ -213,13 +214,13 @@ export function registerRenewalManagementRoutes(app: Express) {
         .returning();
 
       if (!updated) {
-        return res.status(404).json({ error: 'Renewal not found' });
+        return notFound(res, 'Renewal not found');
       }
 
       res.json(updated);
     } catch (error) {
       log.error('Error marking renewal as won:', error);
-      res.status(500).json({ error: 'Failed to mark renewal as won' });
+      serverError(res, 'Failed to mark renewal as won');
     }
   });
 
@@ -229,7 +230,7 @@ export function registerRenewalManagementRoutes(app: Express) {
       const { id } = req.params;
       const tenantId = getTenantId(req);
       if (!tenantId) {
-        return res.status(400).json({ error: 'Tenant ID required' });
+        return badRequest(res, 'Tenant ID required');
       }
       const { renewalLostReason, churnedToCompetitor } = req.body;
 
@@ -246,13 +247,13 @@ export function registerRenewalManagementRoutes(app: Express) {
         .returning();
 
       if (!updated) {
-        return res.status(404).json({ error: 'Renewal not found' });
+        return notFound(res, 'Renewal not found');
       }
 
       res.json(updated);
     } catch (error) {
       log.error('Error marking renewal as lost:', error);
-      res.status(500).json({ error: 'Failed to mark renewal as lost' });
+      serverError(res, 'Failed to mark renewal as lost');
     }
   });
 
@@ -261,7 +262,7 @@ export function registerRenewalManagementRoutes(app: Express) {
     try {
       const tenantId = getTenantId(req);
       if (!tenantId) {
-        return res.status(400).json({ error: 'Tenant ID required' });
+        return badRequest(res, 'Tenant ID required');
       }
 
       // Get renewals in next 90 days or high risk
@@ -284,7 +285,7 @@ export function registerRenewalManagementRoutes(app: Express) {
       res.json(renewalsNeedingAttention);
     } catch (error) {
       log.error('Error fetching renewals needing attention:', error);
-      res.status(500).json({ error: 'Failed to fetch renewals needing attention' });
+      serverError(res, 'Failed to fetch renewals needing attention');
     }
   });
 
@@ -294,7 +295,7 @@ export function registerRenewalManagementRoutes(app: Express) {
       const { id } = req.params;
       const tenantId = getTenantId(req);
       if (!tenantId) {
-        return res.status(400).json({ error: 'Tenant ID required' });
+        return badRequest(res, 'Tenant ID required');
       }
 
       const renewal = await db.query.contractRenewals.findFirst({
@@ -302,7 +303,7 @@ export function registerRenewalManagementRoutes(app: Express) {
       });
 
       if (!renewal) {
-        return res.status(404).json({ error: 'Renewal not found' });
+        return notFound(res, 'Renewal not found');
       }
 
       const renewalRiskScore = calculateRenewalRiskScore(renewal);
@@ -321,7 +322,7 @@ export function registerRenewalManagementRoutes(app: Express) {
       res.json(updated);
     } catch (error) {
       log.error('Error recalculating risk:', error);
-      res.status(500).json({ error: 'Failed to recalculate risk' });
+      serverError(res, 'Failed to recalculate risk');
     }
   });
 
@@ -332,12 +333,12 @@ export function registerRenewalManagementRoutes(app: Express) {
     try {
       const tenantId = getTenantId(req);
       if (!tenantId) {
-        return res.status(400).json({ error: 'Tenant ID required' });
+        return badRequest(res, 'Tenant ID required');
       }
       const { renewalId } = req.query;
 
       if (!renewalId) {
-        return res.status(400).json({ error: 'Renewal ID required' });
+        return badRequest(res, 'Renewal ID required');
       }
 
       const activities = await db.query.renewalActivities.findMany({
@@ -351,7 +352,7 @@ export function registerRenewalManagementRoutes(app: Express) {
       res.json(activities);
     } catch (error) {
       log.error('Error fetching activities:', error);
-      res.status(500).json({ error: 'Failed to fetch activities' });
+      serverError(res, 'Failed to fetch activities');
     }
   });
 
@@ -360,7 +361,7 @@ export function registerRenewalManagementRoutes(app: Express) {
     try {
       const tenantId = getTenantId(req);
       if (!tenantId) {
-        return res.status(400).json({ error: 'Tenant ID required' });
+        return badRequest(res, 'Tenant ID required');
       }
 
       const activityData: InsertRenewalActivity = {
@@ -382,7 +383,7 @@ export function registerRenewalManagementRoutes(app: Express) {
       res.status(201).json(newActivity);
     } catch (error) {
       log.error('Error creating activity:', error);
-      res.status(500).json({ error: 'Failed to create activity' });
+      serverError(res, 'Failed to create activity');
     }
   });
 
@@ -393,7 +394,7 @@ export function registerRenewalManagementRoutes(app: Express) {
     try {
       const tenantId = getTenantId(req);
       if (!tenantId) {
-        return res.status(400).json({ error: 'Tenant ID required' });
+        return badRequest(res, 'Tenant ID required');
       }
 
       const playbooks = await db.query.renewalPlaybooks.findMany({
@@ -404,7 +405,7 @@ export function registerRenewalManagementRoutes(app: Express) {
       res.json(playbooks);
     } catch (error) {
       log.error('Error fetching playbooks:', error);
-      res.status(500).json({ error: 'Failed to fetch playbooks' });
+      serverError(res, 'Failed to fetch playbooks');
     }
   });
 
@@ -413,7 +414,7 @@ export function registerRenewalManagementRoutes(app: Express) {
     try {
       const tenantId = getTenantId(req);
       if (!tenantId) {
-        return res.status(400).json({ error: 'Tenant ID required' });
+        return badRequest(res, 'Tenant ID required');
       }
 
       const playbookData: InsertRenewalPlaybook = {
@@ -426,7 +427,7 @@ export function registerRenewalManagementRoutes(app: Express) {
       res.status(201).json(newPlaybook);
     } catch (error) {
       log.error('Error creating playbook:', error);
-      res.status(500).json({ error: 'Failed to create playbook' });
+      serverError(res, 'Failed to create playbook');
     }
   });
 
@@ -436,7 +437,7 @@ export function registerRenewalManagementRoutes(app: Express) {
       const { id } = req.params;
       const tenantId = getTenantId(req);
       if (!tenantId) {
-        return res.status(400).json({ error: 'Tenant ID required' });
+        return badRequest(res, 'Tenant ID required');
       }
 
       const [updated] = await db
@@ -446,13 +447,13 @@ export function registerRenewalManagementRoutes(app: Express) {
         .returning();
 
       if (!updated) {
-        return res.status(404).json({ error: 'Playbook not found' });
+        return notFound(res, 'Playbook not found');
       }
 
       res.json(updated);
     } catch (error) {
       log.error('Error updating playbook:', error);
-      res.status(500).json({ error: 'Failed to update playbook' });
+      serverError(res, 'Failed to update playbook');
     }
   });
 
@@ -462,7 +463,7 @@ export function registerRenewalManagementRoutes(app: Express) {
       const { renewalId } = req.params;
       const tenantId = getTenantId(req);
       if (!tenantId) {
-        return res.status(400).json({ error: 'Tenant ID required' });
+        return badRequest(res, 'Tenant ID required');
       }
 
       const renewal = await db.query.contractRenewals.findFirst({
@@ -470,7 +471,7 @@ export function registerRenewalManagementRoutes(app: Express) {
       });
 
       if (!renewal) {
-        return res.status(404).json({ error: 'Renewal not found' });
+        return notFound(res, 'Renewal not found');
       }
 
       // Get all active playbooks
@@ -514,7 +515,7 @@ export function registerRenewalManagementRoutes(app: Express) {
       res.json(matchingPlaybook || null);
     } catch (error) {
       log.error('Error recommending playbook:', error);
-      res.status(500).json({ error: 'Failed to recommend playbook' });
+      serverError(res, 'Failed to recommend playbook');
     }
   });
 
@@ -525,7 +526,7 @@ export function registerRenewalManagementRoutes(app: Express) {
     try {
       const tenantId = getTenantId(req);
       if (!tenantId) {
-        return res.status(400).json({ error: 'Tenant ID required' });
+        return badRequest(res, 'Tenant ID required');
       }
 
       const { customerId, status, ownerId } = req.query;
@@ -550,7 +551,7 @@ export function registerRenewalManagementRoutes(app: Express) {
       res.json(opportunities);
     } catch (error) {
       log.error('Error fetching expansion opportunities:', error);
-      res.status(500).json({ error: 'Failed to fetch expansion opportunities' });
+      serverError(res, 'Failed to fetch expansion opportunities');
     }
   });
 
@@ -559,7 +560,7 @@ export function registerRenewalManagementRoutes(app: Express) {
     try {
       const tenantId = getTenantId(req);
       if (!tenantId) {
-        return res.status(400).json({ error: 'Tenant ID required' });
+        return badRequest(res, 'Tenant ID required');
       }
 
       const opportunityData: InsertExpansionOpportunity = {
@@ -575,7 +576,7 @@ export function registerRenewalManagementRoutes(app: Express) {
       res.status(201).json(newOpportunity);
     } catch (error) {
       log.error('Error creating expansion opportunity:', error);
-      res.status(500).json({ error: 'Failed to create expansion opportunity' });
+      serverError(res, 'Failed to create expansion opportunity');
     }
   });
 
@@ -585,7 +586,7 @@ export function registerRenewalManagementRoutes(app: Express) {
       const { id } = req.params;
       const tenantId = getTenantId(req);
       if (!tenantId) {
-        return res.status(400).json({ error: 'Tenant ID required' });
+        return badRequest(res, 'Tenant ID required');
       }
 
       const [updated] = await db
@@ -597,13 +598,13 @@ export function registerRenewalManagementRoutes(app: Express) {
         .returning();
 
       if (!updated) {
-        return res.status(404).json({ error: 'Opportunity not found' });
+        return notFound(res, 'Opportunity not found');
       }
 
       res.json(updated);
     } catch (error) {
       log.error('Error updating expansion opportunity:', error);
-      res.status(500).json({ error: 'Failed to update expansion opportunity' });
+      serverError(res, 'Failed to update expansion opportunity');
     }
   });
 
@@ -613,7 +614,7 @@ export function registerRenewalManagementRoutes(app: Express) {
       const { id } = req.params;
       const tenantId = getTenantId(req);
       if (!tenantId) {
-        return res.status(400).json({ error: 'Tenant ID required' });
+        return badRequest(res, 'Tenant ID required');
       }
       const { actualRevenue, outcomeNotes } = req.body;
 
@@ -632,13 +633,13 @@ export function registerRenewalManagementRoutes(app: Express) {
         .returning();
 
       if (!updated) {
-        return res.status(404).json({ error: 'Opportunity not found' });
+        return notFound(res, 'Opportunity not found');
       }
 
       res.json(updated);
     } catch (error) {
       log.error('Error marking opportunity as won:', error);
-      res.status(500).json({ error: 'Failed to mark opportunity as won' });
+      serverError(res, 'Failed to mark opportunity as won');
     }
   });
 }

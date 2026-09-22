@@ -11,6 +11,12 @@ validateEnvironmentOrFail();
 
 import express, { type Request, Response, NextFunction } from 'express';
 import helmet from 'helmet';
+import {
+  CSP_REPORT_PATH,
+  cspDirectives,
+  isEmbeddablePath,
+  permissionsPolicy,
+} from '../shared/security-headers';
 import compression from 'compression';
 import cors from 'cors';
 import { registerRoutes } from './routes';
@@ -84,65 +90,36 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
-// Security headers
+// Security headers.
+//
+// SEC-003 (round 119): the directives live in `shared/security-headers.ts`
+// because Express is NOT the host that serves the document in production -
+// Cloudflare Pages is, off `client/public/_headers`, which is generated from
+// that same module. One policy, two hosts, nothing to keep in sync.
 const isProduction = process.env.NODE_ENV === 'production';
 
 app.use((req: Request, res: Response, next: NextFunction) => {
   const nonce = (res as any).cspNonce;
 
   const helmetMiddleware = helmet({
-    contentSecurityPolicy: isProduction
-      ? {
-          useDefaults: false,
-          directives: {
-            'default-src': ["'self'"],
-            'script-src': ["'self'", `'nonce-${nonce}'`],
-            'style-src': ["'self'", "'unsafe-inline'", 'https:'],
-            'img-src': ["'self'", 'data:', 'blob:', 'https:'],
-            'font-src': ["'self'", 'https:', 'data:'],
-            'connect-src': [
-              "'self'",
-              'wss:',
-              'https://api.printyx.net',
-              'https://functions.printyx.net',
-            ],
-            'frame-ancestors': ["'none'"],
-            'object-src': ["'none'"],
-            'base-uri': ["'self'"],
-            'form-action': ["'self'"],
-            'upgrade-insecure-requests': [],
-            'report-uri': ['/api/csp-report'],
-            'report-to': ['csp-endpoint'],
-          },
-        }
-      : {
-          // Relaxed CSP in development for Vite HMR compatibility
-          useDefaults: false,
-          directives: {
-            'default-src': ["'self'"],
-            'script-src': ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
-            'style-src': ["'self'", "'unsafe-inline'", 'https:'],
-            'img-src': ["'self'", 'data:', 'blob:', 'https:'],
-            'font-src': ["'self'", 'https:', 'data:'],
-            'connect-src': [
-              "'self'",
-              'ws:',
-              'wss:',
-              'http://localhost:*',
-              // Local dev signs in against the hosted GoTrue/edge functions —
-              // without these the login form is CSP-blocked in the browser.
-              'https://api.printyx.net',
-              'https://functions.printyx.net',
-            ],
-            'frame-ancestors': ["'none'"],
-            'object-src': ["'none'"],
-            'base-uri': ["'self'"],
-          },
-        },
+    contentSecurityPolicy: {
+      useDefaults: false,
+      directives: cspDirectives({
+        nonce,
+        dev: !isProduction,
+        pathname: req.path,
+        // Express owns /api/csp-report, so it is the one host that can ask for
+        // reports. The generated _headers deliberately asks for none.
+        reportUri: CSP_REPORT_PATH,
+      }) as Record<string, string[]>,
+    },
     referrerPolicy: { policy: 'strict-origin-when-cross-origin' as const },
     crossOriginOpenerPolicy: { policy: 'same-origin' },
     crossOriginResourcePolicy: { policy: 'cross-origin' },
-    frameguard: { action: 'deny' },
+    // The hosted web form is embedded on customer sites on purpose, so the
+    // legacy header has to come off there too - X-Frame-Options has no
+    // "allow any origin" value, only absence.
+    frameguard: isEmbeddablePath(req.path) ? false : { action: 'deny' as const },
     hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
     hidePoweredBy: true,
     xContentTypeOptions: true, // X-Content-Type-Options: nosniff
@@ -151,9 +128,13 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   helmetMiddleware(req, res, next);
 });
 
-// Permissions-Policy header (not provided by helmet v7 directly)
+// Permissions-Policy header (not provided by helmet v7 directly).
+// camera/microphone/geolocation are (self), not (): all three are used by
+// routed pages, and an empty allowlist made the browser refuse them on every
+// developer machine while production - where Express never serves the document
+// - was unaffected.
 app.use((_req: Request, res: Response, next: NextFunction) => {
-  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(self)');
+  res.setHeader('Permissions-Policy', permissionsPolicy());
   next();
 });
 

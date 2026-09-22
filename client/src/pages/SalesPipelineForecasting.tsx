@@ -42,6 +42,7 @@ import {
   Settings,
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ForecastCategoryPanel } from '@/components/forecast/ForecastCategoryPanel';
 
 export default function SalesPipelineForecasting() {
   const [selectedForecast, setSelectedForecast] = useState<string>('all');
@@ -146,12 +147,19 @@ export default function SalesPipelineForecasting() {
         )}
 
         {/* Tabs: Overview, Breakdown, Time Series */}
-        <Tabs defaultValue="overview">
+        <Tabs defaultValue="categories">
           <TabsList>
+            {/* COP-I06 first: a category forecast is what a manager defends,
+                and the probability-weighted view is the supporting detail. */}
+            <TabsTrigger value="categories">Categories</TabsTrigger>
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="breakdown">Breakdown</TabsTrigger>
             <TabsTrigger value="time">Time Series</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="categories">
+            <ForecastCategoryPanel />
+          </TabsContent>
 
           <TabsContent value="overview">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">

@@ -60,6 +60,7 @@ import { SOFTWARE_IMPORT_FIELDS, suggestFieldForHeader } from '@shared/software-
 import { useToast } from '@/hooks/use-toast';
 import MainLayout from '@/components/layout/main-layout';
 import { formatCurrency } from '@/lib/utils';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 // Normalize an API row (snake or camel) into the SoftwareProduct shape the UI uses.
 function mapSoftwareProduct(product: any): any {
@@ -133,6 +134,7 @@ export default function SoftwareProducts() {
   };
 
   const { toast } = useToast();
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
 
   // Debounce the search box, and reset to page 1 whenever a filter changes.
@@ -186,11 +188,13 @@ export default function SoftwareProducts() {
         toast({ title: 'No duplicates found', description: 'Every product is unique.' });
         return;
       }
-      const ok = window.confirm(
-        `Found ${preview.duplicateGroups} duplicate group(s) — ${preview.toRemove} extra record(s).\n\n` +
-          `The most complete / newest record in each group is kept and the rest are deleted. ` +
-          `This cannot be undone. Continue?`,
-      );
+      const ok = await confirm({
+        title: `Merge ${preview.duplicateGroups} duplicate group(s)?`,
+        description:
+          `${preview.toRemove} extra record(s) will be deleted. The most complete and newest ` +
+          `record in each group is kept. This cannot be undone.`,
+        confirmLabel: 'Merge duplicates',
+      });
       if (!ok) return;
       const res = await apiRequest('/api/software-products/dedupe', 'POST', {});
       queryClient.invalidateQueries({ queryKey: ['/api/software-products'] });

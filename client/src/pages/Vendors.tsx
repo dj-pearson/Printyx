@@ -37,6 +37,7 @@ import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
 import { insertVendorSchema, type Vendor } from '@shared/schema';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 // Form schema for vendor creation/editing — derived from the real `vendors`
 // table so the form binds only to columns that actually exist (tenantId is
@@ -50,6 +51,7 @@ export default function Vendors() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
   const { toast } = useToast();
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
 
   const { data: vendors = [], isLoading } = useQuery<Vendor[]>({
@@ -186,8 +188,8 @@ export default function Vendors() {
     }
   };
 
-  const handleDelete = (vendor: Vendor) => {
-    if (confirm(`Are you sure you want to delete ${vendor.vendorName}?`)) {
+  const handleDelete = async (vendor: Vendor) => {
+    if (await confirm({ title: `Delete ${vendor.vendorName}?` })) {
       deleteVendorMutation.mutate(vendor.id);
     }
   };

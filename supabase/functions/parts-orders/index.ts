@@ -43,14 +43,13 @@ export default async function handler(req: Request) {
       const status = url.searchParams.get('status');
       const vendorId = url.searchParams.get('vendorId');
 
+      // `vendors` has vendor_name, not name (BATCH 10), so this embed was a
+      // 42703 and the list answered 500 for every tenant. parts_orders already
+      // carries a denormalised vendor_name, so the join bought nothing: the
+      // rows come back flat.
       let query = admin
         .from('parts_orders')
-        .select(
-          `
-          *,
-          vendor:vendor_id (id, name)
-        `,
-        )
+        .select('*')
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false });
 
@@ -70,13 +69,12 @@ export default async function handler(req: Request) {
     if (req.method === 'GET' && orderId && !subResource) {
       const { data: order, error } = await admin
         .from('parts_orders')
-        .select(
-          `
-          *,
-          vendor:vendor_id (*),
-          ordered_by_user:ordered_by (id, full_name, email)
-        `,
-        )
+        // COP-M01 records that parts_orders has NO ordered_by column, so this
+        // embed named a relationship PostgREST cannot resolve - and `users` has
+        // first_name/last_name rather than full_name, so it was wrong twice
+        // over. The error branch below answers 404, which means every attempt
+        // to open a parts order reported that the order does not exist.
+        .select('*, vendor:vendor_id (*)')
         .eq('id', orderId)
         .eq('tenant_id', tenantId)
         .single();

@@ -8,9 +8,17 @@
  * `task-workflows` edge function make the SAME decisions, and so those
  * decisions are pinned by server/tests/unit/task-workflow-state.test.ts.
  *
- * SAME ARRANGEMENT AS shared/contract-pnl-math.ts and shared/quote-math.ts:
- * Deno cannot import from `shared/`, so the edge function replicates these
- * functions inline. KEEP THE TWO IN SYNC.
+ * BOTH HOSTS CALL THIS FILE. The engine imports it through `@shared`, the edge
+ * function through a relative specifier (`../../../shared/task-workflow-state.ts`),
+ * which Deno resolves - a dozen edge functions already do it. It was previously
+ * replicated inside the edge function under a note claiming Deno could not
+ * import from `shared/`, and the engine inlined most of it too, so this file
+ * and its test pinned a third implementation that neither host ran. Do not
+ * re-inline a transition on either side: server/tests/unit/task-workflow-shared-state.test.ts
+ * fails if either host grows its own copy.
+ *
+ * shared/contract-pnl-math.ts and shared/quote-math.ts still carry the old
+ * arrangement and the same stale reason; they are separate work.
  *
  * DELIBERATELY FREE OF I/O. Every function here takes step rows and returns a
  * decision or a new array — no db, no notifications, no clock. That is what

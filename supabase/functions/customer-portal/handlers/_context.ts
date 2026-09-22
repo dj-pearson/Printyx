@@ -38,13 +38,21 @@ export interface PortalCtx {
 // handlers' existing imports keep working.
 export { isMissingTableError } from '../../_shared/postgrest-errors.ts';
 
-// Resolve the acting customer ID: query param (dealer-staff view) → JWT metadata.
+/**
+ * The acting customer, already resolved.
+ *
+ * This used to re-read `?customerId=` and prefer it over the JWT claim, which
+ * is where the dealer-staff override lived - and nothing verified the caller
+ * was staff, so a portal customer passing a sibling's id passed the only check
+ * there was (tenant membership) and read their data on the service-role
+ * client. The claim-versus-parameter decision is made ONCE, in index.ts, right
+ * after the tenant resolve; every handler reads the answer.
+ *
+ * Kept as a function rather than inlined so a handler cannot go back to
+ * resolving it locally without this comment showing up in the diff.
+ */
 export function resolveCustomerId(ctx: Pick<PortalCtx, 'url' | 'customerId'>): string | null {
-  return (
-    ctx.url.searchParams.get('customerId') ||
-    ctx.url.searchParams.get('customer_id') ||
-    ctx.customerId
-  );
+  return ctx.customerId;
 }
 
 export function generateConfirmationCode(): string {

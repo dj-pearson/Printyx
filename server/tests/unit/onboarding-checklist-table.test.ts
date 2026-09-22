@@ -23,6 +23,8 @@
  * A name collision has no natural regression signal, so it is asserted here.
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { getTableConfig } from 'drizzle-orm/pg-core';
 import {
   equipmentOnboardingChecklists,
@@ -44,7 +46,6 @@ vi.mock('../../db', async () => {
 });
 
 import { storage } from '../../storage';
-import { exportChecklistPDF } from '../../routes-export';
 
 beforeEach(() => {
   state.queries = [];
@@ -112,21 +113,31 @@ describe('QUALITY-002: storage checklist methods use the equipment table', () =>
 });
 
 describe('QUALITY-002: the export endpoint reads the equipment table', () => {
-  it('exportChecklistPDF selects equipment_onboarding_checklists', async () => {
-    const res = {
-      status: () => res,
-      json: () => res,
-      setHeader: () => undefined,
-      send: () => undefined,
-    } as unknown as Parameters<typeof exportChecklistPDF>[1];
-    const req = {
-      params: { id: 'c1' },
-      user: { tenantId: 'T1' },
-    } as unknown as Parameters<typeof exportChecklistPDF>[0];
+  // ROUND 133 moved this. server/routes-export.ts is deleted - two of its three
+  // generators declared a content type they did not produce - and the CSV is a
+  // branch in supabase/functions/onboarding/. The PROPERTY is unchanged and is
+  // the reason this file exists: a name collision has no natural regression
+  // signal, so whichever code exports a checklist must read the EQUIPMENT table.
+  const EDGE = readFileSync(
+    join(process.cwd(), 'supabase/functions/onboarding/index.ts'),
+    'utf8',
+  ).replace(/(?<![:/])\/\/[^\n]*/g, '');
 
-    await exportChecklistPDF(req, res);
-    expect(sql()).toContain('from "equipment_onboarding_checklists"');
-    expect(sql()).not.toContain('from "onboarding_checklists"');
+  it('the export branch selects equipment_onboarding_checklists', () => {
+    const at = EDGE.indexOf("subResource === 'export'");
+    expect(at).toBeGreaterThan(-1);
+    const branch = EDGE.slice(at, EDGE.indexOf('Invalid onboarding endpoint', at));
+    expect(branch).toContain("from('equipment_onboarding_checklists')");
+    expect(branch).not.toContain("from('onboarding_checklists')");
+    expect(branch).toContain("from('onboarding_equipment')");
+  });
+
+  it("and the row builder reads the equipment table's own column names", () => {
+    const src = readFileSync(join(process.cwd(), 'shared/onboarding-export.ts'), 'utf8');
+    expect(src).toContain('checklist_title');
+    // The user-lifecycle table keys on userId with a jsonb items array; naming
+    // either here would mean the collision had been made again.
+    expect(src).not.toContain('items:');
   });
 });
 

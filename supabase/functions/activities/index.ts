@@ -4,6 +4,8 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { applyUserScope, resolveScope } from '../_shared/scope.ts';
+import { presentActivity } from '../../../shared/lead-activity-write.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -92,7 +94,66 @@ export default async function handler(req: Request) {
       );
     }
 
+    // GET /activities/recent - the React Native home screen's activity feed
+    //
+    // PROD-008. This is the SUPA-024 shape: `recent` is not an id, but the
+    // branch below reads parts[0] as one, so the request became a lookup for an
+    // activity whose id is the string "recent" and answered 404. The screen has
+    // an explicit empty state, so a dealer whose reps log calls all day saw
+    // "No recent activity yet" on every open.
+    //
+    // It must sit ABOVE the :id branch, and `recent` is therefore a reserved
+    // activity id - which is free, since these ids are uuids.
+    //
+    // SCOPED, because the screen is a personal home screen. A rep sees their
+    // own, a manager their team's; COP-B01 round 105 found the same surface
+    // reading the whole tenant's and reading as the caller's own. The response
+    // is a BARE ARRAY - the screen does `Array.isArray(x) ? x : []` - so the
+    // tier cannot be reported alongside it the way an envelope would.
+    if (req.method === 'GET' && activityId === 'recent' && !action) {
+      const limit = Math.min(parseInt(url.searchParams.get('limit') || '20'), 100);
+
+      const scope = await resolveScope(admin, {
+        tenantId,
+        userId: user.id,
+        appMetadata: user.app_metadata as Record<string, unknown> | undefined,
+        requestedScope: url.searchParams.get('scope'),
+      });
+
+      // `created_by` is the only ownership column this table has: there is no
+      // assignee, so who logged it is who owns it (COP-B01).
+      let query = admin
+        .from('business_record_activities')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+      query = applyUserScope(query, 'created_by', scope);
+
+      const { data: recent, error } = await query;
+
+      if (error) {
+        console.error('Error fetching recent activities:', error);
+        return createCorsResponse({ error: 'Failed to fetch recent activities' }, 500, req);
+      }
+
+      return createCorsResponse(
+        (recent || []).map((row: Record<string, unknown>) => presentActivity(row)),
+        200,
+        req,
+      );
+    }
+
     // GET /activities/:id - Get single activity
+    // An unknown sub-resource answers 404 rather than the parent record.
+    // PA-020's rule: falling through to the row is what makes the NEXT missing
+    // branch invisible - a component mapping over an object renders an empty
+    // list and reports nothing, so the gap reads as "no data yet". Non-GET
+    // methods already reach the terminal refusal below.
+    if (req.method === 'GET' && activityId && action) {
+      return createCorsResponse({ error: `Unknown activity sub-resource: ${action}` }, 404, req);
+    }
+
     if (req.method === 'GET' && activityId) {
       const { data: activity, error } = await admin
         .from('business_record_activities')
@@ -229,6 +290,12 @@ export default async function handler(req: Request) {
         activityDate: 'scheduled_date',
         scheduledDate: 'scheduled_date',
         durationMinutes: 'call_duration',
+        callDuration: 'call_duration',
+        // `call_outcome` is its own column and was missing from this map, so the
+        // edit dialog folded a call's outcome into the general `outcome` field
+        // and the general one then overwrote it. Two fields, one column, last
+        // write wins - and the call outcome was always the loser.
+        callOutcome: 'call_outcome',
         direction: 'direction',
         emailTo: 'email_to',
         emailCc: 'email_cc',

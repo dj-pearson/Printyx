@@ -265,6 +265,47 @@ await serve(
       pathParts[0] = 'scheduled';
     }
 
+    // SEC-EDGE-001 batch 14: finish the lead-assignment consolidation's PR 2.
+    //
+    // supabase/functions/lead-assignment/ is the canonical dispatcher and its
+    // own header lists nine auxiliary functions to delete once PR 2 ships.
+    // PR 1 landed; PR 2 never did, so seven of those nine sat alongside it,
+    // every one of them phantom-columned (rep_capacity has max_active_leads
+    // and current_active_leads, not max_leads/current_leads;
+    // lead_assignment_history has assigned_to/assigned_by, not the *_id names
+    // its embeds used; users has first_name/last_name, not full_name).
+    //
+    // The consolidation's routing premise was missing too. docs/
+    // lead-assignment-parity.md says "Cloudflare/Supabase router fans out to
+    // the canonical edge function based on prefix" and NOTHING implemented
+    // that, so /api/rep-capacity resolved segment 0 to the rep-capacity
+    // DIRECTORY and never reached the canonical handler. Deleting the seven
+    // without this block would have taken those URLs from a broken function to
+    // no function at all.
+    //
+    // stripSegments = 0, like the leases and reports families above and for
+    // the same reason: lead-assignment's PREFIX_MAP keys on segment 0, so the
+    // discriminator has to survive. Stripping it makes every request 404 with
+    // "Not found" inside the dispatcher.
+    //
+    // sales-territories and auto-lead-routing are NOT aliased and NOT deleted:
+    // both have live callers (COP-B09 wired SalesTerritories.tsx to the first
+    // and fixed its columns), so their own directories still serve them and
+    // converging them onto the canonical handler is a shape question rather
+    // than a deletion.
+    if (
+      functionName === 'lead-assignment-rules' ||
+      functionName === 'lead-assignment-queue' ||
+      functionName === 'lead-assignment-history' ||
+      functionName === 'assign-lead' ||
+      functionName === 'territories' ||
+      functionName === 'user-assignments' ||
+      functionName === 'rep-capacity'
+    ) {
+      functionName = 'lead-assignment';
+      stripSegments = 0;
+    }
+
     if (!functionName || !functions[functionName]) {
       return new Response(
         JSON.stringify({

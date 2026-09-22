@@ -4,8 +4,12 @@ import { getCorsHeaders } from '../_shared/cors.ts';
 import { toCsv } from '../_shared/csv.ts';
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
-import { calculateRepCost, canSeeDealerCost } from '../_shared/pricing-math.ts';
+import { calculateRepCost, canEditDealerCost, canSeeDealerCost } from '../_shared/pricing-math.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import {
+  buildCompanyPricingSettingsUpdate,
+  toCompanyPricingSettings,
+} from '../../../shared/company-pricing-settings.ts';
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -350,7 +354,22 @@ export default async function handler(req: Request) {
       return createCorsResponse({ count: report.length, report }, 200, req);
     }
 
-    // GET /pricing/company-settings - Get company pricing settings
+    /**
+     * GET /pricing/settings and /pricing/company-settings
+     *
+     * THE ROW IS BOOTSTRAPPED, not faked. This branch used to answer a
+     * hand-written defaults object for a tenant with no row, using five key
+     * names the table has never had - so the page showed a 20% discount
+     * ceiling while `supabase/functions/proposals` read the table, found no
+     * row, and enforced nothing. A displayed ceiling that no quote is checked
+     * against is worse than a blank.
+     *
+     * The insert supplies `tenant_id` and nothing else, so Postgres applies
+     * the declared column defaults and there is no second copy of the ceiling
+     * here to drift from the schema. `tenant_id` is UNIQUE, so a concurrent
+     * bootstrap conflicts rather than duplicating, and the re-read below is
+     * what that race lands on.
+     */
     if (req.method === 'GET' && (resource === 'company-settings' || resource === 'settings')) {
       const { data: settings, error } = await admin
         .from('company_pricing_settings')
@@ -359,62 +378,85 @@ export default async function handler(req: Request) {
         .maybeSingle();
 
       if (error && error.code !== 'PGRST116') {
-        // PGRST116 is "no rows returned"
         console.error('Error fetching company pricing settings:', error);
         return createCorsResponse({ error: 'Failed to fetch pricing settings' }, 500, req);
       }
 
-      // If no settings exist, return defaults
-      if (!settings) {
+      if (settings) {
+        return createCorsResponse(toCompanyPricingSettings(settings), 200, req);
+      }
+
+      const { data: created, error: createError } = await admin
+        .from('company_pricing_settings')
+        .insert({ tenant_id: tenantId })
+        .select()
+        .single();
+
+      if (createError) {
+        // A concurrent bootstrap won the unique index; read what it wrote
+        // rather than reporting a failure the caller cannot act on.
+        const { data: raced } = await admin
+          .from('company_pricing_settings')
+          .select('*')
+          .eq('tenant_id', tenantId)
+          .maybeSingle();
+        if (raced) return createCorsResponse(toCompanyPricingSettings(raced), 200, req);
+
+        console.error('Error creating company pricing settings:', createError);
+        return createCorsResponse({ error: 'Failed to create pricing settings' }, 500, req);
+      }
+
+      return createCorsResponse(toCompanyPricingSettings(created), 200, req);
+    }
+
+    /**
+     * PUT/PATCH /pricing/settings and POST/PUT/PATCH /pricing/company-settings
+     *
+     * POST on `company-settings` is the spelling PricingManagement.tsx uses
+     * and it had no branch at all, so that dialog's Save answered 405 in
+     * production with no error handler on the mutation - nothing happened and
+     * nothing said so.
+     *
+     * GATED, because this row decides what every rep in the tenant may
+     * discount and whether they see dealer cost - the party the policy checks
+     * editing the policy. `canEditDealerCost` is what the Express half already
+     * required of the same write.
+     */
+    if (
+      (req.method === 'PUT' || req.method === 'PATCH' || req.method === 'POST') &&
+      (resource === 'settings' || resource === 'company-settings') &&
+      !resourceId
+    ) {
+      if (!canEditDealerCost(userRole)) {
         return createCorsResponse(
-          {
-            tenant_id: tenantId,
-            default_company_markup_percentage: 15.0,
-            default_minimum_margin_percentage: 10.0,
-            require_approval_below_minimum: true,
-            auto_calculate_prices: true,
-            pricing_currency: 'USD',
-          },
-          200,
+          { error: 'Insufficient permissions to edit pricing settings', code: 'INSUFFICIENT_ROLE' },
+          403,
           req,
         );
       }
 
-      return createCorsResponse(settings, 200, req);
-    }
+      const body = await req.json().catch(() => ({}));
+      const plan = buildCompanyPricingSettingsUpdate(body);
 
-    // PUT /pricing/settings - Update company pricing settings
-    if ((req.method === 'PUT' || req.method === 'PATCH') && resource === 'settings') {
-      const body = await req.json();
+      if (Object.keys(plan.set).length === 0) {
+        return createCorsResponse(
+          {
+            error: 'No writable pricing settings in request',
+            code: 'NO_WRITABLE_FIELDS',
+            ignoredFields: plan.ignoredFields,
+            refusedFields: plan.refusedFields,
+          },
+          400,
+          req,
+        );
+      }
 
-      const settingsData = {
-        tenant_id: tenantId,
-        default_company_markup_percentage:
-          body.defaultCompanyMarkupPercentage !== undefined
-            ? body.defaultCompanyMarkupPercentage
-            : body.default_company_markup_percentage,
-        default_minimum_margin_percentage:
-          body.defaultMinimumMarginPercentage !== undefined
-            ? body.defaultMinimumMarginPercentage
-            : body.default_minimum_margin_percentage,
-        require_approval_below_minimum:
-          body.requireApprovalBelowMinimum !== undefined
-            ? body.requireApprovalBelowMinimum
-            : body.require_approval_below_minimum,
-        auto_calculate_prices:
-          body.autoCalculatePrices !== undefined
-            ? body.autoCalculatePrices
-            : body.auto_calculate_prices,
-        pricing_currency: body.pricingCurrency || body.pricing_currency || 'USD',
-        updated_at: new Date().toISOString(),
-      };
-
-      // Upsert settings (insert or update)
       const { data: settings, error } = await admin
         .from('company_pricing_settings')
-        .upsert(settingsData, {
-          onConflict: 'tenant_id',
-        })
+        .upsert(
+          { tenant_id: tenantId, ...plan.set, updated_at: new Date().toISOString() },
+          { onConflict: 'tenant_id' },
+        )
         .select()
         .single();
 
@@ -423,7 +465,15 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to update pricing settings' }, 500, req);
       }
 
-      return createCorsResponse(settings, 200, req);
+      return createCorsResponse(
+        {
+          ...toCompanyPricingSettings(settings),
+          ignoredFields: plan.ignoredFields,
+          refusedFields: plan.refusedFields,
+        },
+        200,
+        req,
+      );
     }
 
     // GET /pricing/products - List all product pricing with filters

@@ -31,6 +31,9 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { ROLE_LEVEL, RbacError, requireRoleLevel } from '../_shared/rbac.ts';
+import { isCronRequest } from '../_shared/cron-auth.ts';
+import type { AuthContext } from '../_shared/auth.ts';
 import {
   classifyPriority,
   estimateCost,
@@ -360,6 +363,41 @@ export default async function handler(req: Request) {
 
     // ─── POST /purge-recordings ──────────────────────────────────────
     if (first === 'purge-recordings' && req.method === 'POST') {
+      /**
+       * SEC-EDGE-001. This nulls recording URLs for a whole tenant, and its own
+       * header calls it a cron endpoint - so EITHER the scheduler's token or a
+       * manager, and nothing else. Every tenant member could run it before.
+       *
+       * The call LOG below stays open to the tenant: it is a rep's record of
+       * their own customer conversations, and row scoping is the control there.
+       */
+      if (!isCronRequest(req)) {
+        try {
+          requireRoleLevel(
+            {
+              userId: user.id,
+              tenantId,
+              email: user.email,
+              jwt: jwt ?? '',
+              supabaseUser: user,
+            } as AuthContext,
+            ROLE_LEVEL.MANAGER,
+          );
+        } catch (err) {
+          if (err instanceof RbacError) {
+            return createCorsResponse(
+              {
+                error: 'Purging recordings requires a manager role or the scheduler',
+                code: 'INSUFFICIENT_ROLE',
+                details: err.details,
+              },
+              403,
+              req,
+            );
+          }
+          throw err;
+        }
+      }
       const { data, error } = await admin
         .from('voice_agent_calls')
         .update({ recording_url: null })

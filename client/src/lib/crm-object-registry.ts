@@ -128,7 +128,14 @@ const dealsConfig: CrmObjectConfig = {
       field: 'stage',
       label: 'Stage',
       type: 'select',
-      sortable: true,
+      // COP-I01 AC4: NOT sortable, and the reason is that there is nothing to
+      // sort by. `deals` stores `stage_id`, a uuid, so a server sort would
+      // order the board by an opaque identifier; the stage's own name and
+      // position live on the embedded pipeline_stages row, and PostgREST
+      // cannot order a parent by an embedded column. This was `sortable: true`
+      // against a spec with no `stage` entry, so the header silently fell back
+      // to the default sort - a control that appears to work.
+      sortable: false,
       editable: true,
       width: 'min-w-[150px]',
     },
@@ -348,7 +355,11 @@ const leadsConfig: CrmObjectConfig = {
       field: 'primaryContactName',
       label: 'Contact',
       type: 'text',
-      sortable: true,
+      // COP-I01 AC4: derived from the embedded company_contacts relation,
+      // which PostgREST cannot order the parent by - so there is no column
+      // to whitelist and this header could only ever fall back to the
+      // default sort.
+      sortable: false,
       editable: true,
       width: 'min-w-[180px]',
     },
@@ -356,7 +367,11 @@ const leadsConfig: CrmObjectConfig = {
       field: 'primaryContactEmail',
       label: 'Email',
       type: 'email',
-      sortable: true,
+      // COP-I01 AC4: derived from the embedded company_contacts relation,
+      // which PostgREST cannot order the parent by - so there is no column
+      // to whitelist and this header could only ever fall back to the
+      // default sort.
+      sortable: false,
       width: 'min-w-[200px]',
     },
     {
@@ -367,36 +382,30 @@ const leadsConfig: CrmObjectConfig = {
       editable: true,
       width: 'min-w-[120px]',
     },
-    {
-      field: 'priority',
-      label: 'Priority',
-      type: 'badge',
-      sortable: true,
-      editable: true,
-      width: 'min-w-[100px]',
-    },
-    { field: 'leadSource', label: 'Source', type: 'text', sortable: true, width: 'min-w-[120px]' },
-    {
-      field: 'estimatedAmount',
-      label: 'Value',
-      type: 'currency',
-      sortable: true,
-      editable: true,
-      width: 'min-w-[120px]',
-    },
     { field: 'industry', label: 'Industry', type: 'text', sortable: true, width: 'min-w-[130px]' },
-    { field: 'ownerId', label: 'Owner', type: 'text', sortable: true, width: 'min-w-[150px]' },
+    { field: 'city', label: 'City', type: 'text', sortable: true, width: 'min-w-[120px]' },
     { field: 'createdAt', label: 'Created', type: 'date', sortable: true, width: 'min-w-[130px]' },
   ],
-  defaultColumns: [
-    'companyName',
-    'primaryContactName',
-    'status',
-    'priority',
-    'leadSource',
-    'estimatedAmount',
-    'createdAt',
-  ],
+  // COP-M01: FOUR COLUMNS WERE ADVERTISED AND NONE OF THEM COULD EVER HOLD A
+  // VALUE. This registry was written against `business_records`, but the
+  // endpoint it names reads `companies` - COP-B00's open contradiction - and
+  // that table has no priority, no lead source, no estimated value and no
+  // owner. So the default Leads table showed four permanently empty columns,
+  // two of them marked `editable`, which means inline-editing them posted a
+  // field the write path cannot store.
+  //
+  // They are REMOVED rather than left in the column picker: an empty column a
+  // user can choose reads as "no data yet" instead of "this does not exist".
+  // The set below is what the endpoint actually returns, and it matches what
+  // the legacy LeadsPage has always shown. Restoring value, source, priority
+  // and owner is COP-B00's job, not a column-config change.
+  defaultColumns: ['companyName', 'primaryContactName', 'status', 'industry', 'city', 'createdAt'],
+  // COP-M01: the Priority and Source quick filters did nothing. The endpoint
+  // reads limit, offset, ownerId, recordType, scope, search and status - and
+  // nothing else - so picking "Priority: High" sent a parameter the handler
+  // ignores and the list came back unchanged. A control that appears to work is
+  // worse than a missing one, so both are gone until COP-B00 settles which
+  // table the CRM runs on.
   quickFilters: [
     {
       field: 'status',
@@ -410,29 +419,6 @@ const leadsConfig: CrmObjectConfig = {
         { value: 'negotiation', label: 'Negotiation' },
         { value: 'closed_won', label: 'Closed Won' },
         { value: 'closed_lost', label: 'Closed Lost' },
-      ],
-    },
-    {
-      field: 'priority',
-      label: 'Priority',
-      serverKey: 'priority',
-      options: [
-        { value: 'low', label: 'Low' },
-        { value: 'medium', label: 'Medium' },
-        { value: 'high', label: 'High' },
-        { value: 'urgent', label: 'Urgent' },
-      ],
-    },
-    {
-      field: 'leadSource',
-      label: 'Source',
-      serverKey: 'leadSource',
-      options: [
-        { value: 'website', label: 'Website' },
-        { value: 'referral', label: 'Referral' },
-        { value: 'cold_call', label: 'Cold Call' },
-        { value: 'trade_show', label: 'Trade Show' },
-        { value: 'social_media', label: 'Social Media' },
       ],
     },
   ],

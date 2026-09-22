@@ -60,6 +60,14 @@ export default async function handler(req: Request) {
         if (!client) {
           return createCorsResponse({ error: 'Invalid or inactive API key' }, 401, req);
         }
+      } else {
+        // SEC-EDGE-001: the comment above says "requires auth" and, with no
+        // final branch, it did not. Neither a JWT nor an api key meant both
+        // checks were skipped and the presets were served to anyone who
+        // asked. Low stakes - `oid_presets` is a global SNMP reference
+        // catalogue with no tenant filter - but a comment promising more than
+        // the code is how a real gap gets read as covered.
+        return createCorsResponse({ error: 'Unauthorized' }, 401, req);
       }
 
       const { data: presets, error } = await admin
@@ -112,6 +120,9 @@ export default async function handler(req: Request) {
         if (!client) {
           return createCorsResponse({ error: 'Invalid or inactive API key' }, 401, req);
         }
+      } else {
+        // Same fall-through as the list branch above.
+        return createCorsResponse({ error: 'Unauthorized' }, 401, req);
       }
 
       const { data: presets, error } = await admin
@@ -221,12 +232,18 @@ export default async function handler(req: Request) {
           admin.from('printer_metrics').insert(rows).select(),
         );
 
-        // Update client last seen
+        // Update client last seen.
+        //
+        // This said `tenantId`, which is declared 26 lines BELOW in a different
+        // branch - a const in its temporal dead zone, so every metrics
+        // submission threw "Cannot access 'tenantId' before initialization"
+        // before it could answer. The agent is authenticated by its API key, so
+        // the tenant is the client's, exactly as the rows above write it.
         await admin
           .from('monitoring_clients')
           .update({ last_seen_at: new Date().toISOString() })
           .eq('id', client.id)
-          .eq('tenant_id', tenantId);
+          .eq('tenant_id', client.tenant_id);
 
         return createCorsResponse(
           {

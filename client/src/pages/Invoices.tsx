@@ -35,10 +35,8 @@ import {
   X,
   Trash2,
   FileText,
-  UserPlus,
   AlertTriangle,
   CheckCircle2,
-  Clock,
   TrendingUp,
 } from 'lucide-react';
 import type { Contract, Customer } from '@shared/schema';
@@ -57,6 +55,13 @@ import { BulkProgressTracker, useBulkProgress } from '@/components/ui/bulk-progr
 import { useToast } from '@/hooks/use-toast';
 import { useActionParam } from '@/hooks/use-action-param';
 import { todayLocalDate } from '@/lib/date-utils';
+
+/** What both bulk-delete hosts answer (shared/bulk-result.ts). */
+type BulkDeleteResponse = {
+  message?: string;
+  deletedCount?: number;
+  notFound?: string[];
+};
 
 export default function Invoices() {
   const [isGenerateDialogOpen, setIsGenerateDialogOpen] = useState(false);
@@ -337,18 +342,11 @@ export default function Invoices() {
     },
   });
 
-  // Bulk delete mutation
-  const bulkDeleteMutation = useMutation({
-    mutationFn: async (ids: string[]) => apiRequest('/api/invoices/bulk-delete', 'POST', { ids }),
-    onSuccess: (_, ids) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/billing/invoices'] });
-      bulkSelection.clearSelection();
-      toast({ title: 'Success', description: `${ids.length} invoice(s) deleted successfully` });
-    },
-    onError: () => {
-      toast({ title: 'Error', description: 'Failed to delete invoices', variant: 'destructive' });
-    },
-  });
+  // ROUND 132: a `bulkDeleteMutation` sat here and was never called - the live
+  // delete path is the `executeBulk` action below, and eslint reported the
+  // mutation only as "assigned a value but never used", which reads like a
+  // tidy-up rather than a second implementation of a destructive action. One
+  // delete path, and it reports what the server measured.
 
   // Bulk export
   const handleBulkExport = (exportFormat: 'csv' | 'json') => {
@@ -421,8 +419,13 @@ export default function Invoices() {
       icon: Trash2,
       onClick: (ids) => {
         executeBulk('delete-invoices', ids, async (batch) => {
-          await apiRequest('/api/invoices/bulk-delete', 'POST', { ids: batch });
-          return { succeeded: batch.length, failed: 0 };
+          // `failed: 0` was hardcoded here, so the progress tracker reported a
+          // clean run over rows that were never touched.
+          const result = await apiRequest<BulkDeleteResponse>('/api/invoices/bulk-delete', 'POST', {
+            ids: batch,
+          });
+          const succeeded = result?.deletedCount ?? 0;
+          return { succeeded, failed: batch.length - succeeded };
         });
         queryClient.invalidateQueries({ queryKey: ['/api/billing/invoices'] });
         bulkSelection.clearSelection();

@@ -7,6 +7,13 @@ import { toCamel } from '../_shared/case.ts';
 import { accessibleCustomerIds, applyCustomerScope, resolveScope } from '../_shared/scope.ts';
 import { lifecycleRowForReceivedUnit } from '../purchase-orders/_serialization.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { toServiceHistory } from '../../../shared/service-history.ts';
+
+// Everything toServiceHistory reads. One list, so the embedded history on
+// GET /equipment/:id and the /service-history sub-resource cannot drift into
+// answering different fields for the same rows.
+const SERVICE_HISTORY_COLUMNS =
+  'id, ticket_number, title, description, priority, status, resolution_notes, created_at, resolved_at';
 
 // Helper: Batch-enrich records with customer names from business_records
 async function enrichWithCustomerNames(admin: any, records: any[]) {
@@ -149,6 +156,30 @@ export default async function handler(req: Request) {
       return createCorsResponse(toCamel(readings || []), 200, req);
     }
 
+    // GET /equipment/:id/service-history - the React Native equipment screen
+    //
+    // PROD-008. This sub-resource had no branch, so it hit the 404 below and
+    // the screen rendered "No service history" for machines with tickets
+    // against them - a wrong answer that reads as a reassuring one.
+    if (req.method === 'GET' && equipmentId && subResource === 'service-history') {
+      const limit = Math.min(parseInt(url.searchParams.get('limit') || '50'), 200);
+
+      const { data: tickets, error } = await admin
+        .from('service_tickets')
+        .select(SERVICE_HISTORY_COLUMNS)
+        .eq('tenant_id', tenantId)
+        .eq('equipment_id', equipmentId)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (error) {
+        console.error('Error fetching service history:', error);
+        return createCorsResponse({ error: 'Failed to fetch service history' }, 500, req);
+      }
+
+      return createCorsResponse(toServiceHistory(tickets || []), 200, req);
+    }
+
     // An unknown sub-resource is a 404, not the parent record. Falling through is
     // what made the defect above invisible.
     if (equipmentId && subResource) {
@@ -186,16 +217,21 @@ export default async function handler(req: Request) {
         equipment = { ...equipmentData, customer: customer || null };
       }
 
-      // Get service history
+      // Get service history - the same rows through the same mapper as the
+      // /service-history sub-resource above.
       const { data: serviceHistory } = await admin
         .from('service_tickets')
-        .select('id, ticket_number, status, created_at, resolved_at')
+        .select(SERVICE_HISTORY_COLUMNS)
         .eq('equipment_id', equipmentId)
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false })
         .limit(10);
 
-      return createCorsResponse({ ...equipment, serviceHistory: serviceHistory || [] }, 200, req);
+      return createCorsResponse(
+        { ...equipment, serviceHistory: toServiceHistory(serviceHistory || []) },
+        200,
+        req,
+      );
     }
 
     // POST /equipment - Create equipment

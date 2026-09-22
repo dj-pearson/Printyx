@@ -28,6 +28,14 @@ function stripPrefix(path: string): string {
   return path.replace(/^\/+/, '/').replace(/^\/dashboard/, '') || '/';
 }
 
+/**
+ * CRM-LAYOUT-001. This surface and `/custom-dashboard` both stored "the one
+ * custom layout per user" in `dashboard_layouts` filtered on
+ * `(tenant_id, user_id, is_user_custom)` alone, so a layout saved on one could
+ * be handed to the other. They are different screens; the column says which.
+ */
+const ROLE_DASHBOARD_SURFACE = 'role-dashboard';
+
 export default async function handler(req: Request) {
   const corsResult = handleCors(req);
   if (corsResult) return corsResult;
@@ -53,6 +61,7 @@ export default async function handler(req: Request) {
           .eq('tenant_id', ctx.tenantId)
           .eq('user_id', ctx.userId)
           .eq('is_user_custom', true)
+          .eq('surface', ROLE_DASHBOARD_SURFACE)
           .limit(1)
           .maybeSingle();
 
@@ -96,6 +105,7 @@ export default async function handler(req: Request) {
           .eq('tenant_id', ctx.tenantId)
           .eq('user_id', ctx.userId)
           .eq('is_user_custom', true)
+          .eq('surface', ROLE_DASHBOARD_SURFACE)
           .limit(1)
           .maybeSingle();
 
@@ -127,6 +137,7 @@ export default async function handler(req: Request) {
           .from('dashboard_layouts')
           .insert({
             name: 'Custom Dashboard',
+            surface: ROLE_DASHBOARD_SURFACE,
             tenant_id: ctx.tenantId,
             user_id: ctx.userId,
             is_user_custom: true,

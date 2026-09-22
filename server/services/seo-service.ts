@@ -28,28 +28,31 @@ import {
   seoCompetitorAnalysis,
 } from '@shared/schema';
 import * as cheerio from 'cheerio';
+import {
+  CHECKED_LINK_LIMIT,
+  evaluateMobileFriendliness,
+  evaluatePageImages,
+  planLinkChecks,
+  validateJsonLdBlocks,
+  type ImageFact,
+  type LinkFact,
+  type PageFacts,
+} from '@shared/seo-page-facts';
+import { evaluateSeoAudit, type AuditResult } from '@shared/seo-audit';
+import {
+  evaluateSecurityHeaders,
+  MAX_REDIRECTS,
+  readPageSpeedVitals,
+  type RedirectStep,
+  summariseRedirectChain,
+} from '@shared/seo-checks';
 import fetch from 'node-fetch';
 
 // ============= TYPES =============
 
-interface AuditResult {
-  overallScore: number;
-  technicalScore: number;
-  contentScore: number;
-  performanceScore: number;
-  criticalIssues: number;
-  highIssues: number;
-  mediumIssues: number;
-  lowIssues: number;
-  issues: Array<{
-    category: string;
-    severity: string;
-    message: string;
-    fix?: string;
-  }>;
-  recommendations: string[];
-  technicalDetails: any;
-}
+// AuditResult is imported from @shared/seo-audit, which both hosts read. The
+// local copy that stood here typed technicalDetails as `any`, so every field
+// the page reads off it was unchecked.
 
 interface CrawlPage {
   url: string;
@@ -82,11 +85,7 @@ interface CrawlPage {
 // ============= COMPREHENSIVE SEO AUDIT =============
 
 export async function performComprehensiveSEOAudit(url: string): Promise<AuditResult> {
-  const issues: Array<{ category: string; severity: string; message: string; fix?: string }> = [];
-  const recommendations: string[] = [];
-
   try {
-    // Fetch the page
     const response = await fetch(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; PrintyxSEOBot/1.0; +https://printyx.net)',
@@ -94,279 +93,16 @@ export async function performComprehensiveSEOAudit(url: string): Promise<AuditRe
     });
 
     const html = await response.text();
-    const $ = cheerio.load(html);
-    const statusCode = response.status;
 
-    // Technical SEO checks
-    const technicalChecks = await analyzeTechnicalSEO($, url, statusCode);
-    issues.push(...technicalChecks.issues);
-    recommendations.push(...technicalChecks.recommendations);
-
-    // Content SEO checks
-    const contentChecks = await analyzeContentSEO($, html);
-    issues.push(...contentChecks.issues);
-    recommendations.push(...contentChecks.recommendations);
-
-    // Performance checks (basic - real PageSpeed API integration separate)
-    const performanceChecks = await analyzeBasicPerformance(html, response);
-    issues.push(...performanceChecks.issues);
-    recommendations.push(...performanceChecks.recommendations);
-
-    // Calculate scores
-    const criticalIssues = issues.filter((i) => i.severity === 'critical').length;
-    const highIssues = issues.filter((i) => i.severity === 'high').length;
-    const mediumIssues = issues.filter((i) => i.severity === 'medium').length;
-    const lowIssues = issues.filter((i) => i.severity === 'low').length;
-
-    // Calculate scores (100 base, deduct points for issues)
-    const technicalScore = Math.max(
-      0,
-      100 - criticalIssues * 10 - highIssues * 5 - mediumIssues * 2 - lowIssues,
-    );
-    const contentScore = Math.max(0, 100 - contentChecks.issueCount * 5);
-    const performanceScore = Math.max(0, 100 - performanceChecks.issueCount * 7);
-    const overallScore = Math.round((technicalScore + contentScore + performanceScore) / 3);
-
-    return {
-      overallScore,
-      technicalScore,
-      contentScore,
-      performanceScore,
-      criticalIssues,
-      highIssues,
-      mediumIssues,
-      lowIssues,
-      issues,
-      recommendations,
-      technicalDetails: {
-        statusCode,
-        hasHTTPS: url.startsWith('https://'),
-        hasRobotsMeta: $('meta[name="robots"]').length > 0,
-        hasCanonical: $('link[rel="canonical"]').length > 0,
-        hasSchema: $('script[type="application/ld+json"]').length > 0,
-        pageSize: html.length,
-        totalLinks: $('a').length,
-        totalImages: $('img').length,
-      },
-    };
+    return evaluateSeoAudit(extractPageFacts(html), {
+      url,
+      statusCode: response.status,
+      contentEncoding: response.headers.get('content-encoding'),
+      cacheControl: response.headers.get('cache-control'),
+    });
   } catch (error: any) {
     throw new Error(`SEO Audit failed: ${error.message}`);
   }
-}
-
-// ============= TECHNICAL SEO ANALYSIS =============
-
-async function analyzeTechnicalSEO($: cheerio.CheerioAPI, url: string, statusCode: number) {
-  const issues: Array<{ category: string; severity: string; message: string; fix?: string }> = [];
-  const recommendations: string[] = [];
-
-  // Check HTTPS
-  if (!url.startsWith('https://')) {
-    issues.push({
-      category: 'Security',
-      severity: 'critical',
-      message: 'Site is not using HTTPS',
-      fix: 'Install SSL certificate and redirect all HTTP traffic to HTTPS',
-    });
-  }
-
-  // Check title tag
-  const title = $('title').text();
-  if (!title) {
-    issues.push({
-      category: 'Meta Tags',
-      severity: 'critical',
-      message: 'Missing title tag',
-      fix: 'Add a unique, descriptive title tag to the page',
-    });
-  } else if (title.length < 30) {
-    issues.push({
-      category: 'Meta Tags',
-      severity: 'high',
-      message: 'Title tag is too short',
-      fix: 'Expand title to 50-60 characters for optimal display',
-    });
-  } else if (title.length > 60) {
-    issues.push({
-      category: 'Meta Tags',
-      severity: 'medium',
-      message: 'Title tag may be truncated in search results',
-      fix: 'Shorten title to 50-60 characters',
-    });
-  }
-
-  // Check meta description
-  const metaDescription = $('meta[name="description"]').attr('content');
-  if (!metaDescription) {
-    issues.push({
-      category: 'Meta Tags',
-      severity: 'high',
-      message: 'Missing meta description',
-      fix: 'Add a compelling meta description (150-160 characters)',
-    });
-  } else if (metaDescription.length < 120) {
-    issues.push({
-      category: 'Meta Tags',
-      severity: 'medium',
-      message: 'Meta description is too short',
-      fix: 'Expand description to 150-160 characters',
-    });
-  } else if (metaDescription.length > 160) {
-    issues.push({
-      category: 'Meta Tags',
-      severity: 'low',
-      message: 'Meta description may be truncated',
-      fix: 'Shorten description to 150-160 characters',
-    });
-  }
-
-  // Check H1 tags
-  const h1Tags = $('h1');
-  if (h1Tags.length === 0) {
-    issues.push({
-      category: 'Headings',
-      severity: 'high',
-      message: 'Missing H1 tag',
-      fix: 'Add a single H1 tag that describes the page content',
-    });
-  } else if (h1Tags.length > 1) {
-    issues.push({
-      category: 'Headings',
-      severity: 'medium',
-      message: `Multiple H1 tags found (${h1Tags.length})`,
-      fix: 'Use only one H1 tag per page for clarity',
-    });
-  }
-
-  // Check canonical tag
-  const canonical = $('link[rel="canonical"]').attr('href');
-  if (!canonical) {
-    recommendations.push('Add canonical tag to specify preferred URL version');
-  }
-
-  // Check robots meta tag
-  const robotsMeta = $('meta[name="robots"]').attr('content');
-  if (robotsMeta && (robotsMeta.includes('noindex') || robotsMeta.includes('nofollow'))) {
-    issues.push({
-      category: 'Indexing',
-      severity: 'critical',
-      message: 'Page is blocked from indexing',
-      fix: 'Remove noindex/nofollow directives if page should be indexed',
-    });
-  }
-
-  // Check viewport meta tag
-  const viewport = $('meta[name="viewport"]').attr('content');
-  if (!viewport) {
-    issues.push({
-      category: 'Mobile',
-      severity: 'high',
-      message: 'Missing viewport meta tag',
-      fix: 'Add: <meta name="viewport" content="width=device-width, initial-scale=1">',
-    });
-  }
-
-  // Check structured data
-  const schemaScripts = $('script[type="application/ld+json"]');
-  if (schemaScripts.length === 0) {
-    recommendations.push('Add structured data (Schema.org) for enhanced search results');
-  }
-
-  return { issues, recommendations };
-}
-
-// ============= CONTENT SEO ANALYSIS =============
-
-async function analyzeContentSEO($: cheerio.CheerioAPI, html: string) {
-  const issues: Array<{ category: string; severity: string; message: string; fix?: string }> = [];
-  const recommendations: string[] = [];
-
-  // Word count
-  const bodyText = $('body').text().replace(/\s+/g, ' ').trim();
-  const wordCount = bodyText.split(' ').length;
-
-  if (wordCount < 300) {
-    issues.push({
-      category: 'Content',
-      severity: 'high',
-      message: `Content is too thin (${wordCount} words)`,
-      fix: 'Add more comprehensive, valuable content (aim for 600+ words)',
-    });
-  }
-
-  // Check for images with missing alt text
-  const imagesWithoutAlt = $('img:not([alt])').length;
-  const totalImages = $('img').length;
-
-  if (imagesWithoutAlt > 0) {
-    issues.push({
-      category: 'Images',
-      severity: 'medium',
-      message: `${imagesWithoutAlt} of ${totalImages} images missing alt text`,
-      fix: 'Add descriptive alt text to all images',
-    });
-  }
-
-  // Check internal links
-  const internalLinks = $('a[href^="/"], a[href^="' + $('base').attr('href') + '"]').length;
-  if (internalLinks < 3) {
-    recommendations.push('Add more internal links to improve site navigation and SEO');
-  }
-
-  // Check for heading structure
-  let lastHeadingLevel = 0;
-  let headingIssues = false;
-  $('h1, h2, h3, h4, h5, h6').each((i, el) => {
-    const level = parseInt(el.tagName[1]);
-    if (level > lastHeadingLevel + 1) {
-      headingIssues = true;
-    }
-    lastHeadingLevel = level;
-  });
-
-  if (headingIssues) {
-    issues.push({
-      category: 'Content Structure',
-      severity: 'low',
-      message: 'Heading hierarchy is not properly structured',
-      fix: 'Use headings in order (H1 → H2 → H3) without skipping levels',
-    });
-  }
-
-  return { issues, recommendations, issueCount: issues.length };
-}
-
-// ============= BASIC PERFORMANCE ANALYSIS =============
-
-async function analyzeBasicPerformance(html: string, response: any) {
-  const issues: Array<{ category: string; severity: string; message: string; fix?: string }> = [];
-  const recommendations: string[] = [];
-
-  // Page size
-  const pageSize = html.length;
-  if (pageSize > 2000000) {
-    // 2MB
-    issues.push({
-      category: 'Performance',
-      severity: 'high',
-      message: `Page size is too large (${(pageSize / 1024).toFixed(0)}KB)`,
-      fix: 'Optimize images, minify CSS/JS, enable compression',
-    });
-  }
-
-  // Check compression
-  const contentEncoding = response.headers.get('content-encoding');
-  if (!contentEncoding || !contentEncoding.includes('gzip')) {
-    recommendations.push('Enable GZIP compression to reduce page size');
-  }
-
-  // Check caching headers
-  const cacheControl = response.headers.get('cache-control');
-  if (!cacheControl) {
-    recommendations.push('Add caching headers to improve repeat visit performance');
-  }
-
-  return { issues, recommendations, issueCount: issues.length };
 }
 
 // ============= WEB CRAWLER =============
@@ -530,6 +266,21 @@ export async function crawlWebsite(
 
 // ============= PAGESPEED INSIGHTS (Core Web Vitals) =============
 
+/**
+ * SEO-TRANSPORT-001. Two things left with the rewrite, both fabrications.
+ *
+ * `estimateCoreWebVitals()` returned LCP 2500ms, CLS 0.1 and a performance score
+ * of 75 whenever the PageSpeed request failed, and the route STORED that in
+ * seo_core_web_vitals - so a page nobody measured reported respectable vitals,
+ * indistinguishable from a real reading. CLAUDE.md's SEO note says this function
+ * "throws without a PageSpeed key rather than guessing", which was true of the
+ * missing-key path and not of this one. The failure propagates now.
+ *
+ * And `|| 0` on every metric turned an audit Lighthouse did not return into 0ms
+ * LCP and 0 CLS - not "we did not measure" but a perfect score, on the two
+ * numbers this panel exists to show. shared/seo-checks.ts answers null and names
+ * what was missing.
+ */
 export async function checkCoreWebVitalsWithAPI(
   url: string,
   device: 'mobile' | 'desktop' = 'mobile',
@@ -540,115 +291,155 @@ export async function checkCoreWebVitalsWithAPI(
     throw new Error('PageSpeed Insights API key not configured');
   }
 
-  try {
-    const apiUrl = `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=${encodeURIComponent(
-      url,
-    )}&strategy=${device}&key=${apiKey}`;
+  const apiUrl = `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=${encodeURIComponent(
+    url,
+  )}&strategy=${device}&key=${apiKey}`;
 
-    const response = await fetch(apiUrl);
-    const data = await response.json();
+  const response = await fetch(apiUrl);
+  const data: any = await response.json();
 
-    if (!response.ok) {
-      throw new Error(data.error?.message || 'PageSpeed API request failed');
-    }
-
-    const lighthouseResult = data.lighthouseResult;
-    const audits = lighthouseResult.audits;
-
-    return {
-      lcp: audits['largest-contentful-paint']?.numericValue || 0,
-      fid: audits['max-potential-fid']?.numericValue || 0,
-      cls: audits['cumulative-layout-shift']?.numericValue || 0,
-      fcp: audits['first-contentful-paint']?.numericValue || 0,
-      ttfb: audits['server-response-time']?.numericValue || 0,
-      tti: audits['interactive']?.numericValue || 0,
-      tbt: audits['total-blocking-time']?.numericValue || 0,
-      si: audits['speed-index']?.numericValue || 0,
-      performanceScore: Math.round(lighthouseResult.categories.performance.score * 100),
-      accessibilityScore: Math.round(lighthouseResult.categories.accessibility.score * 100),
-      bestPracticesScore: Math.round(lighthouseResult.categories['best-practices'].score * 100),
-      seoScore: Math.round(lighthouseResult.categories.seo.score * 100),
-      diagnostics: {
-        opportunities: Object.keys(audits)
-          .filter((key) => audits[key].details?.type === 'opportunity')
-          .map((key) => ({
-            audit: key,
-            title: audits[key].title,
-            savings: audits[key].details?.overallSavingsMs,
-          })),
-      },
-      opportunities: [],
-    };
-  } catch (error: any) {
-    // Fallback to basic estimation if API fails
-    log.error('PageSpeed API error:', error.message);
-    return estimateCoreWebVitals();
+  if (!response.ok) {
+    throw new Error(data?.error?.message || 'PageSpeed API request failed');
   }
-}
 
-function estimateCoreWebVitals() {
-  // Basic fallback when API is not available
+  const audits = (data?.lighthouseResult?.audits ?? {}) as Record<string, any>;
   return {
-    lcp: 2500,
-    fid: 100,
-    cls: 0.1,
-    fcp: 1800,
-    ttfb: 600,
-    performanceScore: 75,
-    accessibilityScore: 85,
-    bestPracticesScore: 80,
-    seoScore: 90,
+    ...readPageSpeedVitals(data),
+    diagnostics: {
+      opportunities: Object.keys(audits)
+        .filter((key) => audits[key].details?.type === 'opportunity')
+        .map((key) => ({
+          audit: key,
+          title: audits[key].title,
+          savings: audits[key].details?.overallSavingsMs,
+        })),
+    },
+    opportunities: [],
   };
 }
 
-// ============= IMAGE ANALYSIS =============
+/**
+ * PROD-008: the four checks below now DECIDE nothing here.
+ *
+ * `/api/seo` is not proxied, so Express serves these in dev and
+ * supabase/functions/seo/ serves them in production - and that function had no
+ * branch for any of the four, so the image, broken-link, mobile and
+ * structured-data buttons 404'd for every deployed user. The evaluation moved
+ * to shared/seo-page-facts.ts, which both hosts import; what stays here is the
+ * cheerio extraction, because the Deno side has node-html-parser instead and
+ * neither resolves on the other runtime.
+ *
+ * Read that module's header for the five claims these functions used to make
+ * that nothing measured - among them a flat 50KB "potential saving" on every
+ * non-webp image, and a small-text count taken from cheerio's `.css()`, which
+ * reads an inline style attribute and knows nothing about stylesheets.
+ */
+export function extractPageFacts(html: string): PageFacts {
+  const $ = cheerio.load(html);
+
+  const attr = (el: cheerio.AnyNode, name: string): string | null => {
+    const value = $(el).attr(name);
+    return value === undefined ? null : value;
+  };
+
+  const images: ImageFact[] = $('img')
+    .toArray()
+    .map((el) => ({
+      src: attr(el, 'src') ?? '',
+      alt: attr(el, 'alt'),
+      title: attr(el, 'title'),
+      width: attr(el, 'width'),
+      height: attr(el, 'height'),
+      loading: attr(el, 'loading'),
+    }));
+
+  const links: LinkFact[] = $('a[href]')
+    .toArray()
+    .map((el) => ({
+      href: attr(el, 'href') ?? '',
+      text: $(el).text() ?? '',
+      rel: attr(el, 'rel'),
+    }));
+
+  const viewportEl = $('meta[name="viewport"]').first();
+  const viewport = viewportEl.length ? (viewportEl.attr('content') ?? '') : null;
+
+  // The type attribute alone misses the commonest embed shape, so the source
+  // extension counts too.
+  const flashElements = $('object, embed')
+    .toArray()
+    .filter((el) => {
+      const type = (attr(el, 'type') ?? '').toLowerCase();
+      const source = `${attr(el, 'data') ?? ''} ${attr(el, 'src') ?? ''}`.toLowerCase();
+      return type.includes('flash') || type.includes('shockwave') || source.includes('.swf');
+    }).length;
+
+  const jsonLdBlocks = $('script[type="application/ld+json"]')
+    .toArray()
+    // html(), the raw-content accessor. In cheerio today text() happens to
+    // return the same string for a script element, because htmlparser2 stores
+    // its content as a raw-text node - so a mutation between the two changes
+    // nothing and proves nothing. The PROPERTY the test binds to is that
+    // 'Ben &amp; Jerry' still reads as 'Ben &amp; Jerry' by the time JSON.parse
+    // sees it, which is what the HTML spec says about character data in a
+    // script and what an entity-decoding read would quietly rewrite.
+    .map((el) => $(el).html() ?? '');
+
+  const titleEl = $('title').first();
+  const title = titleEl.length ? titleEl.text() : null;
+
+  const descEl = $('meta[name="description"]').first();
+  const metaDescription = descEl.length ? (descEl.attr('content') ?? '') : null;
+
+  const canonicalEl = $('link[rel="canonical"]').first();
+  const canonical = canonicalEl.length ? (canonicalEl.attr('href') ?? '') : null;
+
+  const robotsEl = $('meta[name="robots"]').first();
+  const robotsMeta = robotsEl.length ? (robotsEl.attr('content') ?? '') : null;
+
+  const headings = $('h1, h2, h3, h4, h5, h6')
+    .toArray()
+    .map((el) => ({
+      level: Number.parseInt(((el as { tagName?: string }).tagName ?? '').slice(1), 10),
+      text: $(el).text().replace(/\s+/g, ' ').trim(),
+    }))
+    .filter((h) => Number.isFinite(h.level));
+
+  // Script, style and noscript are stripped before the text is read: the audit
+  // used to count inline JavaScript as words. This runs LAST, after the JSON-LD
+  // blocks above have been read off the same tree.
+  $('script, style, noscript').remove();
+  const bodyEl = $('body');
+  // Two concrete reads rather than one union: Cheerio<Document> and
+  // Cheerio<Element> do not share a `this` type for .text().
+  const rawBody = bodyEl.length > 0 ? bodyEl.text() : $.root().text();
+  const bodyText = rawBody.replace(/\s+/g, ' ').trim();
+
+  return {
+    images,
+    links,
+    viewport,
+    flashElements,
+    jsonLdBlocks,
+    title,
+    metaDescription,
+    canonical,
+    robotsMeta,
+    headings,
+    bodyText,
+    htmlLength: html.length,
+  };
+}
+
+/** Fetch a page and extract its facts. */
+async function loadPageFacts(pageUrl: string): Promise<PageFacts> {
+  const response = await fetch(pageUrl);
+  return extractPageFacts(await response.text());
+}
 
 export async function analyzePageImages(pageUrl: string) {
   try {
-    const response = await fetch(pageUrl);
-    const html = await response.text();
-    const $ = cheerio.load(html);
-
-    const images: Array<any> = [];
-
-    $('img').each((i, img) => {
-      const src = $(img).attr('src');
-      if (!src) return;
-
-      const imageUrl = new URL(src, pageUrl).href;
-      const altText = $(img).attr('alt');
-      const title = $(img).attr('title');
-      const width = parseInt($(img).attr('width') || '0');
-      const height = parseInt($(img).attr('height') || '0');
-      const loading = $(img).attr('loading');
-
-      const issues: string[] = [];
-      if (!altText) issues.push('Missing alt text');
-      if (!width || !height) issues.push('Missing dimensions');
-      if (loading !== 'lazy') issues.push('Not using lazy loading');
-
-      // Determine format from extension
-      const format = imageUrl.split('.').pop()?.toLowerCase() || 'unknown';
-      const recommendedFormat = ['jpg', 'jpeg', 'png'].includes(format) ? 'webp' : format;
-
-      images.push({
-        imageUrl,
-        altText,
-        title,
-        width,
-        height,
-        format,
-        isOptimized: format === 'webp',
-        hasAltText: !!altText,
-        isLazy: loading === 'lazy',
-        hasResponsive: !!(width && height),
-        issues,
-        recommendedFormat,
-        potentialSavings: format !== 'webp' ? 50000 : 0, // Estimated
-      });
-    });
-
-    return images;
+    return evaluatePageImages(await loadPageFacts(pageUrl), pageUrl);
   } catch (error: any) {
     throw new Error(`Image analysis failed: ${error.message}`);
   }
@@ -656,86 +447,50 @@ export async function analyzePageImages(pageUrl: string) {
 
 // ============= BROKEN LINK CHECKER =============
 
-/**
- * How many of a page's links are actually fetched. Everything past this is
- * stored unchecked rather than assumed healthy - see the note inside.
- */
-export const CHECKED_LINK_LIMIT = 20;
+export { CHECKED_LINK_LIMIT };
 
 export async function checkBrokenLinks(sourceUrl: string) {
   try {
-    const response = await fetch(sourceUrl);
-    const html = await response.text();
-    const $ = cheerio.load(html);
+    const planned = planLinkChecks(await loadPageFacts(sourceUrl), sourceUrl);
+    const links: Array<Record<string, unknown>> = [];
 
-    const links: Array<any> = [];
-    const linkElements = $('a[href]');
+    for (const link of planned) {
+      // Past the budget the link is recorded UNCHECKED - statusCode null,
+      // isBroken null - and never as healthy. They used to be initialised to
+      // 200 and false, so a page with 200 links reported 180 of them working
+      // on no evidence.
+      let statusCode: number | null = null;
+      let isBroken: boolean | null = null;
+      let errorMessage: string | undefined;
 
-    for (let i = 0; i < linkElements.length; i++) {
-      const link = linkElements[i];
-      const href = $(link).attr('href');
-      if (!href || href.startsWith('#') || href.startsWith('javascript:')) continue;
-
-      try {
-        const targetUrl = new URL(href, sourceUrl).href;
-        const anchorText = $(link).text().trim();
-        const isNoFollow = $(link).attr('rel')?.includes('nofollow') || false;
-        const isNoOpener = $(link).attr('rel')?.includes('noopener') || false;
-
-        // Determine link type
-        const sourceHost = new URL(sourceUrl).hostname;
-        const targetHost = new URL(targetUrl).hostname;
-        const linkType = sourceHost === targetHost ? 'internal' : 'external';
-
-        // Only the first 20 links are fetched, to avoid hammering the target
-        // site. The rest are recorded as UNCHECKED - statusCode null, isBroken
-        // null - not as 200/false. They used to be initialised to 200 and
-        // `false` and stored that way, so every link past the twentieth was
-        // persisted as a working link that nothing had ever requested, and a
-        // page with 200 links reported 180 of them healthy on no evidence.
-        let statusCode: number | null = null;
-        let isBroken: boolean | null = null;
-        let errorMessage: string | undefined;
-
-        if (i < CHECKED_LINK_LIMIT) {
-          try {
-            const linkResponse = await fetch(targetUrl, {
-              method: 'HEAD',
-              headers: { 'User-Agent': 'Mozilla/5.0 (compatible; PrintyxSEOBot/1.0)' },
-            });
-            statusCode = linkResponse.status;
-            isBroken = statusCode >= 400;
-          } catch (error: any) {
-            isBroken = true;
-            errorMessage = error.message;
-            statusCode = 0;
-          }
+      if (link.shouldCheck) {
+        try {
+          const linkResponse = await fetch(link.targetUrl, {
+            method: 'HEAD',
+            headers: { 'User-Agent': 'Mozilla/5.0 (compatible; PrintyxSEOBot/1.0)' },
+          });
+          statusCode = linkResponse.status;
+          isBroken = statusCode >= 400;
+        } catch (error: any) {
+          isBroken = true;
+          errorMessage = error.message;
+          statusCode = 0;
         }
-
-        links.push({
-          targetUrl,
-          anchorText,
-          linkType,
-          isNoFollow,
-          isNoOpener,
-          isBroken,
-          statusCode,
-          errorMessage,
-          linkValue:
-            linkType === 'internal' && !isNoFollow
-              ? 80
-              : linkType === 'external' && !isNoFollow
-                ? 60
-                : 20,
-        });
-
-        // Rate limiting
-        if (i < CHECKED_LINK_LIMIT) {
-          await new Promise((resolve) => setTimeout(resolve, 200));
-        }
-      } catch (error) {
-        // Invalid URL, skip
+        await new Promise((resolve) => setTimeout(resolve, 200));
       }
+
+      links.push({
+        targetUrl: link.targetUrl,
+        anchorText: link.anchorText,
+        linkType: link.linkType,
+        isNoFollow: link.isNoFollow,
+        isNoOpener: link.isNoOpener,
+        linkValue: link.linkValue,
+        statusCode,
+        isBroken,
+        errorMessage,
+        wasChecked: link.shouldCheck,
+      });
     }
 
     return links;
@@ -746,57 +501,38 @@ export async function checkBrokenLinks(sourceUrl: string) {
 
 // ============= SECURITY HEADERS CHECK =============
 
+/**
+ * SEO-TRANSPORT-001: the evaluation lives in shared/seo-checks.ts and is the
+ * SAME module supabase/functions/seo imports, so the two hosts cannot drift.
+ *
+ * Two fields left with it. `certificateValid: hasHttps` claimed a certificate
+ * check from a URL scheme, and `httpsRedirect: hasHttps` claimed a redirect
+ * nothing had followed - both on a panel a marketer reads as a security
+ * posture. The certificate claim is gone and named in `unbacked`; the redirect
+ * is measured by probing the http:// form, and stays null when that probe fails.
+ */
 export async function checkSecurityHeaders(url: string) {
   try {
     const response = await fetch(url);
-    const headers = response.headers;
 
-    const hasHttps = url.startsWith('https://');
-    const hasHsts = headers.has('strict-transport-security');
-    const hasXFrameOptions = headers.has('x-frame-options');
-    const hasXContentTypeOptions = headers.has('x-content-type-options');
-    const hasCsp = headers.has('content-security-policy');
-
-    const issues: Array<any> = [];
-
-    if (!hasHttps) {
-      issues.push({ type: 'https', severity: 'critical', message: 'Site not using HTTPS' });
-    }
-    if (!hasHsts) {
-      issues.push({ type: 'hsts', severity: 'high', message: 'Missing HSTS header' });
-    }
-    if (!hasXFrameOptions) {
-      issues.push({
-        type: 'clickjacking',
-        severity: 'medium',
-        message: 'Missing X-Frame-Options header',
-      });
-    }
-    if (!hasXContentTypeOptions) {
-      issues.push({
-        type: 'mime',
-        severity: 'low',
-        message: 'Missing X-Content-Type-Options header',
-      });
-    }
-    if (!hasCsp) {
-      issues.push({ type: 'csp', severity: 'medium', message: 'Missing Content-Security-Policy' });
+    let httpsRedirect: boolean | null = null;
+    try {
+      const insecure = new URL(url);
+      insecure.protocol = 'http:';
+      const probe = await fetch(insecure.href, { redirect: 'manual' });
+      const location = probe.headers.get('location');
+      httpsRedirect =
+        probe.status >= 300 && probe.status < 400 && !!location
+          ? new URL(location, insecure.href).protocol === 'https:'
+          : false;
+    } catch {
+      httpsRedirect = null;
     }
 
-    const securityScore = Math.max(0, 100 - issues.length * 15);
+    const entries: Array<[string, string]> = [];
+    response.headers.forEach((value: string, key: string) => entries.push([key, value]));
 
-    return {
-      hasHttps,
-      httpsRedirect: hasHttps,
-      certificateValid: hasHttps,
-      hasHsts,
-      hasXFrameOptions,
-      hasXContentTypeOptions,
-      hasCsp,
-      securityScore,
-      headers: Object.fromEntries(headers.entries()),
-      issues,
-    };
+    return evaluateSecurityHeaders(url, entries, httpsRedirect);
   } catch (error: any) {
     throw new Error(`Security header check failed: ${error.message}`);
   }
@@ -806,51 +542,7 @@ export async function checkSecurityHeaders(url: string) {
 
 export async function analyzeMobileFriendliness(url: string) {
   try {
-    const response = await fetch(url);
-    const html = await response.text();
-    const $ = cheerio.load(html);
-
-    const viewportMeta = $('meta[name="viewport"]').attr('content');
-    const hasViewportMeta = !!viewportMeta;
-
-    const issues: string[] = [];
-
-    if (!hasViewportMeta) {
-      issues.push('Missing viewport meta tag');
-    }
-
-    // Check for mobile-unfriendly elements
-    const hasFlash = $('object[type*="flash"], embed[type*="flash"]').length > 0;
-    if (hasFlash) {
-      issues.push('Uses Flash content');
-    }
-
-    // Check font sizes
-    const smallText = $('*').filter(
-      (i, el) => $(el).css('font-size') && parseInt($(el).css('font-size')) < 12,
-    ).length;
-    if (smallText > 0) {
-      issues.push(`${smallText} elements with small text`);
-    }
-
-    const isMobileFriendly = issues.length === 0;
-    const mobileScore = Math.max(0, 100 - issues.length * 15);
-
-    return {
-      isMobileFriendly,
-      mobileScore,
-      hasViewportMeta,
-      viewportContent: viewportMeta,
-      hasTouchFriendlyElements: true, // Would need more complex analysis
-      touchElementsIssues: issues,
-      hasReadableText: smallText === 0,
-      textIssues: smallText > 0 ? [`${smallText} elements with text smaller than 12px`] : [],
-      contentFitsViewport: hasViewportMeta,
-      mobileLoadTime: 0, // Would need PageSpeed API
-      mobileFcp: 0,
-      mobileLcp: 0,
-      issues,
-    };
+    return evaluateMobileFriendliness(await loadPageFacts(url));
   } catch (error: any) {
     throw new Error(`Mobile analysis failed: ${error.message}`);
   }
@@ -860,52 +552,7 @@ export async function analyzeMobileFriendliness(url: string) {
 
 export async function validateStructuredData(url: string) {
   try {
-    const response = await fetch(url);
-    const html = await response.text();
-    const $ = cheerio.load(html);
-
-    const schemas: Array<any> = [];
-    const schemaScripts = $('script[type="application/ld+json"]');
-
-    schemaScripts.each((i, script) => {
-      try {
-        const schemaData = JSON.parse($(script).html() || '{}');
-
-        const validationErrors: Array<any> = [];
-        const validationWarnings: string[] = [];
-
-        // Basic validation
-        if (!schemaData['@context']) {
-          validationErrors.push({ property: '@context', message: 'Missing @context property' });
-        }
-        if (!schemaData['@type']) {
-          validationErrors.push({ property: '@type', message: 'Missing @type property' });
-        }
-
-        const isValid = validationErrors.length === 0;
-
-        schemas.push({
-          schemaType: schemaData['@type'] || 'Unknown',
-          schemaFormat: 'json-ld',
-          schemaData,
-          isValid,
-          validationErrors: validationErrors.length > 0 ? validationErrors : undefined,
-          validationWarnings: validationWarnings.length > 0 ? validationWarnings : undefined,
-          richResultsEligible: isValid,
-          richResultTypes: isValid && schemaData['@type'] ? [schemaData['@type']] : [],
-        });
-      } catch (error) {
-        schemas.push({
-          schemaType: 'Invalid',
-          schemaFormat: 'json-ld',
-          schemaData: {},
-          isValid: false,
-          validationErrors: [{ property: 'json', message: 'Invalid JSON syntax' }],
-        });
-      }
-    });
-
-    return schemas;
+    return validateJsonLdBlocks((await loadPageFacts(url)).jsonLdBlocks);
   } catch (error: any) {
     throw new Error(`Structured data validation failed: ${error.message}`);
   }
@@ -913,56 +560,37 @@ export async function validateStructuredData(url: string) {
 
 // ============= REDIRECT CHAIN DETECTION =============
 
+/** SEO-TRANSPORT-001: walks the chain here, summarises it in shared/seo-checks.ts. */
 export async function detectRedirectChains(sourceUrl: string) {
   try {
-    const chain: Array<{ url: string; statusCode: number }> = [];
+    const steps: RedirectStep[] = [];
     let currentUrl = sourceUrl;
-    let redirectCount = 0;
-    const maxRedirects = 10;
+    let loop = false;
+    let truncated = false;
 
-    while (redirectCount < maxRedirects) {
+    for (let hop = 0; ; hop += 1) {
       const response = await fetch(currentUrl, { redirect: 'manual' });
-      const statusCode = response.status;
+      const location = response.headers.get('location');
+      steps.push({ url: currentUrl, statusCode: response.status, location });
 
-      chain.push({ url: currentUrl, statusCode });
+      const redirecting = response.status >= 300 && response.status < 400 && !!location;
+      if (!redirecting) break;
 
-      if (statusCode >= 300 && statusCode < 400) {
-        const location = response.headers.get('location');
-        if (!location) break;
-
-        currentUrl = new URL(location, currentUrl).href;
-        redirectCount++;
-
-        // Check for redirect loop
-        if (chain.some((item) => item.url === currentUrl)) {
-          return {
-            destinationUrl: currentUrl,
-            redirectChain: chain,
-            chainLength: chain.length,
-            statusCode,
-            redirectType: statusCode.toString(),
-            hasRedirectLoop: true,
-            hasMultipleRedirects: chain.length > 2,
-            issues: ['Redirect loop detected'],
-            totalTime: 0,
-          };
-        }
-      } else {
+      const next = new URL(location as string, currentUrl).href;
+      if (steps.some((step) => step.url === next)) {
+        loop = true;
         break;
       }
+      // Reported rather than treated as the destination: stopping at the limit
+      // and returning that URL is a claim the redirect ended there.
+      if (hop + 1 >= MAX_REDIRECTS) {
+        truncated = true;
+        break;
+      }
+      currentUrl = next;
     }
 
-    return {
-      destinationUrl: currentUrl,
-      redirectChain: chain,
-      chainLength: chain.length,
-      statusCode: chain[chain.length - 1].statusCode,
-      redirectType: chain.length > 1 ? chain[0].statusCode.toString() : 'none',
-      hasRedirectLoop: false,
-      hasMultipleRedirects: chain.length > 2,
-      issues: chain.length > 2 ? ['Multiple redirects in chain'] : [],
-      totalTime: 0,
-    };
+    return summariseRedirectChain(steps, { loop, truncated });
   } catch (error: any) {
     throw new Error(`Redirect detection failed: ${error.message}`);
   }
@@ -971,6 +599,7 @@ export async function detectRedirectChains(sourceUrl: string) {
 // ============= EXPORTS =============
 
 export const seoService = {
+  CHECKED_LINK_LIMIT,
   performComprehensiveSEOAudit,
   crawlWebsite,
   checkCoreWebVitalsWithAPI,

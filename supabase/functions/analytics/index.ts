@@ -5,6 +5,14 @@ import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { fetchAllRows } from '../_shared/paged-select.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { applyUserScope, resolveScope } from '../_shared/scope.ts';
+import { startOfUtcDay } from '../_shared/date-months.ts';
+import {
+  monthToDateRevenue,
+  previousUtcMonthStart,
+  summariseCloseRate,
+  summariseTicketTurnaround,
+} from '../../../shared/mobile-dashboard.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -282,6 +290,121 @@ export default async function handler(req: Request) {
             completionRate: Math.round(completionRate),
             userPerformance,
           },
+        },
+        200,
+        req,
+      );
+    }
+
+    // GET /analytics/performance-metrics - the React Native reports screen's KPIs
+    //
+    // PROD-008. The screen reads revenueMtd, closeRate and avgTicketTime, and
+    // this function answered `{ error: 'Invalid analytics type' }` at 400 for
+    // the whole path - `performance` is a different branch with a different
+    // shape (tasks and per-user counts), so neither the name nor the keys
+    // matched. All three cards showed "--" on every open.
+    //
+    // SCOPED to the caller's tier: a rep's close rate is theirs, a manager's is
+    // their team's. Revenue and ticket turnaround are TENANT-WIDE and say so in
+    // `unbacked` - invoices carry no owner this endpoint could scope on
+    // (`sales_rep` is free text) and a service ticket's technician is not the
+    // person reading a sales KPI, so narrowing either would produce a number
+    // that is true of nothing.
+    if (req.method === 'GET' && metricType === 'performance-metrics') {
+      const scope = await resolveScope(admin, {
+        userId: user.id,
+        tenantId,
+        appMetadata: user.app_metadata,
+        requestedScope: url.searchParams.get('scope'),
+      });
+
+      const unbacked: string[] = [];
+
+      // ONE window for both KPIs, snapped to a day boundary. `startDate` carries
+      // the current time of day, so an unsnapped bound moves the edge of the
+      // window on every request - two reps opening the screen an hour apart get
+      // different denominators - and `deals.actual_close_date` is a calendar
+      // date stored at midnight, which an afternoon bound excludes outright.
+      const windowStart = startOfUtcDay(startDate);
+
+      // Revenue spans two months so the home screen and this screen agree on
+      // the figure; only the current month is returned here.
+      const [invoices, deals, tickets] = await Promise.all([
+        fetchAllRows<any>(() =>
+          admin
+            .from('invoices')
+            .select('amount_paid, paid_date')
+            .eq('tenant_id', tenantId)
+            // `paid_date` is a CALENDAR DATE stored at midnight (DATE-LOCAL-002),
+            // so the bound is snapped to a day boundary rather than carrying a
+            // time of day - which would drop or admit a whole day of invoices.
+            .gte('paid_date', startOfUtcDay(previousUtcMonthStart(now)).toISOString()),
+        ).catch(() => null),
+        fetchAllRows<any>(() => {
+          const q = admin
+            .from('deals')
+            .select('status, actual_close_date, owner_id, created_by_id')
+            .eq('tenant_id', tenantId)
+            .gte('actual_close_date', windowStart.toISOString());
+          return applyUserScope(q, ['owner_id', 'created_by_id'], scope);
+        }).catch(() => null),
+        fetchAllRows<any>(() =>
+          admin
+            .from('service_tickets')
+            .select('created_at, resolved_at')
+            .eq('tenant_id', tenantId)
+            .gte('resolved_at', windowStart.toISOString()),
+        ).catch(() => null),
+      ]);
+
+      // A section that could not be READ answers null. A zero here would say
+      // the tenant collected nothing, closed nothing and fixed nothing.
+      const revenue = invoices
+        ? monthToDateRevenue(
+            invoices.map((r: any) => ({ amountPaid: r.amount_paid, paidDate: r.paid_date })),
+            now,
+          )
+        : null;
+      if (!invoices) unbacked.push('revenueMtd could not be read');
+      else unbacked.push('revenueMtd is tenant-wide: invoices carry no owner to scope on');
+
+      const close = deals
+        ? summariseCloseRate(
+            deals.map((r: any) => ({ status: r.status, actualCloseDate: r.actual_close_date })),
+            windowStart,
+            now,
+          )
+        : null;
+      if (!deals) unbacked.push('closeRate could not be read');
+
+      const turnaround = tickets
+        ? summariseTicketTurnaround(
+            tickets.map((r: any) => ({ createdAt: r.created_at, resolvedAt: r.resolved_at })),
+            windowStart,
+            now,
+          )
+        : null;
+      if (!tickets) unbacked.push('avgTicketTime could not be read');
+      else
+        unbacked.push('avgTicketTime is tenant-wide: it measures the service desk, not the caller');
+
+      return createCorsResponse(
+        {
+          period,
+          scopeTier: scope.tier,
+          revenueMtd: revenue ? revenue.revenueMtd : null,
+          // The revenue total is a FLOOR when an invoice settled this month
+          // carries no amount (COP-B05).
+          revenueIsFloor: revenue ? revenue.uncostedPaidCount > 0 : null,
+          closeRate: close && close.closeRate !== null ? Math.round(close.closeRate) : null,
+          dealsWon: close ? close.wonCount : null,
+          dealsLost: close ? close.lostCount : null,
+          avgTicketTime:
+            turnaround && turnaround.avgTicketHours !== null
+              ? Math.round(turnaround.avgTicketHours * 10) / 10
+              : null,
+          ticketsResolved: turnaround ? turnaround.resolvedCount : null,
+          unbacked,
         },
         200,
         req,

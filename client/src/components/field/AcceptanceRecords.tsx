@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { InlineQueryError } from '@/components/ui/inline-query-error';
 import { Badge } from '@/components/ui/badge';
 
 /**
@@ -46,13 +47,26 @@ export function AcceptanceRecords({
   equipmentId?: string;
 }) {
   const query = customerId ? `customerId=${customerId}` : `equipmentId=${equipmentId}`;
-  const { data: records = [], isLoading } = useQuery<AcceptanceRecord[]>({
+  const {
+    data: records = [],
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery<AcceptanceRecord[]>({
     queryKey: [`/api/field-service/acceptance?${query}`],
     enabled: Boolean(customerId || equipmentId),
   });
 
   if (isLoading) {
     return <p className="text-sm text-muted-foreground">Loading acceptance records…</p>;
+  }
+
+  // CR-033: `= []` turns a FAILED request into the empty state below, which
+  // says no installation has been recorded - a claim about the customer rather
+  // than about the request. A signed acceptance is the evidence a machine was
+  // delivered, so its absence is not a small thing to assert wrongly.
+  if (isError) {
+    return <InlineQueryError label="acceptance records" onRetry={refetch} />;
   }
 
   if (records.length === 0) {

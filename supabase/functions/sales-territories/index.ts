@@ -4,6 +4,12 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { fetchAllRows } from '../_shared/paged-select.ts';
+import { buildTerritoryIndex, territoryCoverage } from '../_shared/territory.ts';
+import { territoryMembership } from '../../../shared/territory-membership.ts';
+import { ROLE_LEVEL, RbacError, requireRoleLevel } from '../_shared/rbac.ts';
+import { writeAuditLog } from '../_shared/audit-log.ts';
+import { territoryChange, territorySnapshot } from '../../../shared/territory-audit.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -30,22 +36,136 @@ export default async function handler(req: Request) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
     }
 
+    /**
+     * SEC-EDGE-001: THE NAV TABLE ALREADY CLAIMED THIS GATE EXISTED.
+     *
+     * `navigation-permissions.ts` opens `/territories` to anyone who can see
+     * an opportunity, and its comment says why that is safe: "Creating one is
+     * a management act and is gated in the edge function." It was not. This
+     * function had no role check of any kind, so any authenticated member of
+     * the tenant could create a territory, rename one, hand its `owner_id` to
+     * themselves, change its `monthly_quota`, or DELETE it.
+     *
+     * The false claim and the missing check were in DIFFERENT FILES, so
+     * neither one read as wrong on its own - the nav rule looks deliberate
+     * because it is, and the handler looks like every other ungated CRUD
+     * function. `printer-monitoring`'s "requires auth" comment sat directly
+     * above the branch it lied about; this is the version that survives
+     * reading either file.
+     *
+     * WHY IT MATTERS MORE THAN A CRUD TABLE USUALLY WOULD. A territory is not
+     * a lookup row - three readers resolve a rep's book through it:
+     *   - `_shared/territory.ts` matches the free-text
+     *     `business_records.territory` against a territory's name or code AT
+     *     READ TIME (COP-B10), so defining or renaming one immediately claims
+     *     or releases every account naming it, with nothing rewritten and
+     *     nothing to review.
+     *   - `shared/territory-membership.ts` turns `owner_id`/`team_members`
+     *     into the opportunity radar's DEFAULT filter (COP-B09), so an
+     *     owner change silently moves whose plays a rep opens on.
+     *   - the forecast reports commit against `monthly_quota`.
+     * DELETE is the one that hides best: the row goes, `buildTerritoryIndex`
+     * stops resolving the accounts naming it, and every one of them lands in
+     * the coverage report's UNASSIGNED bucket - which reads as "nobody has
+     * assigned these yet" rather than "somebody removed the territory".
+     *
+     * A LEVEL rather than a permission, unlike the catalogue functions: no
+     * seeded permission code means "carve up the sales organisation", and
+     * MANAGER is what the act is. Reads stay open on purpose - the nav rule
+     * above is deliberate, the list feeds a switcher, `/mine` answers a rep's
+     * own membership, and `/coverage` is the map a rep works from.
+     */
+    const requireManager = () => requireRoleLevel(user, ROLE_LEVEL.MANAGER);
+    const denyManager = (err: unknown) => {
+      // Rethrow anything that is not an RBAC refusal: a catch that answers 403
+      // on any failure turns a database outage into "your role is too low".
+      if (!(err instanceof RbacError)) throw err;
+      return createCorsResponse(
+        { error: 'Manager role required to change territories', code: 'INSUFFICIENT_ROLE' },
+        403,
+        req,
+      );
+    };
+
     const url = new URL(req.url);
     const { parts } = normalizePath(url.pathname, 'sales-territories');
     const territoryId = parts[0];
+
+    // ─── GET /coverage (COP-B09) ─────────────────────────────────────
+    //
+    // BRANCHES BEFORE territoryId IS USED, or /coverage is looked up as a
+    // territory whose id is the string "coverage" and 404s - the SUPA-024
+    // shape, where a real endpoint dies inside a generic :id branch.
+    //
+    // A territory model that silently drops the accounts it does not cover
+    // gives a manager a roll-up that looks complete and is not. This is the
+    // admin's worklist: what resolved, what names a territory nobody defined,
+    // and what names nothing at all - the last two being different problems
+    // with different fixes.
+    if (territoryId === 'coverage' && req.method === 'GET') {
+      const [territories, accounts] = await Promise.all([
+        fetchAllRows<Record<string, any>>(() =>
+          admin
+            .from('sales_territories')
+            .select('id, territory_name, territory_code, is_active')
+            .eq('tenant_id', tenantId),
+        ),
+        fetchAllRows<Record<string, any>>(() =>
+          admin.from('business_records').select('id, territory').eq('tenant_id', tenantId),
+        ),
+      ]);
+
+      const index = buildTerritoryIndex((territories ?? []).filter((t) => t.is_active !== false));
+      const coverage = territoryCoverage(accounts ?? [], index);
+
+      return createCorsResponse(
+        {
+          ...coverage,
+          territoriesDefined: (territories ?? []).length,
+          unbacked: [
+            'Territory is resolved from the free-text business_records.territory column by matching a territory name or code. Nothing rewrites that column, so an account naming an undefined territory shows above rather than being reassigned.',
+          ],
+        },
+        200,
+        req,
+      );
+    }
+
+    /**
+     * THE WHOLE CRUD SURFACE WAS BUILT AGAINST A TABLE THAT DOES NOT EXIST
+     * (COP-B03's regression sweep). `sales_territories` has territory_name,
+     * territory_code, territory_type, description, geographic_rules,
+     * account_rules, is_active, priority, owner_id and manager_id. This
+     * function named `name`, `region`, `states`, `zip_codes`, `rules`,
+     * `assigned_rep_id` and `created_by` - seven columns, every one absent,
+     * every branch a guaranteed 42703.
+     *
+     * It survived because nothing called the function: it sat in
+     * docs/unreferenced-edge-fns-baseline.json and its phantom columns sat in
+     * docs/phantom-columns-baseline.json, and the two entries were true at the
+     * same time for the same reason. COP-B09 wired a page to it, which turned
+     * seven baselined references into seven live 500s, and
+     * server/tests/unit/phantom-cols-reachable-zero.test.ts is what said so.
+     * That test is the point: a phantom column is tolerable only while nobody
+     * can reach it, so wiring a caller is what makes it a defect.
+     */
+    const TERRITORY_COLUMNS =
+      // COP-B09 AC5: monthly_quota is a real column that nothing could set and
+      // nothing read - a number somebody can store and never see is AUDIT-028's
+      // shape from the other end. The forecast's territory roll-up reports
+      // attainment against it.
+      // COP-B09 AC3: `team_members` was absent from this list, so a
+      // territory's additional reps were invisible to every reader and
+      // "whose territory is this" could only ever answer the primary owner.
+      'id, tenant_id, territory_name, territory_code, territory_type, description, geographic_rules, account_rules, is_active, priority, owner_id, manager_id, team_members, monthly_quota, created_at, updated_at';
 
     // GET /sales-territories - List territories
     if (req.method === 'GET' && !territoryId) {
       const { data: territories, error } = await admin
         .from('sales_territories')
-        .select(
-          `
-          *,
-          assigned_rep:assigned_rep_id (id, full_name, email)
-        `,
-        )
+        .select(TERRITORY_COLUMNS)
         .eq('tenant_id', tenantId)
-        .order('name', { ascending: true });
+        .order('territory_name', { ascending: true });
 
       if (error) {
         console.error('Error fetching territories:', error);
@@ -55,16 +175,62 @@ export default async function handler(req: Request) {
       return createCorsResponse(territories || [], 200, req);
     }
 
+    /**
+     * GET /sales-territories/mine - COP-B09 AC3.
+     *
+     * "Reps see their territory by default" needs an answer to which
+     * territory is theirs, and this table carries three relationships that
+     * look like one from a distance: `owner_id` is the primary rep,
+     * `team_members` the others working it, and `manager_id` the person it
+     * REPORTS TO. Only the first two are somebody's book -
+     * `shared/territory-membership.ts` has the reasoning and the tests.
+     *
+     * Matched before the `/:id` branch, or `territoryId` reads "mine" as a
+     * uuid and answers 404 (SUPA-024).
+     */
+    if (req.method === 'GET' && territoryId === 'mine') {
+      const { data: rows, error } = await admin
+        .from('sales_territories')
+        .select(TERRITORY_COLUMNS)
+        .eq('tenant_id', tenantId)
+        .order('territory_name', { ascending: true });
+
+      if (error) {
+        console.error('Error resolving territory membership:', error);
+        return createCorsResponse({ error: 'Failed to resolve territories' }, 500, req);
+      }
+
+      const all = (rows ?? []) as Array<Record<string, unknown>>;
+      const membership = territoryMembership(
+        all.map((t) => ({
+          id: String(t.id),
+          ownerId: (t.owner_id as string) ?? null,
+          teamMembers: (t.team_members as string[]) ?? null,
+          managerId: (t.manager_id as string) ?? null,
+          isActive: t.is_active as boolean,
+        })),
+        user.id,
+      );
+
+      const byId = new Map(all.map((t) => [String(t.id), t]));
+      return createCorsResponse(
+        {
+          ...membership,
+          // The switcher needs names, not ids. Only the territories this
+          // person has some relationship with - the full list is the other
+          // endpoint, and a manager rolling up uses ?territory=all.
+          territories: membership.allTerritoryIds.map((id) => byId.get(id)).filter(Boolean),
+        },
+        200,
+        req,
+      );
+    }
+
     // GET /sales-territories/:id - Get single territory
     if (req.method === 'GET' && territoryId) {
       const { data: territory, error } = await admin
         .from('sales_territories')
-        .select(
-          `
-          *,
-          assigned_rep:assigned_rep_id (id, full_name, email)
-        `,
-        )
+        .select(TERRITORY_COLUMNS)
         .eq('id', territoryId)
         .eq('tenant_id', tenantId)
         .single();
@@ -78,27 +244,37 @@ export default async function handler(req: Request) {
 
     // POST /sales-territories - Create territory
     if (req.method === 'POST' && !territoryId) {
-      const body = await req.json();
-
-      const territoryData = {
-        tenant_id: tenantId,
-        name: body.name,
-        description: body.description,
-        region: body.region,
-        states: body.states || [],
-        zip_codes: body.zipCodes || body.zip_codes || [],
-        assigned_rep_id: body.assignedRepId || body.assigned_rep_id,
-        is_active: body.isActive !== false,
-        rules: body.rules || {},
-        created_by: user.id,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
+      try {
+        requireManager();
+      } catch (err) {
+        return denyManager(err);
+      }
+      const body = await req.json().catch(() => ({}));
+      const territoryName = body.territoryName ?? body.territory_name ?? body.name;
+      if (!territoryName) {
+        // territory_name is NOT NULL. Saying so beats a 500 from the database.
+        return createCorsResponse({ error: 'A territory name is required' }, 400, req);
+      }
 
       const { data: territory, error } = await admin
         .from('sales_territories')
-        .insert(territoryData)
-        .select()
+        .insert({
+          tenant_id: tenantId,
+          territory_name: String(territoryName),
+          territory_code: body.territoryCode ?? body.territory_code ?? null,
+          // NOT NULL with no database default, so the create has to carry one.
+          territory_type: body.territoryType ?? body.territory_type ?? 'geographic',
+          description: body.description ?? null,
+          geographic_rules: body.geographicRules ?? body.geographic_rules ?? null,
+          account_rules: body.accountRules ?? body.account_rules ?? null,
+          is_active: body.isActive ?? body.is_active ?? true,
+          owner_id: body.ownerId ?? body.owner_id ?? null,
+          manager_id: body.managerId ?? body.manager_id ?? null,
+          // Null, not zero: a territory with no quota set has not been given a
+          // target of nothing, and attainment against zero is undefined.
+          monthly_quota: body.monthlyQuota ?? body.monthly_quota ?? null,
+        })
+        .select(TERRITORY_COLUMNS)
         .single();
 
       if (error) {
@@ -106,40 +282,135 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to create territory' }, 500, req);
       }
 
+      await writeAuditLog(
+        admin,
+        {
+          tenantId,
+          userId: user.id,
+          action: 'CREATE_TERRITORY',
+          resource: 'sales_territories',
+          resourceId: String(territory.id),
+          oldValues: null,
+          newValues: territorySnapshot(territory),
+          // A new territory CLAIMS every account already naming it, because
+          // matching is read-time - so creating one reassigns accounts just as
+          // surely as renaming one does.
+          additionalContext: { reassigns: true, reason: 'territory_created' },
+        },
+        req,
+      );
+
       return createCorsResponse(territory, 201, req);
     }
 
     // PUT /sales-territories/:id - Update territory
     if (req.method === 'PUT' && territoryId) {
-      const body = await req.json();
+      try {
+        requireManager();
+      } catch (err) {
+        return denyManager(err);
+      }
+      const body = await req.json().catch(() => ({}));
+      // Only the fields the caller actually sent. A blanket object would write
+      // null over every column a partial form left out.
+      const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      const set = (column: string, ...candidates: unknown[]) => {
+        const value = candidates.find((v) => v !== undefined);
+        if (value !== undefined) patch[column] = value;
+      };
+      set('territory_name', body.territoryName, body.territory_name, body.name);
+      set('territory_code', body.territoryCode, body.territory_code);
+      set('territory_type', body.territoryType, body.territory_type);
+      set('description', body.description);
+      set('geographic_rules', body.geographicRules, body.geographic_rules);
+      set('account_rules', body.accountRules, body.account_rules);
+      set('is_active', body.isActive, body.is_active);
+      set('owner_id', body.ownerId, body.owner_id);
+      set('manager_id', body.managerId, body.manager_id);
+      set('monthly_quota', body.monthlyQuota, body.monthly_quota);
+
+      // AC6: the row as it was, BEFORE the write. Without this there is nothing
+      // to diff against and the trail can only say that something changed - and
+      // on a read-time matcher, WHICH field changed is the whole question, since
+      // a rename moves accounts and a description does not.
+      const { data: before } = await admin
+        .from('sales_territories')
+        .select(TERRITORY_COLUMNS)
+        .eq('id', territoryId)
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+
+      if (!before) {
+        // 404 rather than letting the update match nothing and report success.
+        return createCorsResponse({ error: 'Territory not found' }, 404, req);
+      }
 
       const { data: territory, error } = await admin
         .from('sales_territories')
-        .update({
-          name: body.name,
-          description: body.description,
-          region: body.region,
-          states: body.states,
-          zip_codes: body.zipCodes || body.zip_codes,
-          assigned_rep_id: body.assignedRepId || body.assigned_rep_id,
-          is_active: body.isActive ?? body.is_active,
-          rules: body.rules,
-          updated_at: new Date().toISOString(),
-        })
+        .update(patch)
         .eq('id', territoryId)
         .eq('tenant_id', tenantId)
-        .select()
+        .select(TERRITORY_COLUMNS)
         .single();
 
       if (error) {
+        console.error('Error updating territory:', error);
         return createCorsResponse({ error: 'Failed to update territory' }, 500, req);
       }
+
+      const change = territoryChange(before, patch);
+      await writeAuditLog(
+        admin,
+        {
+          tenantId,
+          userId: user.id,
+          action: 'UPDATE_TERRITORY',
+          resource: 'sales_territories',
+          resourceId: String(territoryId),
+          oldValues: territorySnapshot(before),
+          newValues: territorySnapshot(territory),
+          // A change that moves accounts or a rep's book is the one an auditor
+          // is looking for, so it is marked rather than left to be inferred
+          // from a field-by-field diff.
+          severity: change.reassigns ? 'high' : 'medium',
+          additionalContext: {
+            changedFields: Object.keys(change.changed),
+            matchKeysChanged: change.matchKeysChanged,
+            ownershipChanged: change.ownershipChanged,
+            reassigns: change.reassigns,
+          },
+        },
+        req,
+      );
 
       return createCorsResponse(territory, 200, req);
     }
 
     // DELETE /sales-territories/:id - Delete territory
     if (req.method === 'DELETE' && territoryId) {
+      try {
+        requireManager();
+      } catch (err) {
+        return denyManager(err);
+      }
+      // PostgREST's delete matches nothing and reports no error, so this
+      // answered "Territory deleted" for an id that was never there - a
+      // fabricated write outcome, which three fabrication guards all miss
+      // because they watch reads. And the row has to be read anyway: a delete
+      // with no record of WHAT was deleted is the least useful entry in the
+      // log, since the name is exactly what says which accounts just lost their
+      // territory.
+      const { data: before } = await admin
+        .from('sales_territories')
+        .select(TERRITORY_COLUMNS)
+        .eq('id', territoryId)
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+
+      if (!before) {
+        return createCorsResponse({ error: 'Territory not found' }, 404, req);
+      }
+
       const { error } = await admin
         .from('sales_territories')
         .delete()
@@ -149,6 +420,30 @@ export default async function handler(req: Request) {
       if (error) {
         return createCorsResponse({ error: 'Failed to delete territory' }, 500, req);
       }
+
+      await writeAuditLog(
+        admin,
+        {
+          tenantId,
+          userId: user.id,
+          action: 'DELETE_TERRITORY',
+          resource: 'sales_territories',
+          resourceId: String(territoryId),
+          oldValues: territorySnapshot(before),
+          newValues: null,
+          // Always high: the accounts naming this territory now land in the
+          // coverage report's UNASSIGNED bucket, which reads as "nobody has
+          // assigned these yet" rather than "their territory was removed".
+          severity: 'high',
+          additionalContext: {
+            reassigns: true,
+            reason: 'territory_deleted',
+            territoryName: before.territory_name ?? null,
+            territoryCode: before.territory_code ?? null,
+          },
+        },
+        req,
+      );
 
       return createCorsResponse({ success: true, message: 'Territory deleted' }, 200, req);
     }

@@ -20,6 +20,8 @@ export default function QuoteBuilderPage() {
   const isProposalMode = urlParams.get('type') === 'proposal';
   const sourceQuoteId = urlParams.get('quoteId');
   const templateId = urlParams.get('templateId');
+  // COP-B02: the deal this quote is for, when the builder was opened from one.
+  const dealId = urlParams.get('dealId') ?? undefined;
 
   const handleSave = (savedQuoteId: string) => {
     if (savedQuoteId === 'redirect-to-management') {
@@ -73,6 +75,7 @@ export default function QuoteBuilderPage() {
         {/* Quote Builder */}
         <QuoteBuilder
           initialQuoteId={quoteId}
+          dealId={dealId}
           onSave={handleSave}
           onCancel={handleCancel}
           onCreateProposal={handleCreateProposal}

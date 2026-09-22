@@ -23,6 +23,8 @@ import {
   type OrganizationalUnit,
 } from './enhanced-rbac-schema';
 import { users } from '../shared/schema';
+import { badRequest, sendError, serverError, unauthorized } from './lib/error-response';
+import { RBAC_SEED_TEMPLATES, buildRbacSeedPlan, type CatalogueRole } from '@shared/rbac-seed';
 // Auth helpers for Supabase JWT + session fallback
 import { getUserId, getTenantId } from './utils/auth-helpers';
 
@@ -702,164 +704,76 @@ router.get('/organizational-units', async (req, res) => {
 });
 
 /**
- * POST /api/rbac/seed
- * Initialize RBAC system with default roles and permissions
+ * POST /api/rbac/seed - Initialize role management for this tenant.
+ *
+ * REWRITTEN ROUND 127, because the original could not insert a single row.
+ * It omitted lft/rght/depth on both tables plus organizational_tier and
+ * created_by on enhanced_roles - every one NOT NULL with no default - and
+ * wrote 'COMPANY'/'REGIONAL'/'LOCATION'/'DEPARTMENT'/'INDIVIDUAL' into
+ * role_hierarchy_level, whose members are level_1..level_8, and 'COMPANY'
+ * into organizational_tier, whose members are lowercase. Four of its ten role
+ * codes were in no catalogue either. So GET /rbac/status answered
+ * initialized:false for every tenant and the setup prompt's only button 500'd
+ * here and 501'd on the edge function - Role Management has never been
+ * reachable on any host.
+ *
+ * shared/rbac-seed.ts builds the rows for both hosts now, so a developer and
+ * a dealer get the same hierarchy.
  */
 router.post('/seed', async (req, res) => {
   try {
-    const { dealerType = 'standard' } = req.body;
     const userId = req.user?.id;
     const tenantId = req.user?.tenantId;
 
     if (!userId || !tenantId) {
-      return res.status(401).json({ error: 'User not authenticated' });
+      return unauthorized(res, 'User not authenticated');
     }
 
-    // Check if already initialized by looking for existing roles
+    const dealerType = (req.body?.dealerType as string) || 'standard';
+    const templates = RBAC_SEED_TEMPLATES[dealerType];
+    if (!templates) {
+      return badRequest(res, `Unknown dealer type: ${dealerType}`);
+    }
+
     const existingRoles = await db.execute(sql`
       SELECT id FROM enhanced_roles WHERE tenant_id = ${tenantId} LIMIT 1
     `);
-
     if (existingRoles.rows.length > 0) {
-      return res.status(400).json({ error: 'RBAC system already initialized for this tenant' });
+      return res
+        .status(409)
+        .json({ error: 'Role management is already initialized for this tenant' });
     }
 
-    // Create basic organizational unit (using correct column name 'unit_type')
-    const companyUnitId = `company-${tenantId}`;
-    await db.execute(sql`
-      INSERT INTO organizational_units (id, tenant_id, name, code, unit_type, description)
-      VALUES (${companyUnitId}, ${tenantId}, 'Company', 'COMPANY', 'COMPANY', 'Main company unit')
+    const codes = templates.map((t) => t.code);
+    const catalogueRows = await db.execute(sql`
+      SELECT code, level, role_type FROM roles WHERE code = ANY(${codes})
     `);
 
-    // Create basic roles based on dealer type
-    const rolesToCreate =
-      dealerType === 'small'
-        ? [
-            {
-              id: `owner-${tenantId}`,
-              name: 'Owner',
-              code: 'OWNER',
-              description: 'Business owner with full access',
-              hierarchy_level: 'COMPANY',
-              department: 'administration',
-            },
-            {
-              id: `manager-${tenantId}`,
-              name: 'Manager',
-              code: 'MANAGER',
-              description: 'General manager',
-              hierarchy_level: 'LOCATION',
-              department: 'administration',
-            },
-            {
-              id: `sales-${tenantId}`,
-              name: 'Sales Rep',
-              code: 'SALES_REP',
-              description: 'Sales representative',
-              hierarchy_level: 'INDIVIDUAL',
-              department: 'sales',
-            },
-            {
-              id: `service-${tenantId}`,
-              name: 'Service Tech',
-              code: 'SERVICE_TECH',
-              description: 'Service technician',
-              hierarchy_level: 'INDIVIDUAL',
-              department: 'service',
-            },
-          ]
-        : [
-            {
-              id: `company-admin-${tenantId}`,
-              name: 'Company Admin',
-              code: 'COMPANY_ADMIN',
-              description: 'Company administrator with full access',
-              hierarchy_level: 'COMPANY',
-              department: 'administration',
-            },
-            {
-              id: `regional-manager-${tenantId}`,
-              name: 'Regional Manager',
-              code: 'REGIONAL_MANAGER',
-              description: 'Regional operations manager',
-              hierarchy_level: 'REGIONAL',
-              department: 'administration',
-            },
-            {
-              id: `location-manager-${tenantId}`,
-              name: 'Location Manager',
-              code: 'LOCATION_MANAGER',
-              description: 'Location manager',
-              hierarchy_level: 'LOCATION',
-              department: 'administration',
-            },
-            {
-              id: `sales-manager-${tenantId}`,
-              name: 'Sales Manager',
-              code: 'SALES_MANAGER',
-              description: 'Sales team manager',
-              hierarchy_level: 'DEPARTMENT',
-              department: 'sales',
-            },
-            {
-              id: `service-manager-${tenantId}`,
-              name: 'Service Manager',
-              code: 'SERVICE_MANAGER',
-              description: 'Service team manager',
-              hierarchy_level: 'DEPARTMENT',
-              department: 'service',
-            },
-            {
-              id: `sales-rep-${tenantId}`,
-              name: 'Sales Representative',
-              code: 'SALES_REP',
-              description: 'Sales representative',
-              hierarchy_level: 'INDIVIDUAL',
-              department: 'sales',
-            },
-            {
-              id: `service-tech-${tenantId}`,
-              name: 'Service Technician',
-              code: 'SERVICE_TECH',
-              description: 'Service technician',
-              hierarchy_level: 'INDIVIDUAL',
-              department: 'service',
-            },
-            {
-              id: `admin-assistant-${tenantId}`,
-              name: 'Administrative Assistant',
-              code: 'ADMIN_ASSISTANT',
-              description: 'Administrative support',
-              hierarchy_level: 'INDIVIDUAL',
-              department: 'administration',
-            },
-          ];
+    const plan = buildRbacSeedPlan({
+      tenantId,
+      userId,
+      dealerType,
+      catalogue: catalogueRows.rows as unknown as CatalogueRole[],
+    });
 
-    // Insert roles
-    for (const role of rolesToCreate) {
-      await db.execute(sql`
-        INSERT INTO enhanced_roles (id, tenant_id, organizational_unit_id, name, code, description, hierarchy_level, department)
-        VALUES (${role.id}, ${tenantId}, ${companyUnitId}, ${role.name}, ${role.code}, ${role.description}, ${role.hierarchy_level}, ${role.department})
-      `);
+    if (plan.error) {
+      return sendError(res, 503, plan.error, { code: 'ROLE_CATALOGUE_INCOMPLETE' });
     }
 
-    // Assign the first role to the current user
-    const firstRoleId = rolesToCreate[0].id;
-    await db.execute(sql`
-      INSERT INTO user_role_assignments (id, user_id, role_id, tenant_id, organizational_unit_id, assigned_by)
-      VALUES (${`assignment-${userId}-${Date.now()}`}, ${userId}, ${firstRoleId}, ${tenantId}, ${companyUnitId}, ${userId})
-    `);
+    await db.insert(organizationalUnits).values(plan.unit as never);
+    await db.insert(enhancedRoles).values(plan.roles as never);
+    await db.insert(userRoleAssignments).values(plan.assignment as never);
 
     res.json({
-      message: 'RBAC system initialized successfully',
+      message: 'Role management initialized',
       dealerType,
       tenantId,
-      rolesCreated: rolesToCreate.length,
-      userAssigned: firstRoleId,
+      rolesCreated: plan.roles.length,
+      userAssigned: plan.primaryRoleId,
     });
   } catch (error) {
     log.error('RBAC seed error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    serverError(res, 'Failed to initialize role management');
   }
 });
 

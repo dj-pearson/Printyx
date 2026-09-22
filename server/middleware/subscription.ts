@@ -8,6 +8,33 @@ const log = createModuleLogger('subscription');
  * SUBSCRIPTION MIDDLEWARE
  *
  * Middleware for subscription validation, feature gating, and usage tracking.
+ *
+ * LAUNCH-013, round 121: EVERY GATE IN THIS FILE RUNS IN DEVELOPMENT ONLY.
+ *
+ * Not because it is unmounted - it is mounted, at fifteen sites across
+ * routes-subscriptions, routes-csv-import and routes-crm-core - but because
+ * `getApiUrl` rewrites `/api/<seg>` straight to the functions host in
+ * production, and every segment these gates sit on is claimed over there:
+ * `leads`, `import`, `subscriptions` and `billing` are all real edge function
+ * directories. So Express never sees those requests on a deployed host, and
+ * whatever these middleware decide, they decide it for developers.
+ *
+ * WHAT THAT LEAVES OPEN, measured rather than assumed: grep
+ * `tenant_subscriptions|subscription_plans|usage_metrics` across
+ * supabase/functions and only `subscriptions/` and `_shared/stripe.ts` match.
+ * `supabase/functions/billing/` - the function behind every billing operation
+ * in production - contains no subscription, plan or usage check at all, and
+ * `supabase/functions/leads/` none either. So this story's own criterion,
+ * "enforce subscription usage limits before allowing billing operations", is
+ * false in production on both halves: the gate is not there, and the copy that
+ * exists cannot run.
+ *
+ * DO NOT "FIX" THIS BY MOUNTING MORE OF IT ON EXPRESS. The enforcement point
+ * has to be edge-side, next to the write it is gating. `npm run
+ * check:dead-policy-gates` holds the inventory, and
+ * server/tests/unit/dead-policy-gates.test.ts fails the day an edge function
+ * starts reading the subscription tables, so this header is revisited rather
+ * than left to outlive its reason.
  */
 
 // Extend Express Request type

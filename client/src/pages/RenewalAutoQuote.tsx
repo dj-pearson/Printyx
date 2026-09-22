@@ -161,9 +161,20 @@ export default function RenewalAutoQuote() {
     mutationFn: () =>
       apiRequest('/api/renewal-autoquote/generate', { method: 'POST', body: { force: true } }),
     onSuccess: (data: any) => {
+      // COP-M06: the sweep now lands drafts on the pipeline board too, so the
+      // toast says what reached the board. Reconciliation counts are reported
+      // separately from drafting, because a run that drafts nothing can still
+      // back-fill deals for drafts that predate the link.
+      const landed = [
+        data?.dealsCreated ? `${data.dealsCreated} added to the pipeline` : null,
+        data?.dealsUpdated ? `${data.dealsUpdated} pipeline deal(s) updated` : null,
+      ].filter(Boolean);
       toast({
         title: 'Generation complete',
-        description: `${data?.generated ?? 0} drafts created (${data?.scanned ?? 0} contracts scanned).`,
+        description: [
+          `${data?.generated ?? 0} drafts created (${data?.scanned ?? 0} contracts scanned).`,
+          ...landed,
+        ].join(' '),
       });
       invalidateAll();
     },

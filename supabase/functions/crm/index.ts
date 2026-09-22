@@ -5,8 +5,16 @@ import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { associationCreateError } from '../_shared/crm-associations.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { applyUserScope, resolveScope } from '../_shared/scope.ts';
 import { toCamel } from '../_shared/case.ts';
 import { calculateActivityFunnel } from '../_shared/activity-funnel.ts';
+import { fetchAllRows } from '../_shared/paged-select.ts';
+import {
+  memberName,
+  rollUpActivity,
+  rollUpPipeline,
+  type TeamMember,
+} from '../../../shared/team-rollup.ts';
 
 /** Rows out of PostgREST are snake_case; every page here reads camelCase. */
 // deno-lint-ignore no-explicit-any
@@ -239,6 +247,213 @@ export default async function handler(req: Request) {
       return createCorsResponse({ created: data?.length ?? 0, goals: toCamelRows(data) }, 201, req);
     }
 
+    /**
+     * GET /crm/record-counts?recordId=<business record id>
+     *
+     * CRM-008 AC6: the counts on a record page's associated-record tabs.
+     *
+     * THE COUNT HAS TO DESCRIBE THE SAME SET THE TAB LISTS, which is why this
+     * is not four `count: exact` calls over `tenant_id` and the association
+     * column. Three of the four lists apply `applyUserScope`, each on its OWN
+     * columns - deals on owner_id/created_by_id, proposals on
+     * assigned_to/created_by, quotes on created_by (WF-R-05, because a quote
+     * carries margin) - so a naive count tells a rep "Deals 7" above a list of
+     * three. Contacts are deliberately unscoped: `/companies/:id/contacts`
+     * filters on tenant and company only, and a contact of this account is a
+     * contact of this account whoever entered it.
+     *
+     * NULL IS NOT ZERO, the rule the dashboard-stats branch below already
+     * encodes: a count that failed renders as nothing, never as "none". A tab
+     * reading "Quotes 0" when the query errored is a claim about the record.
+     */
+    if (req.method === 'GET' && subRoute === 'record-counts') {
+      const recordId = url.searchParams.get('recordId') || url.searchParams.get('record_id');
+      if (!recordId) {
+        return createCorsResponse(
+          { message: 'recordId is required', code: 'MISSING_RECORD_ID' },
+          400,
+          req,
+        );
+      }
+
+      const scope = await resolveScope(admin, {
+        userId: user.id,
+        tenantId,
+        appMetadata: user.app_metadata,
+        requestedScope: url.searchParams.get('scope'),
+      });
+
+      const countOfScoped = async (
+        table: string,
+        column: string,
+        scopeColumns: string | string[] | null,
+      ): Promise<number | null> => {
+        try {
+          let query = admin
+            .from(table)
+            .select('id', { count: 'exact', head: true })
+            .eq('tenant_id', tenantId)
+            .eq(column, recordId);
+          if (scopeColumns) query = applyUserScope(query, scopeColumns, scope);
+          const { count, error } = await query;
+          return error ? null : (count ?? null);
+        } catch {
+          return null;
+        }
+      };
+
+      const [contacts, deals, proposals, quotes] = await Promise.all([
+        countOfScoped('company_contacts', 'company_id', null),
+        countOfScoped('deals', 'source_business_record_id', ['owner_id', 'created_by_id']),
+        countOfScoped('proposals', 'business_record_id', ['assigned_to', 'created_by']),
+        countOfScoped('quotes', 'lead_id', 'created_by'),
+      ]);
+
+      return createCorsResponse(
+        {
+          recordId,
+          counts: { contacts, deals, proposals, quotes },
+          // What the caller can see, so a rep reading a smaller number than a
+          // manager knows why (COP-I06: a narrowed total that does not say it
+          // was narrowed is a wrong number, not a safe one).
+          scopeTier: scope.tier,
+          coversWholeTenant: scope.userIds === null,
+        },
+        200,
+        req,
+      );
+    }
+
+    /**
+     * GET /crm/team-rollup?days=7
+     *
+     * COP-B01 AC6: the two manager cards on My Day. `team-pipeline` and
+     * `team-activity` were declared in the card catalogue, role-gated at
+     * MANAGER and orderable - and RENDERED NOTHING, because no endpoint
+     * answered them. The boundary showed an empty card rather than an error,
+     * which is the politest possible way for a feature to not exist.
+     *
+     * THE TEAM IS `resolveScope`'s ANSWER, NOT A QUERY PARAMETER. Whose rows a
+     * manager may see is the same question the CRM lists already ask, and its
+     * degradation rule is load-bearing: a tier the org structure cannot answer
+     * falls back to the NARROWER one, because guessing wide is a leak while
+     * guessing narrow is a manager seeing less than they should.
+     *
+     * A caller whose scope is 'own' gets 403 rather than a roll-up of
+     * themselves: a one-row team card is not a smaller version of the feature,
+     * it is a rep reading a manager surface.
+     */
+    if (req.method === 'GET' && subRoute === 'team-rollup') {
+      const scope = await resolveScope(admin, {
+        userId: user.id,
+        tenantId,
+        appMetadata: user.app_metadata,
+        requestedScope: url.searchParams.get('scope'),
+      });
+
+      if (scope.tier === 'own') {
+        return createCorsResponse(
+          {
+            message: 'Team roll-ups are available to managers and above',
+            code: 'INSUFFICIENT_SCOPE',
+            scopeTier: scope.tier,
+            degradedFrom: scope.degradedFrom,
+          },
+          403,
+          req,
+        );
+      }
+
+      const days = Math.min(Math.max(Number(url.searchParams.get('days')) || 7, 1), 90);
+      // `created_at` is an INSTANT, not a calendar date, so it is compared to an
+      // instant - no day snapping (DATE-LOCAL-002 draws exactly this line).
+      const since = new Date(Date.now() - days * 86_400_000).toISOString();
+
+      // The member list is the scope, plus the caller: a manager is part of
+      // their own team's numbers.
+      const memberIds =
+        scope.userIds === null ? null : Array.from(new Set([...scope.userIds, user.id]));
+
+      let userQuery = admin
+        .from('users')
+        .select('id, first_name, last_name, email')
+        .eq('tenant_id', tenantId);
+      if (memberIds) userQuery = userQuery.in('id', memberIds);
+      const { data: userRows, error: userErr } = await userQuery;
+
+      if (userErr) {
+        return createCorsResponse(
+          { message: 'Could not load the team', code: 'DB_ERROR', details: userErr.message },
+          500,
+          req,
+        );
+      }
+
+      const members: TeamMember[] = (userRows ?? []).map((u: any) => ({
+        userId: String(u.id),
+        name: memberName(u),
+      }));
+
+      /**
+       * Each half is fetched and rolled up independently, and a failure in one
+       * leaves the other intact - AC5's card-by-card degradation, applied
+       * inside the response rather than left to the boundary. A card that
+       * cannot be computed answers null; the caller renders nothing, never a
+       * zeroed roll-up that reads as a quiet week.
+       */
+      let pipeline: ReturnType<typeof rollUpPipeline> | null = null;
+      try {
+        const deals = await fetchAllRows<any>(() => {
+          let q = admin
+            .from('deals')
+            .select('owner_id, amount, status')
+            .eq('tenant_id', tenantId)
+            .eq('status', 'open');
+          if (memberIds) q = q.in('owner_id', memberIds);
+          return q;
+        });
+        pipeline = rollUpPipeline(
+          deals.map((d: any) => ({ ownerId: d.owner_id, amount: d.amount, status: d.status })),
+          members,
+        );
+      } catch (err) {
+        console.error('[crm] team pipeline roll-up failed', err);
+      }
+
+      let activity: ReturnType<typeof rollUpActivity> | null = null;
+      try {
+        const rows = await fetchAllRows<any>(() => {
+          let q = admin
+            .from('business_record_activities')
+            .select('created_by, activity_type')
+            .eq('tenant_id', tenantId)
+            .gte('created_at', since);
+          if (memberIds) q = q.in('created_by', memberIds);
+          return q;
+        });
+        activity = rollUpActivity(
+          rows.map((r: any) => ({ createdBy: r.created_by, activityType: r.activity_type })),
+          members,
+        );
+      } catch (err) {
+        console.error('[crm] team activity roll-up failed', err);
+      }
+
+      return createCorsResponse(
+        {
+          windowDays: days,
+          memberCount: members.length,
+          pipeline,
+          activity,
+          scopeTier: scope.tier,
+          coversWholeTenant: scope.userIds === null,
+          degradedFrom: scope.degradedFrom,
+        },
+        200,
+        req,
+      );
+    }
+
     // GET /crm/dashboard-stats - counted, not typed in
     if (req.method === 'GET' && subRoute === 'dashboard-stats') {
       const monthStart = new Date();
@@ -278,19 +493,37 @@ export default async function handler(req: Request) {
           ),
         ]);
 
-      // Revenue is a SUM, which PostgREST also cannot do, so the won deals are
-      // read and added here. Capped by fetchAllRows' paging upstream of a real
-      // tenant size; a tenant past that gets a low number rather than a wrong
-      // shape, which is named in `unbacked`.
-      // actual_close_date, NOT closed_at. check:phantom-cols caught that in this
-      // very branch before it shipped - `deals.closed_at` is a name eight other
-      // edge functions have reached for and the table has never had, which is
-      // why CLAUDE.md lists it by name.
-      const { data: wonDeals, error: dealsError } = await admin
-        .from('deals')
-        .select('amount, actual_close_date')
-        .eq('tenant_id', tenantId)
-        .eq('status', 'won');
+      /**
+       * Revenue is a SUM, which PostgREST cannot do, so the won deals are read
+       * and added here.
+       *
+       * THE COMMENT HERE USED TO CLAIM "capped by fetchAllRows' paging" AND THE
+       * CODE DID NOT CALL IT. A bare `.select()` stops at PostgREST's default
+       * page, so a tenant with more won deals than that had its total revenue
+       * silently reported as the sum of the first page - a wrong number that
+       * looks exactly like a right one, with a comment asserting the safety
+       * that was missing. check:row-caps is the guard that says so, and it was
+       * red on main.
+       *
+       * actual_close_date, NOT closed_at. check:phantom-cols caught that in this
+       * very branch before it shipped - `deals.closed_at` is a name eight other
+       * edge functions have reached for and the table has never had, which is
+       * why CLAUDE.md lists it by name.
+       */
+      let dealsError: unknown = null;
+      const wonDeals = await fetchAllRows<any>(() =>
+        admin
+          .from('deals')
+          .select('amount, actual_close_date')
+          .eq('tenant_id', tenantId)
+          .eq('status', 'won'),
+      ).catch((err) => {
+        // fetchAllRows throws where the old destructure returned an error, and
+        // the branch below distinguishes null (could not read) from 0 (nothing
+        // won), so the failure has to survive as a value rather than a throw.
+        dealsError = err;
+        return [] as any[];
+      });
 
       const sum = (rows: { amount?: unknown }[] | null) =>
         (rows ?? []).reduce((acc, r) => acc + (Number(r.amount) || 0), 0);
@@ -471,7 +704,19 @@ export default async function handler(req: Request) {
       return createCorsResponse(rows, 200, req);
     }
 
-    // GET /crm/manager-insights
+    /**
+     * GET /crm/manager-insights
+     *
+     * NOTHING WRITES `manager_insights` (AUDIT-028). The read is correct and the
+     * table has never held a row, so CrmGoalsDashboard's insights panel renders
+     * nothing at all - it guards on `insights.length > 0`, which is the mild
+     * form of this defect: the feature looks absent rather than empty. What is
+     * missing is a PRODUCER; the rows describe a coaching insight per manager,
+     * team or rep, with a category and a priority, which is a generated
+     * artefact, not something a user types. Recorded in
+     * docs/unwritten-tables-baseline.json with that question rather than left
+     * looking like a table nobody uses.
+     */
     if (req.method === 'GET' && subRoute === 'manager-insights') {
       let query = admin
         .from('manager_insights')
@@ -499,7 +744,21 @@ export default async function handler(req: Request) {
     }
 
     if (subRoute === 'analytics') {
-      // GET /crm/analytics/conversion-analysis
+      /**
+       * GET /crm/analytics/conversion-analysis
+       *
+       * NOTHING WRITES `sales_metrics` either (AUDIT-028), and `commission`
+       * reads it too. These are per-rep conversion and activity figures that
+       * every input for already exists - business_records, deals and
+       * business_record_activities - so the answer to "who fills this in" is a
+       * DERIVATION rather than an importer, the shape system_alerts took. That
+       * is a feature, not a guard fix, and is recorded as such in
+       * docs/unwritten-tables-baseline.json.
+       *
+       * CR-033 already made the page distinguish a failed request from an empty
+       * one, so what a manager sees today is honest - "no conversion data yet"
+       * is true of the table. It is not true of the business.
+       */
       if (req.method === 'GET' && parts[1] === 'conversion-analysis') {
         const period = url.searchParams.get('period') ?? 'monthly';
         let query = admin
@@ -507,6 +766,25 @@ export default async function handler(req: Request) {
           .select('*')
           .eq('tenant_id', tenantId)
           .eq('metric_period', period);
+
+        /**
+         * SEC-EDGE-001: `sales_metrics` is per-rep performance - conversion
+         * rates, activity counts, quota movement - and the only thing deciding
+         * whose rows came back was a `?userId=` the caller supplies, on a
+         * tenant filter. Any member could read any colleague's numbers.
+         *
+         * The WF-R-04 scope now narrows the rows first; the parameters are
+         * what they always read as, a caller-supplied preference applied ON
+         * TOP, so they can filter within the tier and never widen past it.
+         * Same shape as the deals board and the commission calculations.
+         */
+        const scope = await resolveScope(admin, {
+          userId: user.id,
+          tenantId,
+          appMetadata: user.app_metadata,
+          requestedScope: url.searchParams.get('scope'),
+        });
+        query = applyUserScope(query, 'user_id', scope);
 
         const userId = url.searchParams.get('userId');
         const teamId = url.searchParams.get('teamId');

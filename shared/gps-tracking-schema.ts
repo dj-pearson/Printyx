@@ -71,58 +71,28 @@ export const insertTechnicianLocationSchema = createInsertSchema(technicianLocat
 export type InsertTechnicianLocation = z.infer<typeof insertTechnicianLocationSchema>;
 export type TechnicianLocation = typeof technicianLocations.$inferSelect;
 
-// ==================== Location History (Historical Tracking) ====================
-export const locationHistory = pgTable(
-  'location_history',
-  {
-    id: varchar('id').primaryKey().default('gen_random_uuid()'),
-    tenantId: varchar('tenant_id').notNull(),
-    technicianId: varchar('technician_id').notNull(),
-
-    // Location data
-    latitude: decimal('latitude', { precision: 10, scale: 7 }).notNull(),
-    longitude: decimal('longitude', { precision: 10, scale: 7 }).notNull(),
-    accuracy: decimal('accuracy', { precision: 6, scale: 2 }),
-    altitude: decimal('altitude', { precision: 8, scale: 2 }),
-    heading: decimal('heading', { precision: 5, scale: 2 }),
-    speed: decimal('speed', { precision: 6, scale: 2 }),
-
-    // Context
-    ticketId: varchar('ticket_id'),
-    customerId: varchar('customer_id'),
-    activityType: varchar('activity_type'), // traveling, on_site, returning, idle
-
-    // Distance tracking
-    distanceFromPrevious: decimal('distance_from_previous', { precision: 10, scale: 2 }), // meters
-    distanceFromTicket: decimal('distance_from_ticket', { precision: 10, scale: 2 }), // meters
-
-    // Metadata
-    deviceId: varchar('device_id'),
-    batteryLevel: integer('battery_level'),
-    timestamp: timestamp('timestamp').notNull().defaultNow(),
-    createdAt: timestamp('created_at').notNull().defaultNow(),
-  },
-  (table) => ({
-    tenantIdIdx: index('location_history_tenant_id_idx').on(table.tenantId),
-    technicianIdIdx: index('location_history_technician_id_idx').on(
-      table.tenantId,
-      table.technicianId,
-    ),
-    ticketIdIdx: index('location_history_ticket_id_idx').on(table.tenantId, table.ticketId),
-    timestampIdx: index('location_history_timestamp_idx').on(table.tenantId, table.timestamp),
-    activityTypeIdx: index('location_history_activity_type_idx').on(
-      table.tenantId,
-      table.activityType,
-    ),
-  }),
-);
-
-export const insertLocationHistorySchema = createInsertSchema(locationHistory).omit({
-  id: true,
-  createdAt: true,
-});
-export type InsertLocationHistory = z.infer<typeof insertLocationHistorySchema>;
-export type LocationHistory = typeof locationHistory.$inferSelect;
+// ==================== Location History ====================
+/**
+ * `location_history` is declared in `shared/mobile-service-schema.ts`, NOT here.
+ *
+ * This file declared it too, with EIGHT columns the table does not have -
+ * altitude, ticket_id, customer_id, activity_type, distance_from_previous,
+ * distance_from_ticket, device_id, battery_level - and missing the two it does
+ * (address, session_id). Measured against a real PostgreSQL with the chain
+ * replayed; `mobile-service-schema.ts` matches exactly.
+ *
+ * `shared/drizzle-schema.ts` already skipped this copy, so it never shaped a
+ * migration. It did something worse: `server/storage.ts` imports BOTH, the
+ * second aliased as `gpsLocationHistory`, and `getGpsLocationHistory` does
+ * `db.select()` over it - which names every DECLARED column, so the SQL asks
+ * for eight that do not exist and the query is a 42703 on EVERY call. Proven,
+ * not inferred: `column "altitude" does not exist`.
+ *
+ * That is the nightly mileage job (`mileage-auto-generate-nightly`), which has
+ * therefore never computed a mile.
+ */
+export { locationHistory, insertLocationHistorySchema } from './mobile-service-schema';
+export type { LocationHistory, InsertLocationHistory } from './mobile-service-schema';
 
 // ==================== Route Assignments ====================
 export const routeAssignments = pgTable(

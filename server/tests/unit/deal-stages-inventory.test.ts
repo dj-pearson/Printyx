@@ -78,6 +78,10 @@ const SANCTIONED: Record<string, string> = {
   'supabase/functions/deal-stages/index.ts':
     'WF-S-03: serves the stage PICKER, which must offer the legacy ids deals.stage_id holds - identity only, no config flags',
   'supabase/functions/proposals/index.ts': 'resolves a stage_id when acceptance creates a deal',
+  'supabase/functions/opportunity-radar/index.ts':
+    'COP-B04: resolves the front-of-pipeline stage_id when a play is converted into a deal - the same legacy id space every other deal writer uses',
+  'supabase/functions/renewal-autoquote/index.ts':
+    'COP-M06: resolves the front-of-pipeline stage_id when a renewal draft becomes a deal - the same legacy id space every other deal writer uses, so a renewal deal is not the one row that resolves differently',
   'supabase/functions/opportunities/index.ts': 'embeds the stage NAME and COLOUR for iOS',
   'supabase/functions/reports/handlers/frontend-stubs.ts':
     'canonical first, legacy fallback for a tenant whose stages predate the bridge',

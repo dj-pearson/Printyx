@@ -33,6 +33,7 @@ import {
   type SerpFetchResult,
 } from '../_shared/blog/keyword/index.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { summariseBulkWrite } from '../../../shared/bulk-result.ts';
 
 type Admin = ReturnType<typeof createSupabaseServiceClient>;
 
@@ -445,12 +446,24 @@ async function clearRun(admin: Admin, tenantId: string, userId: string, url: URL
     return createCorsResponse({ deleted: 0 }, 200, req);
   }
 
-  const { error } = await admin
+  const { data: deleted, error } = await admin
     .from('blog_keywords')
     .delete()
     .eq('tenant_id', tenantId)
-    .in('id', ids);
+    .in('id', ids)
+    .select('id');
   if (error) return createCorsResponse({ error: error.message }, 500, req);
+
+  // Round 132: this reported `ids.length` - and wrote that number into the
+  // AUDIT LOG, where an operator reading "cleared 40 keywords" has no way to
+  // discover that twelve went. The delete is tenant-scoped, so it can always
+  // be fewer.
+  const outcome = summariseBulkWrite(
+    ids,
+    (deleted ?? []).map((row: any) => row.id),
+    'keyword',
+    'deleted',
+  );
 
   await writeAuditLog(
     admin,
@@ -461,12 +474,16 @@ async function clearRun(admin: Admin, tenantId: string, userId: string, url: URL
       action: 'blog_paa.clear',
       targetType: 'blog_keyword',
       targetId: seed.id,
-      afterState: { keyword, deleted_count: ids.length },
-      summary: `Cleared ${ids.length} mined keywords under "${keyword}"`,
+      afterState: { keyword, deleted_count: outcome.affectedCount, not_found: outcome.notFound },
+      summary: `Cleared ${outcome.affectedCount} mined keywords under "${keyword}"`,
     }),
   );
 
-  return createCorsResponse({ deleted: ids.length }, 200, req);
+  return createCorsResponse(
+    { deleted: outcome.affectedCount, notFound: outcome.notFound, message: outcome.message },
+    200,
+    req,
+  );
 }
 
 // ─── helpers ───

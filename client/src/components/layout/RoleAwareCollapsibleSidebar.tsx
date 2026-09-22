@@ -74,6 +74,9 @@ import {
   Smartphone,
   Rocket,
   ClipboardList,
+  Swords,
+  Radar,
+  Map as MapIcon,
   FileSignature,
   Code,
   Menu,
@@ -238,6 +241,11 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
       '/crm*',
       '/business-records*',
       '/today*',
+      // COP-B10 / COP-B13 / COP-B04.
+      '/competitors*',
+      '/playbooks*',
+      '/opportunity-radar*',
+      '/territories*',
     ],
     // COP-M02: grouped Work / Sell / Manage instead of one flat 17-item list.
     // Every route is unchanged — this story moves and groups, it does not rewire.
@@ -245,11 +253,21 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
     // moved out to Settings; Meeting Transcription moved in from Productivity.
     children: [
       // COP-B01: TodayDashboard existed and was reachable from NO navigation.
-      { title: 'My Day', path: '/today', icon: Zap, group: 'Work' },
-      { title: 'Leads', path: '/leads-management', icon: UserPlus, group: 'Work' },
+      { title: 'My Day', path: '/crm/my-day', icon: Zap, group: 'Work' },
+      // COP-M01: these three now point at the CrmIndexShell pages. CRM-001..010
+      // built saved-view tabs, a table/board toggle, advanced filters, a column
+      // picker, bulk selection, inline cell editing and a capped CSV export,
+      // and the sidebar kept pointing at the older hand-rolled lists, so the
+      // whole feature set was reachable only by typing the URL.
+      //
+      // The legacy routes stay registered - COP-E03 retires them once parity is
+      // confirmed in a running environment - and the hub's matchPatterns still
+      // list /leads*, /contacts*, /customers* so a deep link into an old path
+      // keeps this section expanded.
+      { title: 'Leads', path: '/crm/leads', icon: UserPlus, group: 'Work' },
       { title: 'Prospects', path: '/prospects', icon: Users, group: 'Work' },
-      { title: 'Customers', path: '/customers', icon: UserCheck, group: 'Work' },
-      { title: 'Contacts', path: '/contacts', icon: Users, group: 'Work' },
+      { title: 'Customers', path: '/crm/companies', icon: UserCheck, group: 'Work' },
+      { title: 'Contacts', path: '/crm/contacts', icon: Users, group: 'Work' },
       // COP-E07: the object is a Deal. Route unchanged (COP-E04 collapses the URLs).
       { title: 'Deals', path: '/crm/deals', icon: Target, group: 'Work' },
       { title: 'Sales Pipeline', path: '/sales-pipeline', icon: TrendingUp, group: 'Work' },
@@ -264,6 +282,17 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
       { title: 'Contracts', path: '/contracts', icon: FileSignature, group: 'Sell' },
       { title: 'Deal Desk', path: '/deal-desk', icon: CheckCircle2, group: 'Sell' },
       { title: 'Meetings', path: '/meeting-transcription', icon: Video, group: 'Sell' },
+      // COP-B10 and COP-B13. Both shipped ROUTED AND UNREACHABLE - permission
+      // entries and Route lines but no nav, so the only way in was typing the
+      // URL. That is CRMX-016's failure shape at nav level rather than route
+      // level, and it is why check:nav watching route targets is not enough on
+      // its own: a target that resolves can still have nothing pointing at it.
+      // COP-B04: a rep's own pipeline out of the installed base. In Work, not
+      // Sell - this is where the day starts.
+      { title: 'Opportunity Radar', path: '/opportunity-radar', icon: Radar, group: 'Work' },
+      { title: 'Competitors', path: '/competitors', icon: Swords, group: 'Sell' },
+      { title: 'Territories', path: '/territories', icon: MapIcon, group: 'Manage' },
+      { title: 'Playbooks', path: '/playbooks', icon: ClipboardList, group: 'Sell' },
       { title: 'Email Sequences', path: '/marketing/sequences', icon: Mail, group: 'Sell' },
       { title: 'Web Forms', path: '/marketing/forms', icon: FileText, group: 'Sell' },
 

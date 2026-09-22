@@ -6,6 +6,7 @@
 //   GET  /reports/reporting/reports                — list reports (frontend uses this)
 //   GET  /reports/reporting/kpis                   — list KPIs (frontend uses this; alias of /reports/kpis)
 //   GET  /reports/reporting/dashboard/summary      — dashboard summary
+//   GET  /reports/reporting/charts?category=&period=  — the three dashboard charts
 //   POST /reports/reporting/reports/export         — degraded: export pipeline not ported
 //   GET  /reports/reporting/exports/stats          — degraded
 //   GET  /reports/reporting/exports/:id/download   — degraded
@@ -17,6 +18,17 @@
 
 import { errorResponse, jsonResponse } from '../../_shared/http.ts';
 import type { HandlerCtx } from '../_context.ts';
+import { fetchAllRows } from '../../_shared/paged-select.ts';
+import { startOfNextUtcDay, startOfUtcDay } from '../../_shared/date-months.ts';
+import { parsePeriod, previousRange, rangeForPeriod } from '../_date.ts';
+import {
+  buildChartSeries,
+  CHARTED_CATEGORIES,
+  isChartedCategory,
+  UNCHARTED_REASON,
+  type ReportCategory,
+  type SourceRow,
+} from '../../../../shared/report-chart-series.ts';
 
 export async function handleReporting(req: Request, ctx: HandlerCtx): Promise<Response | null> {
   const { method, pathParts } = ctx;
@@ -30,6 +42,7 @@ export async function handleReporting(req: Request, ctx: HandlerCtx): Promise<Re
   if (method === 'GET' && sub === 'dashboard' && sub2 === 'summary') {
     return await dashboardSummary(req, ctx);
   }
+  if (method === 'GET' && sub === 'charts' && !sub2) return await dashboardCharts(req, ctx);
 
   if (method === 'POST' && sub === 'reports' && sub2 === 'export') {
     return await exportReportDegraded(req, ctx);
@@ -272,5 +285,140 @@ async function exportDownloadDegraded(req: Request, ctx: HandlerCtx): Promise<Re
         hint: 'Use the persona-scoped report endpoints under /reports/{persona}/* for live data.',
       },
     },
+  );
+}
+
+// ─── dashboard charts (REPORTS-CHARTS-002) ──────────────────────────────────
+
+/**
+ * GET /reports/reporting/charts?category=<c>&period=week|month|quarter|year
+ *
+ * The three charts /reports draws above its catalog: a trend over the period, a
+ * distribution by the category's own grouping column, and the same period
+ * against the one before it.
+ *
+ * ONLY THREE OF THE EIGHT CATEGORIES HAVE A SOURCE. sales reads `deals`,
+ * service reads `service_tickets`, finance reads `invoices`. The other five
+ * answer 200 with `charted: false` and the reason, because the alternative is
+ * the fabrication AUDIT-020 removed from this exact panel - a random series with
+ * a 40000 target drawn over it, on a routed page. A refusal that says which
+ * category and why is a better screen than a chart nobody can check.
+ *
+ * COLUMN NAMES ARE THE REAL ONES, and this is where the family usually goes
+ * wrong: `deals` has `amount`, `stage_id` and `status` - NOT `deal_value`,
+ * `stage`, `value` or `closed_at`, which COP-M01 records eight edge functions
+ * querying. `invoices` has `total_amount` and `invoice_status`.
+ *
+ * `invoice_date` IS A CALENDAR DATE stored at midnight (DATE-LOCAL-002 names it
+ * explicitly), so its window is snapped to day boundaries with a strict
+ * next-day upper bound. `deals.created_at` and `service_tickets.created_at` are
+ * instants and are compared as instants.
+ */
+async function dashboardCharts(req: Request, ctx: HandlerCtx): Promise<Response> {
+  const { auth, db, requestId, url } = ctx;
+  const category = (url.searchParams.get('category') ?? '') as ReportCategory;
+
+  if (!isChartedCategory(category)) {
+    const reason = UNCHARTED_REASON[category as keyof typeof UNCHARTED_REASON];
+    return jsonResponse(
+      {
+        category: category || null,
+        charted: false,
+        reason:
+          reason ?? 'Unknown report category. Charts exist for sales, service and finance only.',
+        chartedCategories: Object.keys(CHARTED_CATEGORIES),
+      },
+      200,
+      req,
+      requestId,
+    );
+  }
+
+  const period = parsePeriod(url.searchParams.get('period'));
+  const range = rangeForPeriod(period);
+  const prior = previousRange(range);
+
+  const source = CHARTED_CATEGORIES[category];
+  const calendarDated = category === 'finance';
+  // Snap only the calendar-date column. An instant column compared to a
+  // day boundary would move the window, which is the inverse of the defect.
+  const lower = (d: Date) => (calendarDated ? startOfUtcDay(d) : d).toISOString();
+  const upper = (d: Date) => (calendarDated ? startOfNextUtcDay(d) : d).toISOString();
+
+  const spec = {
+    deals: { table: 'deals', at: 'created_at', amount: 'amount', key: 'status' },
+    service_tickets: {
+      table: 'service_tickets',
+      at: 'created_at',
+      amount: null,
+      key: 'status',
+    },
+    invoices: {
+      table: 'invoices',
+      at: 'invoice_date',
+      amount: 'total_amount',
+      key: 'invoice_status',
+    },
+  }[source.table];
+
+  const columns = [spec.at, spec.key, ...(spec.amount ? [spec.amount] : [])].join(', ');
+
+  // Paged: a tally computed over one PostgREST page is a truncated number that
+  // looks like a fact, which is worse than a short list.
+  const load = async (from: Date, to: Date) =>
+    await fetchAllRows<Record<string, unknown>>(() =>
+      db
+        .from(spec.table)
+        .select(columns)
+        .eq('tenant_id', auth.tenantId)
+        .gte(spec.at, lower(from))
+        .lt(spec.at, upper(to)),
+    );
+
+  let currentRows: Array<Record<string, unknown>>;
+  let previousRows: Array<Record<string, unknown>>;
+  try {
+    [currentRows, previousRows] = await Promise.all([
+      load(range.start, range.end),
+      load(prior.start, prior.end),
+    ]);
+  } catch (err) {
+    return errorResponse(500, 'Failed to build report charts', req, {
+      code: 'DB_ERROR',
+      details: String(err),
+      requestId,
+    });
+  }
+
+  const toSource = (rows: Array<Record<string, unknown>>): SourceRow[] =>
+    rows.map((r) => ({
+      at: r[spec.at] as string | null,
+      amount: spec.amount ? (r[spec.amount] as number | string | null) : null,
+      key: r[spec.key] as string | null,
+    }));
+
+  const series = buildChartSeries({
+    current: toSource(currentRows),
+    previous: toSource(previousRows),
+    start: range.start,
+    end: range.end,
+  });
+
+  return jsonResponse(
+    {
+      category,
+      charted: true,
+      period,
+      unit: source.unit,
+      source: spec.table,
+      range: { start: range.start.toISOString(), end: range.end.toISOString() },
+      previousRange: { start: prior.start.toISOString(), end: prior.end.toISOString() },
+      // AC3: there is no per-tenant currency goal to draw. See the module.
+      target: null,
+      ...series,
+    },
+    200,
+    req,
+    requestId,
   );
 }

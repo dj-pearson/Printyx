@@ -123,19 +123,43 @@ export default async function handler(req: Request) {
         )
         .eq('contract_id', contractId);
 
-      // Get service history
-      const { data: services } = await admin
-        .from('work_orders')
-        .select('*')
-        .eq('contract_id', contractId)
-        .order('created_at', { ascending: false })
-        .limit(20);
+      /**
+       * WF-V-07: this read `work_orders`, which exists in no schema and no
+       * migration, and discarded the error - so every contract reported an
+       * empty service history, which reads as "nothing has gone wrong with this
+       * equipment" rather than "we could not look". service_tickets is the real
+       * service record.
+       *
+       * It has no contract_id, so the history is the tickets against the
+       * equipment this contract covers; a contract covering nothing yields
+       * nothing, which is true rather than merely empty.
+       */
+      const equipmentIds = (equipment ?? [])
+        .map((row: any) => row.equipment_id)
+        .filter((id: unknown): id is string => typeof id === 'string' && id !== '');
+
+      // PostgREST rejects an .in() with no values, so an empty cover list
+      // short-circuits rather than querying.
+      const history =
+        equipmentIds.length > 0
+          ? await admin
+              .from('service_tickets')
+              .select('*')
+              .eq('tenant_id', tenantId)
+              .in('equipment_id', equipmentIds)
+              .order('created_at', { ascending: false })
+              .limit(20)
+          : { data: [], error: null };
+
+      const services = history.error ? null : (history.data ?? []);
 
       return createCorsResponse(
         {
           ...contract,
           coveredEquipment: equipment || [],
-          serviceHistory: services || [],
+          // A failed read is null, not an empty history: one of those says the
+          // equipment has been trouble-free and the other says we do not know.
+          serviceHistory: services,
         },
         200,
         req,

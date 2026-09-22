@@ -564,6 +564,10 @@ export const ITEM_PERMISSIONS: Record<string, NavigationPermissionRule> = {
   // =====================================================================
   // DASHBOARD ITEMS (always visible or role-gated)
   // =====================================================================
+  // COP-B01: the same workspace on its canonical path. Same gate as the paths
+  // it shipped under - a new URL must not be reachable on looser terms than
+  // the one it replaces (AUDIT-019's rule).
+  '/crm/my-day': { alwaysVisible: true },
   '/today': { alwaysVisible: true },
   '/dashboard/today': { alwaysVisible: true },
   '/custom-dashboard': { alwaysVisible: true },
@@ -580,6 +584,49 @@ export const ITEM_PERMISSIONS: Record<string, NavigationPermissionRule> = {
   },
   '/crm/leads': {
     requiredPermissions: ['sales.lead.view_own', 'sales.lead.view_team'],
+  },
+  // COP-B09. Territories scope the pipeline, so anyone who can see an
+  // opportunity can see how it is carved up. Creating one is a management act
+  // and is gated in the edge function (SEC-EDGE-001 round 85 actually BUILT
+  // that gate - this comment asserted it for weeks while the handler had no
+  // role check at all, which is why the rule below reads as deliberate and
+  // was not).
+  '/territories': {
+    requiredPermissions: [
+      'sales.opportunity.view_own',
+      'sales.opportunity.view_team',
+      'sales.opportunity.view_location',
+    ],
+  },
+  // COP-B04. Same gate as the deals board: the radar produces a rep's own
+  // pipeline. Running the SCAN and setting thresholds are manager-level checks
+  // in the edge function, which a permission code here would not reach.
+  '/opportunity-radar': {
+    requiredPermissions: [
+      'sales.opportunity.view_own',
+      'sales.opportunity.view_team',
+      'sales.opportunity.view_location',
+    ],
+  },
+  // COP-B13. Same gate as the deals board: a rep who can see a deal can run its
+  // discovery. Authoring is a role-level check in the edge function.
+  '/playbooks': {
+    requiredPermissions: [
+      'sales.opportunity.view_own',
+      'sales.opportunity.view_team',
+      'sales.opportunity.view_location',
+    ],
+  },
+  // COP-B10. Gated exactly like the deals board it is read alongside: anyone
+  // who can see an opportunity can see who they are up against. AUTHORING a
+  // battlecard is gated separately, by role level, in the edge function - a
+  // permission code here would not reach the write path.
+  '/competitors': {
+    requiredPermissions: [
+      'sales.opportunity.view_own',
+      'sales.opportunity.view_team',
+      'sales.opportunity.view_location',
+    ],
   },
   '/crm/contacts': {
     requiredPermissions: ['sales.customer.view_own', 'sales.customer.view_location'],

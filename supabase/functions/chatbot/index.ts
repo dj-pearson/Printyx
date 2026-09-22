@@ -14,6 +14,8 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { ROLE_LEVEL, RbacError, requireRoleLevel } from '../_shared/rbac.ts';
+import type { AuthContext } from '../_shared/auth.ts';
 import {
   obfuscateCredential,
   projectConnection,
@@ -82,6 +84,42 @@ export default async function handler(req: Request) {
       return createCorsResponse({ message: 'Tenant ID is required' }, 400, req);
     }
 
+    /**
+     * SEC-EDGE-001. A workspace install decides what the bot says to a customer-facing channel
+     * and under whose token; a user link decides which Printyx identity a Slack account answers
+     * as, which is an authorisation binding wearing a convenience feature's clothes.
+     *
+     * The gate is on the WRITE branches, not the function: reading the console - which
+     * workspaces are connected, who is linked, what has been asked - is a rep's own work.
+     * A LEVEL check rather than a permission code (SEC-EDGE-002).
+     */
+    const requireManager = () => {
+      requireRoleLevel(
+        {
+          userId: user.id,
+          tenantId,
+          email: user.email,
+          jwt: jwt ?? '',
+          supabaseUser: user,
+        } as AuthContext,
+        ROLE_LEVEL.MANAGER,
+      );
+    };
+    const denyManager = (err: unknown) => {
+      if (err instanceof RbacError) {
+        return createCorsResponse(
+          {
+            error: 'Changing chatbot connections or user links requires a manager role',
+            code: 'INSUFFICIENT_ROLE',
+            details: err.details,
+          },
+          403,
+          req,
+        );
+      }
+      throw err;
+    };
+
     const url = new URL(req.url);
     const { parts } = normalizePath(url.pathname, 'chatbot');
     const resource = parts[0];
@@ -118,6 +156,11 @@ export default async function handler(req: Request) {
     // which is a unique index, so a re-install updates rather than duplicates.
     // ------------------------------------------------------------------
     if (req.method === 'POST' && resource === 'connect' && !id) {
+      try {
+        requireManager();
+      } catch (err) {
+        return denyManager(err);
+      }
       const body = await req.json().catch(() => ({}));
       const platform = body.platform;
       const teamId = body.teamId ?? body.team_id;
@@ -207,6 +250,11 @@ export default async function handler(req: Request) {
     // PUT /chatbot/connections/:id - enable/disable toggle
     // ------------------------------------------------------------------
     if ((req.method === 'PUT' || req.method === 'PATCH') && resource === 'connections' && id) {
+      try {
+        requireManager();
+      } catch (err) {
+        return denyManager(err);
+      }
       const body = await req.json().catch(() => ({}));
       if (typeof body.enabled !== 'boolean') {
         return createCorsResponse({ message: 'Invalid input' }, 400, req);
@@ -237,6 +285,11 @@ export default async function handler(req: Request) {
     // DELETE /chatbot/connections/:id
     // ------------------------------------------------------------------
     if (req.method === 'DELETE' && resource === 'connections' && id) {
+      try {
+        requireManager();
+      } catch (err) {
+        return denyManager(err);
+      }
       const { error } = await admin
         .from('chatbot_connections')
         .delete()
@@ -285,6 +338,11 @@ export default async function handler(req: Request) {
     // account onto someone else's employee, so the tenant filter is the point.
     // ------------------------------------------------------------------
     if (req.method === 'POST' && resource === 'links' && !id) {
+      try {
+        requireManager();
+      } catch (err) {
+        return denyManager(err);
+      }
       const body = await req.json().catch(() => ({}));
       const platform = body.platform;
       const platformUserId = body.platformUserId ?? body.platform_user_id;
@@ -336,6 +394,11 @@ export default async function handler(req: Request) {
     // DELETE /chatbot/links/:id
     // ------------------------------------------------------------------
     if (req.method === 'DELETE' && resource === 'links' && id) {
+      try {
+        requireManager();
+      } catch (err) {
+        return denyManager(err);
+      }
       const { error } = await admin
         .from('chatbot_user_links')
         .delete()

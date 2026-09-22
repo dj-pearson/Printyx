@@ -48,6 +48,18 @@ import {
   resolveDealProbability,
 } from '../_shared/deal-probability.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { applyUserScope, isUnscoped, resolveScope } from '../_shared/scope.ts';
+import type { ResolvedScope } from '../_shared/scope.ts';
+import { fetchAllRows } from '../_shared/paged-select.ts';
+import { startOfUtcDay, startOfNextUtcDay } from '../_shared/date-months.ts';
+import { buildTerritoryIndex, rollupByTerritory } from '../_shared/territory.ts';
+import {
+  FORECAST_CATEGORIES,
+  summarizeAccuracy,
+  summarizeForecast,
+  type ForecastDealRow,
+  type ForecastSnapshotRow,
+} from '../_shared/forecast-category.ts';
 
 const QUOTE_DEFAULT_PROBABILITY = 50;
 const PROPOSAL_DEFAULT_PROBABILITY = 70;
@@ -98,8 +110,50 @@ export default async function handler(req: Request) {
     }
 
     const url = new URL(req.url);
+
+    /**
+     * WF-R-04 row scope, resolved once and applied to every owned query below.
+     *
+     * This function filtered on `tenant_id` and nothing else, so every caller
+     * saw every deal in the tenant - and on the Categories tab that means a
+     * per-owner commit list, which is each rep's forecast number beside their
+     * name. The page is `minLevel: 3` in navigation-permissions, but A NAV GATE
+     * HIDES A MENU ITEM AND PROTECTS NOTHING: the endpoint had no role check at
+     * all, so any authenticated member of the tenant could ask for it directly.
+     *
+     * Narrowing rows rather than refusing the request is the right shape here.
+     * A rep has a forecast and should see it; what they should not see is
+     * everyone else's. `resolveScope` degrades to the NARROWER tier when the org
+     * structure cannot answer a wider one, which is the safe direction.
+     */
+    const scope = await resolveScope(admin, {
+      userId: user.id,
+      tenantId,
+      appMetadata: user.app_metadata,
+      requestedScope: url.searchParams.get('scope'),
+    });
     const { parts } = normalizePath(url.pathname, 'pipeline-forecast');
-    const forecastId = parts[0];
+    const resource = parts[0];
+
+    // ─── COP-I06 sub-resources ───────────────────────────────────────
+    //
+    // THESE BRANCH BEFORE `forecastId` IS READ, and that ordering is the whole
+    // point. parts[0] is a saved forecast's id on the original route, so
+    // /categories would otherwise be looked up as a forecast whose id is the
+    // string "categories" - the SUPA-024 shape, where a real endpoint 404s
+    // because a generic :id branch swallowed it first.
+    if (resource === 'categories' || resource === 'accuracy' || resource === 'snapshots') {
+      return await handleForecastCategories(req, {
+        admin,
+        tenantId,
+        userId: user.id,
+        url,
+        resource,
+        scope,
+      });
+    }
+
+    const forecastId = resource;
 
     if (req.method !== 'GET') {
       return createCorsResponse({ message: 'Not found' }, 404, req);
@@ -139,27 +193,43 @@ export default async function handler(req: Request) {
 
     // ─── Source rows ─────────────────────────────────────────────────
     const [dealsRes, stagesRes, quotesRes, proposalsRes, goalsRes] = await Promise.all([
-      admin
-        .from('deals')
-        .select('id, title, amount, probability, status, expected_close_date, stage_id')
-        .eq('tenant_id', tenantId)
-        .not('status', 'in', '("won","lost")'),
+      applyUserScope(
+        admin
+          .from('deals')
+          .select('id, title, amount, probability, status, expected_close_date, stage_id')
+          .eq('tenant_id', tenantId)
+          .not('status', 'in', '("won","lost")'),
+        ['owner_id', 'created_by_id'],
+        scope,
+      ),
       admin
         .from('pipeline_stages')
         .select(
           'legacy_stage_id, default_probability, include_in_forecast, is_closed_won, is_closed_lost',
         )
         .eq('tenant_id', tenantId),
-      admin
-        .from('quotes')
-        .select('id, title, total_amount, status, valid_until, quote_number')
-        .eq('tenant_id', tenantId)
-        .in('status', ['Sent', 'Draft', 'Pending']),
-      admin
-        .from('proposals')
-        .select('id, title, total_amount, status, valid_until')
-        .eq('tenant_id', tenantId)
-        .in('status', ['sent', 'draft', 'pending', 'under_review']),
+      // `quotes` has no owner column - only `created_by` - and `proposals`
+      // carries `created_by` plus `assigned_to`. Scoped on what each table can
+      // actually express rather than left tenant-wide, because these feed the
+      // same weighted pipeline total as the deals above.
+      applyUserScope(
+        admin
+          .from('quotes')
+          .select('id, title, total_amount, status, valid_until, quote_number')
+          .eq('tenant_id', tenantId)
+          .in('status', ['Sent', 'Draft', 'Pending']),
+        'created_by',
+        scope,
+      ),
+      applyUserScope(
+        admin
+          .from('proposals')
+          .select('id, title, total_amount, status, valid_until')
+          .eq('tenant_id', tenantId)
+          .in('status', ['sent', 'draft', 'pending', 'under_review']),
+        ['assigned_to', 'created_by'],
+        scope,
+      ),
       // Mirrors the Express handler's inner try/catch: a tenant with no
       // sales_goals table/rows must not fail the whole forecast.
       admin
@@ -281,6 +351,14 @@ export default async function handler(req: Request) {
           },
         },
         goals: { items: goalRows, totalValue: totalGoalValue, totalCount: totalGoalCount },
+        // The pipeline above is scoped; the GOALS beside it are not, because
+        // sales_goals carries no owner column. A rep therefore sees their own
+        // pipeline against a company target, which `remaining` would otherwise
+        // present as a personal shortfall. Named rather than hidden.
+        scope: describeScope(scope),
+        scopeCaveat: isUnscoped(scope)
+          ? null
+          : 'Pipeline is narrowed to your scope; sales goals are not owner-specific, so progress against goal compares your pipeline to a company target.',
         remaining: {
           toGoalValue: Math.max(0, totalGoalValue - totalPipelineValue),
           toGoalCount: Math.max(0, totalGoalCount - totalPipelineCount),
@@ -298,4 +376,407 @@ export default async function handler(req: Request) {
       req,
     );
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// COP-I06: forecast categories, the copier revenue split, and accuracy.
+// ─────────────────────────────────────────────────────────────────────
+
+/**
+ * What the caller was allowed to see, said out loud.
+ *
+ * A roll-up that has been narrowed and does not SAY it was narrowed is a wrong
+ * number, not a safe one: a supervisor reading "commit $240,000" has no way to
+ * tell it covers their own deals rather than the team's, and it sits beside a
+ * territory breakdown that would then not add up to it. The same reasoning as
+ * COP-B10's explicit UNASSIGNED bucket.
+ *
+ * `degradedFrom` is reported because it is the honest part of resolveScope's
+ * design: no story has filled in the org structure yet, so a tier that cannot
+ * be answered falls back to a narrower one, and the caller is told which.
+ */
+function describeScope(scope: ResolvedScope): Record<string, unknown> {
+  return {
+    tier: scope.tier,
+    coversWholeTenant: isUnscoped(scope),
+    degradedFrom: scope.degradedFrom,
+    note: isUnscoped(scope)
+      ? null
+      : scope.degradedFrom
+        ? `These figures cover ${scope.tier === 'own' ? 'your own deals' : `your ${scope.tier}`} only. ${scope.degradedFrom} scope was requested but the organisation structure does not record it yet, so it narrowed rather than guessing wide.`
+        : `These figures cover ${scope.tier === 'own' ? 'your own deals' : `your ${scope.tier}`} only, not the whole company.`,
+  };
+}
+
+interface CategoryCtx {
+  // deno-lint-ignore no-explicit-any
+  admin: any;
+  tenantId: string;
+  userId: string;
+  url: URL;
+  resource: string;
+  scope: ResolvedScope;
+}
+
+/**
+ * The period being forecast. Defaults to the current calendar month.
+ *
+ * Snapped to DAY BOUNDARIES per DATE-LOCAL-002: `expected_close_date` is a
+ * timestamp holding a calendar date, so a bound built from `new Date()` carries
+ * a time of day and the window lands half a day off - silently, and in
+ * whichever direction the operator happens to point.
+ */
+function resolvePeriod(url: URL): { start: Date; endExclusive: Date } {
+  const startParam = url.searchParams.get('periodStart') ?? url.searchParams.get('startDate');
+  const endParam = url.searchParams.get('periodEnd') ?? url.searchParams.get('endDate');
+  if (startParam && endParam) {
+    return {
+      start: startOfUtcDay(new Date(startParam)),
+      // Exclusive next-day bound, not an inclusive 23:59:59.999 - that is a
+      // real timestamp a row can exceed.
+      endExclusive: startOfNextUtcDay(new Date(endParam)),
+    };
+  }
+  const now = new Date();
+  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  const endExclusive = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+  return { start, endExclusive };
+}
+
+/** The tenant's canonical stages, keyed by the legacy id deals.stage_id holds. */
+// deno-lint-ignore no-explicit-any
+async function loadStageWeighting(admin: any, tenantId: string) {
+  const { data } = await admin
+    .from('pipeline_stages')
+    .select(
+      'legacy_stage_id, default_probability, include_in_forecast, is_closed_won, is_closed_lost',
+    )
+    .eq('tenant_id', tenantId);
+  const map = new Map<
+    string,
+    {
+      prob: number | null;
+      include: boolean | null;
+      isClosedWon: boolean | null;
+      isClosedLost: boolean | null;
+    }
+  >();
+  // deno-lint-ignore no-explicit-any
+  for (const row of (data ?? []) as any[]) {
+    if (row.legacy_stage_id) {
+      map.set(row.legacy_stage_id, {
+        prob: row.default_probability,
+        include: row.include_in_forecast,
+        isClosedWon: row.is_closed_won,
+        isClosedLost: row.is_closed_lost,
+      });
+    }
+  }
+  return map;
+}
+
+async function handleForecastCategories(req: Request, ctx: CategoryCtx): Promise<Response> {
+  const { admin, tenantId, userId, url, resource, scope } = ctx;
+  const { start, endExclusive } = resolvePeriod(url);
+
+  // ─── GET /accuracy ─────────────────────────────────────────────────
+  if (resource === 'accuracy') {
+    if (req.method !== 'GET') {
+      return createCorsResponse({ message: 'Method not allowed' }, 405, req);
+    }
+
+    const snapshots = await fetchAllRows<ForecastSnapshotRow>(() =>
+      // A snapshot's `owner_id` is the rep it was captured FOR (null = the
+      // whole book), and `captured_by` is who pressed the button. Scoped on
+      // both: a rep may see the snapshots taken of their own number and the
+      // ones they took, not their colleagues'.
+      applyUserScope(
+        admin
+          .from('forecast_snapshots')
+          .select('*')
+          .eq('tenant_id', tenantId)
+          .order('period_start', { ascending: false }),
+        ['owner_id', 'captured_by'],
+        scope,
+      ),
+    );
+
+    if ((snapshots ?? []).length === 0) {
+      // AC6. No snapshot means no accuracy - not 100%, not zero. The only
+      // honest answer is that nothing has been captured yet.
+      return createCorsResponse(
+        {
+          periods: [],
+          scope: describeScope(scope),
+          unbacked: [
+            'No forecast has been captured yet, so there is no commit to compare actuals against. Accuracy starts being measurable from the first capture.',
+          ],
+        },
+        200,
+        req,
+      );
+    }
+
+    // Actual closed-won per period, keyed the way summarizeAccuracy expects.
+    // One read spanning every snapshot period rather than one per period.
+    const earliest = (snapshots ?? [])
+      .map((s) => s.period_start)
+      .filter(Boolean)
+      .sort()[0] as string | undefined;
+
+    const wonDeals = await fetchAllRows<Record<string, any>>(() =>
+      applyUserScope(
+        admin
+          .from('deals')
+          .select('owner_id, amount, actual_close_date')
+          .eq('tenant_id', tenantId)
+          .eq('status', 'won'),
+        ['owner_id', 'created_by_id'],
+        scope,
+      ).gte(
+        'actual_close_date',
+        earliest ? startOfUtcDay(new Date(earliest)).toISOString() : '1970-01-01',
+      ),
+    );
+
+    const actualByPeriod = new Map<string, number>();
+    for (const snapshot of snapshots ?? []) {
+      if (!snapshot.period_start || !snapshot.period_end) continue;
+      const from = startOfUtcDay(new Date(snapshot.period_start)).getTime();
+      const to = startOfNextUtcDay(new Date(snapshot.period_end)).getTime();
+      const ownerId = snapshot.owner_id ?? null;
+      const key = `${snapshot.period_start}|${ownerId ?? ''}`;
+      if (actualByPeriod.has(key)) continue;
+
+      let total = 0;
+      for (const deal of wonDeals ?? []) {
+        if (!deal.actual_close_date) continue;
+        const closed = new Date(deal.actual_close_date).getTime();
+        if (closed < from || closed >= to) continue;
+        // A tenant-wide snapshot counts every rep; a per-rep one counts theirs.
+        if (ownerId && deal.owner_id !== ownerId) continue;
+        const amount = Number(deal.amount);
+        if (Number.isFinite(amount)) total += amount;
+      }
+      actualByPeriod.set(key, total);
+    }
+
+    return createCorsResponse(
+      {
+        periods: summarizeAccuracy(snapshots ?? [], actualByPeriod),
+        scope: describeScope(scope),
+        unbacked: [
+          'Attainment is measured on one-time (equipment) revenue only. Recurring CPC and service revenue is captured on the snapshot but lands over the life of a contract, so a single period cannot settle it.',
+        ],
+      },
+      200,
+      req,
+    );
+  }
+
+  // ─── The open deals in the period, for both remaining branches ──────
+  const stageByLegacyId = await loadStageWeighting(admin, tenantId);
+  const dealRows = await fetchAllRows<ForecastDealRow>(() =>
+    applyUserScope(
+      admin
+        .from('deals')
+        .select(
+          'id, owner_id, status, amount, estimated_monthly_value, forecast_category, probability, stage_id, expected_close_date',
+        )
+        .eq('tenant_id', tenantId)
+        .not('status', 'in', '("won","lost")')
+        .gte('expected_close_date', start.toISOString())
+        .lt('expected_close_date', endExclusive.toISOString()),
+      ['owner_id', 'created_by_id'],
+      scope,
+    ),
+  );
+
+  // AC2: the stage decides whether a deal forecasts at all, and at what
+  // weight. Same rule the main handler uses, from the same shared helper.
+  const inForecast = (dealRows ?? []).filter(
+    (d) => stageByLegacyId.get(String(d.stage_id ?? ''))?.include !== false,
+  );
+  const summary = summarizeForecast(inForecast, (deal) =>
+    resolveDealProbability(
+      deal.probability,
+      stageByLegacyId.get(String(deal.stage_id ?? '')),
+      SHARED_FALLBACK_PROBABILITY,
+    ),
+  );
+
+  // ─── POST /snapshots (AC4) ─────────────────────────────────────────
+  if (resource === 'snapshots') {
+    if (req.method === 'POST') {
+      const commit = summary.buckets.find((b) => b.category === 'commit');
+      const bestCase = summary.buckets.find((b) => b.category === 'best_case');
+      const pipeline = summary.buckets.find((b) => b.category === 'pipeline');
+
+      const { data, error } = await admin
+        .from('forecast_snapshots')
+        .insert({
+          tenant_id: tenantId,
+          period_start: start.toISOString(),
+          // Stored INCLUSIVE, as the last day of the period: the exclusive
+          // bound is a query detail and a stored 1 November would read as a
+          // period that runs into the next month.
+          period_end: new Date(endExclusive.getTime() - 86_400_000).toISOString(),
+          owner_id: url.searchParams.get('ownerId') || null,
+          commit_one_time_value: (commit?.oneTimeValue ?? 0).toFixed(2),
+          best_case_one_time_value: (bestCase?.oneTimeValue ?? 0).toFixed(2),
+          pipeline_one_time_value: (pipeline?.oneTimeValue ?? 0).toFixed(2),
+          commit_recurring_monthly_value: (commit?.recurringMonthlyValue ?? 0).toFixed(2),
+          deal_count: summary.totals.count,
+          uncategorized_count: summary.totals.uncategorizedCount,
+          captured_by: userId,
+        })
+        .select()
+        .single();
+      if (error) return createCorsResponse({ message: error.message }, 500, req);
+      return createCorsResponse(toCamelShallow(data), 201, req);
+    }
+
+    if (req.method === 'GET') {
+      const rows = await fetchAllRows<Record<string, unknown>>(() =>
+        applyUserScope(
+          admin
+            .from('forecast_snapshots')
+            .select('*')
+            .eq('tenant_id', tenantId)
+            .order('captured_at', { ascending: false }),
+          ['owner_id', 'captured_by'],
+          scope,
+        ),
+      );
+      return createCorsResponse({ data: (rows ?? []).map(toCamelShallow) }, 200, req);
+    }
+
+    return createCorsResponse({ message: 'Method not allowed' }, 405, req);
+  }
+
+  // ─── GET /categories ───────────────────────────────────────────────
+  if (req.method !== 'GET') {
+    return createCorsResponse({ message: 'Method not allowed' }, 405, req);
+  }
+
+  // Owner names, so a roll-up reads as people rather than as uuids.
+  const ownerIds = [...new Set(summary.byOwner.map((o) => o.ownerId).filter(Boolean))] as string[];
+  const ownerNames = new Map<string, string>();
+  if (ownerIds.length > 0) {
+    const { data } = await admin
+      .from('users')
+      .select('id, first_name, last_name')
+      .in('id', ownerIds);
+    // COP-M01's phantom-column note: `users` has first_name/last_name, NOT name.
+    // deno-lint-ignore no-explicit-any
+    for (const u of (data ?? []) as any[]) {
+      const full = [u.first_name, u.last_name].filter(Boolean).join(' ').trim();
+      if (full) ownerNames.set(u.id, full);
+    }
+  }
+
+  // COP-B09 AC5 / COP-I06 AC3: the TERRITORY roll-up, which until COP-B09 did
+  // not exist and was named as absent rather than approximated. Resolved from
+  // the account's territory text through the shared resolver, and the
+  // UNASSIGNED bucket is kept explicitly - dropping it is how a territory
+  // roll-up stops adding up to the totals shown everywhere else.
+  let byTerritory: Array<Record<string, unknown>> = [];
+  try {
+    const dealAccountIds = [
+      ...new Set(inForecast.map((d) => (d as Record<string, any>).customer_id).filter(Boolean)),
+    ] as string[];
+    if (dealAccountIds.length > 0) {
+      const [territories, accounts] = await Promise.all([
+        fetchAllRows<Record<string, any>>(() =>
+          admin
+            .from('sales_territories')
+            // monthly_quota drives COP-B09 AC5's attainment; null stays null.
+            .select('id, territory_name, territory_code, is_active, monthly_quota')
+            .eq('tenant_id', tenantId),
+        ),
+        fetchAllRows<Record<string, any>>(() =>
+          admin
+            .from('business_records')
+            .select('id, territory')
+            .eq('tenant_id', tenantId)
+            .in('id', dealAccountIds),
+        ),
+      ]);
+      const index = buildTerritoryIndex((territories ?? []).filter((t) => t.is_active !== false));
+      const quotaByTerritory = new Map(
+        (territories ?? []).map((t) => [String(t.id), t.monthly_quota as string | number | null]),
+      );
+      const territoryByAccount = new Map(
+        (accounts ?? []).map((a) => [a.id, a.territory as string | null]),
+      );
+
+      byTerritory = rollupByTerritory(
+        inForecast,
+        (deal) =>
+          territoryByAccount.get(String((deal as Record<string, any>).customer_id ?? '')) ?? null,
+        index,
+      ).map((group) => {
+        const summary = summarizeForecast(group.items, (deal) =>
+          resolveDealProbability(
+            deal.probability,
+            stageByLegacyId.get(String(deal.stage_id ?? '')),
+            SHARED_FALLBACK_PROBABILITY,
+          ),
+        );
+        // AC5: attainment against the territory's own quota. NULL when no quota
+        // is set - a territory without a target has not missed one, and
+        // dividing by zero or defaulting to 100% would both assert something
+        // nobody recorded.
+        const quotaRow = group.territoryId ? quotaByTerritory.get(group.territoryId) : null;
+        const monthlyQuota = quotaRow == null || quotaRow === '' ? null : Number(quotaRow);
+        const commitValue = summary.buckets.find((b) => b.category === 'commit')?.oneTimeValue ?? 0;
+        return {
+          territoryId: group.territoryId,
+          territoryName: group.territoryName,
+          monthlyQuota: Number.isFinite(monthlyQuota as number) ? monthlyQuota : null,
+          attainmentPercent:
+            Number.isFinite(monthlyQuota as number) && (monthlyQuota as number) > 0
+              ? Math.round((commitValue / (monthlyQuota as number)) * 1000) / 10
+              : null,
+          count: summary.totals.count,
+          oneTimeValue: summary.totals.oneTimeValue,
+          recurringMonthlyValue: summary.totals.recurringMonthlyValue,
+          commitOneTimeValue:
+            summary.buckets.find((b) => b.category === 'commit')?.oneTimeValue ?? 0,
+          uncategorizedCount: summary.totals.uncategorizedCount,
+        };
+      });
+    }
+  } catch (err) {
+    // A territory roll-up failing must not take down the forecast.
+    console.error('Error building the territory roll-up:', err);
+  }
+
+  return createCorsResponse(
+    {
+      period: {
+        start: start.toISOString(),
+        // Echoed inclusive, matching what a snapshot stores.
+        end: new Date(endExclusive.getTime() - 86_400_000).toISOString(),
+      },
+      byTerritory,
+      categories: FORECAST_CATEGORIES,
+      buckets: summary.buckets,
+      byOwner: summary.byOwner.map((o) => ({
+        ...o,
+        ownerName: o.ownerId ? (ownerNames.get(o.ownerId) ?? null) : null,
+      })),
+      totals: summary.totals,
+      scope: describeScope(scope),
+      unbacked: summary.unbacked,
+      // COP-B09 landed the territory roll-up above; TEAM roll-up still needs a
+      // reporting hierarchy, which no story has built.
+      territoryNote:
+        byTerritory.length === 0
+          ? 'No deal in this period resolves to a defined territory. Define territories, or check that accounts carry a matching territory name or code.'
+          : null,
+    },
+    200,
+    req,
+  );
 }

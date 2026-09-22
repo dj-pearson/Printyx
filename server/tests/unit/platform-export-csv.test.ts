@@ -62,6 +62,10 @@ describe('the platform-crm export branch', () => {
     expect(fn).toContain('fetchAllRows');
   });
 
+  // ROUND 130: this pair asserts the CONSTRUCT and cannot see whether the
+  // names RESOLVE - five of them did not, so the select was a 42703 on every
+  // request while these stayed green. That property lives in
+  // platform-record-assignment.test.ts, derived from the migration.
   it('names its columns instead of selecting *', () => {
     // An export is a published artefact; adding a column to the table should
     // not silently publish it.

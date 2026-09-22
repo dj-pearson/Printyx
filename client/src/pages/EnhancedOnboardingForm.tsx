@@ -37,6 +37,7 @@ import {
 } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
+import { fetchAuthedBlob, triggerBlobDownload } from '@/lib/invoice-pdf';
 import {
   Building2,
   User,
@@ -76,6 +77,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
 import ContextualHelp from '@/components/contextual/ContextualHelp';
 import { clickableProps } from '@/lib/accessibility';
+import { ConfigReadinessPanel } from '@/components/onboarding/ConfigReadinessPanel';
+import type { DeviceRef } from '@shared/onboarding-readiness';
 
 // Enhanced onboarding schema with auto-population and machine replacement
 const enhancedOnboardingSchema = z.object({
@@ -903,23 +906,65 @@ export default function EnhancedOnboardingForm() {
     form.setValue('equipment', updatedItems);
   };
 
-  // Export functions
-  const handleExport = (format: 'pdf' | 'excel' | 'csv') => {
+  // ROUND 133: this built `/api/onboarding/export/:id/:format` into an
+  // `<a download>` - a plain navigation with no Bearer token, so it cannot
+  // reach an edge function, and in production a relative href resolves against
+  // the static origin where Cloudflare Pages answers the SPA shell. The three
+  // Express endpoints behind it also 404'd in production, and two of them
+  // declared a type they did not produce (HTML as application/pdf, JSON as
+  // xlsx). Excel is gone rather than faked; see shared/onboarding-export.ts.
+  const handleExportCsv = async () => {
     if (!createdChecklistId) return;
-
-    const exportUrl = `/api/onboarding/export/${createdChecklistId}/${format}`;
-    const link = document.createElement('a');
-    link.href = exportUrl;
-    link.download = `checklist-${createdChecklistId}.${format === 'excel' ? 'xlsx' : format}`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    toast({
-      title: 'Export Started',
-      description: `Your ${format.toUpperCase()} export is downloading...`,
-    });
+    try {
+      const blob = await fetchAuthedBlob(
+        `/api/onboarding/checklists/${createdChecklistId}/export`,
+        'Failed to export the checklist',
+      );
+      triggerBlobDownload(blob, `checklist-${createdChecklistId}.csv`);
+    } catch (error) {
+      toast({
+        title: 'Export failed',
+        description: error instanceof Error ? error.message : 'Could not export the checklist.',
+        variant: 'destructive',
+      });
+    }
   };
+
+  // The PDF is the function's own `generate-pdf` branch, which renders a real
+  // PDF with pdf-lib and answers a signed, time-limited link. A second PDF
+  // implementation is how the two drift.
+  const handleExportPdf = async () => {
+    if (!createdChecklistId) return;
+    try {
+      const result = await apiRequest<{ url?: string }>(
+        `/api/onboarding/checklists/${createdChecklistId}/generate-pdf`,
+        'POST',
+      );
+      if (!result?.url) throw new Error('The server did not return a link to the PDF.');
+      window.open(result.url, '_blank', 'noopener,noreferrer');
+    } catch (error) {
+      toast({
+        title: 'Export failed',
+        description: error instanceof Error ? error.message : 'Could not build the PDF.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  /**
+   * What the readiness panel needs and nothing else. Serial numbers, asset
+   * tags, site addresses and contacts stay out of a query string; the two
+   * checks only ever look at manufacturer, model and what makes a device a
+   * scanner.
+   */
+  const watchedEquipment = form.watch('equipment');
+  const readinessDevices: DeviceRef[] = (watchedEquipment ?? []).map((item) => ({
+    manufacturer: item?.manufacturer ?? null,
+    model: item?.model ?? null,
+    equipmentType: item?.equipmentType ?? null,
+    features: item?.features ?? [],
+    smtpName: item?.networkConfiguration?.smtpName ?? null,
+  }));
 
   const steps = [
     { number: 1, title: 'Customer Selection', icon: Search },
@@ -1921,6 +1966,267 @@ export default function EnhancedOnboardingForm() {
           </div>
         );
 
+      // WF-L-11 / WF-L-10. This step rendered NOTHING - the switch handled 1,
+      // 2, 5 and 10 and everything else fell to `default: return null` - so the
+      // nineteen network fields the schema declares could never be filled in.
+      // WF-L-10 writes onboarding_network_config from this payload and gates
+      // `is_configured` on an address, a VLAN, a switch port or a naming
+      // convention being present, none of which a user could reach, so every
+      // checklist raised through this wizard was permanently unconfigured and
+      // the checklist PDF printed a blank network section.
+      //
+      // Steps 3, 4, 7, 8 and 9 are STILL blank. They are the same defect and
+      // they are not this story's; fixing the one the readiness panel lives on
+      // and saying so beats a silent half-sweep.
+      //
+      // TWELVE OF THE NINETEEN FIELDS ARE RENDERED, and the seven left out are
+      // the ones `onboarding_network_config` has no column for - networkType,
+      // alternateIPs, wirelessSSID, wirelessPassword, portConfiguration,
+      // trunkingRequired, hostsFileEntry (NETWORK_FIELDS_WITHOUT_COLUMNS in
+      // _shared/onboarding-config.ts). An input that silently discards what a
+      // technician types is worse than one that is absent; giving them columns
+      // is a migration and a different story. The wireless passphrase is the
+      // one nobody should want back as it stood: a shared key typed into a form
+      // that renders into a signed public PDF link.
+      case 6:
+        return (
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Network Setup</h3>
+              <p className="text-sm text-gray-600">
+                How the devices get on the network, and whether the services that depend on it are
+                already configured.
+              </p>
+            </div>
+
+            <ConfigReadinessPanel
+              customerId={selectedBusinessRecord?.id || form.watch('businessRecordId') || null}
+              devices={readinessDevices}
+            />
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Network className="h-5 w-5" />
+                  Addressing
+                </CardTitle>
+                <CardDescription>
+                  A static assignment needs an address. DHCP or reserved needs something an
+                  installer can act on - a VLAN, a switch port or a naming convention.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="networkConfig.ipAssignment"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>IP Assignment</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select IP assignment" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="dhcp">DHCP</SelectItem>
+                          <SelectItem value="static">Static</SelectItem>
+                          <SelectItem value="reserved">Reserved (DHCP reservation)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="networkConfig.staticIpAddress"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Static IP Address</FormLabel>
+                      <FormControl>
+                        <Input placeholder="192.168.1.50" {...field} value={field.value ?? ''} />
+                      </FormControl>
+                      <FormDescription>Required when the assignment is static.</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="networkConfig.subnetMask"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Subnet Mask</FormLabel>
+                      <FormControl>
+                        <Input placeholder="255.255.255.0" {...field} value={field.value ?? ''} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="networkConfig.gateway"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Gateway</FormLabel>
+                      <FormControl>
+                        <Input placeholder="192.168.1.1" {...field} value={field.value ?? ''} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="networkConfig.dnsServers"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>DNS Servers</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="8.8.8.8, 8.8.4.4"
+                          {...field}
+                          value={field.value ?? ''}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="networkConfig.namingConvention"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Naming Convention</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="BLDG-FLOOR-MODEL"
+                          {...field}
+                          value={field.value ?? ''}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Router className="h-5 w-5" />
+                  Switch and VLAN
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="networkConfig.vlanConfig"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>VLAN</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="VLAN 40 - Printers"
+                          {...field}
+                          value={field.value ?? ''}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="networkConfig.switchLocation"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Switch Location</FormLabel>
+                      <FormControl>
+                        <Input placeholder="IDF 2, rack B" {...field} value={field.value ?? ''} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="networkConfig.switchPort"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Switch Port</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Gi1/0/12" {...field} value={field.value ?? ''} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Shield className="h-5 w-5" />
+                  Firewall, QoS and DNS
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="networkConfig.firewallRules"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Firewall Rules</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          rows={3}
+                          placeholder="Outbound 443 to the monitoring host, SNMP 161 from the collector"
+                          {...field}
+                          value={field.value ?? ''}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="networkConfig.qosSettings"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>QoS Settings</FormLabel>
+                      <FormControl>
+                        <Textarea rows={2} {...field} value={field.value ?? ''} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <div className="flex flex-col gap-3 sm:flex-row sm:gap-8">
+                  <FormField
+                    control={form.control}
+                    name="networkConfig.dnsUpdate"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start gap-3 space-y-0">
+                        <FormControl>
+                          <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                        </FormControl>
+                        <FormLabel className="font-normal">DNS record to be updated</FormLabel>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        );
+
       case 10:
         return (
           <div className="space-y-6">
@@ -2301,7 +2607,7 @@ export default function EnhancedOnboardingForm() {
               <div className="space-y-4">
                 <div className="grid grid-cols-1 gap-3">
                   <Button
-                    onClick={() => handleExport('pdf')}
+                    onClick={handleExportPdf}
                     variant="outline"
                     className="flex items-center gap-2"
                   >
@@ -2309,15 +2615,7 @@ export default function EnhancedOnboardingForm() {
                     Export as PDF
                   </Button>
                   <Button
-                    onClick={() => handleExport('excel')}
-                    variant="outline"
-                    className="flex items-center gap-2"
-                  >
-                    <FileSpreadsheet className="h-4 w-4" />
-                    Export as Excel
-                  </Button>
-                  <Button
-                    onClick={() => handleExport('csv')}
+                    onClick={handleExportCsv}
                     variant="outline"
                     className="flex items-center gap-2"
                   >

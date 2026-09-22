@@ -42,6 +42,7 @@ import {
   ChevronDown,
   ChevronUp,
 } from 'lucide-react';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 interface ApprovalRule {
   id: string;
@@ -70,6 +71,7 @@ interface ApprovalRule {
 export default function ApprovalRulesConfiguration() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -174,10 +176,9 @@ export default function ApprovalRulesConfiguration() {
     saveMutation.mutate(formData);
   };
 
-  const handleDeleteRule = (id: string) => {
-    if (confirm('Are you sure you want to delete this rule?')) {
-      deleteMutation.mutate(id);
-    }
+  const handleDeleteRule = async (id: string) => {
+    if (!(await confirm({ title: 'Delete this approval rule?' }))) return;
+    deleteMutation.mutate(id);
   };
 
   const toggleExpanded = (id: string) => {
