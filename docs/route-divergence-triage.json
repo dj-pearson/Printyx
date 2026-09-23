@@ -87,7 +87,7 @@
     },
     "seo": {
       "verdict": "unexamined",
-      "reason": "SEO-004/008 and round 94 rewrote the edge analysers and deleted the fabricated fallbacks. routes-seo.ts and routes-seo-core.ts still register here; routes-seo-core.ts deliberately serves the three committed build artifacts from disk (SEO-006), which is NOT a divergence. The rest is not examined."
+      "reason": "Round 169 read the routing. Every /api/seo segment client/src calls (settings, pages, page-scores, keywords, alerts, competitors, crawl and crawl/results, audit and audit/history, core-web-vitals, sitemap/generate, analyze/images, check/broken-links|mobile|security, validate/structured-data, detect/redirect-chains) has a branch in supabase/functions/seo/. routes-seo.ts carried three shadowed or wrong-domain duplicates, all deleted: GET/POST /api/seo/settings (routes-seo-core.ts registers both first, at routes-registry:320 against :774), per-request /sitemap.xml and /robots.txt on https://printyx.com (shadowed by the committed files SEO-006 made canonical), and a LIVE /image-sitemap.xml on that same wrong domain that nothing links to. seo-artifact-single-writer.test.ts asserts one Express writer per path. STILL NOT COMPARED: the response shapes of the remaining list and action endpoints on the two hosts. The edge side projects every list row through _shared/seo-projection.ts to camelCase (PROD-014) and Express returns Drizzle rows, so they are likely at parity, but nobody has checked field by field."
     },
     "subscriptions": {
       "verdict": "resolved",

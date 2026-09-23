@@ -68,7 +68,8 @@ export const keywordTierEnum = pgEnum('keyword_tier', [
  * and `category` NOT NULL and the blog code sets neither.
  *
  * WHY THIS SIDE MOVED. It is the side with one consumer: a single image-sitemap
- * query in server/routes-seo.ts. Against it stand 22 edge functions and the 15
+ * query in server/routes-seo.ts. (Round 169 deleted that query along with the
+ * per-request image sitemap it served, so the table now has no reader.) Against it stand 22 edge functions and the 15
  * blog_* tables whose foreign keys point at `blog_posts`. The US-BLOG table has
  * never physically existed anywhere - _backfill_blog_tables.sql creates it with
  * CREATE TABLE IF NOT EXISTS, a silent no-op on any database that ran 0000, and

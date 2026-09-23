@@ -26,9 +26,13 @@ const prd = JSON.parse(
   readFileSync(join(root, 'tasks/prd-seo-dashboard-endpoints.json'), 'utf8'),
 ) as { remaining: { frontend: string }[] };
 
-/** Registered Express paths, with :params collapsed so /audit/:id matches. */
+/**
+ * Registered Express paths, with :params collapsed so /audit/:id matches.
+ * routes-seo-core.ts registers on `app`, not a router, and since round 169 it
+ * is the only writer of /api/seo/settings, so both forms count.
+ */
 const registered = new Set(
-  [...express.matchAll(/router\.(?:get|post|put|delete|patch)\('(\/api\/seo[^']*)'/g)].map(
+  [...express.matchAll(/(?:router|app)\.(?:get|post|put|delete|patch)\('(\/api\/seo[^']*)'/g)].map(
     (m) => m[1],
   ),
 );
