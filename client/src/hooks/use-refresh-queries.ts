@@ -14,8 +14,16 @@ import { useQueryClient } from '@tanstack/react-query';
  * disabled rather than clicked five times while the first one is in flight.
  */
 /** True for a query whose key starts with one of `paths`. Pure, for tests. */
+/**
+ * A key whose first element carries a query string (`/api/reports/kpi-scorecards?period=month`) is
+ * matched on its path: comparing the whole string would leave every
+ * parameterised key on the page stale while the button reported a refresh.
+ */
 export function keyStartsWithPath(paths: readonly string[], queryKey: readonly unknown[]): boolean {
-  return typeof queryKey[0] === 'string' && paths.includes(queryKey[0]);
+  const head = queryKey[0];
+  if (typeof head !== 'string') return false;
+  const q = head.indexOf('?');
+  return paths.includes(q === -1 ? head : head.slice(0, q));
 }
 
 export function useRefreshQueries(paths: readonly string[]) {

@@ -25,6 +25,10 @@ describe('keyStartsWithPath', () => {
     expect(keyStartsWithPath(paths, ['subscription', 'current'])).toBe(false);
     expect(keyStartsWithPath(paths, [42])).toBe(false);
   });
+  it('matches a key whose path carries a query string, on the path alone', () => {
+    expect(keyStartsWithPath(paths, ['/api/reports/sales-reps?period=month'])).toBe(true);
+    expect(keyStartsWithPath(paths, ['/api/reports/sales-reps-extra?period=month'])).toBe(false);
+  });
 });
 
 describe.each(PAGES)('%s', (name) => {
@@ -40,7 +44,11 @@ describe.each(PAGES)('%s', (name) => {
     const decl = src.match(/const REFRESH_PATHS = \[([\s\S]*?)\] as const;/);
     expect(decl).not.toBeNull();
     const listed = new Set([...decl![1].matchAll(/'([^']+)'/g)].map((m) => m[1]));
-    const queried = new Set([...src.matchAll(/queryKey:\s*\[\s*'([^']+)'/g)].map((m) => m[1]));
+    // A key is a quoted path or a template literal whose path ends before
+    // its first interpolation or query string.
+    const queried = new Set(
+      [...src.matchAll(/queryKey:\s*\[\s*(?:'([^']+)'|`([^`$?]+))/g)].map((m) => m[1] ?? m[2]),
+    );
     expect(listed.size).toBeGreaterThan(0);
     expect([...listed].sort()).toEqual([...queried].sort());
   });
