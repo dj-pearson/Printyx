@@ -1,6 +1,6 @@
 {
   "note": "Express /api domains no client tree calls. A WORKLIST, not settled debt: some are features nobody wired, some are deletable, and this guard cannot tell them apart. Shrink-only — see scripts/check-uncalled-express-routes.mjs for why five other guards miss these.",
-  "count": 71,
+  "count": 67,
   "domains": [
     {
       "domain": "accessibility",
@@ -37,10 +37,6 @@
     {
       "domain": "client-metrics",
       "class": "no-edge"
-    },
-    {
-      "domain": "contract-renewals",
-      "class": "edge-too"
     },
     {
       "domain": "csrf-token",
@@ -127,10 +123,6 @@
       "class": "no-edge"
     },
     {
-      "domain": "expansion-opportunities",
-      "class": "edge-too"
-    },
-    {
       "domain": "google-indexing",
       "class": "no-edge"
     },
@@ -177,14 +169,6 @@
     {
       "domain": "real-time-data",
       "class": "no-edge"
-    },
-    {
-      "domain": "renewal-activities",
-      "class": "edge-too"
-    },
-    {
-      "domain": "renewal-playbooks",
-      "class": "edge-too"
     },
     {
       "domain": "resource",

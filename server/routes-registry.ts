@@ -44,7 +44,6 @@ import {
   // registerPipelineConfigurationRoutes — migrated to supabase/functions/pipeline-config/
   // setupSalesPipelineRoutes — migrated to supabase/functions/sales-pipeline/
   registerLeadMapRoutes,
-  registerRenewalManagementRoutes,
 } from './domains/sales';
 
 import {
@@ -932,7 +931,9 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   // the six tables, not choosing a backend. ServiceAnalytics.tsx and
   // AdvancedAnalyticsDashboard.tsx have no mock fallbacks, so both states render
   // empty rather than fabricated.
-  registerRenewalManagementRoutes(app);
+  // registerRenewalManagementRoutes (routes-renewal-management.ts) was called
+  // here and is DELETED (round 182, AUDIT-026): 18 handlers over the unwired
+  // renewal model, no caller in any client tree. See docs/renewal-model-decision.md.
 
   // ─── Sales Forecasting ────────────────────────────────────────────
   app.use(salesForecastingRoutes);

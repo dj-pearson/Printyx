@@ -36,7 +36,6 @@
     "server/routes-products-crud.ts": 2,
     "server/routes-salesforce-integration.ts": 12,
     "server/routes-sample-data.ts": 7,
-    "server/routes-seo.ts": 1,
     "server/routes-signup-crm.ts": 9,
     "server/routes-subscriptions.ts": 70,
     "server/routes-technician-management.ts": 1,

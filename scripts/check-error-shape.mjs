@@ -130,6 +130,10 @@ if (args.includes('--update-baseline')) {
    * them, because nothing ran this guard to notice.
    */
   const vanished = Object.keys(previous).filter((f) => !(f in counts));
+  // Round 182: a file that still exists but reached zero also leaves `counts`,
+  // and calling it deleted misreports a fix as a removal. Say which it was.
+  const deleted = vanished.filter((f) => !existsSync(join(repo, f)));
+  const cleared = vanished.filter((f) => existsSync(join(repo, f)));
 
   writeFileSync(
     baselinePath,
@@ -137,8 +141,11 @@ if (args.includes('--update-baseline')) {
   );
   console.log(
     `✓ Baseline updated: ${total} response(s) across ${Object.keys(counts).length} file(s).` +
-      (vanished.length
-        ? `\n  ${vanished.length} entry(ies) dropped for files that no longer exist: ${vanished.join(', ')}`
+      (deleted.length
+        ? `\n  ${deleted.length} entry(ies) dropped for files that no longer exist: ${deleted.join(', ')}`
+        : '') +
+      (cleared.length
+        ? `\n  ${cleared.length} file(s) now have no out-of-contract responses: ${cleared.join(', ')}`
         : ''),
   );
   process.exit(0);

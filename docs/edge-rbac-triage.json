@@ -2,7 +2,7 @@
   "note": "SEC-EDGE-001. A REASON for every entry in docs/edge-rbac-baseline.json, so \"open to all roles\" stops reading the same whether an entry is deliberate or unexamined. Verdicts: public (the handler never authenticates, so role is a category error), internal (pg_cron, not a user), headless (nothing calls it, so gating decides nothing \u2014 AUDIT-024), open-by-design (every tenant member legitimately uses it; row scoping is the real control), needs-gate (a restriction is wanted and is missing \u2014 this is the worklist), unexamined (nobody has looked yet, stated rather than implied). check:edge-rbac requires an entry here for every baselined function.",
   "counts": {
     "open-by-design": 43,
-    "headless": 34,
+    "headless": 30,
     "gated-branch": 16,
     "row-scoped": 8,
     "public": 8,
@@ -106,11 +106,6 @@
       "reason": "EXAMINED AND GATED 2026-09-20. Reads are a rep console over their own accounts and stay open. PUT /settings is TENANT-WIDE configuration - the signal weights, the watch and at-risk thresholds, the digest toggle - so any member could have raised the threshold until the board was empty, and an empty at-risk board is indistinguishable from a healthy book. That write now requires MANAGER."
     },
     {
-      "fn": "contract-renewals",
-      "verdict": "headless",
-      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
-    },
-    {
       "fn": "contract-tiered-rates",
       "verdict": "needs-gate",
       "reason": "EXAMINED 2026-09-20, NOT GATED, and the reason is the point. POST creates billing rate tiers on a contract - what a customer is charged per page - with no role check. Its calling page /meter-billing is minLevel 2, so mirroring navigation would put the gate at 2 and constrain almost nobody, while gating higher would lock out the billing staff the page exists for. The real control is an approval on a rate change, not a level, and no story has built one. Recorded as needs-gate rather than gated at a level that would look like a fix and change nothing - the ai-gpt5 precedent."
@@ -210,11 +205,6 @@
       "verdict": "open-by-design",
       "reason": "EXAMINED 2026-09-20. A prospecting pool: enriched_contacts and enriched_companies have NO owner column, so the data is tenant-wide by design and every rep legitimately sees all of it. /data-enrichment is minLevel 2 with sales.lead.view_own + sales.lead.create, and POST /campaigns has a live caller on that page, so a gate above 2 breaks the feature while a gate AT 2 constrains nobody - the contract-tiered-rates precedent. The control the two bulk import endpoints actually want is a record-count or spend limit, not a role; they have no caller today. WHAT THIS ROUND FIXED instead: GET /analytics and the page had never agreed (the page reads contacts.bySource/byStatus/byLevel and companies.byIndustry as ARRAYS and got a flat object with two of the four), so the whole Analytics tab rendered 'No data available' and three headline cards showed 0 on a 200; the tallies were also unpaged, so a tenant past PostgREST's default page size got a count of the first page presented as a total; and PUT /contacts/:id spread the request body straight into PostgREST.",
       "pathsRead": "index.ts - all eleven branches (contacts list + update, companies list/get/create, intent, campaigns list + create, analytics, both bulk imports), _shared/enriched-contact.ts, shared/schema.ts for both tables, and client/src/pages/DataEnrichment.tsx including its analytics tab and campaign create."
-    },
-    {
-      "fn": "expansion-opportunities",
-      "verdict": "headless",
-      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
     },
     {
       "fn": "exports",
@@ -438,16 +428,6 @@
     },
     {
       "fn": "remote-monitoring",
-      "verdict": "headless",
-      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
-    },
-    {
-      "fn": "renewal-activities",
-      "verdict": "headless",
-      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
-    },
-    {
-      "fn": "renewal-playbooks",
       "verdict": "headless",
       "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
     },
