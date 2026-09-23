@@ -6,8 +6,8 @@
       "reason": "Round 153 read both. The six console paths (connections, connect, links, query-log) ran on an Express copy with no role check while the edge function needs a MANAGER to change an install or a mapping; they are proxied with scoped entries and the Express handlers deleted. POST /query stays Express-only on purpose - the edge function answers 501 CHATBOT_QUERY_NOT_PORTED because the tool registry needs CLAUDE_API_KEY at the edge - and its caller-supplied platformUserId could resolve to another user's scope, now refused unless the link is the caller's own."
     },
     "database-updater": {
-      "verdict": "unexamined",
-      "reason": "database-updater/seeders/ STORE SQL for report definitions to run later rather than executing it (check:sql-string-tables baselines 78 of them). Not examined as a routing question."
+      "verdict": "express-only-capability",
+      "reason": "Round 166 read both. Express mounts server/database-updater/api/updater-routes.ts behind platformAdminRoute and drives DatabaseUpdaterManager, an in-process Node scheduler whose registry, cron timers and config live in memory - real on a developer machine. The edge function could not run it and answered 200 success:true to all seven controls the two admin pages call (start, stop, execute, enable, disable, dry-run, plus config) while doing nothing, and status said isRunning:false, which both pages render as a STOPPED system with a working Start button. Now status answers available:false with code UPDATER_NOT_ON_EDGE and every control answers 501 with that code; DatabaseManagement and DatabaseUpdaterPage show the reason and disable Start. NOT proxied on purpose: proxying would take the only working host away from dev. Two things left open: DatabaseUpdaterPage reads totalJobs/runningJobs/jobs/systemHealth, which getStatus() has never returned on either host (it answers isRunning/updaters/nextExecutions/config inside a {success,data} envelope), so that page renders zeroes even in dev; and the edge gate admits level 7 or can_access_all_tenants while Express requires platform admin."
     },
     "deal-desk-copilot": {
       "verdict": "divergent",

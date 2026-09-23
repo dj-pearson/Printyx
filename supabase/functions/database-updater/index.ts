@@ -5,6 +5,11 @@ import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { cachedRoleLookup } from '../_shared/auth-cache.ts';
 
+export const UPDATER_UNAVAILABLE_CODE = 'UPDATER_NOT_ON_EDGE';
+export const UPDATER_UNAVAILABLE_REASON =
+  'The database updater is an in-process Node scheduler and does not run on this host. ' +
+  'Nothing here can start, stop, enable or execute it.';
+
 export default async function handler(req: Request) {
   // Handle CORS preflight
   const corsResponse = handleCors(req);
@@ -54,20 +59,27 @@ export default async function handler(req: Request) {
     const endpoint = parts[0]; // /database-updater/status, /database-updater/start, etc.
     const updaterName = parts[1]; // /database-updater/execute/:updaterName
 
-    // GET /database-updater/status - Get status of the updater system
+    // Round 166: every branch below used to answer 200 with `success: true` -
+    // "start requested", "Updater X has been enabled", "Dry-run completed",
+    // "Configuration updated successfully" - while doing nothing, and status
+    // reported `isRunning: false`, which the two admin pages render as a
+    // system that is merely STOPPED and can be started. It cannot be started
+    // here: the updater is DatabaseUpdaterManager, an in-process Node scheduler
+    // (server/database-updater/) with its registry, cron timers and config
+    // held in memory. A Deno isolate has no process that outlives the request,
+    // so there is nothing to start, stop, enable or run. Dev serves this
+    // prefix from Express (not proxied), where the manager is real.
+    //
+    // So status answers `available: false` with the reason, and every control
+    // answers 501 with the same code, rather than a success nobody can check.
     if (req.method === 'GET' && endpoint === 'status') {
       return createCorsResponse(
         {
           success: true,
-          data: {
-            isRunning: false,
-            updaters: [],
-            nextExecutions: {},
-            config: {
-              enabledUpdaters: [],
-              logLevel: 'info',
-            },
-          },
+          available: false,
+          code: UPDATER_UNAVAILABLE_CODE,
+          reason: UPDATER_UNAVAILABLE_REASON,
+          data: null,
           timestamp: new Date().toISOString(),
         },
         200,
@@ -75,150 +87,20 @@ export default async function handler(req: Request) {
       );
     }
 
-    // GET /database-updater/health - Health check
-    if (req.method === 'GET' && endpoint === 'health') {
+    const CONTROLS: Record<string, string[]> = {
+      GET: ['health', 'logs', 'metrics'],
+      POST: ['start', 'stop', 'execute', 'enable', 'disable', 'dry-run'],
+      PUT: ['config'],
+    };
+    if (CONTROLS[req.method]?.includes(endpoint)) {
       return createCorsResponse(
         {
-          success: true,
-          data: {
-            status: 'healthy',
-            updaterSystemRunning: false,
-            totalUpdaters: 0,
-            timestamp: new Date().toISOString(),
-          },
+          message: UPDATER_UNAVAILABLE_REASON,
+          code: UPDATER_UNAVAILABLE_CODE,
+          notImplemented: true,
+          ...(updaterName ? { details: { updaterName } } : {}),
         },
-        200,
-        req,
-      );
-    }
-
-    // GET /database-updater/logs - Get recent log entries
-    if (req.method === 'GET' && endpoint === 'logs') {
-      const count = parseInt(url.searchParams.get('count') || '100');
-      return createCorsResponse(
-        {
-          success: true,
-          data: {
-            logs: [],
-            count: 0,
-          },
-          timestamp: new Date().toISOString(),
-        },
-        200,
-        req,
-      );
-    }
-
-    // GET /database-updater/metrics - Get system metrics
-    if (req.method === 'GET' && endpoint === 'metrics') {
-      return createCorsResponse(
-        {
-          success: true,
-          data: {
-            systemMetrics: {
-              isRunning: false,
-              totalUpdaters: 0,
-              enabledUpdaters: 0,
-              nextExecutions: {},
-            },
-            updaterMetrics: [],
-            configuration: {},
-          },
-          timestamp: new Date().toISOString(),
-        },
-        200,
-        req,
-      );
-    }
-
-    // POST /database-updater/start - Start the updater system
-    if (req.method === 'POST' && endpoint === 'start') {
-      return createCorsResponse(
-        {
-          success: true,
-          message: 'Database updater system start requested (not implemented in edge function)',
-          timestamp: new Date().toISOString(),
-        },
-        200,
-        req,
-      );
-    }
-
-    // POST /database-updater/stop - Stop the updater system
-    if (req.method === 'POST' && endpoint === 'stop') {
-      return createCorsResponse(
-        {
-          success: true,
-          message: 'Database updater system stop requested (not implemented in edge function)',
-          timestamp: new Date().toISOString(),
-        },
-        200,
-        req,
-      );
-    }
-
-    // POST /database-updater/execute/:updaterName - Execute a specific updater
-    if (req.method === 'POST' && endpoint === 'execute' && updaterName) {
-      return createCorsResponse(
-        {
-          success: true,
-          message: `Updater ${updaterName} execution requested (not implemented in edge function)`,
-          timestamp: new Date().toISOString(),
-        },
-        200,
-        req,
-      );
-    }
-
-    // POST /database-updater/enable/:updaterName - Enable a specific updater
-    if (req.method === 'POST' && endpoint === 'enable' && updaterName) {
-      return createCorsResponse(
-        {
-          success: true,
-          message: `Updater ${updaterName} has been enabled`,
-          timestamp: new Date().toISOString(),
-        },
-        200,
-        req,
-      );
-    }
-
-    // POST /database-updater/disable/:updaterName - Disable a specific updater
-    if (req.method === 'POST' && endpoint === 'disable' && updaterName) {
-      return createCorsResponse(
-        {
-          success: true,
-          message: `Updater ${updaterName} has been disabled`,
-          timestamp: new Date().toISOString(),
-        },
-        200,
-        req,
-      );
-    }
-
-    // POST /database-updater/dry-run/:updaterName - Execute updater in dry-run mode
-    if (req.method === 'POST' && endpoint === 'dry-run' && updaterName) {
-      return createCorsResponse(
-        {
-          success: true,
-          message: `Dry-run completed for ${updaterName}`,
-          data: { updater: null },
-          timestamp: new Date().toISOString(),
-        },
-        200,
-        req,
-      );
-    }
-
-    // PUT /database-updater/config - Update configuration
-    if (req.method === 'PUT' && endpoint === 'config') {
-      return createCorsResponse(
-        {
-          success: true,
-          message: 'Configuration updated successfully',
-          timestamp: new Date().toISOString(),
-        },
-        200,
+        501,
         req,
       );
     }

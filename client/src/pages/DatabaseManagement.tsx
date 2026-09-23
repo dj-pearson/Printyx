@@ -94,7 +94,13 @@ interface QueryLog {
 
 interface DatabaseUpdaterApiResponse {
   success: boolean;
-  data: {
+  /**
+   * false on the functions host: the updater is an in-process Node scheduler
+   * and nothing there can run it (round 166). Absent on Express, where it runs.
+   */
+  available?: boolean;
+  reason?: string;
+  data: null | {
     isRunning: boolean;
     updaters: Array<{
       name: string;
@@ -139,6 +145,10 @@ export default function DatabaseManagement() {
     queryKey: ['/api/database-updater/status'],
     refetchInterval: 10000,
   });
+  // Round 166: the functions host answers available:false rather than a
+  // stopped system, so the controls are disabled instead of reporting a start
+  // that never happened.
+  const updaterUnavailable = updaterStatus?.available === false;
 
   // Execute SQL Query mutation
   const executeQueryMutation = useMutation({
@@ -707,6 +717,17 @@ export default function DatabaseManagement() {
 
           {/* Database Updater */}
           <TabsContent value="updater" className="space-y-6">
+            {updaterUnavailable && (
+              <div
+                role="status"
+                className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900"
+              >
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>
+                  The database updater is not available on this deployment. {updaterStatus?.reason}
+                </span>
+              </div>
+            )}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* System Status */}
               <Card>
@@ -778,7 +799,11 @@ export default function DatabaseManagement() {
                   <Button
                     className="w-full"
                     onClick={() => startUpdaterMutation.mutate()}
-                    disabled={startUpdaterMutation.isPending || updaterStatus?.data?.isRunning}
+                    disabled={
+                      updaterUnavailable ||
+                      startUpdaterMutation.isPending ||
+                      updaterStatus?.data?.isRunning
+                    }
                   >
                     {startUpdaterMutation.isPending ? (
                       <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
@@ -791,7 +816,7 @@ export default function DatabaseManagement() {
                     className="w-full"
                     variant="outline"
                     onClick={() => stopUpdaterMutation.mutate()}
-                    disabled={stopUpdaterMutation.isPending}
+                    disabled={updaterUnavailable || stopUpdaterMutation.isPending}
                   >
                     {stopUpdaterMutation.isPending ? (
                       <RefreshCw className="w-4 h-4 mr-2 animate-spin" />

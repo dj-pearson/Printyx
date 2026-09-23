@@ -32,6 +32,9 @@ interface DatabaseUpdaterStatus {
   jobs: JobStatus[];
   lastUpdate: string;
   systemHealth: 'healthy' | 'warning' | 'error';
+  /** false on the functions host, where the Node scheduler cannot run (round 166). */
+  available?: boolean;
+  reason?: string;
 }
 
 interface JobStatus {
@@ -162,6 +165,7 @@ export default function DatabaseUpdaterPage() {
   }
 
   const HealthIcon = getHealthIcon(status?.systemHealth || 'error');
+  const unavailable = status?.available === false;
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -193,6 +197,15 @@ export default function DatabaseUpdaterPage() {
           </Button>
         </div>
       </div>
+
+      {unavailable && (
+        <Alert>
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            The database updater is not available on this deployment. {status?.reason}
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* System Status Overview */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -272,7 +285,7 @@ export default function DatabaseUpdaterPage() {
           <div className="flex gap-4">
             <Button
               onClick={() => startMutation.mutate()}
-              disabled={status?.isRunning || startMutation.isPending}
+              disabled={unavailable || status?.isRunning || startMutation.isPending}
               className="bg-green-600 hover:bg-green-700"
             >
               <Play className="h-4 w-4 mr-2" />
