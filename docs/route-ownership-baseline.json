@@ -3,7 +3,6 @@
   "bothDivergent": [
     "chatbot",
     "database-updater",
-    "deal-desk-copilot",
     "deal-stages",
     "equipment",
     "gdpr",

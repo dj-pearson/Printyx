@@ -1217,6 +1217,11 @@ export function registerEdgeFunctionProxy(app: any) {
     '/api/root-admin/trial-funnel': { fn: 'root-admin', pathPrefix: '/trial-funnel' },
     '/api/root-admin/high-value-signups': { fn: 'root-admin', pathPrefix: '/high-value-signups' },
     '/api/root-admin/pending-tasks': { fn: 'root-admin', pathPrefix: '/pending-tasks' },
+    // Round 172. The whole prefix: the edge function serves settings GET/PUT
+    // and the four per-quote reads (snapshot, similar-deals, margin,
+    // objections), which is every path the Express router had. Proxying
+    // takes the ownership-free Express copy out of dev.
+    '/api/deal-desk-copilot': 'deal-desk-copilot',
     '/api/mobile/time-tracking': { fn: 'mobile', pathPrefix: '/time-tracking' },
     '/api/mobile/service-tickets': { fn: 'mobile', pathPrefix: '/service-tickets' },
     //

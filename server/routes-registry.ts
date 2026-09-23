@@ -118,7 +118,6 @@ import { registerClientMonitoringRoutes, clientMetricsRoutes } from './domains/p
 
 // ─── Non-domain imports ──────────────────────────────────���──────────────
 import { registerHealthRoutes } from './routes/health-routes';
-import { registerDealDeskCopilotRoutes } from './routes-deal-desk-copilot';
 import { registerChatbotRoutes } from './routes-chatbot';
 import { storage } from './storage';
 import { registerEdgeFunctionProxy } from './middleware/edge-function-proxy';
@@ -875,7 +874,11 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   // tables that exist nowhere, as undefined identifiers rather than as imports,
   // so each was a guaranteed ReferenceError. The edge function already served
   // production correctly and now serves dev too.
-  registerDealDeskCopilotRoutes(app);
+  // registerDealDeskCopilotRoutes was called here (round 172: deleted with
+  // server/routes-deal-desk-copilot.ts). /api/deal-desk-copilot is proxied to
+  // supabase/functions/deal-desk-copilot/, which covers all six handlers,
+  // scopes every per-quote route to the caller (the Express copy checked no
+  // ownership at all), and now runs the same similar-deals matching.
   // routes-daily-briefing.ts retired (PROD-008b). All six handlers were shadowed
   // by the /api/daily-briefing proxy; supabase/functions/daily-briefing/ covers
   // them and agrees on every table. The generation engine and
