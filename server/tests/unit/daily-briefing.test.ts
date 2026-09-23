@@ -17,6 +17,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'fs';
 import {
   assembleOwnerData,
   assembleSalesRepData,
@@ -25,6 +26,7 @@ import {
   buildFallback,
   buildPrompt,
   deriveRole,
+  eligibleBriefingRole,
   flattenMetrics,
   num,
   parseAiBriefing,
@@ -83,6 +85,30 @@ describe('helpers', () => {
     // Unknown roles fall to the least-privileged flavor rather than the owner one.
     expect(deriveRole(null)).toBe('sales_rep');
     expect(deriveRole('')).toBe('sales_rep');
+    // Round 148: `exec` matched ACCOUNT_EXECUTIVE, a level-3 IC.
+    expect(deriveRole('ACCOUNT_EXECUTIVE')).toBe('sales_rep');
+    expect(deriveRole('Executive')).toBe('owner');
+  });
+
+  it('clamps the requested flavor to what the role level may receive (round 148)', () => {
+    // A rep who sets their preference to `owner` gets their own briefing,
+    // not the company's numbers.
+    expect(eligibleBriefingRole('owner', 1)).toBe('sales_rep');
+    expect(eligibleBriefingRole('owner', 3)).toBe('sales_rep');
+    expect(eligibleBriefingRole('owner', 4)).toBe('service_manager');
+    expect(eligibleBriefingRole('owner', 5)).toBe('owner');
+    expect(eligibleBriefingRole('service_manager', 3)).toBe('sales_rep');
+    expect(eligibleBriefingRole('service_manager', 4)).toBe('service_manager');
+    expect(eligibleBriefingRole('sales_rep', 1)).toBe('sales_rep');
+    expect(eligibleBriefingRole('sales_rep', 8)).toBe('sales_rep');
+  });
+
+  it('generate applies the clamp before assembling data', () => {
+    const src = readFileSync('supabase/functions/daily-briefing/index.ts', 'utf8');
+    const clamp = src.indexOf('eligibleBriefingRole(requestedRole, level)');
+    expect(clamp).toBeGreaterThan(-1);
+    expect(clamp).toBeLessThan(src.indexOf('await assembleData(admin, tenantId, u.id, role)'));
+    expect(src).toMatch(/resolveRoleLevel\(admin, \{ id: u\.id \}\)/);
   });
 
   it('counts words across subject and bullets, ignoring whitespace runs', () => {
