@@ -50,14 +50,10 @@ function buildApp(tenantId?: string) {
 }
 
 // One read and one write per distinct resource in the file.
-const READS = [
-  '/api/service-tickets/tk-1/analysis',
-  '/api/service-analysis/an-1/parts-used',
-  '/api/service-analysis/an-1/parts-orders',
-  '/api/parts-orders/po-1/items',
-  '/api/service-analysis/stats',
-  '/api/service-analysis/recent',
-];
+// Round 163: the service-analysis and ticket-analysis handlers were deleted
+// (those prefixes are served by edge functions), so the parts-orders handlers
+// are what this file still registers.
+const READS = ['/api/parts-orders/po-1/items'];
 
 beforeEach(() => {
   state.queries = [];
@@ -76,14 +72,14 @@ describe('QUALITY-002: no tenant on the request means no query', () => {
     expect(state.queries, `${path} queried anyway`).toHaveLength(0);
   });
 
-  it('POST .../analysis answers 400 before parsing the body', async () => {
-    const res = await request(buildApp()).post('/api/service-tickets/tk-1/analysis').send({});
+  it('POST .../items answers 400 before parsing the body', async () => {
+    const res = await request(buildApp()).post('/api/parts-orders/po-1/items').send({});
     expect(res.status).toBe(400);
     expect(state.queries).toHaveLength(0);
   });
 
   it('with a tenant, the query carries the tenant predicate', async () => {
-    const res = await request(buildApp('T1')).get('/api/service-tickets/tk-1/analysis');
+    const res = await request(buildApp('T1')).get('/api/parts-orders/po-1/items');
     expect(res.status).toBe(200);
     expect(state.queries.length).toBeGreaterThan(0);
     expect(state.queries[0]).toContain('"tenant_id" = ');

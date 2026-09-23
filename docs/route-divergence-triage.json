@@ -97,10 +97,6 @@
       "verdict": "unexamined",
       "reason": "SEO-004/008 and round 94 rewrote the edge analysers and deleted the fabricated fallbacks. routes-seo.ts and routes-seo-core.ts still register here; routes-seo-core.ts deliberately serves the three committed build artifacts from disk (SEO-006), which is NOT a divergence. The rest is not examined."
     },
-    "service-analysis": {
-      "verdict": "unexamined",
-      "reason": "server/routes-service-analysis.ts registers both this and /api/parts-orders; supabase/functions/service-analysis/ serves it in production. Not read on either side."
-    },
     "subscriptions": {
       "verdict": "unexamined",
       "reason": "LAUNCH-013. supabase/functions/subscriptions/ is the management surface and reads tenant_subscriptions and usage_metrics; routes-subscriptions.ts mounts twelve gates that cannot run in production. The gates are recorded in docs/dead-policy-gates-baseline.json; the read/write surfaces themselves are not compared."

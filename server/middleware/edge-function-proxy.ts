@@ -1044,6 +1044,11 @@ export function registerEdgeFunctionProxy(app: any) {
     // so without this AdvancedAnalyticsDashboard's /dashboard 404'd in dev.
     '/api/analytics': 'analytics',
 
+    // Round 163. routes-service-analysis.ts served this prefix in dev; the
+    // service-analysis edge function read a phantom `service_analyses` table in
+    // production. Both now read service_call_analysis through the edge.
+    '/api/service-analysis': 'service-analysis',
+
     // PROD-011. Full parity: all EIGHT Express endpoints (inbound, submit,
     // submissions list/:id/approve/reject, GET/PUT settings), which is also
     // everything MeterReadReview.tsx calls. This pipeline writes billing rows,

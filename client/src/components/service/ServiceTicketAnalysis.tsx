@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { apiRequest } from '@/lib/queryClient';
+import { describeApiError } from '@/lib/api-error';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -64,26 +65,44 @@ import type {
 import { z } from 'zod';
 import { format } from 'date-fns';
 
-const analysisFormSchema = insertServiceCallAnalysisSchema.extend({
-  callStartTime: z.string(),
-  callEndTime: z.string().optional(),
-  actualArrivalTime: z.string().optional(),
-  followUpDate: z.string().optional(),
-});
+// Round 163: the server supplies the tenant, the ticket (from the URL) and the
+// technician (the caller). The insert schema requires all three, so a form
+// built on it unmodified could never pass validation - Save did nothing and
+// said nothing.
+const analysisFormSchema = insertServiceCallAnalysisSchema
+  .omit({ tenantId: true, serviceTicketId: true, technicianId: true })
+  .extend({
+    callStartTime: z.string(),
+    callEndTime: z.string().optional(),
+    actualArrivalTime: z.string().optional(),
+    followUpDate: z.string().optional(),
+  });
 
-const partsOrderFormSchema = insertPartsOrderSchema.extend({
-  orderDate: z.string(),
-  expectedDeliveryDate: z.string().optional(),
-  items: z.array(
-    z.object({
-      partNumber: z.string(),
-      partName: z.string(),
-      partDescription: z.string().optional(),
-      quantityOrdered: z.number().min(1),
-      unitPrice: z.number().min(0),
-    }),
-  ),
-});
+// Same for the parts order: the server takes the tenant, the analysis (URL),
+// the ticket (from the analysis) and the order number, and the page computes
+// the totals from the line items when it submits.
+const partsOrderFormSchema = insertPartsOrderSchema
+  .omit({
+    tenantId: true,
+    analysisId: true,
+    serviceTicketId: true,
+    orderNumber: true,
+    subtotal: true,
+    total: true,
+  })
+  .extend({
+    orderDate: z.string(),
+    expectedDeliveryDate: z.string().optional(),
+    items: z.array(
+      z.object({
+        partNumber: z.string(),
+        partName: z.string(),
+        partDescription: z.string().optional(),
+        quantityOrdered: z.number().min(1),
+        unitPrice: z.number().min(0),
+      }),
+    ),
+  });
 
 type AnalysisFormInput = z.infer<typeof analysisFormSchema>;
 type PartsOrderFormInput = z.infer<typeof partsOrderFormSchema>;
@@ -205,6 +224,13 @@ export default function ServiceTicketAnalysis({
       analysisForm.reset();
       toast({ title: 'Analysis created successfully' });
     },
+    onError: (err) => {
+      toast({
+        title: 'Could not save the analysis',
+        description: describeApiError(err).message,
+        variant: 'destructive',
+      });
+    },
   });
 
   // Create parts order
@@ -236,6 +262,13 @@ export default function ServiceTicketAnalysis({
         setShowPartsOrderDialog(false);
         partsOrderForm.reset();
         toast({ title: 'Parts order created successfully' });
+      });
+    },
+    onError: (err) => {
+      toast({
+        title: 'Could not create the parts order',
+        description: describeApiError(err).message,
+        variant: 'destructive',
       });
     },
   });
