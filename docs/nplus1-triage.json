@@ -153,10 +153,10 @@
       "why": "A bulk price update where every row sets DIFFERENT columns to different values. One statement cannot express that, and the response reports per row."
     },
     {
-      "loop": "purchase-orders/index.ts:1068",
+      "loop": "purchase-orders/index.ts:1071",
       "table": "inventory_items",
       "verdict": "deliberate",
-      "why": "The inventory levels are read once for the whole receipt already. What loops is the write, and each one is quantity_on_hand + this movement - arithmetic PostgREST cannot express across rows."
+      "why": "The inventory levels are read once for the whole receipt already. What loops is the write, and each one is quantity_on_hand + this movement - arithmetic PostgREST cannot express across rows. (Key moved 1068 -> 1071 in round 210: the line-items read gained a scope check above it. The loop is unchanged.)"
     },
     {
       "loop": "qbr/index.ts:480",

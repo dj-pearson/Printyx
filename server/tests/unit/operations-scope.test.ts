@@ -120,17 +120,25 @@ describe('WF-R-06: purchase orders', () => {
     // submit, receive, serials, update and the status PATCH each address an id
     // directly. WF-L-04 added the fifth: recording serial numbers against
     // somebody else's order creates real equipment assets under it.
-    expect([...src.matchAll(/rowInScope\(\w+, 'created_by', poScope\)/g)]).toHaveLength(5);
+    // Round 210 added three READS to the same check (detail, line items, PDF):
+    // the list was scoped and a PO it hid was readable by id. 5 writes + 3 reads.
+    expect([...src.matchAll(/rowInScope\(\w+, 'created_by', poScope\)/g)]).toHaveLength(8);
   });
 
   it('selects created_by wherever it checks it', () => {
     // A row check against a column the select omitted is silently always false.
-    for (const m of src.matchAll(/rowInScope\((\w+), 'created_by'/g)) {
+    // RAW source here: the line-based comment stripper drops any line starting
+    // with `*`, which includes the `*,` of a template-literal select.
+    const raw = read('supabase/functions/purchase-orders/index.ts');
+    for (const m of raw.matchAll(/rowInScope\((\w+), 'created_by'/g)) {
       const variable = m[1];
-      const before = src.slice(0, m.index);
+      const before = raw.slice(0, m.index);
       const fetch = before.lastIndexOf(`data: ${variable}`);
       expect(fetch, `${variable} must be fetched before it is checked`).toBeGreaterThan(0);
-      expect(src.slice(fetch, m.index), `${variable} select`).toMatch(/created_by/);
+      // A `*` select returns every column, created_by included.
+      expect(raw.slice(fetch, m.index), `${variable} select`).toMatch(
+        /created_by|\.select\(\s*['`]\s*\*/,
+      );
     }
   });
 });
