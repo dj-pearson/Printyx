@@ -3,6 +3,7 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import geocodeLeadsHandler from '../geocode-leads/index.ts';
 import { toCamel } from '../_shared/case.ts';
+import { usageLimitRefusal } from '../_shared/usage-limit.ts';
 import { planBusinessRecordWrite } from '../_shared/business-record-write.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { applyUserScope, resolveScope } from '../_shared/scope.ts';
@@ -306,6 +307,11 @@ export default async function handler(req: Request) {
 
     // POST /leads - Create lead
     if (req.method === 'POST' && !leadId) {
+      // Round 171: the plan usage limit Express enforces on this path, which
+      // decided nothing in production because this function served it.
+      const overLimit = await usageLimitRefusal(admin, tenantId);
+      if (overLimit) return createCorsResponse(overLimit, 403, req);
+
       const body = await req.json();
 
       const leadData = {

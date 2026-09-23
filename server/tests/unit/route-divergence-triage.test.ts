@@ -53,7 +53,8 @@ describe('every divergent domain carries a verdict (round 124)', () => {
   });
 
   it('records the two findings that were in the list all along', () => {
-    expect(entries.leads.verdict).toBe('divergent');
+    // Round 171 ported the usage limit to the leads edge function.
+    expect(entries.leads.verdict).toBe('resolved');
     expect(entries.leads.reason).toContain('enforceUsageLimits');
     // Round 170 corrected `import`: the edge function has no AI branch, so the
     // plan flag gates nothing there (import-ai-plan-gate.test.ts holds that).
