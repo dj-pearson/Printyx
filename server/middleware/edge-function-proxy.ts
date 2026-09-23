@@ -1222,6 +1222,11 @@ export function registerEdgeFunctionProxy(app: any) {
     // objections), which is every path the Express router had. Proxying
     // takes the ownership-free Express copy out of dev.
     '/api/deal-desk-copilot': 'deal-desk-copilot',
+    // Round 173. Express registered only the two bulk POSTs under this prefix,
+    // so GET /api/invoices (MeterBilling, AdvancedReporting) 404'd in dev
+    // while the edge function served it in production. The bulk handlers on
+    // both hosts answered the same shape; the Express pair is deleted.
+    '/api/invoices': 'invoices',
     '/api/mobile/time-tracking': { fn: 'mobile', pathPrefix: '/time-tracking' },
     '/api/mobile/service-tickets': { fn: 'mobile', pathPrefix: '/service-tickets' },
     //

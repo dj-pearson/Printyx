@@ -328,13 +328,28 @@ export default function Invoices() {
   // Bulk status update mutation
   const bulkStatusMutation = useMutation({
     mutationFn: async ({ ids, status }: { ids: string[]; status: string }) =>
-      apiRequest('/api/invoices/bulk-update', 'POST', { ids, updates: { status } }),
-    onSuccess: (_, variables) => {
+      apiRequest<{ updatedCount: number; notFound: string[] }>(
+        '/api/invoices/bulk-update',
+        'POST',
+        {
+          ids,
+          updates: { status },
+        },
+      ),
+    onSuccess: (result, variables) => {
       queryClient.invalidateQueries({ queryKey: ['/api/billing/invoices'] });
       bulkSelection.clearSelection();
+      // Round 173: report what the server measured, not how many ids were
+      // sent - a row removed between the existence check and the update is
+      // otherwise counted as updated (round 132's bulk-delete finding).
+      const updated = result?.updatedCount ?? 0;
+      const missed = result?.notFound?.length ?? 0;
       toast({
-        title: 'Success',
-        description: `${variables.ids.length} invoice(s) updated to ${variables.status}`,
+        title: updated > 0 ? 'Success' : 'Nothing updated',
+        description:
+          `${updated} invoice(s) updated to ${variables.status}` +
+          (missed > 0 ? `; ${missed} could not be found` : ''),
+        variant: updated > 0 ? undefined : 'destructive',
       });
     },
     onError: () => {
