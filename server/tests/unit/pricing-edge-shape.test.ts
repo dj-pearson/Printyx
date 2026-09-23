@@ -61,7 +61,9 @@ describe('the role gate is not lost in the port', () => {
   ])('%s refuses a caller who may not see dealer cost', (marker) => {
     const at = edge.indexOf(marker);
     const body = edge.slice(at, at + 700);
-    expect(body).toContain('canSeeDealerCost(userRole)');
+    // Round 155: the gate reads the numeric level (mayViewMargins), because the
+    // legacy name map canSeeDealerCost consults cannot place a role code.
+    expect(body).toContain('if (!mayViewMargins)');
     expect(body).toContain('403');
   });
 

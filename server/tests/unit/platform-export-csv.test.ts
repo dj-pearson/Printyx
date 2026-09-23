@@ -126,7 +126,7 @@ describe('the margin report export moved to the host that serves production', ()
 
   it('keeps the dealer-cost permission gate', () => {
     const branch = fn.slice(fn.indexOf("resource === 'margin-report'"));
-    expect(branch.slice(0, 600)).toContain('canSeeDealerCost(userRole)');
+    expect(branch.slice(0, 600)).toContain('if (!mayViewMargins)');
   });
 });
 

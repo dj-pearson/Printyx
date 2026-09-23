@@ -458,7 +458,7 @@ describe('the edge handlers use the contracts', () => {
       "req.method === 'POST') &&",
       /\n {4}if \(req\.method === 'GET' && resource === 'products'/,
     );
-    const gate = put.indexOf('canEditDealerCost');
+    const gate = put.indexOf('if (!mayManagePricingPolicy)');
     const body = put.indexOf('await req.json()');
     expect({ gated: gate > -1 }).toEqual({ gated: true });
     expect({ order: gate < body && body > -1 }).toEqual({ order: true });

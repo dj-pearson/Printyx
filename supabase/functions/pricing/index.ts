@@ -6,10 +6,27 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { calculateRepCost, canEditDealerCost, canSeeDealerCost } from '../_shared/pricing-math.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { ROLE_LEVEL, resolveRoleLevel } from '../_shared/rbac.ts';
 import {
   buildCompanyPricingSettingsUpdate,
   toCompanyPricingSettings,
 } from '../../../shared/company-pricing-settings.ts';
+
+/**
+ * Round 155: product pricing rows carry `dealer_cost` and the markup that,
+ * with `company_price`, derives it. Every member used to receive both, on a
+ * function whose margin report beside it refuses a rep. Withheld below the
+ * pricing-management level; `company_price` and the sale prices stay, because
+ * those are what a rep quotes from.
+ */
+export function redactProductCost(
+  row: Record<string, unknown> | null,
+  mayViewCost: boolean,
+): Record<string, unknown> | null {
+  if (!row || mayViewCost) return row;
+  const { dealer_cost: _cost, company_markup_percentage: _markup, ...rest } = row;
+  return { ...rest, dealer_cost: null, company_markup_percentage: null };
+}
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -64,6 +81,25 @@ export default async function handler(req: Request) {
     // and see dealer cost and margins. A token with no role reads as 'standard',
     // which is the least-privileged answer the pricing map has.
     const userRole = (user.app_metadata?.role as string | undefined) ?? 'standard';
+
+    // Round 155. THE GATES ABOVE COULD NOT PASS FOR ANYBODY REAL. `userRole` is
+    // `app_metadata.role`, which role-claims.ts fills with the role CODE
+    // (COMPANY_ADMIN, SALES_MANAGER, ...), while pricing-math's map knows only
+    // the legacy names 'admin', 'manager', 'standard' - so every current user
+    // resolved to level 999, the dealer-cost branches (approvals, margin
+    // report) refused everyone, and the company pricing settings round 125
+    // gated could be saved by nobody. The decision now reads the numeric level
+    // (claim, else roles.level), mirroring the page gates in
+    // navigation-permissions.ts: /pricing-management is minLevel 3 and edits
+    // product pricing, /pricing/settings and /pricing/margin-report are 4. The
+    // legacy name still counts for a token that carries one.
+    const pricingLevel = await resolveRoleLevel(admin, user);
+    const mayViewCost = pricingLevel >= ROLE_LEVEL.SUPERVISOR || canSeeDealerCost(userRole);
+    const mayEditProductPricing =
+      pricingLevel >= ROLE_LEVEL.SUPERVISOR || canEditDealerCost(userRole);
+    const mayManagePricingPolicy =
+      pricingLevel >= ROLE_LEVEL.MANAGER || canEditDealerCost(userRole);
+    const mayViewMargins = pricingLevel >= ROLE_LEVEL.MANAGER || canSeeDealerCost(userRole);
 
     // ========================================================================
     // POST /pricing/calculate-rep-cost
@@ -120,7 +156,7 @@ export default async function handler(req: Request) {
     // is what both components destructure.
     // ========================================================================
     if (req.method === 'GET' && resource === 'approvals' && resourceId === 'pending') {
-      if (!canSeeDealerCost(userRole)) {
+      if (!mayViewMargins) {
         return createCorsResponse({ error: 'Insufficient permissions' }, 403, req);
       }
 
@@ -180,7 +216,7 @@ export default async function handler(req: Request) {
     // PATCH /pricing/approval/:id - approve or reject
     // ========================================================================
     if ((req.method === 'PATCH' || req.method === 'PUT') && resource === 'approval' && resourceId) {
-      if (!canSeeDealerCost(userRole)) {
+      if (!mayViewMargins) {
         return createCorsResponse(
           { error: 'Insufficient permissions to approve pricing' },
           403,
@@ -246,7 +282,7 @@ export default async function handler(req: Request) {
       resource === 'margin-report' &&
       (!resourceId || resourceId === 'export')
     ) {
-      if (!canSeeDealerCost(userRole)) {
+      if (!mayViewMargins) {
         return createCorsResponse(
           { error: 'Insufficient permissions to view margin report' },
           403,
@@ -431,7 +467,7 @@ export default async function handler(req: Request) {
       (resource === 'settings' || resource === 'company-settings') &&
       !resourceId
     ) {
-      if (!canEditDealerCost(userRole)) {
+      if (!mayManagePricingPolicy) {
         return createCorsResponse(
           { error: 'Insufficient permissions to edit pricing settings', code: 'INSUFFICIENT_ROLE' },
           403,
@@ -512,8 +548,11 @@ export default async function handler(req: Request) {
 
       return createCorsResponse(
         {
-          data: pricing || [],
+          data: (pricing || []).map((row: Record<string, unknown>) =>
+            redactProductCost(row, mayViewCost),
+          ),
           total: count || 0,
+          costRedacted: !mayViewCost,
         },
         200,
         req,
@@ -534,11 +573,21 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Product pricing not found' }, 404, req);
       }
 
-      return createCorsResponse(pricing, 200, req);
+      return createCorsResponse(redactProductCost(pricing, mayViewCost), 200, req);
     }
 
     // POST /pricing/products - Create product pricing
     if (req.method === 'POST' && resource === 'products' && !action) {
+      if (!mayEditProductPricing) {
+        return createCorsResponse(
+          {
+            error: 'Changing product pricing requires a supervisor role',
+            code: 'INSUFFICIENT_ROLE',
+          },
+          403,
+          req,
+        );
+      }
       const body = await req.json();
 
       const pricingData = {
@@ -590,6 +639,16 @@ export default async function handler(req: Request) {
 
     // POST /pricing/products/bulk-update - Bulk update product pricing
     if (req.method === 'POST' && resource === 'products' && resourceId === 'bulk-update') {
+      if (!mayEditProductPricing) {
+        return createCorsResponse(
+          {
+            error: 'Changing product pricing requires a supervisor role',
+            code: 'INSUFFICIENT_ROLE',
+          },
+          403,
+          req,
+        );
+      }
       const body = await req.json();
       const { updates } = body;
 
@@ -644,6 +703,16 @@ export default async function handler(req: Request) {
 
     // PATCH /pricing/products/:id - Update product pricing
     if ((req.method === 'PATCH' || req.method === 'PUT') && resource === 'products' && resourceId) {
+      if (!mayEditProductPricing) {
+        return createCorsResponse(
+          {
+            error: 'Changing product pricing requires a supervisor role',
+            code: 'INSUFFICIENT_ROLE',
+          },
+          403,
+          req,
+        );
+      }
       const body = await req.json();
 
       const updateData: Record<string, any> = {
@@ -691,6 +760,16 @@ export default async function handler(req: Request) {
 
     // DELETE /pricing/products/:id - Delete product pricing
     if (req.method === 'DELETE' && resource === 'products' && resourceId) {
+      if (!mayEditProductPricing) {
+        return createCorsResponse(
+          {
+            error: 'Changing product pricing requires a supervisor role',
+            code: 'INSUFFICIENT_ROLE',
+          },
+          403,
+          req,
+        );
+      }
       const { error } = await admin
         .from('product_pricing')
         .delete()
