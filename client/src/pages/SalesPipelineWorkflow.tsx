@@ -49,6 +49,7 @@ import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest, extractRecords } from '@/lib/queryClient';
 import MainLayout from '@/components/layout/main-layout';
+import { exportToCSV, type ExportColumn } from '@/lib/export-utils';
 import TeamStatsWidget from '@/components/stats/TeamStatsWidget';
 import {
   Phone,
@@ -108,17 +109,32 @@ interface PipelineOpportunity {
   contact_email: string;
   contact_phone: string;
   stage: string;
-  estimated_value: number;
-  probability: number;
-  expected_close_date: string;
+  /** Null when the record carries none - the endpoint no longer invents one. */
+  estimated_value: number | null;
+  probability: number | null;
+  expected_close_date: string | null;
   assigned_rep: string;
-  last_activity: string;
+  last_activity: string | null;
   next_action: string;
   days_in_stage: number;
   created_at: string;
   notes: string;
-  lead_source: string;
+  lead_source: string | null;
 }
+
+const OPPORTUNITY_EXPORT_COLUMNS: ExportColumn<PipelineOpportunity>[] = [
+  { key: 'company_name', label: 'Company' },
+  { key: 'contact_name', label: 'Contact' },
+  { key: 'contact_email', label: 'Email' },
+  { key: 'contact_phone', label: 'Phone' },
+  { key: 'stage', label: 'Stage' },
+  { key: 'estimated_value', label: 'Estimated Value' },
+  { key: 'probability', label: 'Probability %' },
+  { key: 'expected_close_date', label: 'Expected Close' },
+  { key: 'days_in_stage', label: 'Days Since Last Update' },
+  { key: 'lead_source', label: 'Source' },
+  { key: 'created_at', label: 'Created' },
+];
 
 interface PipelineSummary {
   totalValue?: number;
@@ -328,7 +344,15 @@ export default function SalesPipelineWorkflow() {
                 <SelectItem value="team">Team Overview</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="outline">
+            <Button
+              variant="outline"
+              disabled={opportunities.length === 0}
+              onClick={() =>
+                exportToCSV(opportunities, OPPORTUNITY_EXPORT_COLUMNS, {
+                  filename: 'sales-pipeline',
+                })
+              }
+            >
               <Download className="h-4 w-4 mr-2" />
               Export
             </Button>
@@ -536,12 +560,18 @@ export default function SalesPipelineWorkflow() {
                                   </p>
                                 </div>
                                 <Badge variant="outline" className="text-xs">
-                                  {opportunity.probability}%
+                                  {opportunity.probability !== null
+                                    ? `${opportunity.probability}%`
+                                    : '—'}
                                 </Badge>
                               </div>
 
                               <div className="flex items-center justify-between text-xs text-gray-600">
-                                <span>${opportunity.estimated_value?.toLocaleString()}</span>
+                                <span>
+                                  {opportunity.estimated_value !== null
+                                    ? `$${opportunity.estimated_value.toLocaleString()}`
+                                    : 'No value'}
+                                </span>
                                 <span>{opportunity.days_in_stage}d in stage</span>
                               </div>
 
