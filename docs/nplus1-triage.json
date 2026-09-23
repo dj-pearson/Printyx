@@ -75,7 +75,7 @@
       "why": "Three fields - company code, tax id, external id - checked for uniqueness. A literal tuple list."
     },
     {
-      "loop": "contract-renewal/index.ts:494",
+      "loop": "contract-renewal/index.ts:500",
       "table": "contract_renewal_tracking",
       "verdict": "scales-dominated",
       "why": "One generateCompletion per expiring contract. The model call is the wall clock."
