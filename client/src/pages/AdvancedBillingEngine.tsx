@@ -56,7 +56,11 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
 import { apiRequest, extractRecords } from '@/lib/queryClient';
-import { useLocation } from 'wouter';
+import { toast } from '@/hooks/use-toast';
+import { describeApiError } from '@/lib/api-error';
+import { fetchInvoicePdfBlob, triggerBlobDownload } from '@/lib/invoice-pdf';
+import { InvoicePDFPreview } from '@/components/billing/invoice-pdf-preview';
+import { Link, useLocation } from 'wouter';
 import { type BusinessRecord } from '@shared/schema';
 import { normalizeInvoices, type NormalizedInvoice } from '@/lib/invoice-normalize';
 import ContextualHelp from '@/components/contextual/ContextualHelp';
@@ -350,14 +354,51 @@ export default function AdvancedBillingEngine() {
     }
   };
 
-  // Handle swipe actions for mobile billing approvals
-  const handleSwipeAction = (invoiceId: string, action: string) => {
-    setSwipeAction({ invoiceId, action });
-    // Simulate processing
-    setTimeout(() => {
-      setSwipeAction(null);
+  // Round 194. This used to be a 1.5s setTimeout that then showed "Invoice
+  // approved and sent to customer" / "Payment reminder sent" - nothing was
+  // sent. Approve and Remind both go through the billing function's real email
+  // send now (PATCH /send moves a draft to sent; POST /email re-sends), and
+  // the banner shows only while the request is in flight.
+  const [previewInvoiceId, setPreviewInvoiceId] = useState<string | null>(null);
+  const sendInvoiceMutation = useMutation({
+    mutationFn: ({ invoiceId, action }: { invoiceId: string; action: 'approve' | 'remind' }) =>
+      action === 'approve'
+        ? apiRequest(`/api/billing/invoices/${invoiceId}/send`, 'PATCH', {})
+        : apiRequest(`/api/billing/invoices/${invoiceId}/email`, 'POST', {}),
+    onSuccess: (_data, { action }) => {
+      toast({ title: action === 'approve' ? 'Invoice sent' : 'Reminder sent' });
       queryClient.invalidateQueries({ queryKey: ['/api/billing/invoices'] });
-    }, 1500);
+    },
+    onError: (err) =>
+      toast({
+        title: 'Could not send invoice',
+        description: describeApiError(err).message,
+        variant: 'destructive',
+      }),
+    onSettled: () => setSwipeAction(null),
+  });
+
+  const handleSwipeAction = (invoiceId: string, action: string) => {
+    if (action === 'view') {
+      setPreviewInvoiceId(invoiceId);
+      return;
+    }
+    if (action !== 'approve' && action !== 'remind') return;
+    setSwipeAction({ invoiceId, action });
+    sendInvoiceMutation.mutate({ invoiceId, action });
+  };
+
+  const downloadInvoicePdf = async (invoice: BillingInvoice) => {
+    try {
+      const blob = await fetchInvoicePdfBlob(invoice.id);
+      triggerBlobDownload(blob, `invoice-${invoice.invoiceNumber || invoice.id}.pdf`);
+    } catch (err) {
+      toast({
+        title: 'Could not download PDF',
+        description: describeApiError(err).message,
+        variant: 'destructive',
+      });
+    }
   };
 
   return (
@@ -367,6 +408,11 @@ export default function AdvancedBillingEngine() {
     >
       <div className="container mx-auto p-6 space-y-6">
         <ContextualHelp page="advanced-billing" />
+        <InvoicePDFPreview
+          open={previewInvoiceId !== null}
+          onOpenChange={(open) => !open && setPreviewInvoiceId(null)}
+          invoiceId={previewInvoiceId}
+        />
         <PageAlerts
           categories={['business']}
           severities={['medium', 'high', 'critical']}
@@ -902,160 +948,21 @@ export default function AdvancedBillingEngine() {
               </Card>
             </div>
 
-            {/* AI-Powered Billing Intelligence */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <AlertTriangle className="h-5 w-5 text-orange-600" />
-                    Billing Anomaly Detection
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="p-3 border-l-4 border-orange-500 bg-orange-50 rounded-r">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium text-sm text-orange-800">
-                            Unusual Volume Spike Detected
-                          </p>
-                          <p className="text-xs text-orange-600">
-                            Customer ABC Corp - 340% above normal billing
-                          </p>
-                        </div>
-                        <Badge variant="outline" className="text-orange-600">
-                          Medium Risk
-                        </Badge>
-                      </div>
-                    </div>
-                    <div className="p-3 border-l-4 border-red-500 bg-red-50 rounded-r">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium text-sm text-red-800">
-                            Payment Pattern Anomaly
-                          </p>
-                          <p className="text-xs text-red-600">
-                            XYZ Manufacturing - Late payment risk detected
-                          </p>
-                        </div>
-                        <Badge variant="destructive" className="text-xs">
-                          High Risk
-                        </Badge>
-                      </div>
-                    </div>
-                    <div className="p-3 border-l-4 border-blue-500 bg-blue-50 rounded-r">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium text-sm text-blue-800">Revenue Opportunity</p>
-                          <p className="text-xs text-blue-600">
-                            Tech Solutions Inc - Upgrade potential identified
-                          </p>
-                        </div>
-                        <Badge variant="outline" className="text-blue-600">
-                          Opportunity
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <TrendingUp className="h-5 w-5 text-green-600" />
-                    Revenue Forecasting
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div>
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm text-gray-600">Next Month Projection</span>
-                        <span className="text-lg font-bold text-green-600">
-                          ${((analytics?.monthlyRecurringRevenue || 0) * 1.08).toLocaleString()}
-                        </span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div className="bg-green-600 h-2 rounded-full w-[85%]"></div>
-                      </div>
-                      <p className="text-xs text-gray-500 mt-1">85% confidence level</p>
-                    </div>
-                    <div>
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm text-gray-600">Q4 Revenue Target</span>
-                        <span className="text-lg font-bold text-blue-600">
-                          ${((analytics?.monthlyRecurringRevenue || 0) * 3.2).toLocaleString()}
-                        </span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div className="bg-blue-600 h-2 rounded-full w-[72%]"></div>
-                      </div>
-                      <p className="text-xs text-gray-500 mt-1">On track to exceed by 8%</p>
-                    </div>
-                    <div className="p-3 bg-green-50 border border-green-200 rounded">
-                      <p className="text-sm text-green-800 font-medium">
-                        Revenue Growth Trend: +12% MoM
-                      </p>
-                      <p className="text-xs text-green-600">
-                        AI predicts continued growth based on current pipeline
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Calendar className="h-5 w-5 text-blue-600" />
-                    Contract Renewal Automation
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="p-3 border rounded-lg bg-blue-50">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-medium text-sm text-blue-800">
-                          Auto-Renewal Ready
-                        </span>
-                        <Badge variant="outline" className="text-blue-600">
-                          3 contracts
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-blue-600 mb-2">
-                        Contracts expiring in 90 days with renewal proposals generated
-                      </p>
-                      <Button size="sm" variant="outline" className="w-full">
-                        Review Proposals
-                      </Button>
-                    </div>
-                    <div className="p-3 border rounded-lg bg-yellow-50">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-medium text-sm text-yellow-800">Renewal Alerts</span>
-                        <Badge variant="outline" className="text-yellow-600">
-                          7 contracts
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-yellow-600 mb-2">
-                        Expiring within 60 days - Action required
-                      </p>
-                      <Button size="sm" variant="outline" className="w-full">
-                        Generate Proposals
-                      </Button>
-                    </div>
-                    <div className="p-3 border rounded-lg">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium text-sm">Success Rate</p>
-                          <p className="text-xs text-gray-600">Auto-renewal conversion</p>
-                        </div>
-                        <span className="text-lg font-bold text-green-600">87%</span>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+            {/* Round 194. An "AI-Powered Billing Intelligence" row sat here:
+                anomaly alerts naming "ABC Corp" (340% above normal) and "XYZ
+                Manufacturing" (late payment risk), a "next month projection"
+                that was MRR x 1.08 at "85% confidence", a "Q4 target" of MRR x
+                3.2 "on track to exceed by 8%", "+12% MoM", and renewal cards
+                reading 3 contracts / 7 contracts / 87% success with two buttons
+                that did nothing. None of it was computed. Meter anomalies are
+                real work in advanced-billing (PROD-008c, not wired); contract
+                renewals live at /contract-renewal-autopilot. */}
+            <div className="text-sm text-muted-foreground">
+              Upcoming renewals are tracked on{' '}
+              <Link href="/contract-renewal-autopilot" className="underline">
+                Contract Renewals
+              </Link>
+              .
             </div>
 
             {/* AUDIT-019. A "Billing Health Score Dashboard" - four SVG ring
@@ -1371,9 +1278,7 @@ export default function AdvancedBillingEngine() {
                         key={invoice.id}
                         className={`border rounded-lg p-4 transition-all duration-300 ${
                           swipeAction?.invoiceId === invoice.id
-                            ? swipeAction.action === 'approve'
-                              ? 'bg-green-50 border-green-300'
-                              : 'bg-red-50 border-red-300'
+                            ? 'bg-blue-50 border-blue-300'
                             : 'hover:shadow-md'
                         }`}
                       >
@@ -1464,16 +1369,29 @@ export default function AdvancedBillingEngine() {
 
                         {/* Desktop Action Buttons */}
                         <div className="hidden md:flex gap-2 mt-4">
-                          <Button size="sm" variant="outline">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setPreviewInvoiceId(invoice.id)}
+                          >
                             <Eye className="h-4 w-4 mr-2" />
                             View Details
                           </Button>
-                          <Button size="sm" variant="outline">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => void downloadInvoicePdf(invoice)}
+                          >
                             <Download className="h-4 w-4 mr-2" />
                             Download PDF
                           </Button>
                           {invoice.status === 'draft' && (
-                            <Button size="sm" className="bg-green-600 hover:bg-green-700">
+                            <Button
+                              size="sm"
+                              className="bg-green-600 hover:bg-green-700"
+                              disabled={sendInvoiceMutation.isPending}
+                              onClick={() => handleSwipeAction(invoice.id, 'approve')}
+                            >
                               <Send className="h-4 w-4 mr-2" />
                               Send Invoice
                             </Button>
@@ -1483,15 +1401,11 @@ export default function AdvancedBillingEngine() {
                         {/* Mobile Swipe Feedback */}
                         {swipeAction?.invoiceId === invoice.id && (
                           <div className="mt-3 p-2 text-center text-sm font-medium">
-                            {swipeAction.action === 'approve' ? (
-                              <span className="text-green-700">
-                                ✓ Invoice approved and sent to customer
-                              </span>
-                            ) : swipeAction.action === 'remind' ? (
-                              <span className="text-blue-700">📧 Payment reminder sent</span>
-                            ) : (
-                              <span className="text-gray-700">👁️ Opening invoice details...</span>
-                            )}
+                            <span className="text-gray-700">
+                              {swipeAction.action === 'approve'
+                                ? 'Sending invoice...'
+                                : 'Sending reminder...'}
+                            </span>
                           </div>
                         )}
                       </div>
