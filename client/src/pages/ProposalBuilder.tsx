@@ -64,6 +64,9 @@ import ProcessHelpBanner from '@/components/training/ProcessHelpBanner';
 import { apiRequest, extractRecords } from '@/lib/queryClient';
 import { downloadQuotePdf } from '@/lib/quote-pdf';
 import { useToast } from '@/hooks/use-toast';
+import { useConfirm } from '@/components/ui/confirm-dialog';
+import { describeApiError } from '@/lib/api-error';
+import { fetchQuotePdfBlob, triggerBlobDownload } from '@/lib/quote-pdf';
 
 interface ProposalTemplate {
   id: string;
@@ -244,6 +247,65 @@ export default function ProposalBuilder() {
   const [showVisualBuilder, setShowVisualBuilder] = useState(false);
   const [showQuoteTransformer, setShowQuoteTransformer] = useState(false);
   const [transformedProposal, setTransformedProposal] = useState<any>(null);
+
+  // Round 201: Preview PDF and Send Proposal had no handlers. Both first
+  // generate the proposal's sections from the chosen template (the PDF renders
+  // proposal_sections), then Preview downloads that PDF and Send emails it
+  // through POST /proposals/:id/send - which carries the pricing-approval gate.
+  const confirm = useConfirm();
+  const [pdfBusy, setPdfBusy] = useState<'preview' | 'send' | null>(null);
+  const generateSections = () =>
+    apiRequest(`/api/proposals/${selectedQuote}/generate-from-template`, 'POST', {
+      templateId: selectedTemplate?.id,
+    });
+  const previewPdf = async () => {
+    if (!selectedQuote || !selectedTemplate) return;
+    setPdfBusy('preview');
+    try {
+      await generateSections();
+      const blob = await fetchQuotePdfBlob(selectedQuote);
+      triggerBlobDownload(blob, `Proposal-${selectedQuote}.pdf`);
+    } catch (err) {
+      toast({
+        title: 'Could not build the PDF',
+        description: describeApiError(err).message,
+        variant: 'destructive',
+      });
+    } finally {
+      setPdfBusy(null);
+    }
+  };
+  const sendProposal = async () => {
+    if (!selectedQuote || !selectedTemplate) return;
+    const ok = await confirm({
+      title: 'Email this proposal to the customer?',
+      description:
+        'It is built from the selected template and the quote. Text edited on this screen is not saved and will not be included.',
+      confirmLabel: 'Send',
+      destructive: false,
+    });
+    if (!ok) return;
+    setPdfBusy('send');
+    try {
+      await generateSections();
+      const result = (await apiRequest(`/api/proposals/${selectedQuote}/send`, 'POST', {})) as {
+        statusUpdated?: boolean;
+        warning?: string;
+      };
+      toast({
+        title: 'Proposal sent',
+        description: result?.statusUpdated === false ? result.warning : undefined,
+      });
+    } catch (err) {
+      toast({
+        title: 'Could not send proposal',
+        description: describeApiError(err).message,
+        variant: 'destructive',
+      });
+    } finally {
+      setPdfBusy(null);
+    }
+  };
   const [proposalContent, setProposalContent] = useState({
     coverLetter: '',
     executiveSummary: '',
@@ -925,6 +987,7 @@ export default function ProposalBuilder() {
                 <Button
                   variant="outline"
                   className="gap-2 touch-manipulation active:scale-[0.98] min-h-[44px]"
+                  onClick={() => setLocation('/proposal-templates')}
                 >
                   <Plus className="h-4 w-4" />
                   Create Custom Template
@@ -1166,16 +1229,20 @@ export default function ProposalBuilder() {
                       variant="outline"
                       size="sm"
                       className="touch-manipulation active:scale-[0.98] min-h-[44px] flex-1 sm:flex-initial"
+                      disabled={pdfBusy !== null}
+                      onClick={() => void previewPdf()}
                     >
                       <Eye className="h-4 w-4 mr-2" />
-                      Preview PDF
+                      {pdfBusy === 'preview' ? 'Building...' : 'Preview PDF'}
                     </Button>
                     <Button
                       size="sm"
                       className="touch-manipulation active:scale-[0.98] min-h-[44px] flex-1 sm:flex-initial"
+                      disabled={pdfBusy !== null}
+                      onClick={() => void sendProposal()}
                     >
                       <Send className="h-4 w-4 mr-2" />
-                      Send Proposal
+                      {pdfBusy === 'send' ? 'Sending...' : 'Send Proposal'}
                     </Button>
                   </div>
                 </div>
