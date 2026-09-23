@@ -1,7 +1,7 @@
 {
   "note": "AUDIT-038. PostgREST returns { data, error } instead of throwing, so a write whose error is never read answers 200 while saving nothing. Shrink-only: keyed by file + table + write method, not line. This is a TODO list, not settled debt - work the entries in functions something actually calls first.",
   "generatedBy": "npm run check:swallowed-writes -- --update-baseline",
-  "count": 316,
+  "count": 315,
   "entries": [
     "supabase/functions/_shared/handoff-create.ts::sales_handoff_checklists::delete",
     "supabase/functions/_shared/stripe.ts::tenants::update",
@@ -313,7 +313,6 @@
     "supabase/functions/tasks/handlers/time-entries.ts::time_entries::update",
     "supabase/functions/technician-sessions/index.ts::service_tickets::update",
     "supabase/functions/technician-sessions/index.ts::workflow_steps::insert",
-    "supabase/functions/templates/index.ts::tasks::insert",
     "supabase/functions/user/index.ts::user_settings::delete",
     "supabase/functions/voice-agent/index.ts::voice_agent_settings::insert",
     "supabase/functions/warehouse-operations/index.ts::inventory_transactions::insert",

@@ -1,5 +1,7 @@
 // Service Tickets Edge Function
 // Handles service ticket CRUD and dispatch operations
+import { dispatchCompletionSurvey } from '../_shared/csat-dispatch.ts';
+import { isCompletionTransition } from '../../../shared/csat-survey.ts';
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
@@ -788,6 +790,16 @@ export default async function handler(req: Request) {
           await admin.from('user_notifications').insert(notification);
         } catch (notifyError) {
           console.warn('Assignment notification not sent:', notifyError);
+        }
+      }
+
+      // CSAT-PRODUCER-001: a ticket moving into completed creates the
+      // satisfaction survey its customer answers in the portal. Never blocks the
+      // save - dispatchCompletionSurvey catches everything and reports it.
+      if (isCompletionTransition(currentTicket?.status, ticket?.status)) {
+        const outcome = await dispatchCompletionSurvey(admin, tenantId, ticket);
+        if (!outcome.created && outcome.reason !== 'already surveyed') {
+          console.warn(`CSAT survey not created for ticket ${ticketId}: ${outcome.reason}`);
         }
       }
 
