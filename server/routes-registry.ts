@@ -109,7 +109,7 @@ import {
 
 import { registerGdprRoutes, incidentResponseRoutes } from './domains/security';
 
-import { knowledgeBaseAdminRoutes, contentGapAnalysisRoutes } from './domains/knowledge';
+import { knowledgeBaseAdminRoutes } from './domains/knowledge';
 
 import {
   registerIntegrationRoutes,
@@ -322,7 +322,7 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   //     does both as a status change through the article PUT, and says so in a
   //     comment at its call site.
   app.use('/api/admin/knowledge-base', knowledgeBaseAdminRoutes);
-  app.use('/api/content-gap-analysis', contentGapAnalysisRoutes);
+  // Round 147: /api/content-gap-analysis is proxied; see domains/knowledge.ts.
 
   // ─── Search & Accessibility ────────────────────────────────────────
   app.use(universalSearchRoutes);

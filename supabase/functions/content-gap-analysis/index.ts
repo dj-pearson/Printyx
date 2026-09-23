@@ -4,6 +4,7 @@
  * Replaces:
  *   server/routes/content-gap-analysis-routes.ts (5 endpoints)
  *   server/services/content-gap-analysis-service.ts (→ _engine.ts)
+ *   Both Express files were deleted in round 147; this function is the only copy.
  *
  * URL prefix: /content-gap-analysis/*
  *
@@ -23,28 +24,24 @@ import { getDb } from '../_shared/db.ts';
 import { errorResponse, generateRequestId, jsonResponse } from '../_shared/http.ts';
 import { createLogger } from '../_shared/logger.ts';
 import { generateAnalysis } from './_engine.ts';
+import { ROLE_LEVEL, resolveRoleLevel } from '../_shared/rbac.ts';
+import { createSupabaseServiceClient } from '../_shared/supabase.ts';
 import type { AuthContext } from '../_shared/auth.ts';
 
 const log = createLogger('content-gap-analysis');
 
-function isAdmin(auth: AuthContext): boolean {
-  // deno-lint-ignore no-explicit-any
-  const u = auth.supabaseUser as any;
-  const role = String(u?.app_metadata?.role ?? u?.user_metadata?.role ?? '').toLowerCase();
-  if (
-    role &&
-    ['platform_admin', 'super_admin', 'admin'].some((r) => role === r || role.includes(r))
-  ) {
-    return true;
-  }
-  const raw =
-    u?.app_metadata?.roleLevel ??
-    u?.app_metadata?.role_level ??
-    u?.user_metadata?.roleLevel ??
-    u?.user_metadata?.role_level ??
-    1;
-  const level = typeof raw === 'number' ? raw : parseInt(String(raw), 10) || 1;
-  return level >= 7; // platform admin = 8, admin ≈ 7
+// Round 147. This used to read the role and role level out of `user_metadata`
+// as well as `app_metadata`, and to accept any role string CONTAINING "admin".
+// `user_metadata` is written by the session holder through
+// supabase.auth.updateUser (SEC-TENANT-003), so any member of the tenant could
+// set `{ roleLevel: 8 }` on themselves and pass, and a role code like
+// 'not_an_admin' matched the substring test. The level now comes from the
+// app_metadata claim only, falling back to users -> roles.level when the token
+// carries none (a stale token is not an unprivileged user), and the substring
+// match is gone. Level 7 is company admin, which is what "admin" meant here.
+async function isAdmin(auth: AuthContext): Promise<boolean> {
+  const level = await resolveRoleLevel(createSupabaseServiceClient(), auth.supabaseUser);
+  return level >= ROLE_LEVEL.COMPANY_ADMIN;
 }
 
 function stripPrefix(path: string): string {
@@ -68,7 +65,7 @@ export default async function handler(req: Request) {
 
   try {
     const auth = await requireAuth(req);
-    if (!isAdmin(auth)) {
+    if (!(await isAdmin(auth))) {
       return errorResponse(403, 'Admin access required', req, { code: 'FORBIDDEN', requestId });
     }
 

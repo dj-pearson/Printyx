@@ -17,10 +17,6 @@
       "verdict": "unexamined",
       "reason": "The edge function is minLevel 1 by design (a rep reads the console). The Express twin has not been compared."
     },
-    "content-gap-analysis": {
-      "verdict": "unexamined",
-      "reason": "Express registers it from routes-registry.ts directly; supabase/functions/content-gap-analysis/ serves it in production. Neither side has been read, so it is unknown whether the shapes or the gating agree."
-    },
     "contract-renewal": {
       "verdict": "unexamined",
       "reason": "AUDIT-026 holds the renewal model question open - a complete feature over four real tables, never wired to a screen, beside a different renewal model that was. Which host serves which has not been settled."

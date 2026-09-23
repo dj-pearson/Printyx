@@ -993,6 +993,13 @@ export function registerEdgeFunctionProxy(app: any) {
     // production runs.
     '/api/service-analytics': 'service-analytics',
 
+    // Round 147. The Express router for this prefix gated on req.session.userId,
+    // which the product's login never sets, so it answered 401 to everyone, and
+    // its tenant fallback was the zero uuid. The edge function is the port of
+    // the same engine and serves every path it did (/, /summary, /priorities,
+    // /category/:slug, POST /refresh).
+    '/api/content-gap-analysis': 'content-gap-analysis',
+
     // PROD-011. Full parity: all EIGHT Express endpoints (inbound, submit,
     // submissions list/:id/approve/reject, GET/PUT settings), which is also
     // everything MeterReadReview.tsx calls. This pipeline writes billing rows,
