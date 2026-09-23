@@ -90,8 +90,8 @@
       "reason": "SEO-004/008 and round 94 rewrote the edge analysers and deleted the fabricated fallbacks. routes-seo.ts and routes-seo-core.ts still register here; routes-seo-core.ts deliberately serves the three committed build artifacts from disk (SEO-006), which is NOT a divergence. The rest is not examined."
     },
     "subscriptions": {
-      "verdict": "unexamined",
-      "reason": "LAUNCH-013. supabase/functions/subscriptions/ is the management surface and reads tenant_subscriptions and usage_metrics; routes-subscriptions.ts mounts twelve gates that cannot run in production. The gates are recorded in docs/dead-policy-gates-baseline.json; the read/write surfaces themselves are not compared."
+      "verdict": "resolved",
+      "reason": "Round 168 compared the sixteen paths client/src calls; all live in one hook, useSubscription.ts, and both hosts serve all sixteen. Status, create, upgrade, cancel, convert-trial and notifications were already locked by the subscription-*-shape and subscription-status-parity tests. GET /plans was not and was divergent: the edge function answered raw snake_case rows while Pricing.tsx, the one consumer, reads the camelCase keys Drizzle gives Express, so production priced every plan at $NaN, never showed Most Popular, left every limit blank and offered no trial. Both lists are camelised now and subscription-plans-shape.test.ts derives the expected keys from the table declaration. /usage (useUsageStats) has no consumer, so its shape was not compared. The Stripe paths (checkout, addon, session, portal, setup-intent, preview-upgrade, stripe/config) were matched key for key in PROD-STRIPE-001 and not re-read. The twelve Express gates LAUNCH-013 recorded remain dead in production and are tracked in docs/dead-policy-gates-baseline.json; the Stripe webhook at /subscriptions/webhooks/stripe is why the prefix cannot simply be proxied."
     },
     "supplies": {
       "verdict": "parity",
