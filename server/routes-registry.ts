@@ -93,10 +93,7 @@ import {
   registerMobileLogsAdminRoutes,
 } from './domains/mobile';
 
-import {
-  // registerDashboardWidgetRoutes — migrated to supabase/functions/dashboard-widgets/
-  registerTodayDashboardRoutes,
-} from './domains/dashboard';
+// registerDashboardWidgetRoutes — migrated to supabase/functions/dashboard-widgets/
 
 import {
   registerAdminStatsRoutes,
@@ -673,7 +670,7 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
 
   // ─── Dashboard & Onboarding ───────────────────────────────────────
   // registerDashboardWidgetRoutes(app) — migrated to supabase/functions/dashboard-widgets/
-  registerTodayDashboardRoutes(app);
+  // Round 157: registerTodayDashboardRoutes retired; /api/dashboards is proxied.
   registerOnboardingRoutes(app);
 
   // ROUND 133: the three /api/onboarding/export/:id/:format handlers are gone

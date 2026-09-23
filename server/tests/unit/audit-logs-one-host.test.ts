@@ -44,3 +44,18 @@ describe('software products', () => {
     }
   });
 });
+
+describe('today dashboard (round 157)', () => {
+  it('is proxied, and the Express copy that lacked the newer My Day keys is gone', () => {
+    const proxy = stripComments(readFileSync('server/middleware/edge-function-proxy.ts', 'utf8'));
+    expect(proxy).toMatch(/'\/api\/dashboards': 'dashboards'/);
+    expect(existsSync('server/routes-today-dashboard.ts')).toBe(false);
+  });
+
+  it('the edge /today answers the keys only it carried', () => {
+    const fn = stripComments(readFileSync('supabase/functions/dashboards/index.ts', 'utf8'));
+    for (const key of ['awaitingSignature', 'meetingsNeedingFollowUp:', 'scopeTier:']) {
+      expect(fn).toContain(key);
+    }
+  });
+});

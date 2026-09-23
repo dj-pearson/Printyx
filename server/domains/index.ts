@@ -13,7 +13,6 @@ export * as ProductsDomain from './products';
 export * as WarehouseDomain from './warehouse';
 export * as ServiceDomain from './service';
 export * as MobileDomain from './mobile';
-export * as DashboardDomain from './dashboard';
 export * as ReportingDomain from './reporting';
 export * as AdminDomain from './admin';
 export * as SecurityDomain from './security';

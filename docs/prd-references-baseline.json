@@ -1,6 +1,6 @@
 {
   "note": "Story + guidance file-reference ratchet. scripts/check-prd-references.mjs fails when a path named in an OPEN story or in CLAUDE.md stops resolving — usually because someone deleted or moved the file, which means that story now describes a place that does not exist and needs re-reading. THIS LIST IS NOT A DEFECT LIST: many entries are forward-looking stories naming files they would create (the AOS-* subsystem is entirely of this kind). Do not \"fix\" those. Entries leave the list when the path resolves again or the story closes: node scripts/check-prd-references.mjs --update-baseline.",
-  "count": 66,
+  "count": 67,
   "allowed": [
     "AOS-001 drizzle/rls/agentic-os.sql",
     "AOS-001 shared/agentic-os-schema.ts",
@@ -55,6 +55,7 @@
     "CLAUDE.md server/services/white-label-service.ts",
     "CLAUDE.md server/services/workflow-event-service.ts",
     "CR-026 server/routes-predictive-maintenance-hub.ts",
+    "CR-030 server/routes-today-dashboard.ts",
     "CRMX-008a server/routes-deals.ts",
     "EDGE-002g-remainder server/routes-predictive-service-dispatch.ts",
     "EDGE-008 docs/edge-function-stubs.md",

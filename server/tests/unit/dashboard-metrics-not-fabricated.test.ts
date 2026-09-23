@@ -68,9 +68,8 @@ describe('the three Express routers are gone', () => {
     }
   });
 
-  it('keeps registerTodayDashboardRoutes, which owns a different prefix', () => {
-    // /api/dashboards/today is plural and is not proxied here.
-    expect(registry).toContain('registerTodayDashboardRoutes(app)');
+  it('retired registerTodayDashboardRoutes too; /api/dashboards is proxied (round 157)', () => {
+    expect(registry).not.toContain('registerTodayDashboardRoutes(app)');
   });
 });
 

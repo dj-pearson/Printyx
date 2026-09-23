@@ -17,10 +17,6 @@
       "verdict": "unexamined",
       "reason": "AUDIT-026 holds the renewal model question open - a complete feature over four real tables, never wired to a screen, beside a different renewal model that was. Which host serves which has not been settled."
     },
-    "dashboards": {
-      "verdict": "unexamined",
-      "reason": "Round 105 rewrote the edge /today branch for per-user scoping. server/routes-today-dashboard.ts has not been compared to it."
-    },
     "database-updater": {
       "verdict": "unexamined",
       "reason": "database-updater/seeders/ STORE SQL for report definitions to run later rather than executing it (check:sql-string-tables baselines 78 of them). Not examined as a routing question."

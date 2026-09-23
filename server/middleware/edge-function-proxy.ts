@@ -1034,6 +1034,13 @@ export function registerEdgeFunctionProxy(app: any) {
     // per caller; dev runs it too.
     '/api/pricing-settings': 'pricing-settings',
 
+    // Round 157. Express served /api/dashboards/today from
+    // routes-today-dashboard.ts, which answered neither awaitingSignature nor
+    // meetingsNeedingFollowUp nor the scope fields COP-B01 round 105 added, so
+    // on a developer machine those My Day cards were always empty. The edge
+    // function's /today is a strict superset; dev runs it too.
+    '/api/dashboards': 'dashboards',
+
     // PROD-011. Full parity: all EIGHT Express endpoints (inbound, submit,
     // submissions list/:id/approve/reject, GET/PUT settings), which is also
     // everything MeterReadReview.tsx calls. This pipeline writes billing rows,
