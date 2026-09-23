@@ -10,6 +10,7 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { ilikeAnyFilter } from '../_shared/postgrest-or.ts';
 
 type EntityType = 'customer' | 'contact' | 'quote' | 'deal' | 'service' | 'product' | 'invoice';
 
@@ -145,7 +146,6 @@ async function legacyIlikeSearch(
   query: string,
   limit: number,
 ): Promise<SearchResult[]> {
-  const pattern = `%${query}%`;
   const out: SearchResult[] = [];
 
   const [records, contacts, deals, proposals] = await Promise.all([
@@ -153,25 +153,25 @@ async function legacyIlikeSearch(
       .from('business_records')
       .select('id, company_name, primary_contact_name, record_type')
       .eq('tenant_id', tenantId)
-      .or(`company_name.ilike.${pattern},primary_contact_email.ilike.${pattern}`)
+      .or(ilikeAnyFilter(['company_name', 'primary_contact_email'], query))
       .limit(limit),
     admin
       .from('company_contacts')
       .select('id, first_name, last_name, email, title')
       .eq('tenant_id', tenantId)
-      .or(`first_name.ilike.${pattern},last_name.ilike.${pattern},email.ilike.${pattern}`)
+      .or(ilikeAnyFilter(['first_name', 'last_name', 'email'], query))
       .limit(limit),
     admin
       .from('deals')
       .select('id, title, company_name, status')
       .eq('tenant_id', tenantId)
-      .or(`title.ilike.${pattern},company_name.ilike.${pattern}`)
+      .or(ilikeAnyFilter(['title', 'company_name'], query))
       .limit(limit),
     admin
       .from('proposals')
       .select('id, title, proposal_number, status')
       .eq('tenant_id', tenantId)
-      .or(`title.ilike.${pattern},proposal_number.ilike.${pattern}`)
+      .or(ilikeAnyFilter(['title', 'proposal_number'], query))
       .limit(limit),
   ]);
 

@@ -44,6 +44,7 @@ import { writeAuditLog, withRequestContext } from '../_shared/blog/audit-log.ts'
 import { sanitizeSvg } from '../_shared/svg-sanitize.ts';
 import { sniffUpload } from '../_shared/upload-validation.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { ilikeAnyFilter } from '../_shared/postgrest-or.ts';
 
 type Admin = ReturnType<typeof createSupabaseServiceClient>;
 
@@ -225,10 +226,9 @@ async function listAssets(admin: Admin, tenantId: string, url: URL, req: Request
   }
   if (search) {
     // ILIKE across title + description + attribution (single OR clause)
-    const pattern = `%${search.replace(/[%_]/g, (m) => `\\${m}`)}%`;
-    query = query.or(
-      `title.ilike.${pattern},description.ilike.${pattern},attribution.ilike.${pattern}`,
-    );
+    // LIKE wildcards in the term are escaped so they match literally.
+    const likeSafe = search.replace(/[%_]/g, (m) => `\\${m}`);
+    query = query.or(ilikeAnyFilter(['title', 'description', 'attribution'], likeSafe));
   }
 
   const { data, error, count } = await query;

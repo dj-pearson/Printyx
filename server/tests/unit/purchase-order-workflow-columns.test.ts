@@ -70,7 +70,7 @@ describe('the names that already had a home are rebound, not duplicated', () => 
     const block = fn.slice(at, at + 400);
     expect(at).toBeGreaterThan(-1);
     expect(block).not.toMatch(/reference_number/);
-    expect(block).toMatch(/po_number\.ilike[\s\S]{0,40}description\.ilike/);
+    expect(block).toMatch(/ilikeAnyFilter\(\['po_number', 'description'\]/);
   });
 
   it('reads vendor_id in the validate function', () => {

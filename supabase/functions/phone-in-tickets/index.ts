@@ -5,6 +5,7 @@ import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 import { denyWithoutPermission } from '../_shared/rbac.ts';
+import { ilikeAnyFilter } from '../_shared/postgrest-or.ts';
 
 const READ_PERMISSION = 'service.ticket.view_own';
 const WRITE_PERMISSION = 'service.ticket.create';
@@ -70,7 +71,6 @@ export default async function handler(req: Request) {
     if (req.method === 'GET' && ticketId === 'search-companies') {
       const term = (url.searchParams.get('q') || '').trim();
       if (term.length < 2) return createCorsResponse([], 200, req);
-      const pat = `%${term.toLowerCase().replace(/[,()]/g, ' ')}%`;
       const { data, error } = await admin
         .from('business_records')
         .select(
@@ -78,7 +78,7 @@ export default async function handler(req: Request) {
         )
         .eq('tenant_id', tenantId)
         .eq('record_type', 'customer')
-        .or(`company_name.ilike.${pat},primary_contact_name.ilike.${pat},status.ilike.${pat}`)
+        .or(ilikeAnyFilter(['company_name', 'primary_contact_name', 'status'], term))
         .limit(10);
       if (error) {
         console.error('Error searching companies:', error);

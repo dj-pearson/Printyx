@@ -4,6 +4,7 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { ilikeAnyFilter } from '../_shared/postgrest-or.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -55,7 +56,7 @@ export default async function handler(req: Request) {
         .range(offset, offset + limit - 1);
 
       if (search) {
-        query = query.or(`part_number.ilike.%${search}%,description.ilike.%${search}%`);
+        query = query.or(ilikeAnyFilter(['part_number', 'description'], search));
       }
       if (category) query = query.eq('category', category);
       if (lowStock === 'true') query = query.lt('quantity_on_hand', admin.raw('reorder_point'));

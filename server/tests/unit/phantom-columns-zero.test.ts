@@ -65,7 +65,7 @@ describe('the columns these functions now name are real', () => {
   it('business_records is searched on primary_contact_email', () => {
     expect(columnsOf(businessRecords).has('email')).toBe(false);
     const src = read('supabase/functions/business-records-search/index.ts');
-    expect(strip(src)).toContain('primary_contact_email.ilike');
+    expect(strip(src)).toMatch(/ilikeAnyFilter\(\['company_name', 'primary_contact_email'\]/);
   });
 
   it('deals are summed on amount, not deal_value', () => {

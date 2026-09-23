@@ -78,6 +78,7 @@ import { renderTemplate, type MergeData } from '../_shared/proposal-merge.ts';
 
 import { effectiveDiscountPct, lineNetTotal, toDiscountedLine } from '../_shared/quote-math.ts';
 import { applyUserScope, resolveScope } from '../_shared/scope.ts';
+import { ilikeAnyFilter } from '../_shared/postgrest-or.ts';
 
 const log = createLogger('proposals');
 
@@ -1753,8 +1754,8 @@ export default async function handler(req: Request) {
         .order('package_name', { ascending: true });
 
       if (search) {
-        const safe = search.replace(/[,()]/g, ' ').trim();
-        if (safe) query = query.or(`package_name.ilike.%${safe}%,package_code.ilike.%${safe}%`);
+        const safe = search.trim();
+        if (safe) query = query.or(ilikeAnyFilter(['package_name', 'package_code'], safe));
       }
       if (category && category !== 'all') query = query.eq('category', category);
 
@@ -1992,7 +1993,7 @@ export default async function handler(req: Request) {
       if (status) query = query.eq('status', status);
       if (businessRecordId) query = query.eq('business_record_id', businessRecordId);
       if (search) {
-        query = query.or(`title.ilike.%${search}%,proposal_number.ilike.%${search}%`);
+        query = query.or(ilikeAnyFilter(['title', 'proposal_number'], search));
       }
       if (filter === 'aging' && days) {
         const n = parseInt(days, 10);

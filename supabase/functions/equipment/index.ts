@@ -8,6 +8,7 @@ import { accessibleCustomerIds, applyCustomerScope, resolveScope } from '../_sha
 import { lifecycleRowForReceivedUnit } from '../purchase-orders/_serialization.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 import { toServiceHistory } from '../../../shared/service-history.ts';
+import { ilikeAnyFilter } from '../_shared/postgrest-or.ts';
 
 // Everything toServiceHistory reads. One list, so the embedded history on
 // GET /equipment/:id and the /service-history sub-resource cannot drift into
@@ -108,7 +109,7 @@ export default async function handler(req: Request) {
 
       if (search) {
         query = query.or(
-          `serial_number.ilike.%${search}%,model_number.ilike.%${search}%,manufacturer.ilike.%${search}%,asset_tag.ilike.%${search}%`,
+          ilikeAnyFilter(['serial_number', 'model_number', 'manufacturer', 'asset_tag'], search),
         );
       }
 

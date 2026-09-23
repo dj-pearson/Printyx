@@ -11,6 +11,7 @@ import { cachedRoleLookup } from '../_shared/auth-cache.ts';
 import { getCorsHeaders } from '../_shared/cors.ts';
 import { fetchAllRows } from '../_shared/paged-select.ts';
 import { toCsv } from '../_shared/csv.ts';
+import { ilikeAnyFilter } from '../_shared/postgrest-or.ts';
 
 type Row = Record<string, any>;
 
@@ -391,8 +392,7 @@ export default async function handler(req: Request) {
       if (status) countQuery.eq('status', status);
       if (recordType) countQuery.eq('record_type', recordType);
       if (leadTier) countQuery.eq('lead_tier', leadTier);
-      if (search)
-        countQuery.or(`company_name.ilike.%${search}%,primary_contact_email.ilike.%${search}%`);
+      if (search) countQuery.or(ilikeAnyFilter(['company_name', 'primary_contact_email'], search));
 
       // Bounded, and it REFUSES rather than truncating (PA-028). A spreadsheet
       // silently missing its tail is worse than no spreadsheet: nothing about
@@ -429,8 +429,7 @@ export default async function handler(req: Request) {
           if (status) q.eq('status', status);
           if (recordType) q.eq('record_type', recordType);
           if (leadTier) q.eq('lead_tier', leadTier);
-          if (search)
-            q.or(`company_name.ilike.%${search}%,primary_contact_email.ilike.%${search}%`);
+          if (search) q.or(ilikeAnyFilter(['company_name', 'primary_contact_email'], search));
           return q as unknown as { range: (a: number, b: number) => Promise<any> };
         });
       } catch (err) {
@@ -486,7 +485,7 @@ export default async function handler(req: Request) {
       if (recordType) query = query.eq('record_type', recordType);
       if (leadTier) query = query.eq('lead_tier', leadTier);
       if (search)
-        query = query.or(`company_name.ilike.%${search}%,primary_contact_email.ilike.%${search}%`);
+        query = query.or(ilikeAnyFilter(['company_name', 'primary_contact_email'], search));
 
       const { data: records, error, count } = await query;
 

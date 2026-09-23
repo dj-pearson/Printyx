@@ -6,6 +6,7 @@ import { normalizePath } from '../_shared/path.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 import { applyUserScope, resolveScope } from '../_shared/scope.ts';
 import { presentActivity } from '../../../shared/lead-activity-write.ts';
+import { ilikeAnyFilter } from '../_shared/postgrest-or.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -72,7 +73,7 @@ export default async function handler(req: Request) {
         // AUDIT-037: the column is `description`; `notes` is not one, so any
         // search on this list came back 42703. The insert below had already
         // been corrected to description and this filter had not.
-        query = query.or(`subject.ilike.%${search}%,description.ilike.%${search}%`);
+        query = query.or(ilikeAnyFilter(['subject', 'description'], search));
       }
 
       const { data: activities, error, count } = await query;

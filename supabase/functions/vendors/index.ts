@@ -5,6 +5,7 @@ import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 import { denyWithoutPermission } from '../_shared/rbac.ts';
+import { ilikeAnyFilter } from '../_shared/postgrest-or.ts';
 /** The seeded capability for changing the product and inventory catalogue. */
 const WRITE_PERMISSION = 'operations.inventory.manage';
 
@@ -89,7 +90,7 @@ export default async function handler(req: Request) {
 
       if (search) {
         query = query.or(
-          `vendor_name.ilike.%${search}%,primary_contact_name.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%`,
+          ilikeAnyFilter(['vendor_name', 'primary_contact_name', 'email', 'phone'], search),
         );
       }
 

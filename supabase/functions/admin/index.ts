@@ -12,6 +12,7 @@ import { normalizePath } from '../_shared/path.ts';
 import { toCamel } from '../_shared/case.ts';
 import { buildRoleClaims, claimsPatch, syncRoleClaims } from '../_shared/role-claims.ts';
 import { fetchAllRows } from '../_shared/paged-select.ts';
+import { ilikeAnyFilter } from '../_shared/postgrest-or.ts';
 
 // Helper to check if user has admin permissions
 async function checkAdminPermission(
@@ -403,9 +404,7 @@ export default async function handler(req: Request) {
         .range(offset, offset + limit - 1);
 
       if (search) {
-        query = query.or(
-          `email.ilike.%${search}%,first_name.ilike.%${search}%,last_name.ilike.%${search}%`,
-        );
+        query = query.or(ilikeAnyFilter(['email', 'first_name', 'last_name'], search));
       }
       if (roleId) {
         query = query.eq('role_id', roleId);

@@ -32,6 +32,7 @@ import { toCamelShallow } from '../_shared/case.ts';
 import { importCatalogCsv, readUploadedCsv } from '../_shared/catalog-import-runner.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 import { denyWithoutPermission } from '../_shared/rbac.ts';
+import { ilikeAnyFilter } from '../_shared/postgrest-or.ts';
 
 type Admin = ReturnType<typeof createSupabaseServiceClient>;
 
@@ -169,11 +170,9 @@ async function listProducts(
     .order('product_name', { ascending: true });
 
   if (search) {
-    const safe = search.replace(/[,()]/g, ' ').trim();
+    const safe = search.trim();
     if (safe)
-      query = query.or(
-        `product_name.ilike.%${safe}%,product_code.ilike.%${safe}%,description.ilike.%${safe}%`,
-      );
+      query = query.or(ilikeAnyFilter(['product_name', 'product_code', 'description'], safe));
   }
   if (category && category !== 'all') query = query.eq('category', category);
 

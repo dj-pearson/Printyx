@@ -7,6 +7,7 @@ import { createAdapter } from '../_shared/manufacturer-adapters.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 import { ROLE_LEVEL, RbacError, requireRoleLevel } from '../_shared/rbac.ts';
 import type { AuthContext } from '../_shared/auth.ts';
+import { ilikeAnyFilter } from '../_shared/postgrest-or.ts';
 
 /**
  * SEC-EDGE-001 round 74 added a redactor here and it redacted nothing.
@@ -440,7 +441,7 @@ export default async function handler(req: Request) {
         .from('supplies')
         .select('*')
         .eq('tenant_id', tenantId)
-        .or(`product_name.ilike.%${manufacturer}%,product_code.ilike.%${manufacturer}%`)
+        .or(ilikeAnyFilter(['product_name', 'product_code'], manufacturer))
         .order('product_code', { ascending: true });
 
       return createCorsResponse(

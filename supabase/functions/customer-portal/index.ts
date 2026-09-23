@@ -23,6 +23,7 @@ import {
 import { handleSatisfaction } from './handlers/satisfaction.ts';
 import { handleUsageAnalytics, handleEquipmentHealth } from './handlers/analytics.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { ilikeAnyFilter } from '../_shared/postgrest-or.ts';
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -319,9 +320,7 @@ export default async function handler(req: Request) {
         }
         if (search) {
           const term = search.replace(/[%,()]/g, '');
-          query = query.or(
-            `title.ilike.%${term}%,request_number.ilike.%${term}%,description.ilike.%${term}%`,
-          );
+          query = query.or(ilikeAnyFilter(['title', 'request_number', 'description'], term));
         }
 
         const { data: requests, error, count } = await query;
@@ -846,9 +845,7 @@ export default async function handler(req: Request) {
       }
 
       if (search) {
-        query = query.or(
-          `title.ilike.%${search}%,excerpt.ilike.%${search}%,plain_text_content.ilike.%${search}%`,
-        );
+        query = query.or(ilikeAnyFilter(['title', 'excerpt', 'plain_text_content'], search));
       }
 
       const { data: articles, error, count } = await query;

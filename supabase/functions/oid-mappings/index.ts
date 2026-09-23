@@ -6,6 +6,7 @@ import { normalizePath } from '../_shared/path.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 import { ROLE_LEVEL, RbacError, requireRoleLevel } from '../_shared/rbac.ts';
 import type { AuthContext } from '../_shared/auth.ts';
+import { ilikeAnyFilter } from '../_shared/postgrest-or.ts';
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -128,11 +129,9 @@ export default async function handler(req: Request) {
 
       if (manufacturer) query = query.eq('manufacturer', manufacturer);
       if (search) {
-        const safe = search.replace(/[,()]/g, ' ').trim();
+        const safe = search.trim();
         if (safe) {
-          query = query.or(
-            `mapping_name.ilike.%${safe}%,manufacturer.ilike.%${safe}%,model_series.ilike.%${safe}%`,
-          );
+          query = query.or(ilikeAnyFilter(['mapping_name', 'manufacturer', 'model_series'], safe));
         }
       }
 

@@ -45,7 +45,12 @@ describe('the platform-crm export branch', () => {
 
   it('applies the same four filters the list applies', () => {
     const branch = fn.slice(fn.indexOf("resourceId === 'export'"), fn.indexOf('text/csv'));
-    for (const f of ["eq('status'", "eq('record_type'", "eq('lead_tier'", 'company_name.ilike']) {
+    for (const f of [
+      "eq('status'",
+      "eq('record_type'",
+      "eq('lead_tier'",
+      "'company_name', 'primary_contact_email'",
+    ]) {
       expect(branch, f).toContain(f);
     }
   });

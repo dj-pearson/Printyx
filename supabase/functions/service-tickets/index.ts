@@ -23,6 +23,7 @@ import {
   ticketVocabulary,
 } from '../_shared/service-ticket-vocabulary.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { ilikeAnyFilter } from '../_shared/postgrest-or.ts';
 
 // Helper: Batch-enrich records with customer names from business_records
 /**
@@ -248,9 +249,7 @@ export default async function handler(req: Request) {
       }
 
       if (search) {
-        query = query.or(
-          `ticket_number.ilike.%${search}%,title.ilike.%${search}%,description.ilike.%${search}%`,
-        );
+        query = query.or(ilikeAnyFilter(['ticket_number', 'title', 'description'], search));
       }
 
       const { data: tickets, error, count } = await query;

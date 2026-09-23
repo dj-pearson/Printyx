@@ -42,6 +42,7 @@ import {
 import { hasPermissionClaim } from '../_shared/permission-claim.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 import { writeInBatches } from '../_shared/batch-fetch.ts';
+import { ilikeAnyFilter } from '../_shared/postgrest-or.ts';
 
 // Valid PO statuses
 const PO_STATUSES = [
@@ -1231,7 +1232,7 @@ export default async function handler(req: Request) {
         // AUDIT-037: reference_number and notes are not columns on this table -
         // the searchable free text is `description`, and the reference is the
         // PO number itself. Naming them made every search a 42703.
-        query = query.or(`po_number.ilike.%${search}%,description.ilike.%${search}%`);
+        query = query.or(ilikeAnyFilter(['po_number', 'description'], search));
       }
 
       const { data: purchaseOrders, error, count } = await query;

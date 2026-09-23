@@ -4,6 +4,7 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { dashboardRollup, byStageRollup } from '../_shared/opportunity-rollups.ts';
 import { denyWithoutPermission } from '../_shared/rbac.ts';
+import { ilikeAnyFilter } from '../_shared/postgrest-or.ts';
 
 const WRITE_PERMISSION = ['sales.opportunity.edit_own', 'sales.opportunity.create'];
 
@@ -253,9 +254,7 @@ export default async function handler(req: Request) {
       }
 
       if (search) {
-        query = query.or(
-          `title.ilike.%${search}%,company_name.ilike.%${search}%,primary_contact_name.ilike.%${search}%`,
-        );
+        query = query.or(ilikeAnyFilter(['title', 'company_name', 'primary_contact_name'], search));
       }
 
       const { data: deals, error, count } = await query;

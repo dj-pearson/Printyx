@@ -9,6 +9,7 @@ import { writeAuditLog } from '../_shared/audit-log.ts';
 /** COMPANY_ADMIN in migration 0072's catalogue. */
 const COMPANY_ADMIN_LEVEL = 7;
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { ilikeAnyFilter } from '../_shared/postgrest-or.ts';
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -91,10 +92,9 @@ export default async function handler(req: Request) {
       if (department) query = query.eq('department', department);
       if (organizationalTier) query = query.eq('organizational_tier', organizationalTier);
       if (search) {
-        const pattern = `%${search.replace(/[%_]/g, (m) => `\\${m}`)}%`;
-        query = query.or(
-          `name.ilike.${pattern},code.ilike.${pattern},description.ilike.${pattern}`,
-        );
+        // LIKE wildcards in the term are escaped so they match literally.
+        const likeSafe = search.replace(/[%_]/g, (m) => `\\${m}`);
+        query = query.or(ilikeAnyFilter(['name', 'code', 'description'], likeSafe));
       }
 
       const { data: roles, error, count } = await query;
