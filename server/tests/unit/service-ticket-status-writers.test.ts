@@ -23,11 +23,11 @@ function walk(dir: string, out: string[] = []): string[] {
 const FILES = walk('supabase/functions');
 
 /**
- * Known writer outside the vocabulary, left for its own change: the
- * predictive-failure agent creates draft tickets as 'pending_review', a state
- * the vocabulary has no member for. Shrink-only: fails when fixed.
+ * Known writers outside the vocabulary. Shrink-only: an entry fails when it is
+ * fixed. Round 207 emptied it - predictive-failure's 'pending_review' draft is
+ * gone because the ticket is created on approval (predictive-failure/_ticket.ts).
  */
-const KNOWN = new Set(['supabase/functions/predictive-failure/index.ts:pending_review']);
+const KNOWN = new Set<string>();
 
 describe('service_tickets status writers', () => {
   it('walks the edge tree', () => {

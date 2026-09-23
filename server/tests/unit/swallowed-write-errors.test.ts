@@ -81,9 +81,13 @@ describe('a try/catch around a PostgREST call is evidence of nothing', () => {
 describe('the predictive sweep logs a ticket it could not create', () => {
   const src = code('supabase/functions/predictive-failure/index.ts');
 
+  // Round 207: the ticket is created on approval now, not in the sweep. The
+  // property is unchanged - a failed insert is surfaced, never read as
+  // "nothing to create" - and a failure there also throws after releasing the
+  // claim on the prediction.
   it('distinguishes "nothing to create" from "creation failed"', () => {
     expect(src).toContain('error: ticketError');
-    expect(src).toContain('if (ticketError)');
+    expect(src).toMatch(/if \(ticketError \|\| !ticket\) \{[\s\S]{0,900}?throw ticketError/);
   });
 });
 

@@ -32,6 +32,7 @@ import {
 import { AlertTriangle, CheckCircle2, Clock, Play, RefreshCw, XCircle } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
+import { describeApiError } from '@/lib/api-error';
 
 interface SignalContribution {
   value: number;
@@ -160,7 +161,8 @@ export default function ServicePredictions() {
       } else {
         toast({
           title: 'Scoring complete',
-          description: `Scored ${data?.scored ?? 0} machines, created ${data?.created ?? 0} draft tickets.`,
+          // No ticket is created until a prediction is approved.
+          description: `Scored ${data?.scored ?? 0} machines; ${data?.aboveThreshold ?? 0} above the threshold await review.`,
         });
       }
       invalidateAll();
@@ -176,14 +178,19 @@ export default function ServicePredictions() {
   const approveMutation = useMutation({
     mutationFn: (id: string) =>
       apiRequest(`/api/predictive-failure/predictions/${id}/approve`, { method: 'POST' }),
-    onSuccess: () => {
-      toast({ title: 'Approved & dispatched', description: 'Linked draft ticket dispatched.' });
+    onSuccess: (data: { ticket?: { number?: string } } | undefined) => {
+      toast({
+        title: 'Approved',
+        description: data?.ticket?.number
+          ? `Service ticket ${data.ticket.number} created for dispatch.`
+          : 'Service ticket created for dispatch.',
+      });
       invalidateAll();
     },
     onError: (err: any) =>
       toast({
         title: 'Approve failed',
-        description: err?.message || 'Failed to approve',
+        description: describeApiError(err).message,
         variant: 'destructive',
       }),
   });
