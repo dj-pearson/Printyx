@@ -17,6 +17,10 @@ import type { HandlerCtx } from '../_context.ts';
 import { cached, paramKey } from '../_cache.ts';
 import { fetchAllRows } from '../../_shared/paged-select.ts';
 import {
+  rollUpCustomerRevenue,
+  type RollupInvoice,
+} from '../../../../shared/customer-revenue-rollup.ts';
+import {
   buildFunnel,
   buildStatusFallback,
   type FunnelDeal,
@@ -312,80 +316,23 @@ async function customerProfitability(ctx: HandlerCtx): Promise<unknown> {
   const days = periodToDays(url.searchParams.get('period'));
   const from = new Date(Date.now() - days * 86_400_000).toISOString();
 
-  const { data } = await db
-    .from('invoices')
-    .select('customer_id, total_amount, paid_date, due_date, invoice_date')
-    .eq('tenant_id', auth.tenantId)
-    .gte('invoice_date', from);
+  // Paged: a bare select stops at PostgREST's page size, so a tenant past it
+  // got revenue totals over the first page presented as the whole period.
+  const list = await fetchAllRows<RollupInvoice>(() =>
+    db
+      .from('invoices')
+      .select('customer_id, total_amount, paid_date, invoice_date')
+      .eq('tenant_id', auth.tenantId)
+      .gte('invoice_date', from)
+      .order('id'),
+  );
 
-  const list = (data ?? []) as Array<{
-    customer_id: string | null;
-    total_amount: string | null;
-    paid_date: string | null;
-    due_date: string | null;
-    invoice_date: string;
-  }>;
-
-  const byCustomer = new Map<
-    string,
-    { revenue: number; outstanding: number; payDays: number[]; total: number }
-  >();
-  for (const i of list) {
-    const id = i.customer_id ?? 'unknown';
-    const cur = byCustomer.get(id) ?? { revenue: 0, outstanding: 0, payDays: [], total: 0 };
-    const amount = Number(i.total_amount ?? 0);
-    cur.revenue += amount;
-    cur.total += 1;
-    if (i.paid_date == null) cur.outstanding += amount;
-    if (i.paid_date && i.invoice_date) {
-      const days = Math.max(
-        0,
-        Math.floor(
-          (new Date(i.paid_date).getTime() - new Date(i.invoice_date).getTime()) / 86_400_000,
-        ),
-      );
-      cur.payDays.push(days);
-    }
-    byCustomer.set(id, cur);
-  }
-
-  const ids = [...byCustomer.keys()];
+  const ids = [...new Set(list.map((i) => i.customer_id).filter((x): x is string => !!x))];
   const names = await fetchCustomerNames(db, auth.tenantId, ids);
   const credits = await fetchCreditLimits(db, auth.tenantId, ids);
-
-  const rows = ids
-    .map((id) => {
-      const v = byCustomer.get(id)!;
-      const avgDays =
-        v.payDays.length > 0
-          ? Math.round(v.payDays.reduce((s, d) => s + d, 0) / v.payDays.length)
-          : 0;
-      const onTime = v.payDays.filter((d) => d <= 30).length;
-      const onTimeRate = v.payDays.length > 0 ? Math.round((onTime / v.payDays.length) * 100) : 0;
-      const credit = credits.get(id) ?? 0;
-      return {
-        customerId: id,
-        customerName: names.get(id) ?? 'Unknown',
-        totalRevenue: Math.round(v.revenue),
-        totalCosts: 0,
-        grossProfit: 0,
-        profitMargin: 0,
-        revenueGrowth: 0,
-        paymentHistory: {
-          avgDaysToPay: avgDays,
-          onTimePaymentRate: onTimeRate,
-          totalOutstanding: Math.round(v.outstanding),
-          creditLimit: credit,
-          creditUtilization:
-            credit > 0 ? Math.min(100, Math.round((v.outstanding / credit) * 100)) : 0,
-        },
-        riskScore: 0,
-      };
-    })
-    .sort((a, b) => b.totalRevenue - a.totalRevenue)
-    .slice(0, 50);
-
-  return rows;
+  // Costs, margin, growth and risk are null in every row: see
+  // shared/customer-revenue-rollup.ts for why they are not zero.
+  return rollUpCustomerRevenue(list, names, credits);
 }
 
 // ─── cash-flow-forecast ────────────────────────────────────────────────────
@@ -902,7 +849,7 @@ async function fetchCreditLimits(
   db: HandlerCtx['db'],
   tenantId: string,
   ids: string[],
-): Promise<Map<string, number>> {
+): Promise<Map<string, number | null>> {
   if (ids.length === 0) return new Map();
   const { data } = await db
     .from('business_records')
@@ -912,7 +859,8 @@ async function fetchCreditLimits(
   return new Map(
     ((data ?? []) as Array<{ id: string; credit_limit: string | null }>).map((r) => [
       r.id,
-      Number(r.credit_limit ?? 0),
+      // A limit nobody recorded is null, not a $0 limit.
+      r.credit_limit == null ? null : Number(r.credit_limit),
     ]),
   );
 }

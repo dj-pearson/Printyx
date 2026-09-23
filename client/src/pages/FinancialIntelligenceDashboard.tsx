@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import type { CustomerRevenueRow } from '@shared/customer-revenue-rollup';
+import { exportToCSV, type ExportColumn } from '@/lib/export-utils';
+import { formatCurrency } from '@/lib/utils';
 import { QueryStates } from '@/components/ui/query-state';
 import { DashboardSkeleton } from '@/components/ui/skeletons';
 import { MainLayout } from '@/components/layout/main-layout';
@@ -104,25 +107,8 @@ interface ARAgingBucket {
   percentage: number;
 }
 
-interface CustomerProfitability {
-  customerId: string;
-  customerName: string;
-  totalRevenue: number;
-  totalCosts: number;
-  grossProfit: number;
-  profitMargin: number;
-  revenueGrowth: number;
-  paymentHistory: PaymentMetrics;
-  riskScore: number;
-}
-
-interface PaymentMetrics {
-  avgDaysToPay: number;
-  onTimePaymentRate: number;
-  totalOutstanding: number;
-  creditLimit: number;
-  creditUtilization: number;
-}
+/** shared/customer-revenue-rollup.ts: costs, margin, growth and risk are not measured. */
+type CustomerProfitability = CustomerRevenueRow;
 
 interface CashFlowForecast {
   date: string;
@@ -144,6 +130,36 @@ interface TerritoryFinancials {
 }
 
 const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7c7c', '#8dd1e1'];
+
+/** What Export writes: the customer revenue rows, measured columns only. */
+export const CUSTOMER_REVENUE_EXPORT_COLUMNS: ExportColumn<CustomerProfitability>[] = [
+  { key: 'customerName', label: 'Customer' },
+  { key: 'totalRevenue', label: 'Invoiced revenue' },
+  { key: 'invoiceCount', label: 'Invoices' },
+  {
+    key: 'outstanding',
+    label: 'Unpaid',
+    format: (_v, r) => String(r.paymentHistory.totalOutstanding),
+  },
+  {
+    key: 'avgDaysToPay',
+    label: 'Avg days to pay',
+    format: (_v, r) =>
+      r.paymentHistory.avgDaysToPay == null ? '' : String(r.paymentHistory.avgDaysToPay),
+  },
+  {
+    key: 'onTimePaymentRate',
+    label: 'Paid within 30 days %',
+    format: (_v, r) =>
+      r.paymentHistory.onTimePaymentRate == null ? '' : String(r.paymentHistory.onTimePaymentRate),
+  },
+  {
+    key: 'creditLimit',
+    label: 'Credit limit',
+    format: (_v, r) =>
+      r.paymentHistory.creditLimit == null ? '' : String(r.paymentHistory.creditLimit),
+  },
+];
 
 export default function FinancialIntelligenceDashboard() {
   const [selectedPeriod, setSelectedPeriod] = useState<'30d' | '90d' | 'ytd' | '12m'>('90d');
@@ -281,7 +297,16 @@ export default function FinancialIntelligenceDashboard() {
               </div>
 
               <div className="flex gap-2">
-                <Button variant="outline" size="sm">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={customerProfitability.length === 0}
+                  onClick={() =>
+                    exportToCSV(customerProfitability, CUSTOMER_REVENUE_EXPORT_COLUMNS, {
+                      filename: `customer-revenue-${selectedPeriod}`,
+                    })
+                  }
+                >
                   <Download className="h-4 w-4 mr-2" />
                   Export
                 </Button>
@@ -613,69 +638,42 @@ export default function FinancialIntelligenceDashboard() {
             <TabsContent value="profitability" className="space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Customer Profitability Analysis</CardTitle>
-                  <CardDescription>Revenue, costs, and profit margins by customer</CardDescription>
+                  <CardTitle>Customer Revenue and Payment</CardTitle>
+                  <CardDescription>
+                    Invoiced revenue, unpaid balance and payment speed by customer. Costs, margin,
+                    growth and risk are not measured: nothing records the cost of serving a
+                    customer.
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4 max-h-96 overflow-y-auto">
-                    {customerProfitability.slice(0, 10).map((customer, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center justify-between p-4 border rounded-lg"
-                      >
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between mb-2">
-                            <h4 className="font-medium">{customer.customerName}</h4>
-                            <Badge
-                              variant={
-                                customer.profitMargin >= 30
-                                  ? 'default'
-                                  : customer.profitMargin >= 15
-                                    ? 'secondary'
-                                    : 'destructive'
-                              }
-                            >
-                              {customer.profitMargin.toFixed(1)}% margin
-                            </Badge>
+                    {customerProfitability.slice(0, 10).map((customer) => (
+                      <div key={customer.customerId} className="p-4 border rounded-lg">
+                        <h4 className="font-medium mb-2">{customer.customerName}</h4>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                          <div>
+                            <p className="text-muted-foreground">Revenue</p>
+                            <p className="font-medium">{formatCurrency(customer.totalRevenue)}</p>
                           </div>
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                            <div>
-                              <p className="text-muted-foreground">Revenue</p>
-                              <p className="font-medium">
-                                ${customer.totalRevenue.toLocaleString()}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-muted-foreground">Gross Profit</p>
-                              <p className="font-medium">
-                                ${customer.grossProfit.toLocaleString()}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-muted-foreground">Growth</p>
-                              <p className={`font-medium ${getTrendColor(customer.revenueGrowth)}`}>
-                                {customer.revenueGrowth >= 0 ? '+' : ''}
-                                {customer.revenueGrowth.toFixed(1)}%
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-muted-foreground">Risk Score</p>
-                              <p
-                                className={`font-medium ${
-                                  customer.riskScore <= 30
-                                    ? 'text-green-600'
-                                    : customer.riskScore <= 60
-                                      ? 'text-yellow-600'
-                                      : 'text-red-600'
-                                }`}
-                              >
-                                {customer.riskScore}/100
-                              </p>
-                            </div>
+                          <div>
+                            <p className="text-muted-foreground">Unpaid</p>
+                            <p className="font-medium">
+                              {formatCurrency(customer.paymentHistory.totalOutstanding)}
+                            </p>
                           </div>
-                          <div className="mt-2 text-xs text-muted-foreground">
-                            Avg payment: {customer.paymentHistory.avgDaysToPay} days | On-time rate:{' '}
-                            {customer.paymentHistory.onTimePaymentRate}%
+                          <div>
+                            <p className="text-muted-foreground">Avg days to pay</p>
+                            <p className="font-medium">
+                              {customer.paymentHistory.avgDaysToPay ?? '—'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">Paid within 30 days</p>
+                            <p className="font-medium">
+                              {customer.paymentHistory.onTimePaymentRate == null
+                                ? '—'
+                                : `${customer.paymentHistory.onTimePaymentRate}%`}
+                            </p>
                           </div>
                         </div>
                       </div>
