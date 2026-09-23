@@ -65,7 +65,6 @@
     "tax_rates (supabase/functions/tax-rates/index.ts)",
     "team_members (supabase/functions/team-reports/index.ts)",
     "technician_skills (supabase/functions/technician-management/index.ts)",
-    "tenant_settings (supabase/functions/auto-supply-replenishment/index.ts)",
     "tenant_settings (supabase/functions/tenant-settings/index.ts)",
     "ticket_notes (supabase/functions/mobile-field/index.ts)",
     "warehouses (supabase/functions/warehouse-operations/index.ts)"

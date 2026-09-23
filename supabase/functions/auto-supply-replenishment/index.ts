@@ -759,47 +759,25 @@ export default async function handler(req: Request) {
       return createCorsResponse(orders || [], 200, req);
     }
 
-    // GET /auto-supply-replenishment/settings - Get replenishment settings
-    if (req.method === 'GET' && endpoint === 'settings') {
-      const { data: settings } = await admin
-        .from('tenant_settings')
-        .select('auto_replenishment_enabled, replenishment_check_frequency, default_lead_time')
-        .eq('tenant_id', tenantId)
-        .single();
-
+    // GET|PUT /auto-supply-replenishment/settings
+    //
+    // Round 164. Both halves used `tenant_settings`, a table in no schema and
+    // no migration. GET swallowed the missing-table error and answered a
+    // hand-written default - auto_replenishment_enabled: true, daily, 7 days -
+    // as though a dealer had configured it (EDGE-002g's fabricated-fallback
+    // shape); PUT failed every time. Nothing in any client tree calls either.
+    // The replenishment rules the page does use live in
+    // supply_replenishment_rules (/rules).
+    if (endpoint === 'settings' && (req.method === 'GET' || req.method === 'PUT')) {
       return createCorsResponse(
-        settings || {
-          auto_replenishment_enabled: true,
-          replenishment_check_frequency: 'daily',
-          default_lead_time: 7,
+        {
+          error: 'Replenishment settings are not stored anywhere',
+          code: 'SETTINGS_NOT_STORED',
+          detail: 'There is no tenant_settings table. Configure behaviour through /rules.',
         },
-        200,
+        501,
         req,
       );
-    }
-
-    // PUT /auto-supply-replenishment/settings - Update settings
-    if (req.method === 'PUT' && endpoint === 'settings') {
-      const body = await req.json();
-
-      const { data: settings, error } = await admin
-        .from('tenant_settings')
-        .upsert({
-          tenant_id: tenantId,
-          auto_replenishment_enabled:
-            body.autoReplenishmentEnabled ?? body.auto_replenishment_enabled,
-          replenishment_check_frequency: body.checkFrequency || body.replenishment_check_frequency,
-          default_lead_time: body.defaultLeadTime || body.default_lead_time,
-          updated_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
-
-      if (error) {
-        return createCorsResponse({ error: 'Failed to update settings' }, 500, req);
-      }
-
-      return createCorsResponse(settings, 200, req);
     }
 
     // DELETE /auto-supply-replenishment/rules/:id - Delete rule

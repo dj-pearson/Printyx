@@ -69,11 +69,7 @@ import {
   registerProductPricingRoutes,
 } from './domains/products';
 
-import {
-  registerWarehouseRoutes,
-  autoSupplyReplenishmentRoutes,
-  warehouseFpyRoutes,
-} from './domains/warehouse';
+import { registerWarehouseRoutes, warehouseFpyRoutes } from './domains/warehouse';
 
 import {
   registerServiceAnalysisRoutes,
@@ -901,7 +897,7 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   // too — the edge function had been gating audioUrl with a startsWith() prefix
   // match that 'https://api.printyx.net.evil.com' satisfies.
   registerChatbotRoutes(app);
-  app.use('/api/auto-supply-replenishment', autoSupplyReplenishmentRoutes);
+  // Round 164: autoSupplyReplenishmentRoutes retired; the prefix is proxied.
   app.use('/api/contract-renewal', contractRenewalRoutes);
   // registerSalesHandoffRoutes was called here and is DELETED (WF-P-07).
   //

@@ -1049,6 +1049,12 @@ export function registerEdgeFunctionProxy(app: any) {
     // production. Both now read service_call_analysis through the edge.
     '/api/service-analysis': 'service-analysis',
 
+    // Round 164. routes-auto-supply-replenishment.ts ran the same analysis in
+    // dev through a Node copy of _shared/supply-analysis.ts; the edge function
+    // covers every path the page calls (dashboard, low-supplies, orders,
+    // analyze-all). Router and Node service deleted.
+    '/api/auto-supply-replenishment': 'auto-supply-replenishment',
+
     // PROD-011. Full parity: all EIGHT Express endpoints (inbound, submit,
     // submissions list/:id/approve/reject, GET/PUT settings), which is also
     // everything MeterReadReview.tsx calls. This pipeline writes billing rows,

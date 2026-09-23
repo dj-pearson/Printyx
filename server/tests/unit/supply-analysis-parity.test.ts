@@ -7,15 +7,18 @@
 //   server/services/auto-supply-replenishment-service.ts
 //   supabase/functions/_shared/supply-analysis.ts
 //
-// Node and Deno cannot import each other, so this suite imports both and
-// asserts identical output.
+// Node and Deno cannot import each other, so this suite imported both and
+// asserted identical output. Round 164 deleted the Node copy with the Express
+// router that was its only caller; its outputs over these fixtures (identical
+// to the edge's at the time) are frozen as snapshots in __snapshots__/, so the
+// edge module stays locked to the same behaviour - which is the property that
+// mattered, because this fallback decides whether toner gets auto-ordered.
 //
 // The fallback is what matters: with no CLAUDE_API_KEY configured it is the
 // only path that runs, and it decides whether a supply gets AUTO-ORDERED. A
 // drift here does not just misreport - it buys toner.
 import { describe, it, expect } from 'vitest';
 
-import * as node from '../../services/auto-supply-replenishment-service';
 import * as edge from '../../../supabase/functions/_shared/supply-analysis';
 
 // Fixed instant so the depletion date is deterministic on both sides.
@@ -112,15 +115,11 @@ describe('supply analysis parity (Express service vs edge _shared)', () => {
   describe('buildSupplyAnalysisPrompt', () => {
     for (const { name, supply } of SUPPLIES) {
       it(`renders identical prompt text: ${name}`, () => {
-        expect(edge.buildSupplyAnalysisPrompt(supply, HISTORY, NOW)).toBe(
-          node.buildSupplyAnalysisPrompt(supply, HISTORY, NOW),
-        );
+        expect(edge.buildSupplyAnalysisPrompt(supply, HISTORY, NOW)).toMatchSnapshot();
       });
 
       it(`renders identical prompt text with no history: ${name}`, () => {
-        expect(edge.buildSupplyAnalysisPrompt(supply, [], NOW)).toBe(
-          node.buildSupplyAnalysisPrompt(supply, [], NOW),
-        );
+        expect(edge.buildSupplyAnalysisPrompt(supply, [], NOW)).toMatchSnapshot();
       });
     }
   });
@@ -128,9 +127,7 @@ describe('supply analysis parity (Express service vs edge _shared)', () => {
   describe('heuristicSupplyAnalysis', () => {
     for (const { name, supply, dailyUsage } of SUPPLIES) {
       it(`returns an identical result: ${name}`, () => {
-        expect(edge.heuristicSupplyAnalysis(supply, dailyUsage, NOW)).toEqual(
-          node.heuristicSupplyAnalysis(supply, dailyUsage, NOW),
-        );
+        expect(edge.heuristicSupplyAnalysis(supply, dailyUsage, NOW)).toMatchSnapshot();
       });
     }
   });
@@ -140,7 +137,7 @@ describe('supply analysis parity (Express service vs edge _shared)', () => {
     const days = [null, 0, 1, 3, 4, 7, 8, 14, 15, 30, 31, 400];
     for (const d of days) {
       it(`agrees on the band at ${d === null ? 'null' : d} days`, () => {
-        expect(edge.supplyPriorityFor(d)).toBe(node.supplyPriorityFor(d));
+        expect(edge.supplyPriorityFor(d)).toMatchSnapshot();
       });
     }
   });
@@ -167,7 +164,7 @@ describe('supply analysis parity (Express service vs edge _shared)', () => {
     ];
     for (const { name, history } of cases) {
       it(`agrees: ${name}`, () => {
-        expect(edge.calculateAverageUsage(history)).toBe(node.calculateAverageUsage(history));
+        expect(edge.calculateAverageUsage(history)).toMatchSnapshot();
       });
     }
   });
