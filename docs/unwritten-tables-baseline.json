@@ -34,6 +34,7 @@
     "platform_contacts",
     "platform_sales_goals",
     "platform_signups",
+    "price_change_approvals",
     "renewal_analytics",
     "renewal_automation_rules",
     "sales_forecasts",

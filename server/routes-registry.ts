@@ -21,20 +21,6 @@ import {
 
 import {
   registerQuickBooksRoutes,
-  getCompanyPricingSettings,
-  updateCompanyPricingSettings,
-  getProductPricing,
-  createProductPricing,
-  updateProductPricing,
-  deleteProductPricing,
-  getQuotePricing,
-  createQuotePricing,
-  updateQuotePricing,
-  getQuoteLineItems,
-  createQuoteLineItem,
-  updateQuoteLineItem,
-  deleteQuoteLineItem,
-  calculatePricingForProduct,
   printCostCalculatorRoutes,
   salesForecastingRoutes,
 } from './domains/billing';
@@ -65,7 +51,6 @@ import {
   registerProductsCrudRoutes,
   registerCatalogCsvRoutes,
   registerProductModelsRoutes,
-  registerProductPricingRoutes,
 } from './domains/products';
 
 import { registerWarehouseRoutes, warehouseFpyRoutes } from './domains/warehouse';
@@ -323,20 +308,11 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   registerMobileLogsAdminRoutes(app);
 
   // ─── Pricing ───────────────────────────────────────────────────────
-  app.get('/api/pricing/company-settings', getCompanyPricingSettings);
-  app.post('/api/pricing/company-settings', updateCompanyPricingSettings);
-  app.get('/api/pricing/products', getProductPricing);
-  app.post('/api/pricing/products', createProductPricing);
-  app.put('/api/pricing/products/:id', updateProductPricing);
-  app.delete('/api/pricing/products/:id', deleteProductPricing);
-  app.get('/api/pricing/quotes/:quoteId', getQuotePricing);
-  app.post('/api/pricing/quotes', createQuotePricing);
-  app.put('/api/pricing/quotes/:id', updateQuotePricing);
-  app.get('/api/pricing/quotes/:quotePricingId/line-items', getQuoteLineItems);
-  app.post('/api/pricing/line-items', createQuoteLineItem);
-  app.put('/api/pricing/line-items/:id', updateQuoteLineItem);
-  app.delete('/api/pricing/line-items/:id', deleteQuoteLineItem);
-  app.post('/api/pricing/calculate', calculatePricingForProduct);
+  // Round 175: the fourteen /api/pricing handlers from routes-pricing.ts that
+  // were mounted here, and registerProductPricingRoutes below, are retired.
+  // /api/pricing is proxied to supabase/functions/pricing/, which serves every
+  // path a client calls and gates on the numeric role level (round 155); the
+  // Express half still gated on the legacy role-name map.
 
   // ─── User Profile & Settings ───────────────────────────────────────
   const { registerUserProfileRoutes } = await import('./routes-user-profile');
@@ -856,7 +832,6 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   // registerPipelineConfigurationRoutes(app) — migrated to supabase/functions/pipeline-config/
   registerTechnicianManagementRoutes(app);
   registerProductModelsRoutes(app);
-  registerProductPricingRoutes(app);
   // Round 154: registerSoftwareProductsRoutes retired; /api/software-products is proxied.
   // registerLeadAssignmentRoutes(app) - DELETED (SEC-EDGE-001 batch 15):
   // 16 handlers across six prefixes no client tree calls, every one covered by

@@ -155,6 +155,12 @@ export default async function handler(req: Request) {
     // had nothing in production. The body is [{ approval, requestedBy }], which
     // is what both components destructure.
     // ========================================================================
+    //
+    // WHO FILLS price_change_approvals: nobody, as of round 175. Its only
+    // writer was POST /api/pricing/request-approval in the deleted Express
+    // routes-product-pricing.ts, which no client tree ever called, so this
+    // queue could not have had a row on either host. It stays readable
+    // because the request flow is the missing half, not the read.
     if (req.method === 'GET' && resource === 'approvals' && resourceId === 'pending') {
       if (!mayViewMargins) {
         return createCorsResponse({ error: 'Insufficient permissions' }, 403, req);

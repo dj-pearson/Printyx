@@ -1229,6 +1229,11 @@ export function registerEdgeFunctionProxy(app: any) {
     // had left (PATCH /:id, GET and POST /:id/items), scoped through
     // ownedOrder(); the Express router is deleted.
     '/api/parts-orders': 'parts-orders',
+    // Round 175. Every /api/pricing path a client calls is served by the edge
+    // function, including products/bulk-update, which Express never had and
+    // so 404'd in dev. The Express half gated on the legacy role-name map no
+    // role code matches; it is deleted along with services/pricing-service.ts.
+    '/api/pricing': 'pricing',
     '/api/mobile/time-tracking': { fn: 'mobile', pathPrefix: '/time-tracking' },
     '/api/mobile/service-tickets': { fn: 'mobile', pathPrefix: '/service-tickets' },
     //
