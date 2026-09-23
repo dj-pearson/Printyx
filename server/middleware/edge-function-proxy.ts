@@ -1021,6 +1021,12 @@ export function registerEdgeFunctionProxy(app: any) {
     // function's /today is a strict superset; dev runs it too.
     '/api/dashboards': 'dashboards',
 
+    // Round 159. Express served this from routes-templates.ts over
+    // project_templates while production read `templates`, a table that does
+    // not exist, so the Templates view worked only in dev. The edge function
+    // reads project_templates now and the Express router is deleted.
+    '/api/templates': 'templates',
+
     // PROD-011. Full parity: all EIGHT Express endpoints (inbound, submit,
     // submissions list/:id/approve/reject, GET/PUT settings), which is also
     // everything MeterReadReview.tsx calls. This pipeline writes billing rows,

@@ -112,11 +112,7 @@ import {
   integrationRoutes,
 } from './domains/integrations';
 
-import {
-  registerTaskRoutes,
-  registerTemplateRoutes,
-  registerTaskWorkflowRoutes,
-} from './domains/tasks';
+import { registerTaskRoutes, registerTaskWorkflowRoutes } from './domains/tasks';
 
 import { registerSeoCoreRoutes, seoRoutes, googleIndexingRoutes } from './domains/content';
 
@@ -385,7 +381,7 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   // So it was a 42703 in dev, and in production /api/projects/enhanced reaches
   // the projects edge function, which reads 'enhanced' as an id and 404s. No
   // client tree called it.
-  registerTemplateRoutes(app);
+  // Round 159: registerTemplateRoutes retired; /api/templates is proxied.
   registerTaskWorkflowRoutes(app);
 
   // ─── Warehouse & Purchase Orders ──────────────────────────────────
