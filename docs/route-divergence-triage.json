@@ -45,10 +45,6 @@
       "verdict": "resolved",
       "reason": "Round 122. The edge function had zero role checks while routes-products-crud.ts guarded a permission nobody reaches, and its PATCH field map named five columns that do not exist. PATCH and DELETE now require a supervisor and the write goes through _shared/meter-reading-write.ts."
     },
-    "parts-orders": {
-      "verdict": "divergent",
-      "reason": "Round 138. One live path: ServiceTicketAnalysis.tsx POSTs /api/parts-orders/:id/items, and COP-M01 already fixed the edge function's column map for it (part_number/part_name, part_description, quantity_ordered, unit_price, line_total - the flat part_id/description/quantity/unit_cost/total_cost names do not exist) and set tenant_id, which Express's insert does too. THE NAMED DIFFERENCE IS LATENT: GET /api/parts-orders/:id/items returns raw snake_case from the edge function and camelCase Drizzle rows from Express, so a component reading camelCase would render blank cells in production only - nothing calls that GET on either host today, so it is a trap for whoever wires the first caller rather than a live defect. PATCH /api/parts-orders/:orderId is Express-only and also uncalled. The edge function's ownedOrder() check is the half that matters and is present: parts_order_items is reached only through its parent, so an unscoped :id would let one tenant read another's line items."
-    },
     "pricing": {
       "verdict": "divergent",
       "reason": "Rounds 155-156 read both. Edge: gates keyed on a legacy role-name map that no role code matches (all-deny), product reads leaking dealer_cost, product writes ungated - rebound to the numeric level at the page gates, reads redacted, writes gated; /pricing-settings/visibility now answers per caller. STILL DIVERGENT: the Express half (routes-pricing.ts, routes-product-pricing.ts, pricing-service.ts) still gates on that legacy name map for session users and serves the same prefix in dev, so a dev session with a role code sees the old all-deny/all-open split."

@@ -40,8 +40,8 @@ const router = Router();
 //
 // /api/service-tickets is in crmProxies now and the edge function does all three
 // joins, so both hosts answer the same shape from one implementation. The
-// /:id/analysis route (routes-service-analysis.ts) is registered BEFORE the proxy
-// in routes-registry.ts, because the edge function does not serve it.
+// /:id/analysis route is served by the edge function as well (round 163), and
+// the Express router that used to hold it is deleted (round 174).
 //
 // The two /stats implementations disagreed about the status vocabulary -
 // 'in-progress' here, 'in_progress' there, and 'completed' counted as resolved

@@ -247,22 +247,35 @@ export default function ServiceTicketAnalysis({
         subtotal: data.items.reduce((sum, item) => sum + item.quantityOrdered * item.unitPrice, 0),
       });
     },
-    onSuccess: (newOrder) => {
-      const addItemsPromise = apiRequest(`/api/parts-orders/${newOrder.id}/items`, 'POST', {
-        items: partsOrderForm.getValues('items').map((item) => ({
-          ...item,
-          lineTotal: item.quantityOrdered * item.unitPrice,
-        })),
-      });
-
-      Promise.resolve(addItemsPromise).then(() => {
+    onSuccess: async (newOrder) => {
+      // Round 174: this used to be Promise.resolve(...).then() with no catch,
+      // so when the line items failed the order stood saved with no lines,
+      // the dialog stayed open, and nothing said why.
+      // Built before the call: a .map inside the apiRequest statement reads to
+      // check:unwrapped-response as mapping the RESPONSE.
+      const items = partsOrderForm.getValues('items').map((item) => ({
+        ...item,
+        lineTotal: item.quantityOrdered * item.unitPrice,
+      }));
+      try {
+        await apiRequest(`/api/parts-orders/${newOrder.id}/items`, 'POST', { items });
+      } catch (err) {
         queryClient.invalidateQueries({
           queryKey: ['/api/service-analysis', selectedAnalysis?.id, 'parts-orders'],
         });
-        setShowPartsOrderDialog(false);
-        partsOrderForm.reset();
-        toast({ title: 'Parts order created successfully' });
+        toast({
+          title: 'Order created, but its parts were not saved',
+          description: describeApiError(err).message,
+          variant: 'destructive',
+        });
+        return;
+      }
+      queryClient.invalidateQueries({
+        queryKey: ['/api/service-analysis', selectedAnalysis?.id, 'parts-orders'],
       });
+      setShowPartsOrderDialog(false);
+      partsOrderForm.reset();
+      toast({ title: 'Parts order created successfully' });
     },
     onError: (err) => {
       toast({

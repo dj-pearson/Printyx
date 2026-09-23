@@ -1,6 +1,6 @@
 {
   "note": "Express /api domains no client tree calls. A WORKLIST, not settled debt: some are features nobody wired, some are deletable, and this guard cannot tell them apart. Shrink-only — see scripts/check-uncalled-express-routes.mjs for why five other guards miss these.",
-  "count": 72,
+  "count": 71,
   "domains": [
     {
       "domain": "accessibility",
@@ -84,10 +84,6 @@
     },
     {
       "domain": "document-templates",
-      "class": "no-edge"
-    },
-    {
-      "domain": "document-types",
       "class": "no-edge"
     },
     {

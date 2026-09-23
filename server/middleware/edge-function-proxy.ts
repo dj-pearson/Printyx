@@ -268,12 +268,10 @@ export function registerEdgeFunctionProxy(app: any) {
     // showed a blank machine and a blank technician on every ticket. AUDIT-013
     // fixed the dev half only.
     //
-    // ORDERING MATTERS HERE, not un-proxying: routes-service-analysis.ts owns
-    // /api/service-tickets/:id/analysis, which this function does not serve, so
-    // that router is registered BEFORE the proxy in routes-registry.ts. The proxy
-    // forwards the whole prefix and falls through only on a network error, never
-    // a 404, so without that ordering the analysis panel would go from
-    // working-in-dev to 404-in-dev.
+    // CORRECTED round 174: /api/service-tickets/:id/analysis used to be served
+    // by routes-service-analysis.ts, registered ahead of this proxy. Round 163
+    // gave the service-tickets function that branch and the Express router is
+    // now deleted, so nothing here depends on registration order any more.
     '/api/service-tickets': 'service-tickets',
     // WF-L-03. The board's three calls - the bare list, POST and
     // PATCH /:id/status - fell to the edge function's terminal 404, so
@@ -1227,6 +1225,10 @@ export function registerEdgeFunctionProxy(app: any) {
     // while the edge function served it in production. The bulk handlers on
     // both hosts answered the same shape; the Express pair is deleted.
     '/api/invoices': 'invoices',
+    // Round 174. The edge function serves every path routes-service-analysis.ts
+    // had left (PATCH /:id, GET and POST /:id/items), scoped through
+    // ownedOrder(); the Express router is deleted.
+    '/api/parts-orders': 'parts-orders',
     '/api/mobile/time-tracking': { fn: 'mobile', pathPrefix: '/time-tracking' },
     '/api/mobile/service-tickets': { fn: 'mobile', pathPrefix: '/service-tickets' },
     //
