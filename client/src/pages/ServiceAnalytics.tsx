@@ -96,6 +96,12 @@ const PERIODS = [
 
 const PRIORITY_ORDER = ['urgent', 'high', 'medium', 'low'];
 
+// The endpoint counts a status or priority outside the ticket vocabulary under
+// `unrecognised` so the rows still add up to the total. Show that row only when
+// something is in it: a zero there is noise, a non-zero is a data-quality fact.
+const withUnrecognised = (keys: string[], counts: Record<string, number>) =>
+  (counts.unrecognised ?? 0) > 0 ? [...keys, 'unrecognised'] : keys;
+
 function KpiCard({
   label,
   value,
@@ -239,7 +245,7 @@ export default function ServiceAnalytics() {
               {isLoading ? (
                 <Skeleton className="h-32 w-full" />
               ) : (
-                PRIORITY_ORDER.map((key) => (
+                withUnrecognised(PRIORITY_ORDER, priorities).map((key) => (
                   <div key={key} className="flex items-center justify-between py-1">
                     <span className="text-sm capitalize">{key}</span>
                     <span className="text-sm font-medium tabular-nums">{priorities[key] ?? 0}</span>
@@ -257,12 +263,14 @@ export default function ServiceAnalytics() {
               {isLoading ? (
                 <Skeleton className="h-32 w-full" />
               ) : (
-                Object.entries(statuses).map(([key, count]) => (
-                  <div key={key} className="flex items-center justify-between py-1">
-                    <span className="text-sm capitalize">{key.replace(/_/g, ' ')}</span>
-                    <span className="text-sm font-medium tabular-nums">{count}</span>
-                  </div>
-                ))
+                Object.entries(statuses)
+                  .filter(([key, count]) => key !== 'unrecognised' || count > 0)
+                  .map(([key, count]) => (
+                    <div key={key} className="flex items-center justify-between py-1">
+                      <span className="text-sm capitalize">{key.replace(/_/g, ' ')}</span>
+                      <span className="text-sm font-medium tabular-nums">{count}</span>
+                    </div>
+                  ))
               )}
             </CardContent>
           </Card>

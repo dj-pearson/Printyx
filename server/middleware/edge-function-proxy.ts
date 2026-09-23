@@ -984,6 +984,15 @@ export function registerEdgeFunctionProxy(app: any) {
     // keeps its own function. normalizePath is anchored the same way.
     '/api/service': 'service',
 
+    // Round 146. Express served this prefix from routes-misc-stubs.ts, a
+    // "TODO: Implement actual service analytics" router answering zeros for
+    // every count and [] for every list, so on a developer machine the Service
+    // Analytics page reported a tenant with no tickets at all while production
+    // counted real ones. The edge function covers both paths the page calls
+    // (GET / and GET /trends); the stub is deleted, so dev now runs the handler
+    // production runs.
+    '/api/service-analytics': 'service-analytics',
+
     // PROD-011. Full parity: all EIGHT Express endpoints (inbound, submit,
     // submissions list/:id/approve/reject, GET/PUT settings), which is also
     // everything MeterReadReview.tsx calls. This pipeline writes billing rows,

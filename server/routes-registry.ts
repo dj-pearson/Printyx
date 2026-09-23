@@ -1039,19 +1039,10 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
     }
   }
 
-  try {
-    const { registerMiscStubRoutes } = await import('./routes-misc-stubs');
-    registerMiscStubRoutes(app);
-    log.info('✅ Miscellaneous stub routes registered');
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    log.error('Failed to load misc stub routes:', err);
-    failedRouteModules.push({
-      module: 'routes-misc-stubs',
-      error: msg,
-      timestamp: new Date().toISOString(),
-    });
-  }
+  // Round 146: registerMiscStubRoutes (routes-misc-stubs.ts) was mounted here.
+  // Its only router answered /api/service-analytics with hardcoded zeros; the
+  // prefix is proxied to supabase/functions/service-analytics/ now and the
+  // file is deleted.
 
   // ─── Duplicate route registration check (CR-018) ───────────────────
   // Warns when the same method+path was registered by two modules (Express

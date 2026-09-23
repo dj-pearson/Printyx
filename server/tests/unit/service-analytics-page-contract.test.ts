@@ -68,8 +68,13 @@ describe('service-analytics endpoint', () => {
     expect(fn).toMatch(/unbacked:\s*\[/);
   });
 
-  it('returns a null average when nothing has resolved', () => {
-    expect(fn).toContain('resolvedTickets.length > 0 ? avgResolutionTime : null');
+  it('returns a null average when nothing has resolved', async () => {
+    // Round 146 moved the counting into shared/service-analytics-summary.ts, so
+    // this asserts the behaviour and that the overview comes from it, rather
+    // than pinning the inline ternary it used to be.
+    const { summariseServiceTickets } = await import('../../../shared/service-analytics-summary');
+    expect(summariseServiceTickets([]).overview.avgResolutionTime).toBeNull();
+    expect(fn).toMatch(/overview:\s*\{\s*\.\.\.summary\.overview/);
   });
 
   it('sends the trend as a series, not as raw rows lengthed under the row cap', () => {

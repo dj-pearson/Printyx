@@ -129,10 +129,6 @@
       "verdict": "unexamined",
       "reason": "server/routes-service-analysis.ts registers both this and /api/parts-orders; supabase/functions/service-analysis/ serves it in production. Not read on either side."
     },
-    "service-analytics": {
-      "verdict": "unexamined",
-      "reason": "server/routes-misc-stubs.ts registers it - the filename says what to expect - and supabase/functions/service-analytics/ serves it in production. Whether the stub is shadowing something real has not been checked."
-    },
     "social-media": {
       "verdict": "unexamined",
       "reason": "SEC-EDGE-001 gated POST /posts/:id/publish edge-side while leaving generation open. server/routes-social-media.ts is not examined."
