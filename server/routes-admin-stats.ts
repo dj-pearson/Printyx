@@ -3,7 +3,6 @@
  *
  * Provides platform-wide statistics endpoints for the admin dashboard:
  * - GET /api/admin/tenant-stats - Tenant counts, user totals, revenue, conversion
- * - GET /api/admin/user-stats - User breakdown (active, suspended, admin)
  * - GET /api/admin/security/metrics - Security score, sessions, failed logins, MFA adoption
  *
  * SECURITY: All routes require authentication and platform admin authorization.
@@ -139,73 +138,8 @@ export function registerAdminStatsRoutes(app: Express) {
     }
   });
 
-  // ──────────────────────────────────────────────────────────────────────
-  // GET /api/admin/user-stats
-  // Returns detailed user breakdown stats
-  // ──────────────────────────────────────────────────────────────────────
-  app.get('/api/admin/user-stats', requireAuth, async (req: Request, res: Response) => {
-    try {
-      if (!isPlatformAdmin(req)) {
-        return res.status(403).json({ message: 'Forbidden: platform admin access required' });
-      }
-
-      // Total users
-      const [totalResult] = await db.select({ count: count() }).from(users);
-      const totalUsers = totalResult?.count ?? 0;
-
-      // Users created this month
-      const startOfMonth = new Date();
-      startOfMonth.setDate(1);
-      startOfMonth.setHours(0, 0, 0, 0);
-
-      const [newUsersResult] = await db
-        .select({ count: count() })
-        .from(users)
-        .where(gte(users.createdAt, startOfMonth));
-      const newUsersThisMonth = newUsersResult?.count ?? 0;
-
-      // Active users (isActive = true)
-      const [activeResult] = await db
-        .select({ count: count() })
-        .from(users)
-        .where(eq(users.isActive, true));
-      const activeUsers = activeResult?.count ?? 0;
-
-      // Suspended users (isActive = false)
-      const [suspendedResult] = await db
-        .select({ count: count() })
-        .from(users)
-        .where(eq(users.isActive, false));
-      const suspendedUsers = suspendedResult?.count ?? 0;
-
-      // Admin users (role contains 'admin' or isPlatformUser = true)
-      const [adminResult] = await db
-        .select({ count: count() })
-        .from(users)
-        .where(sql`(${users.role} ILIKE '%admin%' OR ${users.isPlatformUser} = true)`);
-      const adminUsers = adminResult?.count ?? 0;
-
-      // Calculate rates
-      const activeRate = totalUsers > 0 ? ((activeUsers / totalUsers) * 100).toFixed(1) : '0.0';
-      const suspendedRate =
-        totalUsers > 0 ? ((suspendedUsers / totalUsers) * 100).toFixed(1) : '0.0';
-      const adminPercentage = totalUsers > 0 ? ((adminUsers / totalUsers) * 100).toFixed(1) : '0.0';
-
-      res.json({
-        totalUsers,
-        userGrowth: `+${newUsersThisMonth} this month`,
-        activeUsers,
-        activeRate: `${activeRate}% active`,
-        suspendedUsers,
-        suspendedRate: `${suspendedRate}% of total`,
-        adminUsers,
-        adminPercentage: `${adminPercentage}% of total`,
-      });
-    } catch (error) {
-      log.error('Failed to fetch user stats:', error);
-      res.status(500).json({ message: 'Failed to fetch user stats' });
-    }
-  });
+  // GET /api/admin/user-stats moved to supabase/functions/admin (round 187):
+  // /api/admin/user-stats is proxied now, so a handler here would never run.
 
   // ──────────────────────────────────────────────────────────────────────
   // GET /api/admin/security/metrics

@@ -1129,6 +1129,12 @@ export function registerEdgeFunctionProxy(app: any) {
     '/api/admin/locations': { fn: 'admin', pathPrefix: '/locations' },
     '/api/admin/regions': { fn: 'admin', pathPrefix: '/regions' },
     '/api/admin/teams': { fn: 'admin', pathPrefix: '/teams' },
+    // Round 187. user-stats was Express-only (so the user-management page
+    // 404'd in production) and /roles had no dev handler at all (so the role
+    // list and OrgStructure's role picker 404'd in dev). Both are the admin
+    // function's now, on both hosts.
+    '/api/admin/user-stats': { fn: 'admin', pathPrefix: '/user-stats' },
+    '/api/admin/roles': { fn: 'admin', pathPrefix: '/roles' },
 
     // AUDIT-019. MeetingTranscription.tsx now calls this instead of rendering
     // three hardcoded recordings. The meeting-transcription edge fn was fully
