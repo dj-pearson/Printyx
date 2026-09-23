@@ -112,7 +112,7 @@ import {
   integrationRoutes,
 } from './domains/integrations';
 
-import { registerTaskRoutes, registerTaskWorkflowRoutes } from './domains/tasks';
+import { registerTaskWorkflowRoutes } from './domains/tasks';
 
 import { registerSeoCoreRoutes, seoRoutes, googleIndexingRoutes } from './domains/content';
 
@@ -370,7 +370,7 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   app.use(integrationRoutes);
 
   // ─── Task Management ──────────────────────────────────────────────
-  registerTaskRoutes(app);
+  // Round 160: registerTaskRoutes (routes-tasks.ts, /api/projects) retired; proxied.
   // registerEnhancedTaskRoutes was called here and is DELETED (WF-P-07).
   //
   // One handler was left in it, GET /api/projects/enhanced, and it could not

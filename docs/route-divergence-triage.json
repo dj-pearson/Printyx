@@ -89,10 +89,6 @@
       "verdict": "parity",
       "reason": "SEC-EDGE-001's catalogue family. The Express twin in routes-products-crud.ts / routes-product-models.ts checks a permission nobody reaches; the edge function carries the equivalent gate on operations.inventory.manage. Verified round 121 by counting gate calls in each function. The Express handlers are redundant rather than load-bearing."
     },
-    "projects": {
-      "verdict": "unexamined",
-      "reason": "SEC-EDGE-001 batch 16 deleted projects-enhanced as a subset of the reachable projects function. routes-tasks.ts and routes-templates.ts register here and are not examined."
-    },
     "quickbooks": {
       "verdict": "express-only-capability",
       "reason": "Round 126 read both. Express runs the real Intuit OAuth flow and holds the access token, refresh token and company id in req.session, under its own comment 'in a real app, save to database' - so it works on a developer machine and writes no row. The edge function read `integrations` and `quickbooks_mappings`, both phantom, DISCARDED the error on GET /status and answered connected:false at 200, so every dealer in production was told they had not connected QuickBooks whether or not they had. Both hosts also reported a sync that persists nothing: the edge branches never called Intuit ('in production, this would call the QuickBooks API') and Express called it, transformed the result and dropped it ('in a real implementation, save to database here') while answering 'Successfully synced N customers'. All sync paths on BOTH hosts now answer 501 SYNC_NOT_IMPLEMENTED from shared/quickbooks-availability.ts, and the edge status answers connected:null with CONNECTION_NOT_STORED. WHAT REMAINS IS THE CAPABILITY GAP: Express can start and complete the OAuth flow and production cannot, because the state and the tokens are session-bound - GET /quickbooks/connect has 501'd with OAUTH_STATE_IS_SESSION_BOUND since EDGE-002h for that reason. Closing it means a credential store plus moving OAuth state into a table, which is a redesign rather than a port."

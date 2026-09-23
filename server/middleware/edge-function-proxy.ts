@@ -1027,6 +1027,12 @@ export function registerEdgeFunctionProxy(app: any) {
     // reads project_templates now and the Express router is deleted.
     '/api/templates': 'templates',
 
+    // Round 160. routes-tasks.ts kept /api/projects off the proxy because
+    // /api/projects/:id/create-template lived on Express; round 159 deleted that
+    // (no caller). Express also had no PATCH /:id, which HandoffProject uses
+    // for milestones, so dev 404'd it. The edge function serves every path.
+    '/api/projects': 'projects',
+
     // PROD-011. Full parity: all EIGHT Express endpoints (inbound, submit,
     // submissions list/:id/approve/reject, GET/PUT settings), which is also
     // everything MeterReadReview.tsx calls. This pipeline writes billing rows,

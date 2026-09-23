@@ -68,7 +68,10 @@ describe('the collisions it exposed are gone', () => {
     // claims the path, so it is asserted over the tree: a second root-mounted
     // router declaring a bare '/projects' would be the same collision wearing
     // a different filename.
-    expect(read('server/routes-tasks.ts')).toMatch(/app\.get\('\/api\/projects'/);
+    // Round 160: the one owner is the edge function, reached through the proxy.
+    expect(read('server/middleware/edge-function-proxy.ts')).toMatch(
+      /'\/api\/projects': 'projects'/,
+    );
 
     const claimants: string[] = [];
     const visit = (dir: string) => {
