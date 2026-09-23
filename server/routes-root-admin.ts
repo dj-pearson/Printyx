@@ -839,7 +839,12 @@ import { loginAttempts } from '../shared/auth-schema';
  * GET /root-admin/security/locked-accounts
  * List all currently locked accounts
  */
-router.get('/security/locked-accounts', async (_req, res) => {
+// Round 167: both security handlers below carried no requireRootAdmin while
+// every other handler in this file does, so any authenticated member of any
+// tenant could list every locked account on the platform (email, attempt
+// count, last IP) and clear the lockout on any of them - login_attempts has
+// no tenant_id, and the brute-force lockout is exactly what unlock removes.
+router.get('/security/locked-accounts', requireRootAdmin, async (_req, res) => {
   try {
     const now = new Date();
     const locked = await db
@@ -874,7 +879,7 @@ router.get('/security/locked-accounts', async (_req, res) => {
  * POST /root-admin/security/unlock-account
  * Unlock a locked account
  */
-router.post('/security/unlock-account', async (req, res) => {
+router.post('/security/unlock-account', requireRootAdmin, async (req, res) => {
   try {
     const { email } = z.object({ email: z.string().email() }).parse(req.body);
     const normalizedEmail = email.toLowerCase().trim();

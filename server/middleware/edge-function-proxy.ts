@@ -1204,6 +1204,19 @@ export function registerEdgeFunctionProxy(app: any) {
     // entry would take those from working-in-dev to 404-in-dev. The note in
     // server/routes-registry.ts that set that condition is the reason these two
     // are here and a third is not.
+    // ROUND 167. The signups CRM and the command centre's pending-tasks read
+    // five /api/root-admin paths that ONLY the edge function serves: the
+    // Express signups router is mounted at /api/root-admin/crm, which nothing
+    // calls, and routes-root-admin.ts has none of the five. So all five 404'd
+    // on every developer machine while working in production. Scoped rather
+    // than the whole prefix, because Express still owns system-resources,
+    // database-tables and execute-query, which the edge function refuses with
+    // REQUIRES_DIRECT_SQL on purpose.
+    '/api/root-admin/signups': { fn: 'root-admin', pathPrefix: '/signups' },
+    '/api/root-admin/signups-analytics': { fn: 'root-admin', pathPrefix: '/signups-analytics' },
+    '/api/root-admin/trial-funnel': { fn: 'root-admin', pathPrefix: '/trial-funnel' },
+    '/api/root-admin/high-value-signups': { fn: 'root-admin', pathPrefix: '/high-value-signups' },
+    '/api/root-admin/pending-tasks': { fn: 'root-admin', pathPrefix: '/pending-tasks' },
     '/api/mobile/time-tracking': { fn: 'mobile', pathPrefix: '/time-tracking' },
     '/api/mobile/service-tickets': { fn: 'mobile', pathPrefix: '/service-tickets' },
     //
