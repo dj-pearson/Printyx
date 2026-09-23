@@ -121,10 +121,6 @@
       "verdict": "unexamined",
       "reason": "server/routes-service-analysis.ts registers both this and /api/parts-orders; supabase/functions/service-analysis/ serves it in production. Not read on either side."
     },
-    "software-products": {
-      "verdict": "unexamined",
-      "reason": "Round 85 gated this edge function's writes after it survived two family sweeps ungated. The Express twin is not examined."
-    },
     "subscriptions": {
       "verdict": "unexamined",
       "reason": "LAUNCH-013. supabase/functions/subscriptions/ is the management surface and reads tenant_subscriptions and usage_metrics; routes-subscriptions.ts mounts twelve gates that cannot run in production. The gates are recorded in docs/dead-policy-gates-baseline.json; the read/write surfaces themselves are not compared."

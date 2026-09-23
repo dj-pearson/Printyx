@@ -8,5 +8,8 @@ export { registerProductsCrudRoutes } from '../routes-products-crud';
 export { registerCatalogCsvRoutes } from '../routes-catalog-csv';
 export { registerProductModelsRoutes } from '../routes-product-models';
 export { registerProductPricingRoutes } from '../routes-product-pricing';
-export { registerSoftwareProductsRoutes } from '../routes-software-products';
+// Round 154: registerSoftwareProductsRoutes (routes-software-products.ts)
+// retired. It had no role check on writes and no /import or /dedupe branch,
+// both of which SoftwareProducts.tsx calls, so dev 404'd on them. The prefix is
+// proxied to supabase/functions/software-products/.
 export { registerManufacturerIntegrationRoutes } from '../routes-manufacturer-integration';

@@ -67,7 +67,6 @@ import {
   registerCatalogCsvRoutes,
   registerProductModelsRoutes,
   registerProductPricingRoutes,
-  registerSoftwareProductsRoutes,
   registerManufacturerIntegrationRoutes,
 } from './domains/products';
 
@@ -871,7 +870,7 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   registerTechnicianManagementRoutes(app);
   registerProductModelsRoutes(app);
   registerProductPricingRoutes(app);
-  registerSoftwareProductsRoutes(app);
+  // Round 154: registerSoftwareProductsRoutes retired; /api/software-products is proxied.
   // registerLeadAssignmentRoutes(app) - DELETED (SEC-EDGE-001 batch 15):
   // 16 handlers across six prefixes no client tree calls, every one covered by
   // supabase/functions/lead-assignment/ and aliased there in server.ts.

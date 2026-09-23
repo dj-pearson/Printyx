@@ -29,3 +29,18 @@ describe('audit logs', () => {
     expect(fn).not.toMatch(/x-tenant-id/);
   });
 });
+
+describe('software products', () => {
+  it('is proxied and has no Express router left', () => {
+    const proxy = stripComments(readFileSync('server/middleware/edge-function-proxy.ts', 'utf8'));
+    expect(proxy).toMatch(/'\/api\/software-products': 'software-products'/);
+    expect(existsSync('server/routes-software-products.ts')).toBe(false);
+  });
+
+  it('the edge function serves every path the page calls', () => {
+    const fn = stripComments(readFileSync('supabase/functions/software-products/index.ts', 'utf8'));
+    for (const seg of ['import', 'dedupe', 'bulk-delete']) {
+      expect(fn).toContain(`'${seg}'`);
+    }
+  });
+});

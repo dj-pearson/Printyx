@@ -1022,6 +1022,12 @@ export function registerEdgeFunctionProxy(app: any) {
     // is what production runs and covers the one path the viewer calls.
     '/api/audit-logs': 'audit-logs',
 
+    // Round 154. Express served this prefix from routes-software-products.ts:
+    // no role check on writes (the edge function requires
+    // operations.inventory.manage, SEC-EDGE-001 round 74), and no /import or
+    // /dedupe branch although the page calls both, so dev 404'd on them.
+    '/api/software-products': 'software-products',
+
     // PROD-011. Full parity: all EIGHT Express endpoints (inbound, submit,
     // submissions list/:id/approve/reject, GET/PUT settings), which is also
     // everything MeterReadReview.tsx calls. This pipeline writes billing rows,
