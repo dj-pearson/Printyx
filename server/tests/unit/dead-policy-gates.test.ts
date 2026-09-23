@@ -120,9 +120,12 @@ describe('the baseline is a worklist', () => {
     }
   });
 
-  it('records the two LAUNCH-013 gaps by name', () => {
+  it('records the LAUNCH-013 gap by name, and the one round 170 corrected', () => {
     expect(baseline.accepted['server/routes-crm-core.ts::enforceUsageLimits']).toMatch(/GAP/);
-    expect(baseline.accepted['server/routes-csv-import.ts::requireFeature']).toMatch(/GAP/);
+    // Not a gap: the edge function serves no AI path for the flag to gate.
+    expect(baseline.accepted['server/routes-csv-import.ts::requireFeature']).toMatch(
+      /COVERED BY ABSENCE/,
+    );
   });
 });
 

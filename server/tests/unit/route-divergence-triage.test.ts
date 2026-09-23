@@ -55,7 +55,9 @@ describe('every divergent domain carries a verdict (round 124)', () => {
   it('records the two findings that were in the list all along', () => {
     expect(entries.leads.verdict).toBe('divergent');
     expect(entries.leads.reason).toContain('enforceUsageLimits');
-    expect(entries.import.verdict).toBe('divergent');
+    // Round 170 corrected `import`: the edge function has no AI branch, so the
+    // plan flag gates nothing there (import-ai-plan-gate.test.ts holds that).
+    expect(entries.import.verdict).toBe('express-only-capability');
     expect(entries.import.reason).toContain('ai_csv_import');
     expect(entries.gdpr.verdict).toBe('resolved');
   });

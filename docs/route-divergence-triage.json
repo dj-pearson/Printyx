@@ -26,8 +26,8 @@
       "reason": "Round 123. The Express service erased a data subject's uploaded objects across six buckets with Art. 17(3) exemptions named per bucket; the edge function anonymised two tables of rows, touched no storage, and answered 'User data has been anonymized'. The core is shared/gdpr-storage-erasure.ts now and both hosts import it."
     },
     "import": {
-      "verdict": "divergent",
-      "reason": "LAUNCH-013. requireFeature('ai_csv_import') gates /api/import/ai/map-columns and /ai-process on Express only; supabase/functions/import/ has role checks but no feature or plan check, so the AI import paths are open to any tenant regardless of plan in production. OPEN GAP."
+      "verdict": "express-only-capability",
+      "reason": "CORRECTED round 170. This entry used to say requireFeature('ai_csv_import') gated the AI import paths on Express only, leaving them open to any tenant regardless of plan in production. Reading supabase/functions/import/ says otherwise: it has no AI client at all. GET /ai/status answers available:false, POST /ai/map-columns answers 503 'AI refinement is not available on this deployment', and /jobs/:id/ai-process has no branch, so there is nothing a plan flag would gate. The real difference is capability, not policy: Express can run AI column mapping for a plan that has ai_csv_import, and production cannot run it for anyone. import-ai-plan-gate.test.ts fails the day the edge function gains an AI branch without a feature or plan check, which is when this becomes a policy gap."
     },
     "integrations": {
       "verdict": "divergent",
