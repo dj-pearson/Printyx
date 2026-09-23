@@ -61,10 +61,6 @@
       "verdict": "parity",
       "reason": "SEC-EDGE-001's catalogue family. The Express twin in routes-products-crud.ts / routes-product-models.ts checks a permission nobody reaches; the edge function carries the equivalent gate on operations.inventory.manage. Verified round 121 by counting gate calls in each function. The Express handlers are redundant rather than load-bearing."
     },
-    "manufacturer-integrations": {
-      "verdict": "unexamined",
-      "reason": "Round 74 added redaction and a role gate to the edge function's credential reads. server/routes-manufacturer-integration.ts has not been checked for the same exposure."
-    },
     "meter-readings": {
       "verdict": "resolved",
       "reason": "Round 122. The edge function had zero role checks while routes-products-crud.ts guarded a permission nobody reaches, and its PATCH field map named five columns that do not exist. PATCH and DELETE now require a supervisor and the write goes through _shared/meter-reading-write.ts."

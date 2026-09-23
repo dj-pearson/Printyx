@@ -1033,6 +1033,12 @@ export function registerEdgeFunctionProxy(app: any) {
     // for milestones, so dev 404'd it. The edge function serves every path.
     '/api/projects': 'projects',
 
+    // Round 161. routes-manufacturer-integration.ts served dev with no role
+    // gate on creating, editing, deleting, testing or discovering through a
+    // dealer's manufacturer API credentials; the edge function requires a
+    // manager and serves every path the page calls.
+    '/api/manufacturer-integrations': 'manufacturer-integrations',
+
     // PROD-011. Full parity: all EIGHT Express endpoints (inbound, submit,
     // submissions list/:id/approve/reject, GET/PUT settings), which is also
     // everything MeterReadReview.tsx calls. This pipeline writes billing rows,

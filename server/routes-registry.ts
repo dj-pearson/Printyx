@@ -67,7 +67,6 @@ import {
   registerCatalogCsvRoutes,
   registerProductModelsRoutes,
   registerProductPricingRoutes,
-  registerManufacturerIntegrationRoutes,
 } from './domains/products';
 
 import {
@@ -684,7 +683,7 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   // table onto the real user_notifications.
 
   // ─── Monitoring & Service ─────────────────────────────────────────
-  registerManufacturerIntegrationRoutes(app);
+  // Round 161: registerManufacturerIntegrationRoutes retired; the prefix is proxied.
   registerClientMonitoringRoutes(app);
   // routes-customer-portal.ts was mounted here and is DELETED (PROD-008b).
   // 1,701 lines, 25 handlers. /api/customer-portal is in crmProxies, so the

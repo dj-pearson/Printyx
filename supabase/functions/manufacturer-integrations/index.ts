@@ -69,6 +69,40 @@ async function resolveIntegration(admin: any, tenantId: string, ref: string) {
   return { integration: data ?? null, error: error ?? null };
 }
 
+/**
+ * Round 161. integration_audit_logs is what the page's audit tab reads, and its
+ * only writer was server/manufacturer-integration-service.ts - a Node service
+ * reachable only from the dev Express router, deleted in the same round. So in
+ * production the audit tab has always been empty, which reads as "nothing has
+ * been done with this integration". Test and discover now record their outcome
+ * here. A failure to record is logged and does not fail the action: the
+ * action happened, and a missing log line is the smaller loss.
+ */
+async function recordIntegrationAudit(
+  // deno-lint-ignore no-explicit-any
+  admin: any,
+  entry: {
+    tenantId: string;
+    integrationId: string;
+    userId: string;
+    action: string;
+    status: 'success' | 'error' | 'warning';
+    message: string;
+    details?: Record<string, unknown>;
+  },
+): Promise<void> {
+  const { error } = await admin.from('integration_audit_logs').insert({
+    tenant_id: entry.tenantId,
+    integration_id: entry.integrationId,
+    user_id: entry.userId,
+    action: entry.action,
+    status: entry.status,
+    message: entry.message,
+    details: entry.details ?? {},
+  });
+  if (error) console.error('Failed to record integration audit entry:', error.message);
+}
+
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
@@ -503,6 +537,19 @@ export default async function handler(req: Request) {
       if (!hasCredentials) problems.push('no credentials are stored');
       if (!integration.api_endpoint) problems.push('no API endpoint is configured');
 
+      await recordIntegrationAudit(admin, {
+        tenantId,
+        integrationId: integration.id,
+        userId: user.id,
+        action: 'test',
+        status: problems.length === 0 ? 'success' : 'warning',
+        message:
+          problems.length === 0
+            ? 'Configuration present; connectivity not tested'
+            : `Configuration incomplete: ${problems.join(', ')}`,
+        details: { connectivityVerified: false },
+      });
+
       return createCorsResponse(
         {
           success: problems.length === 0,
@@ -554,6 +601,14 @@ export default async function handler(req: Request) {
         // devices" and "could not reach the vendor" are different answers, and
         // the Express version reported them identically.
         console.error('Device discovery failed:', err);
+        await recordIntegrationAudit(admin, {
+          tenantId,
+          integrationId: integration.id,
+          userId: user.id,
+          action: 'discover',
+          status: 'error',
+          message: err instanceof Error ? err.message : String(err),
+        });
         return createCorsResponse(
           {
             error: 'Device discovery failed',
@@ -565,6 +620,14 @@ export default async function handler(req: Request) {
       }
 
       if (!devices.length) {
+        await recordIntegrationAudit(admin, {
+          tenantId,
+          integrationId: integration.id,
+          userId: user.id,
+          action: 'discover',
+          status: 'warning',
+          message: 'The integration answered with no devices',
+        });
         return createCorsResponse(
           {
             registered: 0,
@@ -654,6 +717,15 @@ export default async function handler(req: Request) {
           .select('id');
         if (insertError) {
           console.error('Error registering devices:', insertError);
+          await recordIntegrationAudit(admin, {
+            tenantId,
+            integrationId: integration.id,
+            userId: user.id,
+            action: 'discover',
+            status: 'error',
+            message: 'Devices were discovered but could not be registered',
+            details: { discovered: devices.length, updated },
+          });
           return createCorsResponse(
             {
               error: 'Devices were discovered but could not be registered',
@@ -666,6 +738,16 @@ export default async function handler(req: Request) {
         }
         created = inserted?.length ?? 0;
       }
+
+      await recordIntegrationAudit(admin, {
+        tenantId,
+        integrationId: integration.id,
+        userId: user.id,
+        action: 'discover',
+        status: 'success',
+        message: `Discovered ${devices.length} device(s): ${created} new, ${updated} updated`,
+        details: { discovered: devices.length, created, updated },
+      });
 
       return createCorsResponse(
         {

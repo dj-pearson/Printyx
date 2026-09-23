@@ -17,7 +17,7 @@
  * control which columns to hide.
  */
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { getTableConfig } from 'drizzle-orm/pg-core';
 import { companyPricingSettings } from '@shared/product-pricing-schema';
@@ -376,7 +376,6 @@ describe('the edge handlers use the contracts', () => {
   const MI = stripComments(read('supabase/functions/manufacturer-integrations/index.ts'));
   const PRICING = stripComments(read('supabase/functions/pricing/index.ts'));
   const SETTINGS = stripComments(read('supabase/functions/settings/index.ts'));
-  const EXPRESS_MI = stripComments(read('server/routes-manufacturer-integration.ts'));
   const EXPRESS_PRICING = stripComments(read('server/routes-pricing.ts'));
 
   /** The slice of a branch, bounded by the next branch rather than a count. */
@@ -410,14 +409,15 @@ describe('the edge handlers use the contracts', () => {
     expect(resolve).not.toMatch(/toIntegrationView/);
   });
 
-  it('express redacts too, on all four of its response paths', () => {
-    expect(EXPRESS_MI).toMatch(/toManufacturerIntegrationViews\(integrations\)/);
-    expect(EXPRESS_MI).toMatch(/toManufacturerIntegrationView\(integration\)/);
-    expect(EXPRESS_MI).toMatch(/toManufacturerIntegrationView\(integration\[0\]\)/);
-    expect(EXPRESS_MI).toMatch(/toManufacturerIntegrationView\(updatedIntegration\)/);
-    // And nothing answers with a bare row any more.
-    expect(EXPRESS_MI).not.toMatch(/res\.json\(integrations\)/);
-    expect(EXPRESS_MI).not.toMatch(/res\.json\(updatedIntegration\)/);
+  it('express no longer answers at all: the prefix is proxied (round 161)', () => {
+    // The Express copy redacted through the same view, and had no role gate on
+    // its writes. It is deleted, so the only responses are the edge function's.
+    expect(existsSync(join(process.cwd(), 'server/routes-manufacturer-integration.ts'))).toBe(
+      false,
+    );
+    expect(read('server/middleware/edge-function-proxy.ts')).toMatch(
+      /'\/api\/manufacturer-integrations': 'manufacturer-integrations'/,
+    );
   });
 
   it('connect builds its row through the plan and refuses an invalid one', () => {
