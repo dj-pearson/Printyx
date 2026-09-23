@@ -41,11 +41,26 @@ describe('the router is gone', () => {
     expect(registry).not.toMatch(/analyticsRouter/);
   });
 
-  it('leaves no crmProxies entry behind for the prefix', () => {
-    // Proxying /api/analytics would forward the whole prefix to an edge
-    // function that answers none of these four paths.
-    const proxy = read('server/middleware/edge-function-proxy.ts');
-    expect(proxy).not.toMatch(/'\/api\/analytics'\s*:/);
+  it('no component still asks for the four fixture paths, so proxying the prefix is safe', () => {
+    // This used to forbid a crmProxies entry, because proxying would have sent
+    // these four paths to an edge function that answers none of them. The
+    // components stopped calling them (they render NotConnectedState), so the
+    // property that matters is that nothing asks. Round 162 proxied the prefix
+    // once nothing on Express served it, or AdvancedAnalyticsDashboard's
+    // /dashboard would 404 in dev.
+    for (const src of [conversion, trends]) {
+      for (const path of [
+        'conversion-metrics',
+        'activity-nudges',
+        'control-charts',
+        'trend-widgets',
+      ]) {
+        expect(src).not.toContain(`/api/analytics/${path}`);
+      }
+    }
+    expect(read('server/middleware/edge-function-proxy.ts')).toMatch(
+      /'\/api\/analytics': 'analytics'/,
+    );
   });
 });
 

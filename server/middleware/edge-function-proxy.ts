@@ -1039,6 +1039,11 @@ export function registerEdgeFunctionProxy(app: any) {
     // manager and serves every path the page calls.
     '/api/manufacturer-integrations': 'manufacturer-integrations',
 
+    // Round 162. Nothing on Express serves /api/analytics any more (the only
+    // registrant was a mock /analytics/writing on a root-mounted router, deleted),
+    // so without this AdvancedAnalyticsDashboard's /dashboard 404'd in dev.
+    '/api/analytics': 'analytics',
+
     // PROD-011. Full parity: all EIGHT Express endpoints (inbound, submit,
     // submissions list/:id/approve/reject, GET/PUT settings), which is also
     // everything MeterReadReview.tsx calls. This pipeline writes billing rows,

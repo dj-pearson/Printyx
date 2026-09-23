@@ -132,10 +132,14 @@ describe('the baseline names only files that exist', () => {
   });
 
   it('is a real baseline, not an empty one passing vacuously', () => {
+    // A floor on the DEBT fails every time the debt shrinks, which is the
+    // outcome this ratchet exists to produce (round 162: deleting one router
+    // took it 50 -> 49 files). The vacuous case it guards against is an empty
+    // or truncated file, so the floor sits far below today's count.
     const files = Object.keys(baseline.counts);
-    expect(files.length).toBeGreaterThanOrEqual(50);
+    expect(files.length).toBeGreaterThanOrEqual(10);
     const total = Object.values(baseline.counts).reduce((a: number, b) => a + (b as number), 0);
-    expect(total).toBeGreaterThan(1000);
+    expect(total).toBeGreaterThan(100);
   });
 
   it('keeps the note that says what the entries mean', () => {

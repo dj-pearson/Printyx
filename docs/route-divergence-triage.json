@@ -1,10 +1,6 @@
 {
   "note": "A verdict and a reason for every ambiguous-ownership domain in docs/route-ownership-baseline.json's bothDivergent list: Express registers handlers for it, an edge function serves it, and nothing proxies between them, so dev and production run different code for the same path. 'unexamined' is a permitted verdict and is the point - it is what stops a guess from being written down as a finding, and this file exists because two priority-1 stories (LAUNCH-013, LEGAL-004) sat inside the flat list indistinguishable from the entries where the divergence is harmless. VERDICTS: parity (both hosts checked, same behaviour); divergent (a named behavioural difference that matters in production); resolved (was divergent, ported, with the round named); express-only-capability (Express does something the edge does not and that is a recorded gap); unexamined (nobody has compared them). Added round 124. A domain that stops being ambiguous - usually because the prefix was proxied - LEAVES this file, so the 'resolved' count is not a history of everything ever fixed; it is the domains that were ported while the divergence itself remains. Round 134 dropped catalog and enabled-products on porting them, and dropped mobile (round 113) and onboarding (round 133), whose scoped proxy entries had made them unambiguous without anyone tightening docs/route-ownership-baseline.json - a stale entry here is pre-forgiveness for whatever lands under that name next.",
   "entries": {
-    "analytics": {
-      "verdict": "unexamined",
-      "reason": "server/analytics-routes.ts was DELETED by PA-040 (184 lines, four handlers, no database import). Whatever Express still registers under this domain has not been compared to the edge function."
-    },
     "auto-supply-replenishment": {
       "verdict": "unexamined",
       "reason": "AUDIT-032 records all three of this feature's input tables as unwritable until migration 0062. Which host serves what has not been compared."

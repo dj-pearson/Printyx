@@ -641,7 +641,12 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
     // goes to /api/meeting-transcription, which the proxy sends to the edge
     // function. The edge function also serves /recordings/:id/consent, which this
     // router never had (LEGAL-009).
-    './routes/ai-documentation-routes',
+    // './routes/ai-documentation-routes' - retired (round 162). Mounted at the
+    // /api ROOT, its /knowledge/articles, /analytics/writing and /document-types
+    // handlers were mocks over services/ai-documentation-service.ts (invented
+    // writing analytics, rows stamped tenantId 'mock-tenant') with no caller in
+    // any client tree, and /analytics/writing is what put /api/analytics on two
+    // hosts. Router and service deleted.
     './routes/ai-search-knowledge-routes',
     // './routes/ai-employee-routes' — retired (PROD-008b). All ten handlers were
     // shadowed by the /api/ai-employees proxy and supabase/functions/ai-employee/

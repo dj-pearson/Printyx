@@ -12,7 +12,6 @@
     "server/routes/admin-seed-routes.ts": 19,
     "server/routes/advanced-billing-routes.ts": 120,
     "server/routes/advanced-scheduling-routes.ts": 15,
-    "server/routes/ai-documentation-routes.ts": 5,
     "server/routes/ai-routes-simple.ts": 1,
     "server/routes/ai-search-knowledge-routes.ts": 5,
     "server/routes/automated-billing-routes.ts": 39,
