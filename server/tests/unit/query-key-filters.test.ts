@@ -27,7 +27,8 @@ const code = (p: string) =>
 
 describe('the eleven filters moved into the query string', () => {
   const cases: Array<[string, string]> = [
-    ['client/src/pages/AdvancedAnalyticsDashboard.tsx', '/api/analytics/dashboard?period='],
+    // AdvancedAnalyticsDashboard was deleted in round 209 (it read eleven
+    // sections no endpoint sends and crashed on load).
     [
       'client/src/pages/CustomerSuccessManagement.tsx',
       '/api/customer-success/usage-analytics?period=',

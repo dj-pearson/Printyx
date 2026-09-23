@@ -151,18 +151,23 @@ export default async function handler(req: Request) {
 
     // GET /analytics/sales - Sales-specific metrics
     if (req.method === 'GET' && metricType === 'sales') {
-      const quotes = await admin
-        .from('quotes')
-        .select('status, total_amount, created_at, accepted_date, created_by')
-        .eq('tenant_id', tenantId)
-        .gte('created_at', startDate.toISOString());
+      // Round 209: this awaited the builder and then called .length/.filter on
+      // the { data, error } response, so every request threw. Paged like the
+      // dashboard and service branches beside it.
+      const quotes = await fetchAllRows<any>(() =>
+        admin
+          .from('quotes')
+          .select('status, total_amount, created_at, accepted_date, created_by')
+          .eq('tenant_id', tenantId)
+          .gte('created_at', startDate.toISOString()),
+      );
 
       const totalQuotes = quotes?.length || 0;
       const wonQuotes = quotes?.filter((q) => q.status === 'accepted').length || 0;
       const winRate = totalQuotes > 0 ? (wonQuotes / totalQuotes) * 100 : 0;
 
       const revenue =
-        quotes.data
+        quotes
           ?.filter((q) => q.status === 'accepted')
           .reduce((sum, q) => sum + parseFloat(q.total_amount || '0'), 0) || 0;
 

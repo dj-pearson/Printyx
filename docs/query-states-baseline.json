@@ -1,6 +1,6 @@
 {
   "note": "CR-033 query-state ratchet. scripts/check-query-states.mjs fails CI when a REACHABLE component calls useQuery and neither reads isError nor uses the shared QueryState / QueryStates wrapper (client/src/components/ui/query-state.tsx). Such a component renders the same markup whether the request succeeded, is in flight, or failed. Shrink this list, never grow it: node scripts/check-query-states.mjs --update-baseline.",
-  "count": 179,
+  "count": 176,
   "allowed": [
     "client/src/components/ContactManager.tsx",
     "client/src/components/address-book/ImportWizard.tsx",
@@ -37,7 +37,6 @@
     "client/src/pages/AIEmployeeDashboard.tsx",
     "client/src/pages/AccountsPayable.tsx",
     "client/src/pages/AccountsReceivable.tsx",
-    "client/src/pages/AdvancedAnalyticsDashboard.tsx",
     "client/src/pages/AdvancedBillingEngine.tsx",
     "client/src/pages/ApiKeyManagement.tsx",
     "client/src/pages/ApolloLeadEnrichment.tsx",
@@ -69,7 +68,6 @@
     "client/src/pages/DatabaseManagement.tsx",
     "client/src/pages/DealDeskDashboard.tsx",
     "client/src/pages/DemoScheduling.tsx",
-    "client/src/pages/DeploymentReadiness.tsx",
     "client/src/pages/DeviceMonitoring.tsx",
     "client/src/pages/DocumentBuilder.tsx",
     "client/src/pages/ESignatureIntegration.tsx",
@@ -149,7 +147,6 @@
     "client/src/pages/Supplies.tsx",
     "client/src/pages/SupplyOrders.tsx",
     "client/src/pages/SupplyRunway.tsx",
-    "client/src/pages/SystemIntegrations.tsx",
     "client/src/pages/TaskHub.tsx",
     "client/src/pages/TechnicianManagement.tsx",
     "client/src/pages/UniversalProductImport.tsx",
