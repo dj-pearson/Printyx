@@ -12,6 +12,7 @@ import { errorResponse, jsonResponse } from '../../_shared/http.ts';
 import type { HandlerCtx } from '../_context.ts';
 import { rangeFromQuery } from '../_date.ts';
 import { cached, paramKey } from '../_cache.ts';
+import { OPEN_TICKET_STATUSES } from '../../_shared/service-ticket-vocabulary.ts';
 import { fetchAllRows } from '../../_shared/paged-select.ts';
 
 const DASHBOARDS_TTL_SECONDS = 300; // 5 min
@@ -67,18 +68,9 @@ async function cachedReport(
 }
 
 // Round 202: the open-ticket counts listed 'in-progress' (hyphenated), which
-// migration 0078 normalised away - the vocabulary is below - so tickets that
-// were scheduled, en route, on site, in progress or on hold never counted as
-// open.
-const OPEN_TICKET_STATUSES = [
-  'open',
-  'assigned',
-  'scheduled',
-  'en_route',
-  'on_site',
-  'in_progress',
-  'on_hold',
-];
+// migration 0078 normalised away, so tickets that were scheduled, en route, on
+// site, in progress or on hold never counted as open. The canonical list is
+// _shared/service-ticket-vocabulary.ts.
 
 // ─── executive-summary ─────────────────────────────────────────────────────
 

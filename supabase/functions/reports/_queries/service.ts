@@ -15,6 +15,7 @@
 // the frontend bindings still resolve, but null out the missing fields.
 
 import type { SupabaseClient } from '../../_shared/db.ts';
+import { OPEN_TICKET_STATUSES } from '../_ticket-buckets.ts';
 
 export interface TicketRow {
   id: string;
@@ -80,7 +81,9 @@ export async function fetchDispatchQueue(
   // and merge.
   const baseFields =
     'id, ticket_number, customer_id, equipment_id, priority, status, assigned_technician_id, scheduled_date, estimated_duration, resolved_at, labor_hours, created_at';
-  const openStatuses = ['open', 'assigned', 'in-progress', 'scheduled'];
+  // Every outstanding status (round 206): the hyphenated 'in-progress' is not
+  // in the vocabulary, so tickets being worked dropped out of this list.
+  const openStatuses = OPEN_TICKET_STATUSES;
 
   let assignedQuery = db
     .from('service_tickets')

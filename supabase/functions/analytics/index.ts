@@ -13,6 +13,7 @@ import {
   summariseCloseRate,
   summariseTicketTurnaround,
 } from '../../../shared/mobile-dashboard.ts';
+import { isOpenStatus } from '../_shared/service-ticket-vocabulary.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -133,9 +134,7 @@ export default async function handler(req: Request) {
         },
         tickets: {
           total: tickets?.length || 0,
-          open:
-            tickets?.filter((t) => ['open', 'assigned', 'in-progress'].includes(t.status)).length ||
-            0,
+          open: tickets?.filter((t) => isOpenStatus(t.status)).length || 0,
           closed: tickets?.filter((t) => t.status === 'completed').length || 0,
         },
         activities: {

@@ -54,18 +54,14 @@ describe('ExecutiveDashboard page', () => {
 
 describe('reports dashboards handler', () => {
   it('counts every open ticket status and none of the retired hyphenated one', () => {
-    const m = SERVER.match(/const OPEN_TICKET_STATUSES = \[([\s\S]*?)\];/);
-    expect(m).not.toBeNull();
-    const statuses = [...m![1].matchAll(/'([a-z_]+)'/g)].map((x) => x[1]).sort();
-    expect(statuses).toEqual(
-      ['assigned', 'en_route', 'on_hold', 'on_site', 'open', 'in_progress', 'scheduled'].sort(),
+    // Round 206: the list moved to the one vocabulary; this file must use it
+    // and keep no copy that can drift.
+    expect(SERVER).toMatch(
+      /import \{ OPEN_TICKET_STATUSES \} from '\.\.\/\.\.\/_shared\/service-ticket-vocabulary\.ts';/,
     );
+    expect(SERVER).not.toMatch(/const OPEN_TICKET_STATUSES\s*=/);
     expect(SERVER).not.toContain("'in-progress'");
-    // Both open-ticket counts go through the list.
     expect(SERVER.match(/OPEN_TICKET_STATUSES\.includes\(t\.status\)/g)).toHaveLength(2);
-    // Every status is in the migration 0078 vocabulary.
-    const mig = readFileSync('drizzle/migrations/0078_wf_v05_ticket_vocabulary.sql', 'utf8');
-    for (const s of statuses) expect(mig).toContain(`'${s}'`);
   });
 
   it('reports no territory revenue rather than zero, and says so', () => {

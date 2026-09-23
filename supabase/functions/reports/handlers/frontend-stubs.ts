@@ -17,6 +17,11 @@ import type { HandlerCtx } from '../_context.ts';
 import { cached, paramKey } from '../_cache.ts';
 import { fetchAllRows } from '../../_shared/paged-select.ts';
 import {
+  isOpenStatus,
+  normalizeTicketStatus,
+  OPEN_TICKET_STATUSES,
+} from '../../_shared/service-ticket-vocabulary.ts';
+import {
   rollUpCustomerRevenue,
   type RollupInvoice,
 } from '../../../../shared/customer-revenue-rollup.ts';
@@ -667,7 +672,10 @@ async function technicianCapacity(ctx: HandlerCtx): Promise<unknown> {
       .from('service_tickets')
       .select('assigned_technician_id, status')
       .eq('tenant_id', auth.tenantId)
-      .in('status', ['open', 'assigned', 'in-progress']),
+      // Every outstanding status. The hyphenated 'in-progress' is not in the
+      // vocabulary, so scheduled, en route, on site, in progress and on hold
+      // tickets never counted as a technician's load.
+      .in('status', OPEN_TICKET_STATUSES),
   ]);
 
   const techs = (techRes.data ?? []) as Array<{
@@ -695,9 +703,10 @@ async function technicianCapacity(ctx: HandlerCtx): Promise<unknown> {
       technicianId: t.id,
       name: `${t.first_name ?? ''} ${t.last_name ?? ''}`.trim() || 'Unknown',
       currentUtilization: utilization,
-      forecastedUtilization: utilization,
+      // Nothing forecasts utilisation; this was a copy of the current figure.
+      forecastedUtilization: null,
       skills: t.skills ?? [],
-      territory: '',
+      territory: null, // technicians carry no territory column
       upcomingAssignments: open,
       recommendedActions: utilization > 90 ? ['Reduce ticket load'] : [],
     };
@@ -733,8 +742,8 @@ async function serviceSummary(ctx: HandlerCtx): Promise<unknown> {
     resolved_at: string | null;
   }>;
 
-  const completed = list.filter((t) => t.status === 'completed' || t.status === 'closed');
-  const open = list.filter((t) => t.status !== 'completed' && t.status !== 'closed');
+  const completed = list.filter((t) => normalizeTicketStatus(t.status) === 'completed');
+  const open = list.filter((t) => isOpenStatus(t.status));
   const resolutionTimes = completed
     .filter((t) => t.resolved_at)
     .map((t) => new Date(t.resolved_at!).getTime() - new Date(t.created_at).getTime());
@@ -744,7 +753,7 @@ async function serviceSummary(ctx: HandlerCtx): Promise<unknown> {
       ? Math.round(
           resolutionTimes.reduce((s, t) => s + t, 0) / resolutionTimes.length / (1000 * 60 * 60),
         )
-      : 0;
+      : null; // nothing resolved in the window: no average, not 0 hours
 
   return {
     totalTickets: list.length,

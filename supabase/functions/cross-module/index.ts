@@ -157,7 +157,9 @@ export default async function handler(req: Request) {
           title: `${serviceType || 'Service'} Request`,
           description: `Auto-generated from cross-module integration`,
           priority: priority || 'medium',
-          status: 'new',
+          // 'new' is not in the WF-V-05 vocabulary and migration 0078's CHECK
+          // rejects it, so this insert always failed; `new` means `open`.
+          status: 'open',
           required_parts: requiredParts || [],
           estimated_duration: estimatedDuration || null,
           created_by: user.id,

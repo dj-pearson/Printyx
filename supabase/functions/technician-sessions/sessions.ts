@@ -7,17 +7,24 @@
  */
 
 /**
- * Guided-workflow step -> service-ticket status, lifted verbatim from
- * server/routes-enhanced-service.ts (the `statusMapping` in the update-step
- * handler). `check_in` is absent on purpose: check-in is its own endpoint and
- * sets 'on_site'.
+ * Guided-workflow step -> service-ticket status. `check_in` is absent on
+ * purpose: check-in is its own endpoint and sets 'on_site'.
+ *
+ * Round 206: this was lifted verbatim from the retired Express handler and
+ * wrote 'in-progress', 'customer_approval' and 'testing' - none of them in the
+ * WF-V-05 vocabulary. Migration 0078's CHECK constraint is NOT VALID, which
+ * spares existing rows and still rejects every UPDATE, so completing any step
+ * but the last answered 500 (23514, proven on Postgres 16) after the step row
+ * had already been written. Every value here is canonical now; waiting on the
+ * customer's approval is `on_hold`, because the work is paused on someone
+ * outside the dealer.
  */
 export const STEP_TICKET_STATUS: Record<string, string> = {
-  initial_assessment: 'in-progress',
-  diagnosis: 'in-progress',
-  customer_approval: 'customer_approval',
-  work_execution: 'in-progress',
-  testing: 'testing',
+  initial_assessment: 'in_progress',
+  diagnosis: 'in_progress',
+  customer_approval: 'on_hold',
+  work_execution: 'in_progress',
+  testing: 'in_progress',
   completion: 'completed',
 };
 
@@ -29,7 +36,7 @@ export const STEP_TICKET_STATUS: Record<string, string> = {
  * service_tickets.status as a function.
  */
 export function ticketStatusForStep(stepName: string | null | undefined): string {
-  if (!stepName || !isKnownStepName(stepName)) return 'in-progress';
+  if (!stepName || !isKnownStepName(stepName)) return 'in_progress';
   return STEP_TICKET_STATUS[stepName];
 }
 
