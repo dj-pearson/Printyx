@@ -155,4 +155,15 @@ describe('the page', () => {
     expect(PAGE).toMatch(/apiRequest\('\/api\/admin\/users', 'POST'/);
     expect(PAGE).toMatch(/onClick=\{\(\) =>\s*exportToCSV\(roles, ROLE_EXPORT_COLUMNS/);
   });
+
+  it('row actions change a role and deactivate through the admin function', () => {
+    expect(PAGE).toMatch(/apiRequest\(`\/api\/admin\/users\/\$\{id\}`, 'PUT', \{ roleId \}\)/);
+    expect(PAGE).toMatch(/apiRequest\(`\/api\/admin\/users\/\$\{id\}`, 'DELETE'\)/);
+    // Deactivation asks first, and only offers itself for an active user.
+    const at = PAGE.indexOf('deactivateMutation.mutate(user.id)');
+    expect(at).toBeGreaterThan(-1);
+    expect(PAGE.slice(Math.max(0, at - 500), at)).toContain('await confirm(');
+    expect(PAGE.slice(Math.max(0, at - 900), at)).toContain('{user.isActive && (');
+    expect(PAGE).not.toContain('aria-label="View details"');
+  });
 });

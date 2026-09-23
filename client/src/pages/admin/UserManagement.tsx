@@ -24,8 +24,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Users, UserPlus, UserCheck, UserX, Shield, Eye, Edit, Trash2 } from 'lucide-react';
+import { Users, UserPlus, UserCheck, UserX, Shield, Edit, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { MainLayout } from '@/components/layout/main-layout';
 import { apiRequest } from '@/lib/queryClient';
 import { describeApiError } from '@/lib/api-error';
@@ -114,6 +115,34 @@ export default function UserManagement() {
     '/api/admin/roles',
   ]);
 
+  const confirm = useConfirm();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [editing, setEditing] = useState<any | null>(null);
+  const [editRoleId, setEditRoleId] = useState('');
+
+  const failure = (title: string) => (err: unknown) =>
+    toast({ title, description: describeApiError(err).message, variant: 'destructive' });
+
+  const roleMutation = useMutation({
+    mutationFn: ({ id, roleId }: { id: string; roleId: string }) =>
+      apiRequest(`/api/admin/users/${id}`, 'PUT', { roleId }),
+    onSuccess: () => {
+      toast({ title: 'Role updated' });
+      setEditing(null);
+      void refreshUsers();
+    },
+    onError: failure('Could not change role'),
+  });
+
+  const deactivateMutation = useMutation({
+    mutationFn: (id: string) => apiRequest(`/api/admin/users/${id}`, 'DELETE'),
+    onSuccess: () => {
+      toast({ title: 'User deactivated' });
+      void refreshUsers();
+    },
+    onError: failure('Could not deactivate user'),
+  });
+
   // POST /api/admin/users invites by email (GoTrue sends the link). The tenant
   // is the caller's own - the old dialog offered three invented companies -
   // and the server refuses a role above the caller's (shared/role-grant.ts).
@@ -135,13 +164,7 @@ export default function UserManagement() {
       setInviteOpen(false);
       void refreshUsers();
     },
-    onError: (err) => {
-      toast({
-        title: 'Could not invite user',
-        description: describeApiError(err).message,
-        variant: 'destructive',
-      });
-    },
+    onError: failure('Could not invite user'),
   });
 
   return (
@@ -234,6 +257,47 @@ export default function UserManagement() {
 
         {/* CR-033: the heading and tenant filter above stay usable — changing
             the filter is the retry. */}
+        <Dialog open={editing !== null} onOpenChange={(open) => !open && setEditing(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Change role</DialogTitle>
+              <DialogDescription>{editing?.email}</DialogDescription>
+            </DialogHeader>
+            <form
+              className="space-y-4"
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (editing && editRoleId) {
+                  roleMutation.mutate({ id: editing.id, roleId: editRoleId });
+                }
+              }}
+            >
+              <div>
+                <Label htmlFor="editRole">Role</Label>
+                <Select value={editRoleId} onValueChange={setEditRoleId}>
+                  <SelectTrigger id="editRole">
+                    <SelectValue placeholder="Select role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {roles.map((r) => (
+                      <SelectItem key={r.id} value={r.id}>
+                        {r.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={!editRoleId || editRoleId === editing?.roleId || roleMutation.isPending}
+              >
+                {roleMutation.isPending ? 'Saving...' : 'Save role'}
+              </Button>
+            </form>
+          </DialogContent>
+        </Dialog>
+
         <QueryStates
           queries={[usersQuery, statsQuery]}
           loading={<DashboardSkeleton />}
@@ -428,15 +492,42 @@ export default function UserManagement() {
                                 : 'Never'}
                             </div>
                             <div className="flex gap-2">
-                              <Button aria-label="View details" size="sm" variant="outline">
-                                <Eye className="h-3 w-3" />
-                              </Button>
-                              <Button aria-label="Edit" size="sm" variant="outline">
+                              {/* Round 188. View details had nowhere to go - the
+                                  row already shows everything the endpoint
+                                  returns - so it is gone. Edit changes the role
+                                  (PUT /admin/users/:id) and Deactivate is the
+                                  function's soft delete; both are refused by the
+                                  server for a user who outranks the caller. */}
+                              <Button
+                                aria-label={`Change role for ${user.email}`}
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setEditing(user);
+                                  setEditRoleId(user.roleId ?? '');
+                                }}
+                              >
                                 <Edit className="h-3 w-3" />
                               </Button>
-                              <Button aria-label="Delete" size="sm" variant="outline">
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
+                              {user.isActive && (
+                                <Button
+                                  aria-label={`Deactivate ${user.email}`}
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={deactivateMutation.isPending}
+                                  onClick={async () => {
+                                    const ok = await confirm({
+                                      title: `Deactivate ${user.email}?`,
+                                      description:
+                                        'They can no longer sign in. Their records stay in place.',
+                                      confirmLabel: 'Deactivate',
+                                    });
+                                    if (ok) deactivateMutation.mutate(user.id);
+                                  }}
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              )}
                             </div>
                           </div>
                         ))
