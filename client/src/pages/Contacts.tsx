@@ -81,12 +81,21 @@ import {
   UserX,
 } from 'lucide-react';
 import { apiRequest, extractRecords } from '@/lib/queryClient';
+import { describeApiError } from '@/lib/api-error';
+import { exportToCSV, type ExportColumn } from '@/lib/export-utils';
+import { Link } from 'wouter';
 import { getApiUrl } from '@/lib/config';
 import { useToast } from '@/hooks/use-toast';
 import MainLayout from '@/components/layout/main-layout';
 import { useAuthContext } from '@/providers/AuthProvider';
 import MobileFAB from '@/components/layout/MobileFAB';
 import { relativeDate, todayLocalDate } from '@/lib/date-utils';
+import {
+  ACTIVITY_LABELS,
+  ACTIVITY_TYPES,
+  buildContactActivity,
+  type ContactActivityForm,
+} from '@/lib/contact-activity';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 
 // Contact form schema
@@ -145,6 +154,18 @@ interface Contact {
   doNotCall?: boolean;
 }
 
+const CONTACTS_PAGE_EXPORT_COLUMNS: ExportColumn<Contact>[] = [
+  { key: 'firstName', label: 'First Name' },
+  { key: 'lastName', label: 'Last Name' },
+  { key: 'email', label: 'Email' },
+  { key: 'phone', label: 'Phone' },
+  { key: 'title', label: 'Title' },
+  { key: 'companyName', label: 'Company' },
+  { key: 'leadStatus', label: 'Status' },
+  { key: 'lastContactDate', label: 'Last Contacted' },
+  { key: 'nextFollowUpDate', label: 'Next Follow-up' },
+];
+
 export default function Contacts() {
   const { toast } = useToast();
   const confirm = useConfirm();
@@ -173,6 +194,12 @@ export default function Contacts() {
   });
 
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const [activityForm, setActivityForm] = useState<ContactActivityForm>({
+    type: 'note',
+    notes: '',
+    date: todayLocalDate(),
+    followUpDays: 7,
+  });
 
   // Contact form state
   const [showNewCompanyConfirm, setShowNewCompanyConfirm] = useState(false);
@@ -669,8 +696,29 @@ export default function Contacts() {
 
   const handleLogActivity = (contact: Contact) => {
     setSelectedContact(contact);
+    setActivityForm({ type: 'note', notes: '', date: todayLocalDate(), followUpDays: 7 });
     setDialogs((prev) => ({ ...prev, logActivity: true }));
   };
+
+  const logActivityMutation = useMutation({
+    mutationFn: async ({ contact, form }: { contact: Contact; form: ContactActivityForm }) => {
+      const { activity, contactPatch } = buildContactActivity(contact, form);
+      await apiRequest(`/api/companies/${contact.companyId}/activities`, 'POST', activity);
+      await apiRequest(`/api/company-contacts/${contact.id}`, 'PUT', contactPatch);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['api-contacts', tenantId] });
+      toast({ title: 'Activity logged' });
+      setDialogs((prev) => ({ ...prev, logActivity: false }));
+    },
+    onError: (err) => {
+      toast({
+        title: 'Could not log activity',
+        description: describeApiError(err).message,
+        variant: 'destructive',
+      });
+    },
+  });
 
   const handleViewContact = (contact: Contact) => {
     setSelectedContact(contact);
@@ -756,13 +804,34 @@ export default function Contacts() {
             <p className="text-sm sm:text-base text-gray-600 mt-1">{totalContacts} records</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            <Button variant="outline" size="sm" className="touch-manipulation active:scale-[0.98]">
+            {/* The list is paginated, so this exports the rows on screen and
+                says so rather than implying all {totalContacts}. */}
+            <Button
+              variant="outline"
+              size="sm"
+              className="touch-manipulation active:scale-[0.98]"
+              aria-label="Export this page of contacts"
+              disabled={contacts.length === 0}
+              onClick={() =>
+                exportToCSV(contacts, CONTACTS_PAGE_EXPORT_COLUMNS, {
+                  filename: 'contacts-page',
+                })
+              }
+            >
               <Download className="w-4 h-4 sm:mr-2" />
-              <span className="hidden sm:inline">Export</span>
+              <span className="hidden sm:inline">Export this page</span>
             </Button>
-            <Button variant="outline" size="sm" className="touch-manipulation active:scale-[0.98]">
-              <Upload className="w-4 h-4 sm:mr-2" />
-              <span className="hidden sm:inline">Import</span>
+            {/* The CSV import wizard handles contacts (supabase/functions/import). */}
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="touch-manipulation active:scale-[0.98]"
+            >
+              <Link href="/import" aria-label="Import contacts">
+                <Upload className="w-4 h-4 sm:mr-2" />
+                <span className="hidden sm:inline">Import</span>
+              </Link>
             </Button>
             <Dialog
               open={dialogs.createContact}
@@ -1199,12 +1268,6 @@ export default function Contacts() {
                     onClick={() => setFilters((prev) => ({ ...prev, view: 'unassigned' }))}
                   >
                     Unassigned
-                  </Button>
-                </div>
-                <div className="text-sm text-gray-500 hidden lg:block">
-                  <Button variant="ghost" size="sm">
-                    <Plus className="w-4 h-4 mr-1" />
-                    Add view (4/5)
                   </Button>
                 </div>
               </div>
@@ -1790,61 +1853,62 @@ export default function Contacts() {
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4 sm:space-y-6">
-              <div className="flex gap-2 flex-wrap">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="min-h-[44px] touch-manipulation active:scale-[0.98]"
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  Note
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="min-h-[44px] touch-manipulation active:scale-[0.98]"
-                >
-                  <Mail className="w-4 h-4 mr-2" />
-                  Email
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="min-h-[44px] touch-manipulation active:scale-[0.98]"
-                >
-                  <Phone className="w-4 h-4 mr-2" />
-                  Call
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="min-h-[44px] touch-manipulation active:scale-[0.98]"
-                >
-                  <Calendar className="w-4 h-4 mr-2" />
-                  Meeting
-                </Button>
+              <div className="flex gap-2 flex-wrap" role="group" aria-label="Activity type">
+                {ACTIVITY_TYPES.map((type) => {
+                  const Icon = { note: FileText, email: Mail, call: Phone, meeting: Calendar }[
+                    type
+                  ];
+                  return (
+                    <Button
+                      key={type}
+                      type="button"
+                      size="sm"
+                      variant={activityForm.type === type ? 'default' : 'outline'}
+                      aria-pressed={activityForm.type === type}
+                      onClick={() => setActivityForm((f) => ({ ...f, type }))}
+                      className="min-h-[44px] touch-manipulation active:scale-[0.98]"
+                    >
+                      <Icon className="w-4 h-4 mr-2" />
+                      {ACTIVITY_LABELS[type]}
+                    </Button>
+                  );
+                })}
               </div>
 
               <div>
-                <Label>Activity notes</Label>
+                <Label htmlFor="activity-notes">Activity notes</Label>
                 <Textarea
+                  id="activity-notes"
                   placeholder="What did you discuss? What are the next steps?"
                   className="mt-1 min-h-[120px]"
+                  value={activityForm.notes}
+                  onChange={(e) => setActivityForm((f) => ({ ...f, notes: e.target.value }))}
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <Label>Activity date</Label>
-                  <Input type="date" defaultValue={todayLocalDate()} />
+                  <Label htmlFor="activity-date">Activity date</Label>
+                  <Input
+                    id="activity-date"
+                    type="date"
+                    value={activityForm.date}
+                    onChange={(e) => setActivityForm((f) => ({ ...f, date: e.target.value }))}
+                  />
                 </div>
                 <div>
                   <Label>Follow-up in</Label>
-                  <Select defaultValue="7">
+                  <Select
+                    value={String(activityForm.followUpDays)}
+                    onValueChange={(v) =>
+                      setActivityForm((f) => ({ ...f, followUpDays: Number(v) }))
+                    }
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="0">No follow-up</SelectItem>
                       <SelectItem value="1">1 day</SelectItem>
                       <SelectItem value="3">3 days</SelectItem>
                       <SelectItem value="7">1 week</SelectItem>
@@ -1863,8 +1927,19 @@ export default function Contacts() {
                 >
                   Cancel
                 </Button>
-                <Button className="bg-blue-600 hover:bg-blue-700 min-h-[44px] touch-manipulation active:scale-[0.98] order-1 sm:order-2">
-                  Log activity
+                <Button
+                  className="bg-blue-600 hover:bg-blue-700 min-h-[44px] touch-manipulation active:scale-[0.98] order-1 sm:order-2"
+                  disabled={
+                    !selectedContact?.companyId ||
+                    !activityForm.date ||
+                    logActivityMutation.isPending
+                  }
+                  onClick={() =>
+                    selectedContact &&
+                    logActivityMutation.mutate({ contact: selectedContact, form: activityForm })
+                  }
+                >
+                  {logActivityMutation.isPending ? 'Saving...' : 'Log activity'}
                 </Button>
               </div>
             </div>
