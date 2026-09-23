@@ -485,8 +485,9 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
     app.use(mountPath, mod.default);
   }
 
-  const socialMediaRoutes = await import('./routes-social-media');
-  app.use('/', socialMediaRoutes.default);
+  // Round 152: routes-social-media.ts was mounted here, ungated, serving dev
+  // while production ran supabase/functions/social-media/. The prefix is
+  // proxied now and the router is deleted.
 
   const subscriptionRoutes = await import('./routes-subscriptions');
   const adminSubscriptionRoutes = await import('./routes-admin-subscriptions');

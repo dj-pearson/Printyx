@@ -125,10 +125,6 @@
       "verdict": "unexamined",
       "reason": "server/routes-service-analysis.ts registers both this and /api/parts-orders; supabase/functions/service-analysis/ serves it in production. Not read on either side."
     },
-    "social-media": {
-      "verdict": "unexamined",
-      "reason": "SEC-EDGE-001 gated POST /posts/:id/publish edge-side while leaving generation open. server/routes-social-media.ts is not examined."
-    },
     "software-products": {
       "verdict": "unexamined",
       "reason": "Round 85 gated this edge function's writes after it survived two family sweeps ungated. The Express twin is not examined."

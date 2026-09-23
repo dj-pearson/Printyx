@@ -1000,6 +1000,13 @@ export function registerEdgeFunctionProxy(app: any) {
     // /category/:slug, POST /refresh).
     '/api/content-gap-analysis': 'content-gap-analysis',
 
+    // Round 152. Express served this prefix from routes-social-media.ts with no
+    // role check on broadcast or the scheduled jobs, and answered camelCase rows
+    // while the edge function answered snake_case, so the page rendered on one
+    // host and not the other. The edge function covers all ten paths the page
+    // calls and now camelises; dev runs it too.
+    '/api/social-media': 'social-media',
+
     // PROD-011. Full parity: all EIGHT Express endpoints (inbound, submit,
     // submissions list/:id/approve/reject, GET/PUT settings), which is also
     // everything MeterReadReview.tsx calls. This pipeline writes billing rows,
