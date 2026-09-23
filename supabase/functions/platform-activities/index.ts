@@ -49,7 +49,7 @@ const ACTIVITY_COLUMN_MAP: Record<string, string> = {
   sentiment: 'sentiment',
   outcome: 'outcome',
   nextSteps: 'next_steps',
-  createdBy: 'created_by',
+  // createdBy is deliberately absent: the author is always the caller (round 198).
   assignedTo: 'assigned_to',
 };
 
@@ -154,7 +154,9 @@ export default async function handler(req: Request) {
       const insert = mapBody(body);
       insert.activity_type = type;
       insert.activity_date = body.activityDate || new Date().toISOString();
-      insert.created_by = body.createdBy || user.id;
+      // Round 198: the author is the caller. `body.createdBy` let anyone
+      // attribute an activity - and the counters it bumps - to someone else.
+      insert.created_by = user.id;
       if (!insert.subject) {
         insert.subject =
           type === 'call'
@@ -310,7 +312,9 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'activityType is required' }, 400, req);
       }
       const insert = mapBody(body);
-      insert.created_by = body.createdBy || user.id;
+      // Round 198: the author is the caller. `body.createdBy` let anyone
+      // attribute an activity - and the counters it bumps - to someone else.
+      insert.created_by = user.id;
       insert.activity_date = body.activityDate || new Date().toISOString();
       const { data: activity, error } = await admin
         .from('platform_activities')

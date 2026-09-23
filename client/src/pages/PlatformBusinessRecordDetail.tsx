@@ -26,6 +26,8 @@ import {
 } from '@/components/ui/table';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
+import { describeApiError } from '@/lib/api-error';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   ArrowLeft,
   Building2,
@@ -170,6 +172,52 @@ export default function PlatformBusinessRecordDetail() {
     enabled: !!id && record?.recordType === 'tenant',
   });
   const healthScore = healthResponse?.healthScores?.[0];
+
+  // Round 198: Add Contact and Log Activity had no handlers. They post to
+  // POST /platform-crm/business-records/:id/contacts (added this round) and
+  // POST /platform-activities, which records the caller as the author.
+  const contactsKey = `/api/platform-crm/business-records/${id}/contacts`;
+  const activitiesKey = `/api/platform-activities?businessRecordId=${id}&limit=50`;
+  const emptyContact = { firstName: '', lastName: '', email: '', phone: '', title: '' };
+  const [contactOpen, setContactOpen] = useState(false);
+  const [newContact, setNewContact] = useState(emptyContact);
+  const [activityOpen, setActivityOpen] = useState(false);
+  const [newActivity, setNewActivity] = useState({
+    activityType: 'call',
+    subject: '',
+    description: '',
+  });
+  const failure = (title: string) => (err: unknown) =>
+    toast({ title, description: describeApiError(err).message, variant: 'destructive' });
+
+  const addContactMutation = useMutation({
+    mutationFn: () => apiRequest(contactsKey, 'POST', newContact),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [contactsKey] });
+      toast({ title: 'Contact added' });
+      setNewContact(emptyContact);
+      setContactOpen(false);
+    },
+    onError: failure('Could not add contact'),
+  });
+
+  const logActivityMutation = useMutation({
+    mutationFn: () =>
+      apiRequest('/api/platform-activities', 'POST', {
+        businessRecordId: id,
+        activityType: newActivity.activityType,
+        subject: newActivity.subject.trim() || undefined,
+        description: newActivity.description.trim() || undefined,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [activitiesKey] });
+      queryClient.invalidateQueries({ queryKey: [`/api/platform-crm/business-records/${id}`] });
+      toast({ title: 'Activity logged' });
+      setNewActivity({ activityType: 'call', subject: '', description: '' });
+      setActivityOpen(false);
+    },
+    onError: failure('Could not log activity'),
+  });
 
   // Update mutation
   const updateMutation = useMutation({
@@ -696,7 +744,7 @@ export default function PlatformBusinessRecordDetail() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle>Contacts</CardTitle>
-                  <Button size="sm">
+                  <Button size="sm" onClick={() => setContactOpen(true)}>
                     <Plus className="w-4 h-4 mr-2" />
                     Add Contact
                   </Button>
@@ -815,7 +863,7 @@ export default function PlatformBusinessRecordDetail() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle>Activity Timeline</CardTitle>
-                  <Button size="sm">
+                  <Button size="sm" onClick={() => setActivityOpen(true)}>
                     <Plus className="w-4 h-4 mr-2" />
                     Log Activity
                   </Button>
@@ -890,6 +938,97 @@ export default function PlatformBusinessRecordDetail() {
           )}
         </Tabs>
       </div>
+      <Dialog open={contactOpen} onOpenChange={setContactOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add contact</DialogTitle>
+          </DialogHeader>
+          <form
+            className="space-y-3"
+            onSubmit={(e) => {
+              e.preventDefault();
+              addContactMutation.mutate();
+            }}
+          >
+            {(
+              [
+                ['firstName', 'First name', true],
+                ['lastName', 'Last name', true],
+                ['email', 'Email', true],
+                ['phone', 'Phone', false],
+                ['title', 'Title', false],
+              ] as const
+            ).map(([key, label, required]) => (
+              <div key={key}>
+                <Label htmlFor={`contact-${key}`}>{label}</Label>
+                <Input
+                  id={`contact-${key}`}
+                  type={key === 'email' ? 'email' : 'text'}
+                  required={required}
+                  value={newContact[key]}
+                  onChange={(e) => setNewContact({ ...newContact, [key]: e.target.value })}
+                />
+              </div>
+            ))}
+            <Button type="submit" className="w-full" disabled={addContactMutation.isPending}>
+              {addContactMutation.isPending ? 'Adding...' : 'Add contact'}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={activityOpen} onOpenChange={setActivityOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Log activity</DialogTitle>
+          </DialogHeader>
+          <form
+            className="space-y-3"
+            onSubmit={(e) => {
+              e.preventDefault();
+              logActivityMutation.mutate();
+            }}
+          >
+            <div>
+              <Label htmlFor="activity-type">Type</Label>
+              <Select
+                value={newActivity.activityType}
+                onValueChange={(activityType) => setNewActivity({ ...newActivity, activityType })}
+              >
+                <SelectTrigger id="activity-type">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {['call', 'email', 'meeting', 'demo', 'note'].map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {t}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="activity-subject">Subject</Label>
+              <Input
+                id="activity-subject"
+                value={newActivity.subject}
+                onChange={(e) => setNewActivity({ ...newActivity, subject: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label htmlFor="activity-description">Notes</Label>
+              <Textarea
+                id="activity-description"
+                value={newActivity.description}
+                onChange={(e) => setNewActivity({ ...newActivity, description: e.target.value })}
+              />
+            </div>
+            <Button type="submit" className="w-full" disabled={logActivityMutation.isPending}>
+              {logActivityMutation.isPending ? 'Saving...' : 'Log activity'}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
     </MainLayout>
   );
 }

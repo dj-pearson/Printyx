@@ -642,6 +642,63 @@ export default async function handler(req: Request) {
       return createCorsResponse(camelRows(contacts as Row[]), 200, req);
     }
 
+    // POST /platform-crm/business-records/:id/contacts
+    //
+    // Round 198: the record page's Add Contact button had nothing to call.
+    // first_name, last_name, full_name and email are NOT NULL; full_name is
+    // derived rather than asked for twice. The parent record is checked first
+    // so a stale id answers 404 rather than an FK violation.
+    if (
+      req.method === 'POST' &&
+      endpoint === 'business-records' &&
+      resourceId &&
+      parts[2] === 'contacts'
+    ) {
+      const body = ((await req.json().catch(() => ({}))) ?? {}) as Row;
+      const firstName = String(body.firstName ?? '').trim();
+      const lastName = String(body.lastName ?? '').trim();
+      const email = String(body.email ?? '').trim();
+      if (!firstName || !lastName || !email) {
+        return createCorsResponse(
+          { error: 'firstName, lastName and email are required' },
+          400,
+          req,
+        );
+      }
+      const { data: parent } = await admin
+        .from('platform_business_records')
+        .select('id')
+        .eq('id', resourceId)
+        .maybeSingle();
+      if (!parent) {
+        return createCorsResponse({ error: 'Business record not found' }, 404, req);
+      }
+      const optional = (v: unknown) => {
+        const t = typeof v === 'string' ? v.trim() : '';
+        return t ? t : null;
+      };
+      const { data: contact, error } = await admin
+        .from('platform_contacts')
+        .insert({
+          business_record_id: resourceId,
+          first_name: firstName,
+          last_name: lastName,
+          full_name: `${firstName} ${lastName}`,
+          email,
+          phone: optional(body.phone),
+          title: optional(body.title),
+          is_primary_contact: body.isPrimaryContact === true,
+          is_decision_maker: body.isDecisionMaker === true,
+        })
+        .select()
+        .single();
+      if (error) {
+        console.error('Error creating platform contact:', error);
+        return createCorsResponse({ error: 'Failed to create contact' }, 500, req);
+      }
+      return createCorsResponse(camelRow(contact as Row), 201, req);
+    }
+
     // PATCH /platform-crm/business-records/:id
     if (req.method === 'PATCH' && endpoint === 'business-records' && resourceId && !parts[2]) {
       const body = (await req.json()) as Row;
