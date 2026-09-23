@@ -40,6 +40,8 @@ import {
   Shield,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { describeApiError } from '@/lib/api-error';
+import { Link } from 'wouter';
 import { apiRequest, extractRecords, queryClient } from '@/lib/queryClient';
 import {
   INTEGRATION_CATEGORIES,
@@ -151,6 +153,61 @@ export default function SystemIntegrations() {
     queryKey: ['/api/webhooks'],
   });
   const webhooks = extractRecords<WebhookEndpoint>(webhooksResponse);
+
+  // Round 199. Add Webhook, the active Switch and the key card were all
+  // decorative. Webhooks go through the webhooks function (SUPERVISOR-gated
+  // writes); the signing secret is shown once, on create, because the list
+  // never returns it again.
+  const { data: webhookEvents = [] } = useQuery<{ id: string; name: string }[]>({
+    queryKey: ['/api/webhooks/events'],
+  });
+  const [webhookOpen, setWebhookOpen] = useState(false);
+  const [newWebhook, setNewWebhook] = useState<{ name: string; url: string; events: string[] }>({
+    name: '',
+    url: '',
+    events: [],
+  });
+  const [issuedSecret, setIssuedSecret] = useState<string | null>(null);
+  const createWebhook = useMutation({
+    mutationFn: () => apiRequest('/api/webhooks', 'POST', newWebhook),
+    onSuccess: (created: { secret?: string }) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/webhooks'] });
+      setIssuedSecret(created?.secret ?? null);
+      setNewWebhook({ name: '', url: '', events: [] });
+    },
+    onError: (err) =>
+      toast({
+        title: 'Could not add webhook',
+        description: describeApiError(err).message,
+        variant: 'destructive',
+      }),
+  });
+  const toggleWebhook = useMutation({
+    mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
+      apiRequest(`/api/webhooks/${id}`, 'PUT', { isActive }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['/api/webhooks'] }),
+    onError: (err) =>
+      toast({
+        title: 'Could not change webhook',
+        description: describeApiError(err).message,
+        variant: 'destructive',
+      }),
+  });
+
+  // The tenant's real API keys (no key material in the list). Generating,
+  // rotating and revoking live on /settings/api-keys.
+  const { data: apiKeysResponse, isError: apiKeysError } = useQuery({
+    queryKey: ['/api/api-keys'],
+  });
+  const apiKeys = extractRecords<{
+    id: string;
+    name: string;
+    keyPrefix: string | null;
+    status: string | null;
+    environment: string | null;
+    lastUsedAt: string | null;
+    createdAt: string | null;
+  }>(apiKeysResponse);
 
   const connectIntegration = useMutation({
     mutationFn: async (data: {
@@ -437,7 +494,12 @@ export default function SystemIntegrations() {
                       Configure webhook endpoints for real-time event notifications
                     </CardDescription>
                   </div>
-                  <Button>
+                  <Button
+                    onClick={() => {
+                      setIssuedSecret(null);
+                      setWebhookOpen(true);
+                    }}
+                  >
                     <Webhook className="h-4 w-4 mr-2" />
                     Add Webhook
                   </Button>
@@ -477,13 +539,17 @@ export default function SystemIntegrations() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Switch checked={webhook.status === 'active'} />
-                        <Button variant="outline" size="sm">
-                          Edit
-                        </Button>
-                        <Button aria-label="Open in a new tab" variant="ghost" size="sm">
-                          <ExternalLink className="h-4 w-4" />
-                        </Button>
+                        <Switch
+                          aria-label={`${webhook.status === 'active' ? 'Pause' : 'Resume'} ${webhook.name}`}
+                          checked={webhook.status === 'active'}
+                          disabled={toggleWebhook.isPending}
+                          onCheckedChange={(isActive) =>
+                            toggleWebhook.mutate({ id: webhook.id, isActive })
+                          }
+                        />
+                        {/* Edit and "open in a new tab" had no handlers; the
+                            only editable fields are covered by re-adding, and
+                            the endpoint URL is shown in full above. */}
                       </div>
                     </div>
                   ))}
@@ -504,54 +570,52 @@ export default function SystemIntegrations() {
                     <CardTitle>Platform API Keys</CardTitle>
                     <CardDescription>Internal API keys for platform integrations</CardDescription>
                   </div>
-                  <Button>
-                    <Key className="h-4 w-4 mr-2" />
-                    Generate API Key
+                  <Button asChild>
+                    <Link href="/settings/api-keys">
+                      <Key className="h-4 w-4 mr-2" />
+                      Manage API Keys
+                    </Link>
                   </Button>
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
+                {/* Round 199: two typed-in keys ("Created: Dec 15, 2024 - Last
+                    used: 2 hours ago") with dead Regenerate / Revoke sat here. */}
+                {apiKeysError ? (
+                  <p className="text-sm text-destructive">API keys could not be loaded.</p>
+                ) : apiKeys.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No API keys yet. Generate one from Manage API Keys.
+                  </p>
+                ) : (
                   <div className="grid gap-4">
-                    <div className="flex items-center justify-between p-4 border rounded-lg">
-                      <div>
-                        <h4 className="font-medium">Production API Key</h4>
-                        <p className="text-sm text-gray-600 font-mono">pk_live_••••••••••••••••</p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          Created: Dec 15, 2024 • Last used: 2 hours ago
-                        </p>
+                    {apiKeys.map((k) => (
+                      <div
+                        key={k.id}
+                        className="flex items-center justify-between p-4 border rounded-lg"
+                      >
+                        <div>
+                          <h4 className="font-medium">{k.name}</h4>
+                          <p className="text-sm text-gray-600 font-mono">
+                            {k.keyPrefix ? `${k.keyPrefix}_••••••••` : '••••••••'}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {k.createdAt
+                              ? `Created ${new Date(k.createdAt).toLocaleDateString()}`
+                              : ''}
+                            {' · '}
+                            {k.lastUsedAt
+                              ? `Last used ${new Date(k.lastUsedAt).toLocaleString()}`
+                              : 'Never used'}
+                          </p>
+                        </div>
+                        <Badge variant={k.status === 'active' ? 'default' : 'secondary'}>
+                          {k.status ?? 'unknown'}
+                        </Badge>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Badge>Active</Badge>
-                        <Button variant="outline" size="sm">
-                          Regenerate
-                        </Button>
-                        <Button variant="ghost" size="sm" className="text-red-600">
-                          Revoke
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between p-4 border rounded-lg">
-                      <div>
-                        <h4 className="font-medium">Development API Key</h4>
-                        <p className="text-sm text-gray-600 font-mono">pk_test_••••••••••••••••</p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          Created: Dec 10, 2024 • Last used: 1 day ago
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary">Test</Badge>
-                        <Button variant="outline" size="sm">
-                          Regenerate
-                        </Button>
-                        <Button variant="ghost" size="sm" className="text-red-600">
-                          Revoke
-                        </Button>
-                      </div>
-                    </div>
+                    ))}
                   </div>
-                </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -628,6 +692,87 @@ export default function SystemIntegrations() {
               Save Credentials
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={webhookOpen} onOpenChange={setWebhookOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{issuedSecret ? 'Webhook added' : 'Add webhook'}</DialogTitle>
+            <DialogDescription>
+              {issuedSecret
+                ? 'Copy the signing secret now. It is not shown again.'
+                : 'Printyx will POST the selected events to this URL.'}
+            </DialogDescription>
+          </DialogHeader>
+          {issuedSecret ? (
+            <div className="space-y-3">
+              <Input
+                readOnly
+                value={issuedSecret}
+                className="font-mono"
+                aria-label="Signing secret"
+              />
+              <Button className="w-full" onClick={() => setWebhookOpen(false)}>
+                Done
+              </Button>
+            </div>
+          ) : (
+            <form
+              className="space-y-3"
+              onSubmit={(e) => {
+                e.preventDefault();
+                createWebhook.mutate();
+              }}
+            >
+              <div>
+                <Label htmlFor="webhook-name">Name</Label>
+                <Input
+                  id="webhook-name"
+                  required
+                  value={newWebhook.name}
+                  onChange={(e) => setNewWebhook({ ...newWebhook, name: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="webhook-url">URL</Label>
+                <Input
+                  id="webhook-url"
+                  type="url"
+                  required
+                  placeholder="https://"
+                  value={newWebhook.url}
+                  onChange={(e) => setNewWebhook({ ...newWebhook, url: e.target.value })}
+                />
+              </div>
+              <fieldset className="space-y-1">
+                <legend className="text-sm font-medium">Events</legend>
+                {webhookEvents.map((ev) => (
+                  <label key={ev.id} className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={newWebhook.events.includes(ev.id)}
+                      onChange={(e) =>
+                        setNewWebhook({
+                          ...newWebhook,
+                          events: e.target.checked
+                            ? [...newWebhook.events, ev.id]
+                            : newWebhook.events.filter((x) => x !== ev.id),
+                        })
+                      }
+                    />
+                    {ev.name}
+                  </label>
+                ))}
+              </fieldset>
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={newWebhook.events.length === 0 || createWebhook.isPending}
+              >
+                {createWebhook.isPending ? 'Adding...' : 'Add webhook'}
+              </Button>
+            </form>
+          )}
         </DialogContent>
       </Dialog>
     </MainLayout>
