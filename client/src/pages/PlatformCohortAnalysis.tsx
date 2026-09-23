@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { exportToCSV, type ExportColumn } from '@/lib/export-utils';
 import { useQuery } from '@tanstack/react-query';
 import { QueryState } from '@/components/ui/query-state';
 import { DashboardSkeleton } from '@/components/ui/skeletons';
@@ -99,6 +100,21 @@ interface CohortResponse {
   unbacked?: string[];
 }
 
+/** The cohort table as shown; a null (unmeasured) figure is an empty cell. */
+export const COHORT_EXPORT_COLUMNS: ExportColumn<CohortRow>[] = [
+  { key: 'cohort', label: 'Cohort' },
+  { key: 'cohortDate', label: 'Cohort date' },
+  { key: 'size', label: 'Initial customers' },
+  { key: 'currentSize', label: 'Current customers' },
+  { key: 'retentionRate', label: 'Retention %' },
+  { key: 'churnRate', label: 'Churn %' },
+  { key: 'initialMRR', label: 'Initial MRR' },
+  { key: 'currentMRR', label: 'Current MRR' },
+  { key: 'cumulativeRevenue', label: 'Cumulative revenue' },
+  { key: 'netRevenueRetention', label: 'Net revenue retention %' },
+  { key: 'averageTenureMonths', label: 'Average tenure (months)' },
+];
+
 export default function PlatformCohortAnalysis() {
   const [timeframe, setTimeframe] = useState('12m');
 
@@ -171,7 +187,15 @@ export default function PlatformCohortAnalysis() {
                 <SelectItem value="all">All time</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="outline">
+            <Button
+              variant="outline"
+              disabled={!cohortQuery.data?.cohortTable?.length}
+              onClick={() =>
+                exportToCSV(cohortQuery.data?.cohortTable ?? [], COHORT_EXPORT_COLUMNS, {
+                  filename: `platform-cohorts-${timeframe}`,
+                })
+              }
+            >
               <Download className="mr-2 h-4 w-4" />
               Export
             </Button>
