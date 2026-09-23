@@ -1,7 +1,7 @@
 {
   "note": "WF-G-03. Each entry is a passing story naming a deliverable that one of the three orphan baselines says nothing reaches, without the story anywhere saying so. A QUESTION - who calls this? - with four answers: a UI never built, an importer never wired, an external caller that belongs in a comment, or a deliverable to delete with the story criteria corrected. Shrink-only, keyed by story id + path. A TODO list, not settled debt.",
   "generatedBy": "npm run check:story-orphans -- --update-baseline",
-  "count": 35,
+  "count": 34,
   "entries": [
     "AUDIT-014::client/src/components/dashboard/BreachDetectionTiles.tsx",
     "AUDIT-014::client/src/components/ModularDashboard.tsx",
@@ -9,7 +9,6 @@
     "EDGE-019::server/services/ai-employee-service.ts",
     "PROD-008b::client/src/hooks/useFeatureFlag.ts",
     "PROD-008b::server/cli/company-dedup-cli.ts",
-    "PROD-008b::supabase/functions/workflows",
     "SEC-004::server/services/warehouse-reporting-service.ts",
     "SEC-TENANT-003::supabase/functions/blog-content-platform/index.ts",
     "US-035::client/src/components/FeatureGate.tsx",

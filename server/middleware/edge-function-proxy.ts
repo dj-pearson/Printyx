@@ -713,6 +713,11 @@ export function registerEdgeFunctionProxy(app: any) {
     // registered runtime router lives at /api/workflows, /api/executions and
     // /api/workflow-events and is untouched.
     '/api/workflow-automation': 'workflow-automation',
+    // Round 200. WorkflowAutomation.tsx creates workflows through the
+    // workflows function. Without this, dev reached routes/workflow-automation-
+    // routes.ts, whose handlers all read req.session.user and answer 401
+    // (SEC-SESSION-001) - no client called /api/workflows before now.
+    '/api/workflows': 'workflows',
 
     // PROD-008: journal-entries. Dev ran the Express handlers in
     // routes-financial.ts while prod ran the edge fn, and the two disagreed on

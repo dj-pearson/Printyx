@@ -86,8 +86,7 @@
     "user",
     "users",
     "validate",
-    "workflow-automation",
-    "workflows"
+    "workflow-automation"
   ],
   "rowScoped": [
     "activities",

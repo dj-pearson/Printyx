@@ -1,6 +1,6 @@
 {
   "note": "Edge functions nothing reaches: no client tree names /api/<its-directory-name>, no crmProxies alias or server.ts override maps a segment onto it, and no pg_cron job in drizzle/cron/*.sql posts to it. Each is a back end with no caller - wire it, delete it, or record that it is reached server-to-server. A TODO list, not settled debt. See scripts/check-unreferenced-edge-fns.mjs. LAUNCH-008 (2026-09-21): `signup` left this list because it gained its first caller, and it had never been headless-by-design - the signup page was calling supabase.auth.signUp directly, so the one endpoint that creates a tenant, a users row and app_metadata.tenantId had no caller in any of the seven client trees while the page that needed it shipped. An entry here reading as deliberate is the risk this note's 'TODO list, not settled debt' line is about.",
-  "total": 52,
+  "total": 51,
   "ofFunctions": 252,
   "unreferenced": [
     "ai-documentation",
@@ -53,7 +53,6 @@
     "sso",
     "tax-rates",
     "teams",
-    "tenant-settings",
-    "workflows"
+    "tenant-settings"
   ]
 }
