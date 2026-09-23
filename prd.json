@@ -14791,10 +14791,10 @@
         "The page states what it cannot measure rather than filling the gap"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "category": "unconnected-feature",
       "dependsOn": ["CSAT-PRODUCER-001"],
-      "notes": "FILED 2026-09-11 (loop iteration 10). Found by fixing check:no-static-posture rather than by reading the page - the guard had been bailing on an unused useQuery import, so the whole file went unexamined."
+      "notes": "FILED 2026-09-11 (loop iteration 10). Found by fixing check:no-static-posture rather than by reading the page - the guard had been bailing on an unused useQuery import, so the whole file went unexamined.[ROUND 179 - CLOSED on the criteria's gated branch. The page makes no request and renders NotConnectedState naming what is missing (no portal-session record, no satisfaction producer), so AC1 holds by dropping adoption and session counts, AC2 by keeping the churn panel gated, AC3 because no customer is named at all, and AC4 because the page says what it cannot measure. Checked before closing: nothing computes customer_health_scores - customer-success's handlers write it only as manual CRUD and /health-scores/recalc answers 501 by design - so there is still no scoring engine to un-gate against. server/tests/unit/gated-fabrication-pages.test.ts locks it: no request, no invented names or figures, the story named in the gate. Un-gating is new work, not this story: it wants CSAT-PRODUCER-001 and a real health scorer first.]"
     },
     {
       "id": "PLATFORM-CONFIG-001",
@@ -14807,10 +14807,10 @@
         "Values the application cannot see are named as such rather than drawn"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "category": "unconnected-feature",
       "dependsOn": [],
-      "notes": "FILED 2026-09-11 (loop iteration 10). Consider retiring rather than building: the tenant half already exists at /api/admin/settings, and the platform half may belong in deployment config rather than in a screen."
+      "notes": "FILED 2026-09-11 (loop iteration 10). Consider retiring rather than building: the tenant half already exists at /api/admin/settings, and the platform half may belong in deployment config rather than in a screen.[ROUND 179 - CLOSED. AC1: the decision is recorded in the page header - platform-level settings stay in environment variables and deployment config, and no database store is created for them. They are secrets and operational knobs read at process start that change a few times a year; editing them from a screen would need a store the running functions re-read, an audit trail and a stronger gate than a UI toggle. Tenant settings keep their real home in tenants.metadata via /api/admin/settings. AC2 and AC3 hold because nothing is displayed as a setting and nothing is offered as editable; AC4 because the gate says the application cannot see those values. server/tests/unit/gated-fabrication-pages.test.ts locks the gate, the absence of the invented values and the recorded decision.]"
     },
     {
       "id": "PROD-STRIPE-001",
