@@ -61,6 +61,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { downloadAuthedFile } from '@/lib/authed-download';
 import { useConfirm } from '@/components/ui/confirm-dialog';
+import { describeApiError } from '@/lib/api-error';
+import { bulkDeleteMessage, type BlockedRecord } from '@shared/platform-record-deletion';
 
 interface BusinessRecord {
   id: string;
@@ -150,13 +152,43 @@ export default function PlatformBusinessRecords() {
         description: 'Business record deleted successfully',
       });
     },
-    onError: () => {
+    // Round 212: the server now refuses a record that still has deals,
+    // contacts or activities (they would cascade), and says which.
+    onError: (err) => {
       toast({
-        title: 'Error',
-        description: 'Failed to delete business record',
+        title: 'Could not delete',
+        description: describeApiError(err).message,
         variant: 'destructive',
       });
     },
+  });
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: (recordIds: string[]) =>
+      apiRequest('/api/platform-crm/business-records/bulk/delete', 'POST', {
+        recordIds,
+      }) as Promise<{
+        deleted: string[];
+        blocked: BlockedRecord[];
+        missing: string[];
+      }>,
+    onSuccess: (result) => {
+      invalidateApiPath('/api/platform-crm/business-records');
+      const msg = bulkDeleteMessage(result);
+      toast({
+        title: msg.title,
+        description: msg.description,
+        variant: msg.destructive ? 'destructive' : undefined,
+      });
+      // Keep what was not deleted selected, so it can be dealt with.
+      setSelectedRecords(new Set(result.blocked.map((b) => b.id)));
+    },
+    onError: (err) =>
+      toast({
+        title: 'Could not delete',
+        description: describeApiError(err).message,
+        variant: 'destructive',
+      }),
   });
 
   // Bulk assign mutation
@@ -522,8 +554,16 @@ export default function PlatformBusinessRecords() {
                   <Button
                     variant="destructive"
                     size="sm"
-                    disabled
-                    title="Bulk delete is not available yet"
+                    disabled={bulkDeleteMutation.isPending}
+                    onClick={async () => {
+                      const ids = [...selectedRecords];
+                      const ok = await confirm({
+                        title: `Delete ${ids.length} record${ids.length === 1 ? '' : 's'}?`,
+                        description:
+                          'Records that still have deals, contacts or activities are kept and listed; deleting them would delete those too.',
+                      });
+                      if (ok) bulkDeleteMutation.mutate(ids);
+                    }}
                   >
                     <Trash2 className="w-4 h-4 mr-2" />
                     Delete
