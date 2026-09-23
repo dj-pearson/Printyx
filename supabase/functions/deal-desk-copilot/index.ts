@@ -22,6 +22,8 @@ import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { generateCompletion } from '../_shared/anthropic.ts';
 import { fetchAllRows } from '../_shared/paged-select.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { resolveScope, rowInScope } from '../_shared/scope.ts';
+import { computeMargin, computeQuoteCost } from '../../../shared/deal-desk-margin.ts';
 import { ROLE_LEVEL, RbacError, requireRoleLevel } from '../_shared/rbac.ts';
 
 type SB = ReturnType<typeof createSupabaseServiceClient>;
@@ -303,40 +305,64 @@ async function handleSimilarDeals(admin: SB, tenantId: string, quoteId: string, 
   return createCorsResponse(result, 200, req);
 }
 
+/**
+ * Round 150. This was a labelled STUB that counted parts cost only and said so
+ * in `financingNote`/`serviceCostNote`, while the Express handler - what dev
+ * ran - costed the same quote through shared/deal-desk-margin.ts: parts, plus
+ * projected service delivery on service lines, plus financing carry on a
+ * leased deal. So production reported a HIGHER GP% than dev for any quote with
+ * a service line or a lease, and `belowFloor` - the copilot's warning that a
+ * quote needs the deal desk - fired less often on the host people use. The
+ * model is dependency-free, so both hosts now run the one module.
+ */
+const FINANCED_PROPOSAL_TYPES = new Set(['equipment_lease', 'lease', 'financed', 'fmv_lease']);
+export function isFinancedDeal(proposalType: unknown): boolean {
+  return FINANCED_PROPOSAL_TYPES.has(String(proposalType ?? '').toLowerCase());
+}
+
 async function handleMargin(admin: SB, tenantId: string, quoteId: string, req: Request) {
   const proposal = await resolveProposal(admin, tenantId, quoteId);
   if (!proposal) return createCorsResponse({ message: 'Quote not found' }, 404, req);
 
   const revenue = num(proposal.total_amount) || num(proposal.subtotal);
 
-  const lines = await admin
+  const { data: lineRows, error: linesError } = await admin
     .from('proposal_line_items')
-    .select('unit_cost,quantity')
+    .select('item_type,unit_cost,unit_price,quantity')
     .eq('tenant_id', tenantId)
     .eq('proposal_id', proposal.id);
-  const cost = (lines.data ?? []).reduce(
-    (a: number, l: Record<string, unknown>) => a + num(l.unit_cost) * (num(l.quantity) || 1),
-    0,
-  );
-
-  const grossProfit = revenue - cost;
-  const gpPercent = revenue > 0 ? Math.round((grossProfit / revenue) * 1000) / 10 : 0;
+  // A margin computed over lines that failed to load is a zero-cost quote,
+  // which reads as 100% GP - the most flattering wrong answer available.
+  if (linesError) {
+    return createCorsResponse({ message: 'Failed to load quote lines' }, 500, req);
+  }
+  const costLines = (lineRows ?? []).map((l: Record<string, unknown>) => ({
+    itemType: (l.item_type as string | null) ?? null,
+    unitCost: num(l.unit_cost),
+    unitPrice: num(l.unit_price),
+    quantity: num(l.quantity) || 1,
+  }));
 
   const settings = await getOrCreateSettings(admin, tenantId);
   const gpFloorPct = num(settings.gp_floor_pct) || 30;
-  const belowFloor = revenue > 0 && gpPercent < gpFloorPct;
+  const financed = isFinancedDeal(proposal.proposal_type);
+  const cost = computeQuoteCost(costLines, { revenue, financed });
+  const margin = computeMargin({ revenue, cost, gpFloorPct });
 
   return createCorsResponse(
     {
-      revenue,
-      cost,
-      grossProfit,
-      gpPercent,
-      gpFloorPct,
-      belowFloor,
-      financingNote: 'STUB: financing/lease terms are not yet modeled into cost or GP.',
-      serviceCostNote:
-        'STUB: cost = parts/line unitCost only; projected service/labor cost not yet modeled.',
+      revenue: margin.revenue,
+      cost: margin.totalCost,
+      grossProfit: margin.grossProfit,
+      gpPercent: margin.gpPercent,
+      gpFloorPct: margin.gpFloorPct,
+      belowFloor: margin.belowFloor,
+      financed,
+      costBreakdown: {
+        partsCost: margin.partsCost,
+        serviceCost: margin.serviceCost,
+        financingCost: margin.financingCost,
+      },
     },
     200,
     req,
@@ -609,6 +635,29 @@ export default async function handler(req: Request) {
 
     // -------- PER-QUOTE endpoints --------
     if (first && action && req.method === 'GET') {
+      // Round 150. Every per-quote branch loaded the proposal by id and tenant
+      // alone, while the proposals function scopes the same rows to their
+      // owners (WF-R-04/05) because a quote carries dealer cost and margin.
+      // So a rep who could not list a colleague's quote could still read its
+      // gross profit, GP%, the customer's AR aging and open tickets here by id
+      // - the list scoped and the item open (COP-B04's half-measure). The
+      // check runs before any handler, on the same two owner columns, and
+      // not-yours answers the same 404 as not-found so an id on somebody
+      // else's quote is never confirmed.
+      const { data: owned } = await admin
+        .from('proposals')
+        .select('id, assigned_to, created_by')
+        .eq('id', first)
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+      const scope = await resolveScope(admin, {
+        userId: user.id,
+        tenantId,
+        appMetadata: user.app_metadata,
+      });
+      if (!owned || !rowInScope(owned, ['assigned_to', 'created_by'], scope)) {
+        return createCorsResponse({ message: 'Quote not found' }, 404, req);
+      }
       switch (action) {
         case 'snapshot':
           return await handleSnapshot(admin, tenantId, first, req);

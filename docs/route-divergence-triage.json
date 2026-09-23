@@ -30,8 +30,8 @@
       "reason": "database-updater/seeders/ STORE SQL for report definitions to run later rather than executing it (check:sql-string-tables baselines 78 of them). Not examined as a routing question."
     },
     "deal-desk-copilot": {
-      "verdict": "unexamined",
-      "reason": "SEC-EDGE-001 gated PUT /settings (the gp_floor_pct guardrail) edge-side. server/routes-deal-desk-copilot.ts carries a TODO(rbac) comment and no gate; the two have not been compared."
+      "verdict": "divergent",
+      "reason": "Round 150 read both. Edge: the per-quote branches loaded a quote by id and tenant only (fixed: scoped to assigned_to/created_by with a 404 for not-yours), and /margin was a parts-only stub while Express ran shared/deal-desk-margin.ts (fixed: edge now runs the same model). STILL DIVERGENT: Express has no ownership check on any per-quote route, and the edge similar-deals cohort does not use the shared dealMatches that Express does, so the two hosts pick different comparables. Proxying the prefix is the likely end state once similar-deals is ported."
     },
     "deal-stages": {
       "verdict": "express-only-capability",
