@@ -61,7 +61,13 @@ describe('service-analytics endpoint', () => {
     // Was `customerSatisfaction: 85, // Placeholder`. service_tickets has no
     // CSAT column and no survey is joined here.
     expect(fn).not.toMatch(/customerSatisfaction:\s*\d/);
-    expect(fn).toContain('customerSatisfaction: null');
+    // Round 181 (CSAT-PRODUCER-001): it is measured now, from completed
+    // surveys, and still starts null so an unanswered tenant reads as
+    // unmeasured rather than as 0.
+    expect(fn).toContain('let customerSatisfaction: number | null = null;');
+    expect(fn).toMatch(
+      /customerSatisfaction = summariseSatisfaction\(surveys\)\.overallSatisfaction/,
+    );
   });
 
   it('names what it cannot answer instead of zeroing it', () => {

@@ -1,5 +1,6 @@
 // Service Analytics Edge Function
 // Provides service ticket analytics and metrics
+import { summariseSatisfaction } from '../../../shared/csat-survey.ts';
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
@@ -113,15 +114,36 @@ export default async function handler(req: Request) {
         technicianName: nameById.get(t.technicianId) ?? null,
       }));
 
+      // CSAT-PRODUCER-001 (round 181). This was a hardcoded 85, then null,
+      // because nothing produced a survey. A completed ticket now creates one,
+      // so this is the mean overall score (1-5, the scale ServiceTeamStatsWidget
+      // reads) over the tenant's completed service-visit surveys - and still
+      // null when none has been answered, never 0.
+      let customerSatisfaction: number | null = null;
+      let csatReadFailed = false;
+      try {
+        const surveys = await fetchAllRows<{
+          status: string;
+          overall_score: number | null;
+          nps_score: number | null;
+        }>(() =>
+          admin
+            .from('customer_satisfaction_surveys')
+            .select('status, overall_score, nps_score')
+            .eq('tenant_id', tenantId)
+            .eq('survey_type', 'service_request_completion'),
+        );
+        customerSatisfaction = summariseSatisfaction(surveys).overallSatisfaction;
+      } catch (csatError) {
+        csatReadFailed = true;
+        console.error('Error reading satisfaction surveys:', csatError);
+      }
+
       return createCorsResponse(
         {
           overview: {
             ...summary.overview,
-            // Was a hardcoded 85. Nothing in this tenant's data measures
-            // satisfaction - there is no CSAT column on service_tickets and no
-            // survey joined here - and a made-up 85% on a service dashboard
-            // reads as a measurement. Null, and named in `unbacked` below.
-            customerSatisfaction: null,
+            customerSatisfaction,
           },
           byPriority: summary.byPriority,
           byStatus: summary.byStatus,
@@ -130,7 +152,11 @@ export default async function handler(req: Request) {
           lastUpdated: new Date().toISOString(),
           // What this endpoint cannot answer, said plainly rather than zeroed.
           unbacked: [
-            'customerSatisfaction - service_tickets carries no CSAT score and no survey is joined here',
+            ...(csatReadFailed
+              ? ['customerSatisfaction - the satisfaction surveys could not be read']
+              : customerSatisfaction === null
+                ? ['customerSatisfaction - no customer has completed a service-visit survey yet']
+                : []),
             'ticket categories - service_tickets has no category column',
             'first-call resolution, utilisation and revenue per technician - none has a source table',
           ],

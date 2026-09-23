@@ -217,3 +217,91 @@ describe('wiring', () => {
     expect(post.indexOf('requireRoleLevel')).toBeLessThan(post.indexOf('.insert('));
   });
 });
+
+// Round 181: the consumers.
+import { summariseSatisfaction, npsCategory } from '@shared/csat-survey';
+
+describe('summariseSatisfaction', () => {
+  it('is null across the board when nothing was answered, never 0', () => {
+    expect(summariseSatisfaction([])).toEqual({
+      overallSatisfaction: null,
+      npsScore: null,
+      responseRate: null,
+      completedCount: 0,
+      sentCount: 0,
+    });
+    const s = summariseSatisfaction([{ status: 'invited' }, { status: 'expired' }]);
+    expect(s.overallSatisfaction).toBeNull();
+    expect(s.npsScore).toBeNull();
+    expect(s.responseRate).toBe(0);
+  });
+
+  it('averages completed overall scores, reading the strings PostgREST returns for numeric', () => {
+    const s = summariseSatisfaction([
+      { status: 'completed', overall_score: '4.00' },
+      { status: 'completed', overall_score: 5 },
+      { status: 'invited', overall_score: 1 },
+    ]);
+    expect(s.overallSatisfaction).toBe(4.5);
+  });
+
+  it('computes NPS as promoters minus detractors over NPS answers only', () => {
+    const s = summariseSatisfaction([
+      { status: 'completed', nps_score: 10 },
+      { status: 'completed', nps_score: 9 },
+      { status: 'completed', nps_score: 7 },
+      { status: 'completed', nps_score: 2 },
+      { status: 'completed', nps_score: null },
+    ]);
+    expect(s.npsScore).toBe(25);
+  });
+
+  it('counts expired in the response-rate denominator and skipped out of it', () => {
+    const s = summariseSatisfaction([
+      { status: 'completed' },
+      { status: 'expired' },
+      { status: 'invited' },
+      { status: 'skipped' },
+    ]);
+    expect(s.responseRate).toBeCloseTo(33.3, 1);
+    expect(s.sentCount).toBe(3);
+  });
+
+  it('bands NPS scores', () => {
+    expect([10, 9, 8, 7, 6, 0].map(npsCategory)).toEqual([
+      'promoter',
+      'promoter',
+      'passive',
+      'passive',
+      'detractor',
+      'detractor',
+    ]);
+    expect(npsCategory(null)).toBeNull();
+  });
+});
+
+describe('the dashboards read the surveys now', () => {
+  const cs = strip(
+    readFileSync(
+      'supabase/functions/customer-success/handlers/analytics-frontend-stubs.ts',
+      'utf8',
+    ),
+  );
+  const sa = strip(readFileSync('supabase/functions/service-analytics/index.ts', 'utf8'));
+
+  it('customer-success aggregates tenant surveys instead of answering a stub', () => {
+    const at = cs.indexOf('export async function handleSatisfaction(');
+    const body = cs.slice(at, cs.indexOf('export async function handleCalculateHealth('));
+    expect(body).toMatch(
+      /\.from\('customer_satisfaction_surveys'\)[\s\S]*?\.eq\('tenant_id', auth\.tenantId\)/,
+    );
+    expect(body).toMatch(/summariseSatisfaction\(surveys/);
+    expect(body).not.toMatch(/npsScore:\s*null/);
+  });
+
+  it('service-analytics scopes its CSAT read to the tenant and to service visits', () => {
+    expect(sa).toMatch(
+      /\.from\('customer_satisfaction_surveys'\)[\s\S]*?\.eq\('tenant_id', tenantId\)[\s\S]*?\.eq\('survey_type', 'service_request_completion'\)/,
+    );
+  });
+});

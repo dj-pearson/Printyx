@@ -195,3 +195,78 @@ export function isCompletionTransition(
 ): boolean {
   return nextStatus === 'completed' && previousStatus !== 'completed';
 }
+
+// ---------------------------------------------------------------------------
+// Aggregation (round 181). What the customer-success and service-analytics
+// dashboards report, computed once from the survey rows.
+// ---------------------------------------------------------------------------
+
+export interface SurveyRowLike {
+  status: string | null | undefined;
+  overall_score?: number | string | null;
+  nps_score?: number | string | null;
+}
+
+export interface SatisfactionSummary {
+  /** Mean overall_score of completed surveys, on the 1-5 rating scale. */
+  overallSatisfaction: number | null;
+  /** Promoters (9-10) minus detractors (0-6), as percentages of NPS answers. */
+  npsScore: number | null;
+  /** Completed surveys over surveys a customer could have answered, as %. */
+  responseRate: number | null;
+  completedCount: number;
+  sentCount: number;
+}
+
+const num = (v: unknown): number | null => {
+  if (v === null || v === undefined || v === '') return null;
+  const n = typeof v === 'number' ? v : Number(v);
+  return Number.isFinite(n) ? n : null;
+};
+
+/** Promoter / passive / detractor, the standard NPS bands. */
+export function npsCategory(
+  score: number | null | undefined,
+): 'promoter' | 'passive' | 'detractor' | null {
+  if (score === null || score === undefined || !Number.isFinite(score)) return null;
+  if (score >= 9) return 'promoter';
+  if (score >= 7) return 'passive';
+  return 'detractor';
+}
+
+/**
+ * Every figure is NULL when nothing supports it, never 0: a tenant whose
+ * customers have answered nothing has no satisfaction score, and 0 would read
+ * as every customer being unhappy. The response-rate denominator excludes
+ * 'skipped' (the customer declined, which is an answer of a kind but not a
+ * survey still owed) and nothing else; an expired survey was sent and not
+ * answered, which is exactly what a response rate measures.
+ */
+export function summariseSatisfaction(rows: SurveyRowLike[]): SatisfactionSummary {
+  const sent = rows.filter((r) => r.status && r.status !== 'skipped');
+  const completed = rows.filter((r) => r.status === 'completed');
+
+  const overall = completed.map((r) => num(r.overall_score)).filter((n): n is number => n !== null);
+  const nps = completed.map((r) => num(r.nps_score)).filter((n): n is number => n !== null);
+
+  const round1 = (n: number) => Math.round(n * 10) / 10;
+  const overallSatisfaction =
+    overall.length > 0 ? round1(overall.reduce((a, b) => a + b, 0) / overall.length) : null;
+  const npsScore =
+    nps.length > 0
+      ? Math.round(
+          ((nps.filter((n) => n >= 9).length - nps.filter((n) => n <= 6).length) / nps.length) *
+            100,
+        )
+      : null;
+  const responseRate =
+    sent.length > 0 ? Math.round((completed.length / sent.length) * 1000) / 10 : null;
+
+  return {
+    overallSatisfaction,
+    npsScore,
+    responseRate,
+    completedCount: completed.length,
+    sentCount: sent.length,
+  };
+}
