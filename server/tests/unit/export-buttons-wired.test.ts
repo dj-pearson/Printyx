@@ -59,9 +59,18 @@ describe('each Export button calls exportToCSV', () => {
       /exportToCSV\(commissionStatementRows\(calc\), STATEMENT_COLUMNS/,
     ],
     ['client/src/pages/RootAdminSignupsCRM.tsx', /exportToCSV\(\s*signups, SIGNUP_EXPORT_COLUMNS/],
+    ['client/src/components/customer/CustomerInvoices.tsx', /exportInvoices\(filteredInvoices\)/],
+    [
+      'client/src/components/customer/CustomerInvoices.tsx',
+      /exportInvoices\(filteredInvoices\.filter\(\(i\) => selectedInvoices\.includes\(i\.id\)\)\)/,
+    ],
+    [
+      'client/src/pages/DeviceMonitoring.tsx',
+      /exportToCSV\(filteredDevices, DEVICE_EXPORT_COLUMNS/,
+    ],
   ];
   for (const [file, call] of cases) {
-    it(file.split('/').pop()!, () => {
+    it(`${file.split('/').pop()} ${call.source.slice(0, 30)}`, () => {
       const src = read(file);
       const m = call.exec(src);
       expect(m).not.toBeNull();

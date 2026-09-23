@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
+import { exportToCSV, type ExportColumn } from '@/lib/export-utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -76,6 +77,19 @@ interface Invoice {
   createdAt: string;
 }
 
+const INVOICE_EXPORT_COLUMNS: ExportColumn<Invoice>[] = [
+  { key: 'invoiceNumber', label: 'Invoice #' },
+  { key: 'invoiceDate', label: 'Invoice Date' },
+  { key: 'dueDate', label: 'Due Date' },
+  { key: 'invoiceStatus', label: 'Status' },
+  { key: 'subtotalAmount', label: 'Subtotal' },
+  { key: 'taxAmount', label: 'Tax' },
+  { key: 'totalAmount', label: 'Total' },
+  { key: 'amountPaid', label: 'Paid' },
+  { key: 'balanceDue', label: 'Balance Due' },
+  { key: 'poNumber', label: 'PO Number' },
+];
+
 interface CustomerInvoicesProps {
   customerId: string;
   customerName: string;
@@ -145,6 +159,11 @@ export function CustomerInvoices({ customerId, customerName }: CustomerInvoicesP
   };
 
   // Calculate totals
+  const exportInvoices = (rows: Invoice[]) =>
+    exportToCSV(rows, INVOICE_EXPORT_COLUMNS, {
+      filename: `${customerName || 'customer'}-invoices`,
+    });
+
   const totals = filteredInvoices.reduce(
     (acc, invoice) => ({
       totalAmount: acc.totalAmount + (invoice.totalAmount || 0),
@@ -239,7 +258,12 @@ export function CustomerInvoices({ customerId, customerName }: CustomerInvoicesP
                   <SelectItem value="void">Void</SelectItem>
                 </SelectContent>
               </Select>
-              <Button variant="outline" size="sm">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={filteredInvoices.length === 0}
+                onClick={() => exportInvoices(filteredInvoices)}
+              >
                 <Download className="h-4 w-4 mr-2" />
                 Export
               </Button>
@@ -274,7 +298,13 @@ export function CustomerInvoices({ customerId, customerName }: CustomerInvoicesP
                   <Mail className="h-4 w-4 mr-2" />
                   Send Statements
                 </Button>
-                <Button size="sm" variant="outline">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() =>
+                    exportInvoices(filteredInvoices.filter((i) => selectedInvoices.includes(i.id)))
+                  }
+                >
                   <Download className="h-4 w-4 mr-2" />
                   Export Selected
                 </Button>
