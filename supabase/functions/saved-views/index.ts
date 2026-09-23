@@ -20,6 +20,7 @@
 
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { resolveRoleLevel } from '../_shared/rbac.ts';
 import { normalizePath } from '../_shared/path.ts';
 // COP-M04: every row goes out camelCase.
 //
@@ -82,10 +83,10 @@ export default async function handler(req: Request) {
     }
 
     // Read role level for admin override on update/delete
-    const roleLevel =
-      (user.app_metadata?.roleLevel as number | undefined) ??
-      (user.user_metadata?.roleLevel as number | undefined) ??
-      0;
+    // Round 148: app_metadata claim or roles.level only. user_metadata is
+    // written by the session holder, and this level decides who may edit or
+    // delete ANOTHER user's saved view.
+    const roleLevel = await resolveRoleLevel(admin, user);
     const isAdmin = roleLevel >= 7;
 
     const url = new URL(req.url);

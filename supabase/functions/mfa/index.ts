@@ -33,6 +33,7 @@
  */
 
 import { handleCors } from '../_shared/cors.ts';
+import { ROLE_LEVEL, resolveRoleLevel } from '../_shared/rbac.ts';
 import { requireAuth, AuthError } from '../_shared/auth.ts';
 import { getDb } from '../_shared/db.ts';
 import { errorResponse, generateRequestId, jsonResponse } from '../_shared/http.ts';
@@ -51,24 +52,17 @@ function stripPrefix(path: string): string {
   );
 }
 
-function isAdmin(auth: { supabaseUser?: Record<string, unknown> }): boolean {
-  const u = auth.supabaseUser as
-    | { app_metadata?: Record<string, unknown>; user_metadata?: Record<string, unknown> }
-    | undefined;
-  const role = String(
-    (u?.app_metadata as Record<string, unknown> | undefined)?.role ??
-      (u?.user_metadata as Record<string, unknown> | undefined)?.role ??
-      '',
-  ).toLowerCase();
-  if (['admin', 'platform_admin', 'super_admin', 'root_admin'].some((r) => role.includes(r))) {
-    return true;
-  }
-  const raw =
-    (u?.app_metadata as Record<string, unknown> | undefined)?.roleLevel ??
-    (u?.app_metadata as Record<string, unknown> | undefined)?.role_level ??
-    1;
-  const level = typeof raw === 'number' ? raw : parseInt(String(raw), 10) || 1;
-  return level >= 7;
+// Round 148. This read the role from user_metadata as a fallback and matched it
+// by substring, so any member could set { role: 'admin' } on themselves through
+// supabase.auth.updateUser and reach the admin branch - which reads the tenant's
+// MFA audit log and RESETS another user's MFA, the second factor being the one
+// thing standing between a phished password and the account. The level now
+// comes from the app_metadata claim or users -> roles.level, at company admin.
+// deno-lint-ignore no-explicit-any
+async function isAdmin(db: any, auth: { supabaseUser?: any }): Promise<boolean> {
+  if (!auth.supabaseUser?.id) return false;
+  const level = await resolveRoleLevel(db, auth.supabaseUser);
+  return level >= ROLE_LEVEL.COMPANY_ADMIN;
 }
 
 export default async function handler(req: Request) {
@@ -299,7 +293,7 @@ export default async function handler(req: Request) {
     // ─── Admin ──────────────────────────────────────────────────────────────
 
     if (p0 === 'admin') {
-      if (!isAdmin(auth)) {
+      if (!(await isAdmin(db, auth))) {
         return errorResponse(403, 'Admin role required', req, { code: 'FORBIDDEN', requestId });
       }
 

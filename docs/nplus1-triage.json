@@ -147,7 +147,7 @@
       "why": "A draft service ticket per high-confidence prediction. Only the machines over the threshold reach the insert, so the count is normally small, but a fleet-wide degradation would make it large. Batchable."
     },
     {
-      "loop": "pricing/index.ts:598",
+      "loop": "pricing/index.ts:602",
       "table": "product_pricing",
       "verdict": "deliberate",
       "why": "A bulk price update where every row sets DIFFERENT columns to different values. One statement cannot express that, and the response reports per row."
@@ -171,7 +171,7 @@
       "why": "One execution insert and one schedule update per DUE schedule in the fifteen-minute sweep. Deliberately sequential and deliberately per-row: the set is only the schedules whose next_run has passed since the last tick, so it is normally empty and at worst a handful; a failure must be recorded against its own schedule and stepped over rather than aborting the rest; and each update carries that row's own tenant_id, so batching them into one statement would either lose the per-row tenant scope or need a CASE per row. A bulk insert of the executions alone is possible and would not help - the update is the other half and cannot batch."
     },
     {
-      "loop": "saved-views/index.ts:489",
+      "loop": "saved-views/index.ts:490",
       "table": "saved_view_pins",
       "verdict": "bounded",
       "why": "One update per pinned view in a drag-reorder, each with its own sort_order, bounded by what one user has pinned."

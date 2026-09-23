@@ -23,6 +23,7 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { resolveRoleLevel } from '../_shared/rbac.ts';
 
 const SECURITY_AUDIT_ACTIONS = [
   'login_failure',
@@ -56,15 +57,15 @@ export default async function handler(req: Request) {
     }
 
     // Platform-admin gating (matches Express middleware at routes-security-dashboard.ts:204).
-    const roleLevel =
-      (user.app_metadata?.roleLevel as number | undefined) ??
-      (user.user_metadata?.roleLevel as number | undefined) ??
-      0;
-    const isPlatformUser =
-      user.app_metadata?.isPlatformUser === true || user.user_metadata?.isPlatformUser === true;
-    const hasAllPermissions =
-      user.app_metadata?.hasAllPermissions === true ||
-      user.user_metadata?.hasAllPermissions === true;
+    //
+    // Round 148: every one of these three used to fall back to user_metadata,
+    // which the session holder writes through supabase.auth.updateUser. So any
+    // member of any tenant could set { isPlatformUser: true } on themselves and
+    // read this platform-wide security surface. app_metadata only, with the
+    // level resolved from roles.level when the token carries no claim.
+    const roleLevel = await resolveRoleLevel(createSupabaseServiceClient(), user);
+    const isPlatformUser = user.app_metadata?.isPlatformUser === true;
+    const hasAllPermissions = user.app_metadata?.hasAllPermissions === true;
 
     if (!isPlatformUser && roleLevel < 8 && !hasAllPermissions) {
       return createCorsResponse({ error: 'Platform admin access required' }, 403, req);

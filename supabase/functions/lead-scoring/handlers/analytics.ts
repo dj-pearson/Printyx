@@ -10,7 +10,7 @@ import { isAdminOrManager } from '../_rbac.ts';
 export async function handleAnalytics(req: Request, ctx: HandlerCtx): Promise<Response | null> {
   const { method, auth, db, requestId } = ctx;
   if (method !== 'GET') return null;
-  if (!isAdminOrManager(auth)) {
+  if (!(await isAdminOrManager(auth))) {
     return errorResponse(403, 'Admin or manager role required', req, {
       code: 'FORBIDDEN',
       requestId,

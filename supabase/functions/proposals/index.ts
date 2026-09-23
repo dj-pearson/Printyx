@@ -56,6 +56,7 @@ import { handleCors } from '../_shared/cors.ts';
 import { requireAuth, AuthError } from '../_shared/auth.ts';
 import { getDb } from '../_shared/db.ts';
 import { hasPricingApproval, needsPricingApproval } from './_send-gate.ts';
+import { resolveRoleLevel } from '../_shared/rbac.ts';
 import {
   FINANCED_ACQUISITION_TYPES,
   normalizeAcquisitionType,
@@ -588,8 +589,13 @@ function isShareExpired(p: { share_expires_at?: string | null }): boolean {
 // Managers (anything not sales-only) bypass.
 
 /** WF-C-04: the decision lives in _send-gate.ts, where a test can drive it. */
-function isSalesOnlyRole(ctx: SB): boolean {
-  return needsPricingApproval((ctx as any)?.supabaseUser);
+async function isSalesOnlyRole(ctx: SB): Promise<boolean> {
+  const user = (ctx as any)?.supabaseUser;
+  // Round 148: a token with no level claim is resolved against roles.level
+  // rather than guessed from a role string. resolveRoleLevel answers 1 for a
+  // user with no role row, which needs approval - the safe direction.
+  const resolved = user?.id ? await resolveRoleLevel(getDb(), user) : null;
+  return needsPricingApproval(user, resolved);
 }
 
 async function getMinMarginPolicy(db: SB, tenantId: string): Promise<number> {
@@ -1117,7 +1123,7 @@ async function pricingGateRefusal(
   req: Request,
   requestId: string,
 ): Promise<Response | null> {
-  if (!isSalesOnlyRole(gateCtx)) return null;
+  if (!(await isSalesOnlyRole(gateCtx))) return null;
 
   const { data: cur } = await db
     .from('proposals')
@@ -3069,7 +3075,7 @@ export default async function handler(req: Request) {
       // Manager-PDF requires manager-level access. Mirror the Express role
       // check: default-allow unless the user's role matches a sales-only
       // pattern.
-      if (isManager && isSalesOnlyRole(ctx)) {
+      if (isManager && (await isSalesOnlyRole(ctx))) {
         return errorResponse(403, 'Manager-level access required', req, {
           code: 'FORBIDDEN',
           requestId,

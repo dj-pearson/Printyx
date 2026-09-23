@@ -58,8 +58,12 @@ export default async function handler(req: Request) {
     // The role the pricing gates read. Managers and above see dealer cost,
     // margin reports and approvals — the same map and the same level as
     // server/services/pricing-service.ts, via the shared copy.
-    const userRole =
-      ((user.app_metadata?.role ?? user.user_metadata?.role) as string | undefined) ?? 'standard';
+    //
+    // Round 148: app_metadata only. This used to fall back to user_metadata,
+    // which the session holder writes, so a rep could name themselves a manager
+    // and see dealer cost and margins. A token with no role reads as 'standard',
+    // which is the least-privileged answer the pricing map has.
+    const userRole = (user.app_metadata?.role as string | undefined) ?? 'standard';
 
     // ========================================================================
     // POST /pricing/calculate-rep-cost

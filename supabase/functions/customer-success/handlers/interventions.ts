@@ -63,7 +63,7 @@ export async function handleInterventions(req: Request, ctx: HandlerCtx): Promis
 
   // Actions: POST /:id/{assign,complete,cancel}
   if (method === 'POST' && first && second === 'assign') {
-    if (!isManagerOrAbove(auth)) {
+    if (!(await isManagerOrAbove(auth))) {
       return errorResponse(403, 'Manager role required', req, { code: 'FORBIDDEN', requestId });
     }
     const body = (await req.json().catch(() => ({}))) as {
