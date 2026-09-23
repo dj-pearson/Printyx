@@ -313,15 +313,21 @@ export default async function handler(req: Request) {
 
     // POST /root-admin/tenants/:id/suspend - Suspend tenant
     if (req.method === 'POST' && endpoint === 'tenants' && resourceId && parts[2] === 'suspend') {
-      const { error } = await admin
+      const { data, error } = await admin
         .from('tenants')
         // is_active, not status: writing `status` here silently updated nothing,
         // so suspending a tenant reported success and left it running.
         .update({ is_active: false, updated_at: new Date().toISOString() })
-        .eq('id', resourceId);
+        .eq('id', resourceId)
+        .select('id');
 
       if (error) {
         return createCorsResponse({ error: 'Failed to suspend tenant' }, 500, req);
+      }
+      // Round 196: an update that matches nothing is not an error to
+      // PostgREST, so a stale id used to answer success.
+      if (!data || data.length === 0) {
+        return createCorsResponse({ error: 'Tenant not found' }, 404, req);
       }
 
       return createCorsResponse({ success: true, message: 'Tenant suspended' }, 200, req);
@@ -329,13 +335,19 @@ export default async function handler(req: Request) {
 
     // POST /root-admin/tenants/:id/activate - Activate tenant
     if (req.method === 'POST' && endpoint === 'tenants' && resourceId && parts[2] === 'activate') {
-      const { error } = await admin
+      const { data, error } = await admin
         .from('tenants')
         .update({ is_active: true, updated_at: new Date().toISOString() })
-        .eq('id', resourceId);
+        .eq('id', resourceId)
+        .select('id');
 
       if (error) {
         return createCorsResponse({ error: 'Failed to activate tenant' }, 500, req);
+      }
+      // Round 196: an update that matches nothing is not an error to
+      // PostgREST, so a stale id used to answer success.
+      if (!data || data.length === 0) {
+        return createCorsResponse({ error: 'Tenant not found' }, 404, req);
       }
 
       return createCorsResponse({ success: true, message: 'Tenant activated' }, 200, req);
