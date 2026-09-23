@@ -46,6 +46,7 @@ import MainLayout from '@/components/layout/main-layout';
 import { clickableProps } from '@/lib/accessibility';
 import { formatCurrency } from '@/lib/utils';
 import { useTextPrompt } from '@/components/ui/confirm-dialog';
+import { LogPlatformActivityDialog } from '@/components/platform-crm/LogPlatformActivityDialog';
 
 interface Deal {
   id: string;
@@ -111,6 +112,7 @@ export default function PlatformDealDetail() {
   const { toast } = useToast();
   const textPrompt = useTextPrompt();
   const queryClient = useQueryClient();
+  const [activityOpen, setActivityOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<Partial<Deal>>({});
 
@@ -765,7 +767,14 @@ export default function PlatformDealDetail() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle>Activity Timeline</CardTitle>
-                  <Button size="sm">
+                  <Button
+                    size="sm"
+                    onClick={() => setActivityOpen(true)}
+                    disabled={!deal?.businessRecordId}
+                    title={
+                      deal?.businessRecordId ? undefined : 'This deal has no account to log against'
+                    }
+                  >
                     <Activity className="w-4 h-4 mr-2" />
                     Log Activity
                   </Button>
@@ -818,6 +827,15 @@ export default function PlatformDealDetail() {
           </TabsContent>
         </Tabs>
       </div>
+      {deal?.businessRecordId && (
+        <LogPlatformActivityDialog
+          open={activityOpen}
+          onOpenChange={setActivityOpen}
+          businessRecordId={deal.businessRecordId}
+          dealId={id}
+          invalidate={[`/api/platform-activities?dealId=${id}&limit=50`]}
+        />
+      )}
     </MainLayout>
   );
 }

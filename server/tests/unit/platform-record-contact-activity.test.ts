@@ -65,17 +65,25 @@ describe('platform-activities authorship', () => {
 });
 
 describe('the page', () => {
+  // Round 211: the activity dialog moved into a component the deal page
+  // shares, so the POST and the type list are asserted there.
+  const DIALOG = readFileSync(
+    'client/src/components/platform-crm/LogPlatformActivityDialog.tsx',
+    'utf8',
+  );
   it('wires both buttons to the endpoints', () => {
     expect(PAGE).toMatch(/onClick=\{\(\) => setContactOpen\(true\)\}/);
     expect(PAGE).toMatch(/onClick=\{\(\) => setActivityOpen\(true\)\}/);
     expect(PAGE).toMatch(/apiRequest\(contactsKey, 'POST'/);
-    expect(PAGE).toMatch(/apiRequest\('\/api\/platform-activities', 'POST'/);
+    expect(PAGE).toMatch(/<LogPlatformActivityDialog[\s\S]{0,120}businessRecordId=\{id\}/);
+    expect(DIALOG).toMatch(/'\/api\/platform-activities',\s*'POST'/);
   });
-  it('offers only activity types the enum accepts', () => {
+  it('offers only activity types the enum accepts', async () => {
     const enumLine = MIGRATION.match(/"platform_activity_type" AS ENUM\(([^)]*)\)/)![1];
-    const offered = PAGE.match(/\{\[('call'[^\]]*)\]\.map/)![1]
-      .split(',')
-      .map((t) => t.trim().replace(/'/g, ''));
-    for (const t of offered) expect(enumLine, t).toContain(`'${t}'`);
+    const { PLATFORM_ACTIVITY_TYPES } = await import(
+      '../../../client/src/components/platform-crm/LogPlatformActivityDialog'
+    );
+    expect(PLATFORM_ACTIVITY_TYPES.length).toBeGreaterThan(0);
+    for (const t of PLATFORM_ACTIVITY_TYPES) expect(enumLine, t).toContain(`'${t}'`);
   });
 });

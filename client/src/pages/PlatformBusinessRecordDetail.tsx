@@ -10,13 +10,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
   Table,
   TableBody,
   TableCell,
@@ -60,6 +53,7 @@ import {
 import { format, formatDistanceToNow } from 'date-fns';
 import MainLayout from '@/components/layout/main-layout';
 import { formatCurrency } from '@/lib/utils';
+import { LogPlatformActivityDialog } from '@/components/platform-crm/LogPlatformActivityDialog';
 
 interface BusinessRecord {
   id: string;
@@ -182,11 +176,6 @@ export default function PlatformBusinessRecordDetail() {
   const [contactOpen, setContactOpen] = useState(false);
   const [newContact, setNewContact] = useState(emptyContact);
   const [activityOpen, setActivityOpen] = useState(false);
-  const [newActivity, setNewActivity] = useState({
-    activityType: 'call',
-    subject: '',
-    description: '',
-  });
   const failure = (title: string) => (err: unknown) =>
     toast({ title, description: describeApiError(err).message, variant: 'destructive' });
 
@@ -199,24 +188,6 @@ export default function PlatformBusinessRecordDetail() {
       setContactOpen(false);
     },
     onError: failure('Could not add contact'),
-  });
-
-  const logActivityMutation = useMutation({
-    mutationFn: () =>
-      apiRequest('/api/platform-activities', 'POST', {
-        businessRecordId: id,
-        activityType: newActivity.activityType,
-        subject: newActivity.subject.trim() || undefined,
-        description: newActivity.description.trim() || undefined,
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [activitiesKey] });
-      queryClient.invalidateQueries({ queryKey: [`/api/platform-crm/business-records/${id}`] });
-      toast({ title: 'Activity logged' });
-      setNewActivity({ activityType: 'call', subject: '', description: '' });
-      setActivityOpen(false);
-    },
-    onError: failure('Could not log activity'),
   });
 
   // Update mutation
@@ -977,58 +948,12 @@ export default function PlatformBusinessRecordDetail() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={activityOpen} onOpenChange={setActivityOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Log activity</DialogTitle>
-          </DialogHeader>
-          <form
-            className="space-y-3"
-            onSubmit={(e) => {
-              e.preventDefault();
-              logActivityMutation.mutate();
-            }}
-          >
-            <div>
-              <Label htmlFor="activity-type">Type</Label>
-              <Select
-                value={newActivity.activityType}
-                onValueChange={(activityType) => setNewActivity({ ...newActivity, activityType })}
-              >
-                <SelectTrigger id="activity-type">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {['call', 'email', 'meeting', 'demo', 'note'].map((t) => (
-                    <SelectItem key={t} value={t}>
-                      {t}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="activity-subject">Subject</Label>
-              <Input
-                id="activity-subject"
-                value={newActivity.subject}
-                onChange={(e) => setNewActivity({ ...newActivity, subject: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label htmlFor="activity-description">Notes</Label>
-              <Textarea
-                id="activity-description"
-                value={newActivity.description}
-                onChange={(e) => setNewActivity({ ...newActivity, description: e.target.value })}
-              />
-            </div>
-            <Button type="submit" className="w-full" disabled={logActivityMutation.isPending}>
-              {logActivityMutation.isPending ? 'Saving...' : 'Log activity'}
-            </Button>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <LogPlatformActivityDialog
+        open={activityOpen}
+        onOpenChange={setActivityOpen}
+        businessRecordId={id}
+        invalidate={[activitiesKey, `/api/platform-crm/business-records/${id}`]}
+      />
     </MainLayout>
   );
 }
