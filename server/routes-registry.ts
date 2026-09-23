@@ -84,7 +84,6 @@ import { registerGdprRoutes, incidentResponseRoutes } from './domains/security';
 import { knowledgeBaseAdminRoutes } from './domains/knowledge';
 
 import {
-  registerIntegrationRoutes,
   registerSalesforceRoutes,
   registerSalesforceTestRoutes,
   integrationRoutes,
@@ -332,7 +331,13 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   // middleware/api-key-auth.ts validates inbound keys with.
 
   // ─── Integrations ─────────────────────────────────────────────────
-  registerIntegrationRoutes(app);
+  // registerIntegrationRoutes (server/routes-integrations.ts) was called here
+  // and is DELETED (round 176). It mounted ahead of integrationRoutes below and
+  // won GET /api/integrations, PUT /:id and POST /:id/test, so PA-053's honest
+  // handlers over platform_integrations never ran in dev: the list came from
+  // system_integrations instead, and the test route wrote status 'connected'
+  // (not in that column's vocabulary) and answered 'Connection test
+  // successful' without testing anything.
   app.use(integrationRoutes);
 
   // ─── Task Management ──────────────────────────────────────────────
