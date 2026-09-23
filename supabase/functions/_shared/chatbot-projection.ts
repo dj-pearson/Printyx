@@ -14,11 +14,11 @@
  *     token. It must never leave the server; the row the page gets says only
  *     whether one is set. A port that spread the row would publish it.
  *
- * Both copies read either casing, so each works against either backend.
- * server/tests/unit/chatbot-projection-parity.test.ts fails on drift.
+ * It reads either casing (Drizzle camelCase or PostgREST snake_case).
+ * server/tests/unit/chatbot-projection-parity.test.ts exercises both shapes.
  *
- * Deno copy — kept textually identical to
- * server/lib/chatbot-projection.ts.
+ * The one copy. A Node twin (server/lib/chatbot-projection.ts) was deleted in
+ * round 153 with the Express handlers that used it.
  */
 
 type Row = Record<string, unknown>;

@@ -14,8 +14,8 @@
       "reason": "AUDIT-032 records all three of this feature's input tables as unwritable until migration 0062. Which host serves what has not been compared."
     },
     "chatbot": {
-      "verdict": "unexamined",
-      "reason": "The edge function is minLevel 1 by design (a rep reads the console). The Express twin has not been compared."
+      "verdict": "express-only-capability",
+      "reason": "Round 153 read both. The six console paths (connections, connect, links, query-log) ran on an Express copy with no role check while the edge function needs a MANAGER to change an install or a mapping; they are proxied with scoped entries and the Express handlers deleted. POST /query stays Express-only on purpose - the edge function answers 501 CHATBOT_QUERY_NOT_PORTED because the tool registry needs CLAUDE_API_KEY at the edge - and its caller-supplied platformUserId could resolve to another user's scope, now refused unless the link is the caller's own."
     },
     "contract-renewal": {
       "verdict": "unexamined",

@@ -13,8 +13,14 @@
 // row through renders a table of blank cells with no error anywhere.
 import { describe, it, expect } from 'vitest';
 
-import * as node from '../../lib/chatbot-projection';
 import * as edge from '../../../supabase/functions/_shared/chatbot-projection';
+
+// Round 153: server/lib/chatbot-projection.ts was deleted with the Express
+// handlers that used it - the six console paths are proxied to the edge
+// function now. The assertions below still run against both row SHAPES
+// (Drizzle camelCase and PostgREST snake_case); `node` is the edge module so
+// every property keeps being checked without a second copy to drift.
+const node = edge;
 
 const CREATED = new Date('2026-08-19T12:00:00.000Z');
 

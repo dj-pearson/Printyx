@@ -1007,6 +1007,15 @@ export function registerEdgeFunctionProxy(app: any) {
     // calls and now camelises; dev runs it too.
     '/api/social-media': 'social-media',
 
+    // Round 153. Scoped, not the whole prefix: POST /api/chatbot/query stays on
+    // Express because the edge function answers it with a deliberate 501. The
+    // other six paths ran on an Express copy with no role gate while production
+    // requires a manager to change a workspace install or a user mapping.
+    '/api/chatbot/connections': { fn: 'chatbot', pathPrefix: '/connections' },
+    '/api/chatbot/connect': { fn: 'chatbot', pathPrefix: '/connect' },
+    '/api/chatbot/links': { fn: 'chatbot', pathPrefix: '/links' },
+    '/api/chatbot/query-log': { fn: 'chatbot', pathPrefix: '/query-log' },
+
     // PROD-011. Full parity: all EIGHT Express endpoints (inbound, submit,
     // submissions list/:id/approve/reject, GET/PUT settings), which is also
     // everything MeterReadReview.tsx calls. This pipeline writes billing rows,
