@@ -40,6 +40,7 @@ import {
 import { useForm } from 'react-hook-form';
 import { toast } from '@/hooks/use-toast';
 import { exportToCSV, type ExportColumn } from '@/lib/export-utils';
+import { describeApiError } from '@/lib/api-error';
 import {
   LineChart,
   Line,
@@ -347,7 +348,60 @@ export default function CommissionManagement() {
         description: 'Commission calculations have been processed successfully.',
       });
     },
+    // The calculation engine is not built and the endpoint answers 501 on
+    // purpose; without this the button failed with nothing on screen.
+    onError: (err) =>
+      toast({
+        title: 'Could not calculate commissions',
+        description: describeApiError(err).message,
+        variant: 'destructive',
+      }),
   });
+
+  // Round 197: PATCH /commission/disputes/:id. The server refuses a
+  // non-manager and anyone reviewing their own dispute
+  // (shared/commission-dispute.ts), so the dialog shows its reason.
+  const [review, setReview] = useState<{
+    id: string;
+    number: string;
+    mode: 'status' | 'resolve';
+  } | null>(null);
+  const [reviewStatus, setReviewStatus] = useState('under_review');
+  const [reviewNotes, setReviewNotes] = useState('');
+  const [reviewAdjustment, setReviewAdjustment] = useState('');
+  const reviewMutation = useMutation({
+    mutationFn: (payload: {
+      id: string;
+      status: string;
+      notes?: string;
+      adjustmentAmount?: number;
+    }) =>
+      apiRequest(`/api/commission/disputes/${payload.id}`, 'PATCH', {
+        status: payload.status,
+        notes: payload.notes,
+        adjustmentAmount: payload.adjustmentAmount,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/commission/disputes'] });
+      toast({ title: 'Dispute updated' });
+      setReview(null);
+    },
+    onError: (err) =>
+      toast({
+        title: 'Could not update dispute',
+        description: describeApiError(err).message,
+        variant: 'destructive',
+      }),
+  });
+  const openReview = (
+    dispute: { id: string; disputeNumber?: string },
+    mode: 'status' | 'resolve',
+  ) => {
+    setReview({ id: dispute.id, number: dispute.disputeNumber ?? '', mode });
+    setReviewStatus(mode === 'resolve' ? 'resolved' : 'under_review');
+    setReviewNotes('');
+    setReviewAdjustment('');
+  };
 
   const handleCalculateCommissions = (data: any) => {
     calculateMutation.mutate({
@@ -907,15 +961,19 @@ export default function CommissionManagement() {
                       </div>
 
                       <div className="flex justify-end gap-2">
-                        <Button size="sm" variant="outline">
-                          View History
-                        </Button>
-                        {dispute.status !== 'resolved' && (
+                        {/* View History removed: no dispute history is stored. */}
+                        {!['resolved', 'rejected', 'closed'].includes(dispute.status) && (
                           <>
-                            <Button size="sm" variant="outline">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => openReview(dispute, 'status')}
+                            >
                               Update Status
                             </Button>
-                            <Button size="sm">Resolve Dispute</Button>
+                            <Button size="sm" onClick={() => openReview(dispute, 'resolve')}>
+                              Resolve Dispute
+                            </Button>
                           </>
                         )}
                       </div>
@@ -1037,6 +1095,75 @@ export default function CommissionManagement() {
           </TabsContent>
         </Tabs>
       </div>
+      <Dialog open={review !== null} onOpenChange={(open) => !open && setReview(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {review?.mode === 'resolve' ? 'Resolve dispute' : 'Update dispute status'}{' '}
+              {review?.number}
+            </DialogTitle>
+            <DialogDescription>
+              Reviewed by a manager who is not the employee involved and did not submit it.
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            className="space-y-3"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!review) return;
+              const amount = reviewAdjustment.trim() === '' ? undefined : Number(reviewAdjustment);
+              reviewMutation.mutate({
+                id: review.id,
+                status: reviewStatus,
+                notes: reviewNotes.trim() || undefined,
+                adjustmentAmount: amount,
+              });
+            }}
+          >
+            <div>
+              <Label htmlFor="dispute-status">Status</Label>
+              <Select value={reviewStatus} onValueChange={setReviewStatus}>
+                <SelectTrigger id="dispute-status">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(review?.mode === 'resolve'
+                    ? ['resolved', 'rejected']
+                    : ['under_review', 'escalated', 'closed']
+                  ).map((st) => (
+                    <SelectItem key={st} value={st}>
+                      {st.replace('_', ' ')}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="dispute-notes">Notes</Label>
+              <Input
+                id="dispute-notes"
+                value={reviewNotes}
+                onChange={(e) => setReviewNotes(e.target.value)}
+              />
+            </div>
+            {review?.mode === 'resolve' && reviewStatus === 'resolved' && (
+              <div>
+                <Label htmlFor="dispute-adjustment">Adjustment amount (optional)</Label>
+                <Input
+                  id="dispute-adjustment"
+                  type="number"
+                  step="0.01"
+                  value={reviewAdjustment}
+                  onChange={(e) => setReviewAdjustment(e.target.value)}
+                />
+              </div>
+            )}
+            <Button type="submit" className="w-full" disabled={reviewMutation.isPending}>
+              {reviewMutation.isPending ? 'Saving...' : 'Save'}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
     </MainLayout>
   );
 }
