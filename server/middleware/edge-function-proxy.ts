@@ -1016,6 +1016,12 @@ export function registerEdgeFunctionProxy(app: any) {
     '/api/chatbot/links': { fn: 'chatbot', pathPrefix: '/links' },
     '/api/chatbot/query-log': { fn: 'chatbot', pathPrefix: '/query-log' },
 
+    // Round 154. Express served this from routes-audit-logs.ts: the same
+    // { logs, pagination } shape, but with no cap on `limit` and a tenant read
+    // from an x-tenant-id header when the user carried none. The edge function
+    // is what production runs and covers the one path the viewer calls.
+    '/api/audit-logs': 'audit-logs',
+
     // PROD-011. Full parity: all EIGHT Express endpoints (inbound, submit,
     // submissions list/:id/approve/reject, GET/PUT settings), which is also
     // everything MeterReadReview.tsx calls. This pipeline writes billing rows,

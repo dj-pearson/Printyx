@@ -102,7 +102,6 @@ import {
 import {
   registerAdminStatsRoutes,
   registerOperationsExtendedRoutes,
-  registerAuditLogRoutes,
   registerSampleDataRoutes,
   registerDisposableEmailRoutes,
 } from './domains/admin';
@@ -339,7 +338,7 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   // handlers queried four non-existent tables through raw SQL.
   registerOperationsExtendedRoutes(app);
   registerWorkflowMobileRoutes(app);
-  registerAuditLogRoutes(app);
+  // Round 154: registerAuditLogRoutes retired; /api/audit-logs is proxied.
   registerMobileLogsAdminRoutes(app);
 
   // ─── Pricing ───────────────────────────────────────────────────────

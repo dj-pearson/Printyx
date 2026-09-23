@@ -5,10 +5,6 @@
       "verdict": "unexamined",
       "reason": "server/analytics-routes.ts was DELETED by PA-040 (184 lines, four handlers, no database import). Whatever Express still registers under this domain has not been compared to the edge function."
     },
-    "audit-logs": {
-      "verdict": "unexamined",
-      "reason": "Both hosts write audit_logs. _shared/audit-log.ts is the one edge writer; the Express side has not been compared to it."
-    },
     "auto-supply-replenishment": {
       "verdict": "unexamined",
       "reason": "AUDIT-032 records all three of this feature's input tables as unwritable until migration 0062. Which host serves what has not been compared."
