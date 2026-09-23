@@ -91,7 +91,28 @@ export async function handleHealthScores(req: Request, ctx: HandlerCtx): Promise
     q = q.order('calculated_at', { ascending: false }).limit(500);
     const { data, error } = await q;
     if (error) return dbErr(req, requestId, 'Failed to fetch health scores', error);
-    return jsonResponse(data ?? [], 200, req, requestId);
+
+    // Round 192: the rows carry only customer_id, so the page had no name to
+    // show. Resolved against business_records, the same lookup the
+    // satisfaction handler makes; a name that cannot be resolved is null and
+    // the page says so rather than printing a blank heading.
+    const rows = (data ?? []) as Record<string, unknown>[];
+    const ids = [...new Set(rows.map((r) => r.customer_id as string).filter(Boolean))];
+    const names = new Map<string, string>();
+    if (ids.length > 0) {
+      const { data: customers } = await db
+        .from('business_records')
+        .select('id, company_name')
+        .eq('tenant_id', auth.tenantId)
+        .in('id', ids);
+      for (const c of customers ?? []) if (c.company_name) names.set(c.id, c.company_name);
+    }
+    return jsonResponse(
+      rows.map((r) => ({ ...r, customer_name: names.get(r.customer_id as string) ?? null })),
+      200,
+      req,
+      requestId,
+    );
   }
 
   // GET /:id

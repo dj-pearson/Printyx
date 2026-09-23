@@ -20,7 +20,13 @@ import {
 } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { format } from 'date-fns';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, extractRecords } from '@/lib/queryClient';
+import {
+  averageScore,
+  toHealthViews,
+  type CustomerHealthRow,
+  type CustomerHealthView,
+} from '@shared/customer-health-view';
 import {
   Dialog,
   DialogContent,
@@ -58,61 +64,6 @@ import {
 } from 'recharts';
 import MainLayout from '@/components/layout/main-layout';
 
-interface CustomerHealthScore {
-  customerId: string;
-  customerName: string;
-  accountManager: string;
-  overallHealthScore: number;
-  healthStatus: string;
-  riskLevel: string;
-  churnProbability: number;
-  scoreBreakdown: {
-    usageHealth: number;
-    paymentHealth: number;
-    serviceHealth: number;
-    contractHealth: number;
-    engagementHealth: number;
-  };
-  metrics: {
-    contractValue: number;
-    monthsRemaining: number;
-    lastPaymentDate: Date;
-    daysSinceLastService: number;
-    averageResponseTime: number;
-    satisfactionScore: number;
-    usageUtilization: number;
-    renewalProbability: number;
-  };
-  trends: {
-    usageTrend: string;
-    paymentTrend: string;
-    serviceTrend: string;
-    engagementTrend: string;
-  };
-  riskFactors: Array<{
-    factor: string;
-    severity: string;
-    description: string;
-    impact: number;
-    recommendation: string;
-  }>;
-  opportunities: Array<{
-    type: string;
-    description: string;
-    value: number;
-    probability: number;
-    action: string;
-  }>;
-  alerts: Array<{
-    type: string;
-    priority: string;
-    message: string;
-    dueDate: Date;
-  }>;
-  lastUpdated: Date;
-  nextReviewDate: Date;
-}
-
 const getHealthStatusColor = (status: string) => {
   switch (status) {
     case 'excellent':
@@ -121,23 +72,6 @@ const getHealthStatusColor = (status: string) => {
       return 'bg-blue-100 text-blue-800';
     case 'at_risk':
       return 'bg-yellow-100 text-yellow-800';
-    case 'critical':
-      return 'bg-red-100 text-red-800';
-    default:
-      return 'bg-gray-100 text-gray-800';
-  }
-};
-
-const getRiskLevelColor = (level: string) => {
-  switch (level) {
-    case 'very_low':
-      return 'bg-green-100 text-green-800';
-    case 'low':
-      return 'bg-blue-100 text-blue-800';
-    case 'medium':
-      return 'bg-yellow-100 text-yellow-800';
-    case 'high':
-      return 'bg-orange-100 text-orange-800';
     case 'critical':
       return 'bg-red-100 text-red-800';
     default:
@@ -210,34 +144,12 @@ export default function CustomerSuccessManagement() {
   const { register, handleSubmit, reset } = useForm();
 
   // Fetch customer health scores
-  const { data: healthScores = [], isLoading: healthLoading } = useQuery<CustomerHealthScore[]>({
+  // Round 192: rebound onto the real customer_health_scores columns through
+  // shared/customer-health-view.ts. The mock shape this page was written
+  // against crashed on the first real row (see that module's header).
+  const { data: healthScores = [], isLoading: healthLoading } = useQuery<CustomerHealthView[]>({
     queryKey: ['/api/customer-success/health-scores'],
-    // PROD-008b: this select used to dereference score.metrics.lastPaymentDate
-    // and score.alerts.map unguarded. That was safe only against the mock
-    // handler in server/routes-sample-data.ts, which hand-built those nested
-    // objects. The live endpoint is the customer-success edge function, which
-    // returns raw customer_health_scores rows — no `metrics`, no `alerts` — so
-    // the page threw a TypeError on every load instead of rendering. Guarded so
-    // it degrades to empty. Rebinding the whole page onto the real columns
-    // (overall_score / health_status / calculated_at ...) is a data-contract
-    // story of its own, the same one EDGE-004 opened for
-    // PlatformCustomerSuccess.tsx.
-    select: (data: any[]) =>
-      (data ?? []).map((score) => ({
-        ...score,
-        metrics: {
-          ...score.metrics,
-          lastPaymentDate: score.metrics?.lastPaymentDate
-            ? new Date(score.metrics.lastPaymentDate)
-            : undefined,
-        },
-        alerts: (score.alerts ?? []).map((alert: any) => ({
-          ...alert,
-          dueDate: alert.dueDate ? new Date(alert.dueDate) : undefined,
-        })),
-        lastUpdated: score.lastUpdated ? new Date(score.lastUpdated) : undefined,
-        nextReviewDate: score.nextReviewDate ? new Date(score.nextReviewDate) : undefined,
-      })),
+    select: (data: unknown) => toHealthViews(extractRecords(data) as CustomerHealthRow[]),
   });
 
   // Fetch usage analytics
@@ -304,15 +216,12 @@ export default function CustomerSuccessManagement() {
     );
   }
 
-  const averageHealthScore =
-    healthScores.length > 0
-      ? healthScores.reduce((sum, score) => sum + score.overallHealthScore, 0) / healthScores.length
-      : 0;
-
-  const atRiskCustomers = healthScores.filter(
-    (score) => score.riskLevel === 'medium' || score.riskLevel === 'high',
-  ).length;
-  const totalAlerts = healthScores.reduce((sum, score) => sum + score.alerts.length, 0);
+  const averageHealthScore = averageScore(healthScores);
+  const atRiskCustomers = healthScores.filter((score) => score.atRisk).length;
+  const openTickets = healthScores.reduce(
+    (sum, score) => sum + (score.signals.openTickets ?? 0),
+    0,
+  );
 
   return (
     <MainLayout
@@ -355,9 +264,17 @@ export default function CustomerSuccessManagement() {
               <HeartHandshake className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{averageHealthScore.toFixed(1)}</div>
-              <p className="text-xs text-muted-foreground">Out of 100 possible points</p>
-              <Progress value={averageHealthScore} className="mt-2" />
+              <div className="text-2xl font-bold">
+                {averageHealthScore === null ? '—' : averageHealthScore.toFixed(1)}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {averageHealthScore === null
+                  ? 'No customer scored yet'
+                  : 'Out of 100 possible points'}
+              </p>
+              {averageHealthScore !== null && (
+                <Progress value={averageHealthScore} className="mt-2" />
+              )}
             </CardContent>
           </Card>
 
@@ -368,24 +285,24 @@ export default function CustomerSuccessManagement() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-orange-600">{atRiskCustomers}</div>
-              <p className="text-xs text-muted-foreground">Require immediate attention</p>
-              <div className="text-xs text-gray-600 mt-1">
-                {healthScores.length > 0
-                  ? ((atRiskCustomers / healthScores.length) * 100).toFixed(1)
-                  : '0.0'}
-                % of total customers
-              </div>
+              <p className="text-xs text-muted-foreground">At risk, poor or critical</p>
+              {healthScores.length > 0 && (
+                <div className="text-xs text-gray-600 mt-1">
+                  {((atRiskCustomers / healthScores.length) * 100).toFixed(1)}% of scored customers
+                </div>
+              )}
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Alerts</CardTitle>
+              <CardTitle className="text-sm font-medium">Open Service Tickets</CardTitle>
               <Target className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-red-600">{totalAlerts}</div>
-              <p className="text-xs text-muted-foreground">Pending action items</p>
+              {/* Was "Active Alerts" over an `alerts` array no column holds. */}
+              <div className="text-2xl font-bold text-red-600">{openTickets}</div>
+              <p className="text-xs text-muted-foreground">Across scored customers</p>
               {satisfactionData && (
                 <div className="text-xs text-gray-600 mt-1">
                   NPS Score: {measured(satisfactionData.summary.npsScore)}
@@ -447,190 +364,12 @@ export default function CustomerSuccessManagement() {
             ) : (
               <div className="space-y-4">
                 {healthScores.map((score) => (
-                  <Card key={score.customerId} className="hover:shadow-md transition-shadow">
-                    <CardContent className="py-4">
-                      <div className="flex justify-between items-start mb-4">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <h3 className="font-medium text-lg">{score.customerName}</h3>
-                            <Badge className={getHealthStatusColor(score.healthStatus)}>
-                              {score.healthStatus.replace('_', ' ')}
-                            </Badge>
-                            <Badge className={getRiskLevelColor(score.riskLevel)}>
-                              {score.riskLevel.replace('_', ' ')} risk
-                            </Badge>
-                          </div>
-
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600 mb-3">
-                            <div>
-                              <span className="font-medium">Account Manager:</span>
-                              <br />
-                              {score.accountManager}
-                            </div>
-                            <div>
-                              <span className="font-medium">Contract Value:</span>
-                              <br />${score.metrics.contractValue.toLocaleString()}
-                            </div>
-                            <div>
-                              <span className="font-medium">Months Remaining:</span>
-                              <br />
-                              {score.metrics.monthsRemaining}
-                            </div>
-                            <div>
-                              <span className="font-medium">Churn Risk:</span>
-                              <br />
-                              {score.churnProbability}%
-                            </div>
-                          </div>
-
-                          {/* Score breakdown */}
-                          <div className="bg-blue-50 rounded-lg p-4 mb-4">
-                            <h5 className="font-medium text-blue-800 mb-3">
-                              Health Score Breakdown
-                            </h5>
-                            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                              {Object.entries(score.scoreBreakdown).map(([key, value]) => (
-                                <div key={key} className="text-center">
-                                  <div className="text-lg font-bold text-blue-700">{value}</div>
-                                  <div className="text-xs text-blue-600 capitalize">
-                                    {key
-                                      .replace('Health', '')
-                                      .replace(/([A-Z])/g, ' $1')
-                                      .trim()}
-                                  </div>
-                                  <Progress value={value} className="mt-1 h-2" />
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-
-                          {/* Trends */}
-                          <div className="bg-gray-50 rounded-lg p-3 mb-4">
-                            <h5 className="font-medium text-gray-800 mb-2">Trends</h5>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                              {Object.entries(score.trends).map(([key, value]) => (
-                                <div key={key} className="flex items-center gap-2">
-                                  {getTrendIcon(value)}
-                                  <span className="capitalize">{key.replace('Trend', '')}:</span>
-                                  <span className="font-medium capitalize">{value}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-
-                          {/* Risk factors */}
-                          {score.riskFactors.length > 0 && (
-                            <div className="bg-yellow-50 rounded-lg p-3 mb-4">
-                              <h5 className="font-medium text-yellow-800 mb-2">Risk Factors</h5>
-                              <div className="space-y-2">
-                                {score.riskFactors.map((risk, idx) => (
-                                  <div key={idx} className="text-sm">
-                                    <div className="flex justify-between items-start mb-1">
-                                      <span className="font-medium text-yellow-700">
-                                        {risk.factor}
-                                      </span>
-                                      <Badge variant="outline" className="text-xs">
-                                        {risk.severity} impact
-                                      </Badge>
-                                    </div>
-                                    <div className="text-yellow-600 mb-1">{risk.description}</div>
-                                    <div className="text-xs text-yellow-700 font-medium">
-                                      Recommendation: {risk.recommendation}
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Opportunities */}
-                          {score.opportunities.length > 0 && (
-                            <div className="bg-green-50 rounded-lg p-3 mb-4">
-                              <h5 className="font-medium text-green-800 mb-2">
-                                Growth Opportunities
-                              </h5>
-                              <div className="space-y-2">
-                                {score.opportunities.map((opp, idx) => (
-                                  <div key={idx} className="text-sm">
-                                    <div className="flex justify-between items-start mb-1">
-                                      <span className="font-medium text-green-700 capitalize">
-                                        {opp.type.replace('_', ' ')}
-                                      </span>
-                                      <div className="text-right">
-                                        <div className="font-bold text-green-600">
-                                          ${opp.value.toLocaleString()}
-                                        </div>
-                                        <div className="text-xs text-green-600">
-                                          {opp.probability}% probability
-                                        </div>
-                                      </div>
-                                    </div>
-                                    <div className="text-green-600 mb-1">{opp.description}</div>
-                                    <div className="text-xs text-green-700 font-medium">
-                                      Action: {opp.action}
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Active alerts */}
-                          {score.alerts.length > 0 && (
-                            <div className="bg-red-50 rounded-lg p-3">
-                              <h5 className="font-medium text-red-800 mb-2">Active Alerts</h5>
-                              <div className="space-y-2">
-                                {score.alerts.map((alert, idx) => (
-                                  <div key={idx} className="text-sm">
-                                    <div className="flex justify-between items-start">
-                                      <span className="font-medium text-red-700 capitalize">
-                                        {alert.type.replace('_', ' ')}
-                                      </span>
-                                      <Badge variant="outline" className="text-xs">
-                                        {alert.priority}
-                                      </Badge>
-                                    </div>
-                                    <div className="text-red-600">{alert.message}</div>
-                                    <div className="text-xs text-red-700">
-                                      Due: {format(alert.dueDate, 'MMM dd, yyyy')}
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="text-right ml-6">
-                          <div className="text-3xl font-bold text-blue-600">
-                            {score.overallHealthScore}
-                          </div>
-                          <div className="text-xs text-gray-500">Health Score</div>
-
-                          <div className="mt-4 space-y-1 text-xs">
-                            <div>Renewal: {score.metrics.renewalProbability}%</div>
-                            <div>Satisfaction: {score.metrics.satisfactionScore.toFixed(1)}/5</div>
-                            <div>Utilization: {score.metrics.usageUtilization}%</div>
-                          </div>
-
-                          <div className="mt-4 text-xs text-gray-600">
-                            <div>Last updated: {format(score.lastUpdated, 'MMM dd')}</div>
-                            <div>Next review: {format(score.nextReviewDate, 'MMM dd')}</div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex justify-end gap-2 mt-4">
-                        <Button size="sm" variant="outline">
-                          View Details
-                        </Button>
-                        <Button size="sm" variant="outline">
-                          Schedule Meeting
-                        </Button>
-                        {score.alerts.length > 0 && <Button size="sm">Take Action</Button>}
-                      </div>
-                    </CardContent>
-                  </Card>
+                  <HealthScoreCard
+                    key={score.customerId}
+                    score={score}
+                    onOpen={() => setLocation(`/customers/${score.customerId}`)}
+                    onTask={() => setLocation('/tasks?action=new')}
+                  />
                 ))}
               </div>
             )}
@@ -951,89 +690,31 @@ export default function CustomerSuccessManagement() {
               <CardHeader>
                 <CardTitle>Intervention Recommendations</CardTitle>
                 <CardDescription>
-                  Automated suggestions for customer success actions
+                  Risk factors and recommendations recorded on each customer's latest health score
                 </CardDescription>
               </CardHeader>
               <CardContent>
+                {/* The recommendations are the score's own `recommendations`
+                    column, not generated here. */}
                 <div className="space-y-4">
-                  {healthScores
-                    .filter(
-                      (score) => score.riskFactors.length > 0 || score.opportunities.length > 0,
-                    )
-                    .map((score) => (
-                      <div key={score.customerId} className="border rounded-lg p-4">
-                        <div className="flex justify-between items-start mb-3">
-                          <div>
-                            <h4 className="font-medium">{score.customerName}</h4>
-                            <Badge className={getRiskLevelColor(score.riskLevel)}>
-                              {score.riskLevel.replace('_', ' ')} risk
-                            </Badge>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-lg font-bold">{score.overallHealthScore}</div>
-                            <div className="text-sm text-gray-600">Health Score</div>
-                          </div>
-                        </div>
-
-                        {score.riskFactors.length > 0 && (
-                          <div className="mb-3">
-                            <div className="font-medium text-red-700 mb-2">Risk Mitigation:</div>
-                            {score.riskFactors.map((risk, idx) => (
-                              <div key={idx} className="bg-red-50 rounded p-3 mb-2">
-                                <div className="font-medium text-red-800">{risk.factor}</div>
-                                <div className="text-sm text-red-700 mb-2">{risk.description}</div>
-                                <div className="text-sm font-medium text-red-800">
-                                  Recommended Action: {risk.recommendation}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        {score.opportunities.length > 0 && (
-                          <div className="mb-3">
-                            <div className="font-medium text-green-700 mb-2">
-                              Growth Opportunities:
-                            </div>
-                            {score.opportunities.map((opp, idx) => (
-                              <div key={idx} className="bg-green-50 rounded p-3 mb-2">
-                                <div className="flex justify-between items-start">
-                                  <div>
-                                    <div className="font-medium text-green-800 capitalize">
-                                      {opp.type.replace('_', ' ')}
-                                    </div>
-                                    <div className="text-sm text-green-700 mb-2">
-                                      {opp.description}
-                                    </div>
-                                    <div className="text-sm font-medium text-green-800">
-                                      Recommended Action: {opp.action}
-                                    </div>
-                                  </div>
-                                  <div className="text-right">
-                                    <div className="font-bold text-green-600">
-                                      ${opp.value.toLocaleString()}
-                                    </div>
-                                    <div className="text-sm text-green-600">
-                                      {opp.probability}% chance
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        <div className="flex justify-end gap-2">
-                          <Button size="sm" variant="outline">
-                            Schedule Call
-                          </Button>
-                          <Button size="sm" variant="outline">
-                            Create Task
-                          </Button>
-                          <Button size="sm">Take Action</Button>
-                        </div>
-                      </div>
-                    ))}
+                  {healthScores.filter((s) => s.riskFactors.length || s.recommendations.length)
+                    .length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      No scored customer carries a risk factor or a recommendation.
+                    </p>
+                  ) : (
+                    healthScores
+                      .filter((s) => s.riskFactors.length || s.recommendations.length)
+                      .map((score) => (
+                        <HealthScoreCard
+                          key={score.customerId}
+                          score={score}
+                          compact
+                          onOpen={() => setLocation(`/customers/${score.customerId}`)}
+                          onTask={() => setLocation('/tasks?action=new')}
+                        />
+                      ))
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -1041,5 +722,130 @@ export default function CustomerSuccessManagement() {
         </Tabs>
       </div>
     </MainLayout>
+  );
+}
+
+function HealthScoreCard({
+  score,
+  compact,
+  onOpen,
+  onTask,
+}: {
+  score: CustomerHealthView;
+  compact?: boolean;
+  onOpen: () => void;
+  onTask: () => void;
+}) {
+  const s = score.signals;
+  return (
+    <Card>
+      <CardContent className="py-4 space-y-4">
+        <div className="flex justify-between items-start gap-4">
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="font-medium text-lg">{score.customerName}</h3>
+              <Badge className={getHealthStatusColor(score.healthStatus)}>
+                {score.healthStatus.replace('_', ' ')}
+              </Badge>
+              {score.trend && (
+                <span className="flex items-center gap-1 text-sm text-gray-600 capitalize">
+                  {getTrendIcon(score.trend)}
+                  {score.trend}
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              Scored {format(new Date(score.calculatedAt), 'MMM dd, yyyy')}
+              {score.nextCalculationDue &&
+                ` · next due ${format(new Date(score.nextCalculationDue), 'MMM dd')}`}
+            </p>
+          </div>
+          <div className="text-right">
+            <div className="text-3xl font-bold text-blue-600">{score.overallScore ?? '—'}</div>
+            <div className="text-xs text-gray-500">Health Score</div>
+          </div>
+        </div>
+
+        {!compact && (
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 bg-blue-50 rounded-lg p-4">
+              {score.factors.map((f) => (
+                <div key={f.label} className="text-center">
+                  <div className="text-lg font-bold text-blue-700">{f.score ?? '—'}</div>
+                  <div className="text-xs text-blue-600">{f.label}</div>
+                  {f.score !== null && <Progress value={f.score} className="mt-1 h-2" />}
+                </div>
+              ))}
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm text-gray-600">
+              <div>
+                <span className="font-medium">Days since service</span>
+                <br />
+                {s.daysSinceLastService ?? '—'}
+              </div>
+              <div>
+                <span className="font-medium">Open tickets</span>
+                <br />
+                {s.openTickets ?? '—'}
+              </div>
+              <div>
+                <span className="font-medium">Overdue invoices</span>
+                <br />
+                {s.overdueInvoices ?? '—'}
+              </div>
+              <div>
+                <span className="font-medium">NPS</span>
+                <br />
+                {s.nps ?? '—'}
+              </div>
+              <div>
+                <span className="font-medium">CSAT</span>
+                <br />
+                {s.csat ?? '—'}
+              </div>
+            </div>
+          </>
+        )}
+
+        {score.riskFactors.length > 0 && (
+          <div className="bg-red-50 rounded-lg p-3">
+            <h5 className="font-medium text-red-800 mb-1">Risk factors</h5>
+            <ul className="list-disc pl-5 text-sm text-red-700">
+              {score.riskFactors.map((r) => (
+                <li key={r}>{r}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {score.recommendations.length > 0 && (
+          <div className="bg-green-50 rounded-lg p-3">
+            <h5 className="font-medium text-green-800 mb-1">Recommendations</h5>
+            <ul className="list-disc pl-5 text-sm text-green-700">
+              {score.recommendations.map((r) => (
+                <li key={r}>{r}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {!compact && score.strengths.length > 0 && (
+          <div className="text-sm text-gray-600">
+            <span className="font-medium">Strengths:</span> {score.strengths.join(', ')}
+          </div>
+        )}
+
+        {/* View Details opens the customer record, whose Activity tab is where
+            a call or meeting is logged; Create Task opens the task dialog. The
+            old Schedule Call / Schedule Meeting / Take Action buttons had no
+            handler and nothing to call. */}
+        <div className="flex justify-end gap-2">
+          <Button size="sm" variant="outline" onClick={onOpen}>
+            View Customer
+          </Button>
+          <Button size="sm" variant="outline" onClick={onTask}>
+            Create Task
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
