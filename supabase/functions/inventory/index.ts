@@ -152,10 +152,13 @@ export default async function handler(req: Request) {
     // POST /inventory/:id/adjust - Adjust inventory quantity
     if (req.method === 'POST' && itemId && action === 'adjust') {
       const body = await req.json();
-      const { quantity, reason, notes } = body;
-
-      if (quantity === undefined || quantity === null) {
-        return createCorsResponse({ error: 'quantity is required' }, 400, req);
+      const { reason, notes } = body;
+      // Round 195: `quantity` came off the body unchecked, so a string "5"
+      // made `on_hand + quantity` a string concatenation ("125") rather than
+      // a sum. It must be a whole number now.
+      const quantity = Number(body.quantity);
+      if (body.quantity === undefined || body.quantity === null || !Number.isInteger(quantity)) {
+        return createCorsResponse({ error: 'quantity must be a whole number' }, 400, req);
       }
 
       // Get current inventory item
@@ -171,8 +174,15 @@ export default async function handler(req: Request) {
       }
 
       // Calculate new quantities
-      const newOnHand = (item.quantity_on_hand || 0) + quantity;
-      const newAvailable = (item.quantity_available || 0) + quantity;
+      const newOnHand = (Number(item.quantity_on_hand) || 0) + quantity;
+      const newAvailable = (Number(item.quantity_available) || 0) + quantity;
+      if (newOnHand < 0) {
+        return createCorsResponse(
+          { error: `That would leave ${newOnHand} on hand; stock cannot go below zero` },
+          400,
+          req,
+        );
+      }
 
       // Update inventory
       const { data: updated, error } = await admin
