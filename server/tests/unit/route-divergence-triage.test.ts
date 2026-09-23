@@ -47,7 +47,9 @@ describe('every divergent domain carries a verdict (round 124)', () => {
     expect(VERDICTS.has('unexamined')).toBe(true);
     expect(note).toMatch(/unexamined.*permitted|permitted verdict/i);
     const unexamined = Object.values(entries).filter((e) => e.verdict === 'unexamined');
-    expect(unexamined.length).toBeGreaterThan(0);
+    // Round 177 examined the last one. The property was never "something is
+    // unexamined" (round 91's floor-on-a-worklist lesson) - it is that an
+    // unexamined entry, whenever there is one, says what was not looked at.
     // An unexamined entry still has to say WHAT has not been looked at.
     for (const entry of unexamined) expect(entry.reason.length).toBeGreaterThan(40);
   });

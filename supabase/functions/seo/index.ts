@@ -33,6 +33,7 @@ import {
 import { extractPageFacts } from './_page-facts.ts';
 import { evaluateSeoAudit } from '../../../shared/seo-audit.ts';
 import { toCamelShallow } from '../_shared/case.ts';
+import { planSeoSettingsWrite } from '../../../shared/seo-settings-write.ts';
 
 /**
  * Fetch a page the caller named and hand back its HTML, or the Response to
@@ -319,42 +320,37 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to fetch SEO settings' }, 500, req);
       }
 
-      return createCorsResponse(settings || {}, 200, req);
+      // Round 177: camelCase, the spelling both pages read and Express's
+      // Drizzle row answers; and null when there is no row, as Express does,
+      // rather than an object that reads as a row with every field blank.
+      return createCorsResponse(settings ? toCamelShallow(settings) : null, 200, req);
     }
 
-    // PUT /seo/settings - Update SEO settings
-    if (req.method === 'PUT' && resource === 'settings') {
-      const body = await req.json();
-
-      // Validate allowed fields
-      const allowedFields = [
-        'site_url',
-        'site_name',
-        'default_title',
-        'default_description',
-        'default_keywords',
-        'default_og_image',
-        'robots_txt',
-        'llms_txt',
-        'sitemap_url',
-        'twitter_handle',
-        'facebook_app_id',
-        'monitoring_enabled',
-        'monitoring_frequency',
-        'google_analytics_id',
-        'gsc_verification',
-      ];
+    // PUT /seo/settings - Update SEO settings (POST is the same upsert)
+    //
+    // Round 177: the whitelist here was snake_case only and every caller sends
+    // camelCase, so a save wrote updated_at alone and answered 200. POST had
+    // no branch at all, so RootAdminSEO's save 404'd in production.
+    if ((req.method === 'PUT' || req.method === 'POST') && resource === 'settings') {
+      const body = await req.json().catch(() => ({}));
+      const plan = planSeoSettingsWrite(body);
+      if (Object.keys(plan.row).length === 0) {
+        return createCorsResponse(
+          {
+            message: 'No writable SEO settings field was sent.',
+            code: 'NO_WRITABLE_FIELDS',
+            ignoredFields: plan.ignoredFields,
+          },
+          400,
+          req,
+        );
+      }
 
       const settingsData: Record<string, unknown> = {
+        ...plan.row,
         tenant_id: tenantId,
         updated_at: new Date().toISOString(),
       };
-
-      for (const field of allowedFields) {
-        if (body[field] !== undefined) {
-          settingsData[field] = body[field];
-        }
-      }
 
       // Check if settings exist
       const { data: existing } = await admin
@@ -391,7 +387,11 @@ export default async function handler(req: Request) {
         result = data;
       }
 
-      return createCorsResponse(result, 200, req);
+      return createCorsResponse(
+        { ...toCamelShallow(result), ignoredFields: plan.ignoredFields },
+        200,
+        req,
+      );
     }
 
     // ============= PAGES =============
