@@ -1,5 +1,13 @@
-import { percentOfOr } from '@/lib/utils';
-import { useState } from 'react';
+/**
+ * Advanced Reporting (round 208).
+ *
+ * Every figure is derived in client/src/lib/advanced-reporting.ts from real
+ * columns over EVERY page of each list (client/src/lib/fetch-all-records.ts);
+ * that module's header lists what the previous version got wrong. The page
+ * itself only chooses a range and a customer, renders, and exports the rows of
+ * the tab in view.
+ */
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { QueryStates } from '@/components/ui/query-state';
 import { DashboardSkeleton } from '@/components/ui/skeletons';
@@ -30,21 +38,63 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
+import { Download } from 'lucide-react';
+import { startOfMonth, endOfMonth } from 'date-fns';
+import { formatCurrency, formatPercent, percentOf } from '@/lib/utils';
+import { exportToCSV, type ExportColumn } from '@/lib/export-utils';
+import { fetchAllRecords, type PagingStyle } from '@/lib/fetch-all-records';
 import {
-  TrendingUp,
-  DollarSign,
-  Users,
-  Calendar,
-  FileText,
-  BarChart3,
-  PieChartIcon,
-  Download,
-  Filter,
-  Activity,
-} from 'lucide-react';
-import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
-import { apiRequest, extractRecords } from '@/lib/queryClient';
-import type { Customer, Contract, ServiceTicket, Invoice, MeterReading } from '@shared/schema';
+  contractVolumes,
+  revenueByCustomer,
+  revenueByMonth,
+  serviceMetrics,
+  type ContractVolume,
+  type CustomerRevenue,
+  type MonthRevenue,
+} from '@/lib/advanced-reporting';
+
+type Row = Record<string, unknown>;
+
+/** Each list and how it pages. */
+export const SOURCES: Record<string, { path: string; style: PagingStyle }> = {
+  customers: { path: '/api/customers', style: 'offset' },
+  contracts: { path: '/api/contracts', style: 'page' },
+  tickets: { path: '/api/service-tickets', style: 'offset' },
+  invoices: { path: '/api/invoices', style: 'page' },
+  readings: { path: '/api/meter-readings', style: 'page' },
+};
+
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
+
+const dash = (v: number | null, f: (n: number) => string) => (v === null ? '—' : f(v));
+
+export const REVENUE_COLUMNS: ExportColumn<MonthRevenue>[] = [
+  { key: 'month', label: 'Month' },
+  { key: 'revenue', label: 'Invoiced revenue' },
+  { key: 'invoices', label: 'Invoices' },
+];
+export const CUSTOMER_COLUMNS: ExportColumn<CustomerRevenue>[] = [
+  { key: 'customer', label: 'Customer' },
+  { key: 'revenue', label: 'Invoiced revenue' },
+  { key: 'unpaid', label: 'Unpaid' },
+  { key: 'invoices', label: 'Invoices' },
+];
+export const CONTRACT_COLUMNS: ExportColumn<ContractVolume>[] = [
+  { key: 'contract', label: 'Contract' },
+  { key: 'customer', label: 'Customer' },
+  { key: 'monthlyBase', label: 'Monthly base' },
+  { key: 'monthlyPages', label: 'Pages per month' },
+  { key: 'basePerPage', label: 'Base per page' },
+  { key: 'machines', label: 'Machines with readings' },
+];
+
+function useAllRecords(key: keyof typeof SOURCES) {
+  const { path, style } = SOURCES[key];
+  return useQuery({
+    queryKey: [path, 'all-pages'],
+    queryFn: () => fetchAllRecords<Row>(path, style),
+  });
+}
 
 export default function AdvancedReporting() {
   const [dateRange, setDateRange] = useState({
@@ -52,240 +102,68 @@ export default function AdvancedReporting() {
     to: endOfMonth(new Date()),
   });
   const [selectedCustomer, setSelectedCustomer] = useState<string>('all');
-  const [selectedReport, setSelectedReport] = useState<string>('revenue');
+  const [tab, setTab] = useState('revenue');
 
-  const handleDateRangeChange = (range: { from: Date; to: Date }) => {
-    setDateRange(range);
-  };
+  const customersQuery = useAllRecords('customers');
+  const contractsQuery = useAllRecords('contracts');
+  const ticketsQuery = useAllRecords('tickets');
+  const invoicesQuery = useAllRecords('invoices');
+  const readingsQuery = useAllRecords('readings');
+  const queries = [customersQuery, contractsQuery, ticketsQuery, invoicesQuery, readingsQuery];
+  const truncated = queries.some((q) => q.data?.truncated);
 
-  // Data fetching
-  const customersQuery = useQuery<Customer[]>({
-    queryKey: ['/api/customers'],
-    queryFn: async () => {
-      const response = await apiRequest('/api/customers', 'GET');
-      return extractRecords(response).map((customer: any) => ({
-        ...customer,
-        id: customer.id,
-        companyName: customer.company_name || customer.companyName || '',
-        createdAt: customer.created_at || customer.createdAt || '',
-      }));
-    },
-  });
+  // The customer filter narrows every list that names a customer; it used to
+  // be a select whose value nothing read.
+  const forCustomer = (rows: Row[] | undefined) =>
+    (rows ?? []).filter(
+      (r) =>
+        selectedCustomer === 'all' ||
+        String(r.customer_id ?? r.customerId ?? '') === selectedCustomer,
+    );
 
-  const contractsQuery = useQuery<Contract[]>({
-    queryKey: ['/api/contracts'],
-    queryFn: async () => {
-      const response = await apiRequest('/api/contracts', 'GET');
-      return extractRecords(response).map((contract: any) => ({
-        ...contract,
-        id: contract.id,
-        contractNumber: contract.contract_number || contract.contractNumber || '',
-        customerId: contract.customer_id || contract.customerId || '',
-        startDate: contract.start_date || contract.startDate || '',
-        endDate: contract.end_date || contract.endDate || '',
-      }));
-    },
-  });
+  const customers = customersQuery.data?.rows ?? [];
+  const contracts = forCustomer(contractsQuery.data?.rows);
+  const tickets = forCustomer(ticketsQuery.data?.rows);
+  const invoices = forCustomer(invoicesQuery.data?.rows);
+  const readings = readingsQuery.data?.rows ?? [];
 
-  const ticketsQuery = useQuery<ServiceTicket[]>({
-    queryKey: ['/api/service-tickets'],
-    queryFn: async () => {
-      const response = await apiRequest('/api/service-tickets', 'GET');
-      return extractRecords(response).map((ticket: any) => ({
-        ...ticket,
-        id: ticket.id,
-        ticketNumber: ticket.ticket_number || ticket.ticketNumber || '',
-        customerId: ticket.customer_id || ticket.customerId || '',
-        createdAt: ticket.created_at || ticket.createdAt || '',
-      }));
-    },
-  });
+  const revenue = useMemo(() => revenueByMonth(invoices, dateRange), [invoices, dateRange]);
+  const byCustomer = useMemo(
+    () => revenueByCustomer(invoices, customers, dateRange),
+    [invoices, customers, dateRange],
+  );
+  const service = useMemo(() => serviceMetrics(tickets, dateRange), [tickets, dateRange]);
+  const volumes = useMemo(
+    () => contractVolumes(contracts, readings, customers),
+    [contracts, readings, customers],
+  );
+  const totalRevenue = revenue.reduce((s, m) => s + m.revenue, 0);
+  const activeContracts = contracts.filter(
+    (c) => String(c.status ?? '').toLowerCase() === 'active',
+  ).length;
 
-  const invoicesQuery = useQuery<Invoice[]>({
-    queryKey: ['/api/invoices'],
-    queryFn: async () => {
-      const response = await apiRequest('/api/invoices', 'GET');
-      return extractRecords(response).map((invoice: any) => ({
-        ...invoice,
-        id: invoice.id,
-        invoiceNumber: invoice.invoice_number || invoice.invoiceNumber || '',
-        issueDate: invoice.issue_date || invoice.issueDate || '',
-        dueDate: invoice.due_date || invoice.dueDate || '',
-      }));
-    },
-  });
-
-  const readingsQuery = useQuery<MeterReading[]>({
-    queryKey: ['/api/meter-readings'],
-    queryFn: async () => {
-      const response = await apiRequest('/api/meter-readings', 'GET');
-      return extractRecords(response).map((reading: any) => ({
-        ...reading,
-        id: reading.id,
-        equipmentId: reading.equipment_id || reading.equipmentId || '',
-        readingDate: reading.reading_date || reading.readingDate || '',
-        blackMeter: reading.black_meter || reading.blackMeter || 0,
-        colorMeter: reading.color_meter || reading.colorMeter || 0,
-      }));
-    },
-  });
-
-  // CR-033: all five kept only `.data`. Every metric on this page is derived
-  // from them, so a failed request produced a fully rendered report of zeroes -
-  // no revenue, no open tickets, no meter volume - which reads as a quiet month
-  // rather than a broken one. Held whole so the wrapper can distinguish them.
-  const customers = customersQuery.data;
-  const contracts = contractsQuery.data;
-  const serviceTickets = ticketsQuery.data;
-  const invoices = invoicesQuery.data;
-  const meterReadings = readingsQuery.data;
-
-  // Revenue Analytics
-  const getRevenueData = () => {
-    if (!invoices) return [];
-
-    const monthlyRevenue = invoices
-      .filter((inv) => {
-        const invDate = new Date(inv.issuedAt!);
-        return invDate >= dateRange.from && invDate <= dateRange.to;
-      })
-      .reduce(
-        (acc, inv) => {
-          const month = format(new Date(inv.issuedAt!), 'MMM yyyy');
-          acc[month] = (acc[month] || 0) + parseFloat(inv.totalAmount.toString());
-          return acc;
-        },
-        {} as Record<string, number>,
+  const exportTab = () => {
+    const name = `advanced-report-${tab}`;
+    if (tab === 'revenue') exportToCSV(revenue, REVENUE_COLUMNS, { filename: name });
+    else if (tab === 'profitability') exportToCSV(byCustomer, CUSTOMER_COLUMNS, { filename: name });
+    else if (tab === 'service')
+      exportToCSV(
+        service.byPriority,
+        [
+          { key: 'priority', label: 'Priority' },
+          { key: 'count', label: 'Tickets' },
+        ],
+        { filename: name },
       );
-
-    return Object.entries(monthlyRevenue).map(([month, amount]) => ({
-      month,
-      revenue: amount,
-      target: amount * 1.1, // 10% growth target
-    }));
+    else exportToCSV(volumes, CONTRACT_COLUMNS, { filename: name });
   };
-
-  // Customer Profitability Analysis
-  const getCustomerProfitabilityData = () => {
-    if (!customers || !contracts || !invoices) return [];
-
-    return customers
-      .slice(0, 10)
-      .map((customer) => {
-        const customerContracts = contracts.filter((c) => c.customerId === customer.id);
-        const customerInvoices = invoices.filter((inv) =>
-          customerContracts.some((contract) => contract.id === inv.contractId),
-        );
-
-        const revenue = customerInvoices.reduce(
-          (sum, inv) => sum + parseFloat(inv.totalAmount.toString()),
-          0,
-        );
-
-        const serviceCost =
-          serviceTickets
-            ?.filter((ticket) => ticket.customerId === customer.id)
-            .reduce(
-              (sum, ticket) => sum + parseFloat(ticket.laborHours?.toString() || '0') * 75,
-              0,
-            ) || 0;
-
-        const profit = revenue - serviceCost;
-        const margin = percentOfOr(profit, revenue);
-
-        return {
-          customer: customer.companyName,
-          revenue,
-          serviceCost,
-          profit,
-          margin: Math.round(margin * 100) / 100,
-        };
-      })
-      .sort((a, b) => b.profit - a.profit);
-  };
-
-  // Service Performance Metrics
-  const getServiceMetrics = () => {
-    if (!serviceTickets)
-      return {
-        totalTickets: 0,
-        completedTickets: 0,
-        averageResolutionTime: 0,
-        ticketsByPriority: [],
-      };
-
-    const filteredTickets = serviceTickets.filter((ticket) => {
-      const ticketDate = new Date(ticket.createdAt!);
-      return ticketDate >= dateRange.from && ticketDate <= dateRange.to;
-    });
-
-    const completedTickets = filteredTickets.filter((t) => t.status === 'completed');
-
-    const resolutionTimes = completedTickets
-      .filter((t) => t.resolvedAt)
-      .map((t) => {
-        const created = new Date(t.createdAt!);
-        const resolved = new Date(t.resolvedAt!);
-        return (resolved.getTime() - created.getTime()) / (1000 * 60 * 60); // hours
-      });
-
-    const averageResolutionTime =
-      resolutionTimes.length > 0
-        ? resolutionTimes.reduce((sum, time) => sum + time, 0) / resolutionTimes.length
-        : 0;
-
-    const ticketsByPriority = ['low', 'medium', 'high', 'urgent'].map((priority) => ({
-      priority: priority.charAt(0).toUpperCase() + priority.slice(1),
-      count: filteredTickets.filter((t) => t.priority === priority).length,
-    }));
-
-    return {
-      totalTickets: filteredTickets.length,
-      completedTickets: completedTickets.length,
-      averageResolutionTime: Math.round(averageResolutionTime * 100) / 100,
-      ticketsByPriority,
-    };
-  };
-
-  // Contract Performance
-  const getContractPerformance = () => {
-    if (!contracts || !meterReadings) return [];
-
-    return contracts.slice(0, 8).map((contract) => {
-      const contractReadings = meterReadings.filter((r) => r.contractId === contract.id);
-      const totalCopies = contractReadings.reduce(
-        (sum, r) => sum + (r.blackCopies || 0) + (r.colorCopies || 0),
-        0,
-      );
-
-      const monthlyAverage = totalCopies / Math.max(contractReadings.length, 1);
-      const contractValue = parseFloat(contract.monthlyBase?.toString() || '0');
-
-      return {
-        contract: contract.contractNumber,
-        customer: customers?.find((c) => c.id === contract.customerId)?.companyName || 'Unknown',
-        monthlyValue: contractValue,
-        totalCopies,
-        monthlyAverage: Math.round(monthlyAverage),
-        cpc: totalCopies > 0 ? contractValue / totalCopies : 0,
-      };
-    });
-  };
-
-  const revenueData = getRevenueData();
-  const profitabilityData = getCustomerProfitabilityData();
-  const serviceMetrics = getServiceMetrics();
-  const contractData = getContractPerformance();
-
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
 
   return (
     <MainLayout
       title="Advanced Reporting & Analytics"
-      description="Comprehensive business intelligence and performance metrics"
+      description="Revenue, customers, service and contract volume from your own records"
     >
       <div className="space-y-6">
-        {/* Controls */}
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Report Configuration</CardTitle>
@@ -294,7 +172,7 @@ export default function AdvancedReporting() {
             <div className="flex flex-col sm:flex-row gap-4 items-end">
               <label className="flex-1">
                 <span className="text-sm font-medium mb-2 block">Date Range</span>
-                <DateRangePicker onChange={(range) => range && handleDateRangeChange(range)} />
+                <DateRangePicker onChange={(range) => range && setDateRange(range)} />
               </label>
               <label className="w-full sm:w-48">
                 <span className="text-sm font-medium mb-2 block">Customer</span>
@@ -304,201 +182,129 @@ export default function AdvancedReporting() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Customers</SelectItem>
-                    {customers?.map((customer) => (
-                      <SelectItem key={customer.id} value={customer.id}>
-                        {customer.companyName}
+                    {customers.map((c) => (
+                      <SelectItem key={String(c.id)} value={String(c.id)}>
+                        {String(c.company_name ?? c.companyName ?? c.id)}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </label>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm">
-                  <Filter className="w-4 h-4 mr-2" />
-                  More Filters
-                </Button>
-                <Button variant="outline" size="sm">
-                  <Download className="w-4 h-4 mr-2" />
-                  Export
-                </Button>
-              </div>
+              <Button variant="outline" size="sm" onClick={exportTab}>
+                <Download className="w-4 h-4 mr-2" />
+                Export
+              </Button>
             </div>
+            {truncated && (
+              <p className="mt-3 text-sm text-amber-700">
+                Some lists have more than 5,000 rows; figures below cover the first 5,000 of each.
+              </p>
+            )}
           </CardContent>
         </Card>
 
-        {/* CR-033: the Report Configuration card above stays usable - changing
-            the date range or customer is the retry - and every section below is
-            derived from the five queries. */}
         <QueryStates
-          queries={[customersQuery, contractsQuery, ticketsQuery, invoicesQuery, readingsQuery]}
+          queries={queries}
           loading={<DashboardSkeleton />}
           errorTitle="Could not load report data"
           className="py-6"
         >
-          {/* Key Metrics */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-            <Card>
-              <CardContent className="p-4 sm:p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs sm:text-sm font-medium text-gray-600">Total Revenue</p>
-                    <p className="text-2xl sm:text-3xl font-bold text-gray-900">
-                      ${revenueData.reduce((sum, item) => sum + item.revenue, 0).toLocaleString()}
-                    </p>
-                  </div>
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                    <DollarSign className="h-5 w-5 sm:h-6 sm:w-6 text-green-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4 sm:p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs sm:text-sm font-medium text-gray-600">Active Contracts</p>
-                    <p className="text-2xl sm:text-3xl font-bold text-gray-900">
-                      {contracts?.filter((c) => c.status === 'active').length || 0}
-                    </p>
-                  </div>
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <FileText className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4 sm:p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs sm:text-sm font-medium text-gray-600">Service Tickets</p>
-                    <p className="text-2xl sm:text-3xl font-bold text-gray-900">
-                      {serviceMetrics.totalTickets}
-                    </p>
-                  </div>
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                    <Activity className="h-5 w-5 sm:h-6 sm:w-6 text-orange-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4 sm:p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs sm:text-sm font-medium text-gray-600">Resolution Time</p>
-                    <p className="text-2xl sm:text-3xl font-bold text-gray-900">
-                      {serviceMetrics.averageResolutionTime.toFixed(1)}h
-                    </p>
-                  </div>
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                    <Calendar className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            {[
+              { label: 'Invoiced Revenue', value: formatCurrency(totalRevenue) },
+              { label: 'Active Contracts', value: String(activeContracts) },
+              { label: 'Service Tickets', value: String(service.totalTickets) },
+              {
+                label: 'Avg Resolution',
+                value: dash(service.averageResolutionHours, (h) => `${h.toFixed(1)}h`),
+              },
+            ].map((card) => (
+              <Card key={card.label}>
+                <CardContent className="p-4 sm:p-6">
+                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">
+                    {card.label}
+                  </p>
+                  <p className="text-2xl sm:text-3xl font-bold">{card.value}</p>
+                </CardContent>
+              </Card>
+            ))}
           </div>
 
-          {/* Report Tabs */}
-          <Tabs defaultValue="revenue" className="space-y-4">
+          <Tabs value={tab} onValueChange={setTab} className="space-y-4">
             <TabsList className="grid w-full grid-cols-1 sm:grid-cols-4 h-auto sm:h-10">
-              <TabsTrigger value="revenue" className="text-xs sm:text-sm">
-                Revenue Analytics
-              </TabsTrigger>
-              <TabsTrigger value="profitability" className="text-xs sm:text-sm">
-                Customer Profitability
-              </TabsTrigger>
-              <TabsTrigger value="service" className="text-xs sm:text-sm">
-                Service Performance
-              </TabsTrigger>
-              <TabsTrigger value="contracts" className="text-xs sm:text-sm">
-                Contract Analysis
-              </TabsTrigger>
+              <TabsTrigger value="revenue">Revenue</TabsTrigger>
+              <TabsTrigger value="profitability">Revenue by Customer</TabsTrigger>
+              <TabsTrigger value="service">Service Performance</TabsTrigger>
+              <TabsTrigger value="contracts">Contract Volume</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="revenue" className="space-y-6">
+            <TabsContent value="revenue">
               <Card>
                 <CardHeader>
-                  <CardTitle>Monthly Revenue Trend</CardTitle>
-                  <CardDescription>Revenue performance vs targets over time</CardDescription>
+                  <CardTitle>Monthly Invoiced Revenue</CardTitle>
+                  <CardDescription>
+                    By invoice date. No target is drawn: none is stored.
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={revenueData}>
+                    <LineChart data={revenue}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="month" />
                       <YAxis />
-                      <Tooltip formatter={(value) => [`$${Number(value).toLocaleString()}`, '']} />
-                      <Legend />
-                      <Line
-                        type="monotone"
-                        dataKey="revenue"
-                        stroke="#8884d8"
-                        strokeWidth={2}
-                        name="Actual Revenue"
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="target"
-                        stroke="#82ca9d"
-                        strokeWidth={2}
-                        strokeDasharray="5 5"
-                        name="Target Revenue"
-                      />
+                      <Tooltip formatter={(value) => [formatCurrency(Number(value)), 'Revenue']} />
+                      <Line type="monotone" dataKey="revenue" stroke="#8884d8" strokeWidth={2} />
                     </LineChart>
                   </ResponsiveContainer>
                 </CardContent>
               </Card>
             </TabsContent>
 
-            <TabsContent value="profitability" className="space-y-6">
+            <TabsContent value="profitability">
               <Card>
                 <CardHeader>
-                  <CardTitle>Customer Profitability Analysis</CardTitle>
-                  <CardDescription>Revenue, costs, and profit margins by customer</CardDescription>
+                  <CardTitle>Revenue by Customer</CardTitle>
+                  <CardDescription>
+                    Top ten by invoiced revenue in the range, with what is still unpaid. Cost and
+                    margin are not shown: nothing records the cost of serving a customer.
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={400}>
-                    <BarChart data={profitabilityData}>
+                    <BarChart data={byCustomer}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="customer" angle={-45} textAnchor="end" height={100} />
                       <YAxis />
-                      <Tooltip formatter={(value) => [`$${Number(value).toLocaleString()}`, '']} />
+                      <Tooltip formatter={(value) => [formatCurrency(Number(value)), '']} />
                       <Legend />
                       <Bar dataKey="revenue" fill="#8884d8" name="Revenue" />
-                      <Bar dataKey="serviceCost" fill="#82ca9d" name="Service Cost" />
-                      <Bar dataKey="profit" fill="#ffc658" name="Profit" />
+                      <Bar dataKey="unpaid" fill="#ffc658" name="Unpaid" />
                     </BarChart>
                   </ResponsiveContainer>
                 </CardContent>
               </Card>
             </TabsContent>
 
-            <TabsContent value="service" className="space-y-6">
+            <TabsContent value="service">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <Card>
                   <CardHeader>
                     <CardTitle>Tickets by Priority</CardTitle>
-                    <CardDescription>Distribution of service ticket priorities</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <ResponsiveContainer width="100%" height={300}>
                       <PieChart>
                         <Pie
-                          data={serviceMetrics.ticketsByPriority}
+                          data={service.byPriority}
                           cx="50%"
                           cy="50%"
                           labelLine={false}
                           label={({ priority, count }) => `${priority}: ${count}`}
                           outerRadius={80}
-                          fill="#8884d8"
                           dataKey="count"
                         >
-                          {serviceMetrics.ticketsByPriority.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          {service.byPriority.map((entry, index) => (
+                            <Cell key={entry.priority} fill={COLORS[index % COLORS.length]} />
                           ))}
                         </Pie>
                         <Tooltip />
@@ -506,51 +312,39 @@ export default function AdvancedReporting() {
                     </ResponsiveContainer>
                   </CardContent>
                 </Card>
-
                 <Card>
                   <CardHeader>
                     <CardTitle>Service Metrics</CardTitle>
-                    <CardDescription>Key performance indicators</CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium">Completion Rate</span>
-                      <span className="text-lg font-bold">
-                        {serviceMetrics.totalTickets > 0
-                          ? Math.round(
-                              percentOfOr(
-                                serviceMetrics.completedTickets,
-                                serviceMetrics.totalTickets,
-                              ),
-                            )
-                          : 0}
-                        %
+                  <CardContent className="space-y-4 text-sm">
+                    <div className="flex justify-between">
+                      <span>Completion rate</span>
+                      <span className="font-bold">
+                        {formatPercent(percentOf(service.completedTickets, service.totalTickets))}
                       </span>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium">Total Tickets</span>
-                      <span className="text-lg font-bold">{serviceMetrics.totalTickets}</span>
+                    <div className="flex justify-between">
+                      <span>Tickets raised</span>
+                      <span className="font-bold">{service.totalTickets}</span>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium">Completed</span>
-                      <span className="text-lg font-bold">{serviceMetrics.completedTickets}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium">Avg Resolution</span>
-                      <span className="text-lg font-bold">
-                        {serviceMetrics.averageResolutionTime.toFixed(1)}h
-                      </span>
+                    <div className="flex justify-between">
+                      <span>Completed</span>
+                      <span className="font-bold">{service.completedTickets}</span>
                     </div>
                   </CardContent>
                 </Card>
               </div>
             </TabsContent>
 
-            <TabsContent value="contracts" className="space-y-6">
+            <TabsContent value="contracts">
               <Card>
                 <CardHeader>
-                  <CardTitle>Contract Performance</CardTitle>
-                  <CardDescription>Monthly value and usage analysis by contract</CardDescription>
+                  <CardTitle>Contract Volume</CardTitle>
+                  <CardDescription>
+                    Pages per month from each machine&apos;s lifetime meter counters. A dash means
+                    too few readings, or a counter that went backwards (a reset or a swapped
+                    machine).
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="overflow-x-auto">
@@ -559,27 +353,25 @@ export default function AdvancedReporting() {
                         <tr className="border-b">
                           <th className="text-left p-2">Contract</th>
                           <th className="text-left p-2">Customer</th>
-                          <th className="text-right p-2">Monthly Value</th>
-                          <th className="text-right p-2">Total Copies</th>
-                          <th className="text-right p-2">Monthly Avg</th>
-                          <th className="text-right p-2">CPC</th>
+                          <th className="text-right p-2">Monthly base</th>
+                          <th className="text-right p-2">Pages / month</th>
+                          <th className="text-right p-2">Base per page</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {contractData.map((contract) => (
-                          <tr key={contract.contract} className="border-b">
-                            <td className="p-2 font-medium">{contract.contract}</td>
-                            <td className="p-2">{contract.customer}</td>
+                        {volumes.map((c) => (
+                          <tr key={c.contract} className="border-b">
+                            <td className="p-2 font-medium">{c.contract}</td>
+                            <td className="p-2">{c.customer}</td>
                             <td className="p-2 text-right">
-                              ${contract.monthlyValue.toLocaleString()}
+                              {dash(c.monthlyBase, formatCurrency)}
                             </td>
                             <td className="p-2 text-right">
-                              {contract.totalCopies.toLocaleString()}
+                              {dash(c.monthlyPages, (n) => n.toLocaleString())}
                             </td>
                             <td className="p-2 text-right">
-                              {contract.monthlyAverage.toLocaleString()}
+                              {dash(c.basePerPage, (n) => `$${n.toFixed(4)}`)}
                             </td>
-                            <td className="p-2 text-right">${contract.cpc.toFixed(4)}</td>
                           </tr>
                         ))}
                       </tbody>
