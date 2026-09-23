@@ -57,10 +57,13 @@ interface SystemOverview {
   activeTenants: number;
   totalUsers: number;
   activeUsers: number;
-  systemUptime: number;
-  criticalAlerts: number;
-  pendingActions: number;
-  systemHealth: 'healthy' | 'warning' | 'critical';
+  /** null: nothing measures uptime (round 178); it was a hardcoded 99.97. */
+  systemUptime: number | null;
+  /** null when audit_logs could not be read. */
+  criticalAlerts: number | null;
+  /** null: there is no platform action queue to count. */
+  pendingActions: number | null;
+  systemHealth: 'healthy' | 'warning' | 'critical' | 'unknown';
 }
 
 interface TenantMetrics {
@@ -143,9 +146,9 @@ export default function RootAdminDashboard() {
     activeTenants: 0,
     totalUsers: 0,
     activeUsers: 0,
-    systemUptime: 0,
-    criticalAlerts: 0,
-    pendingActions: 0,
+    systemUptime: null,
+    criticalAlerts: null,
+    pendingActions: null,
     systemHealth: 'unknown' as const,
   };
 
@@ -275,8 +278,14 @@ export default function RootAdminDashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">System Uptime</p>
-                  <p className="text-2xl font-bold">{currentOverview.systemUptime}%</p>
-                  <p className="text-xs text-gray-500">Last 30 days</p>
+                  <p className="text-2xl font-bold">
+                    {currentOverview.systemUptime === null
+                      ? '—'
+                      : `${currentOverview.systemUptime}%`}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {currentOverview.systemUptime === null ? 'Not measured' : 'Last 30 days'}
+                  </p>
                 </div>
                 <Server className="w-8 h-8 text-purple-600" />
               </div>
@@ -289,11 +298,13 @@ export default function RootAdminDashboard() {
                 <div>
                   <p className="text-sm font-medium text-gray-600">Critical Alerts</p>
                   <p className="text-2xl font-bold text-red-600">
-                    {currentOverview.criticalAlerts}
+                    {currentOverview.criticalAlerts ?? '—'}
                   </p>
-                  <p className="text-xs text-orange-600">
-                    {currentOverview.pendingActions} pending
-                  </p>
+                  {currentOverview.pendingActions !== null && (
+                    <p className="text-xs text-orange-600">
+                      {currentOverview.pendingActions} pending
+                    </p>
+                  )}
                 </div>
                 <AlertTriangle className="w-8 h-8 text-red-600" />
               </div>

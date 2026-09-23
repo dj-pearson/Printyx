@@ -85,3 +85,24 @@ describe('/api/root-admin client paths resolve in dev', () => {
     for (const seg of proxied) expect(edge).toContain(`endpoint === '${seg}'`);
   });
 });
+
+describe('round 178: the four paths both hosts served now have one', () => {
+  const PROXY = strip(readFileSync('server/middleware/edge-function-proxy.ts', 'utf8'));
+  const ROUTER = strip(readFileSync('server/routes-root-admin.ts', 'utf8'));
+
+  it.each(['overview', 'tenants', 'security-alerts', 'audit-logs'])('%s', (seg) => {
+    expect(PROXY).toMatch(
+      new RegExp(
+        `'/api/root-admin/${seg}':\\s*\\{\\s*fn:\\s*'root-admin',\\s*pathPrefix:\\s*'/${seg}'`,
+      ),
+    );
+    expect(ROUTER).not.toMatch(new RegExp(`router\\.get\\(\\s*'/${seg}'`));
+  });
+
+  it('keeps the direct-SQL paths on Express', () => {
+    for (const seg of ['system-resources', 'database-tables']) {
+      expect(ROUTER).toMatch(new RegExp(`router\\.get\\(\\s*'/${seg}'`));
+    }
+    expect(ROUTER).toMatch(/router\.post\(\s*'\/execute-query'/);
+  });
+});

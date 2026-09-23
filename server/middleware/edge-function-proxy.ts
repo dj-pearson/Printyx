@@ -1215,6 +1215,14 @@ export function registerEdgeFunctionProxy(app: any) {
     '/api/root-admin/trial-funnel': { fn: 'root-admin', pathPrefix: '/trial-funnel' },
     '/api/root-admin/high-value-signups': { fn: 'root-admin', pathPrefix: '/high-value-signups' },
     '/api/root-admin/pending-tasks': { fn: 'root-admin', pathPrefix: '/pending-tasks' },
+    // Round 178. The four paths both hosts served and nobody had compared
+    // (round 167's open item): proxying them makes dev run what production
+    // runs, and the Express copies are deleted. /tenants covers the list,
+    // /tenants/:id and the suspend/activate actions.
+    '/api/root-admin/overview': { fn: 'root-admin', pathPrefix: '/overview' },
+    '/api/root-admin/tenants': { fn: 'root-admin', pathPrefix: '/tenants' },
+    '/api/root-admin/security-alerts': { fn: 'root-admin', pathPrefix: '/security-alerts' },
+    '/api/root-admin/audit-logs': { fn: 'root-admin', pathPrefix: '/audit-logs' },
     // Round 172. The whole prefix: the edge function serves settings GET/PUT
     // and the four per-quote reads (snapshot, similar-deals, margin,
     // objections), which is every path the Express router had. Proxying

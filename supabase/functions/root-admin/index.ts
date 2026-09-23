@@ -5,6 +5,7 @@ import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { USER_NAME_COLUMNS } from '../_shared/user-profile.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { toCamel } from '../_shared/case.ts';
+import { fetchAllRows } from '../_shared/paged-select.ts';
 import { cachedRoleLookup } from '../_shared/auth-cache.ts';
 
 export default async function handler(req: Request) {
@@ -82,16 +83,34 @@ export default async function handler(req: Request) {
         .select('*', { count: 'exact', head: true })
         .gte('last_login_at', sevenDaysAgo);
 
+      // Round 178. This answered systemUptime 99.97, criticalAlerts 0,
+      // pendingActions 0 and systemHealth 'healthy' as constants, so the root
+      // admin console reported a healthy platform with no critical events
+      // whatever audit_logs held. Critical alerts are counted from audit_logs
+      // over the same 30-day window the Express copy used, and health follows
+      // from them. Nothing measures uptime or keeps a pending-action queue, so
+      // those are null and named in `unbacked` rather than invented.
+      const { count: criticalAlerts, error: criticalError } = await admin
+        .from('audit_logs')
+        .select('*', { count: 'exact', head: true })
+        .eq('severity', 'critical')
+        .gte('timestamp', thirtyDaysAgo);
+      const critical = criticalError ? null : (criticalAlerts ?? 0);
+
       return createCorsResponse(
         {
-          totalTenants: totalTenants || 0,
-          activeTenants: activeTenants || 0,
-          totalUsers: totalUsers || 0,
-          activeUsers: activeUsers || 0,
-          systemUptime: 99.97,
-          criticalAlerts: 0,
-          pendingActions: 0,
-          systemHealth: 'healthy',
+          totalTenants: totalTenants ?? 0,
+          activeTenants: activeTenants ?? 0,
+          totalUsers: totalUsers ?? 0,
+          activeUsers: activeUsers ?? 0,
+          systemUptime: null,
+          criticalAlerts: critical,
+          pendingActions: null,
+          systemHealth: critical === null ? 'unknown' : critical > 0 ? 'warning' : 'healthy',
+          unbacked: [
+            'systemUptime: no uptime monitor reports into this product',
+            'pendingActions: there is no platform action queue to count',
+          ],
         },
         200,
         req,
@@ -119,9 +138,28 @@ export default async function handler(req: Request) {
         );
       }
 
+      // Round 178: the console reads camelCase (lastActivity, storageUsed,
+      // apiCalls, billingStatus) and a userCount; this answered the raw snake
+      // row with no count, so those columns were blank in production. One
+      // paged read of users.tenant_id replaces a count per tenant.
+      const userRows = await fetchAllRows<{ tenant_id: string | null }>(() =>
+        admin.from('users').select('tenant_id'),
+      );
+      const usersByTenant = new Map<string, number>();
+      for (const u of userRows) {
+        if (u.tenant_id) usersByTenant.set(u.tenant_id, (usersByTenant.get(u.tenant_id) ?? 0) + 1);
+      }
+
       return createCorsResponse(
         (tenants ?? []).map((t: any) => ({
-          ...t,
+          id: t.id,
+          name: t.name,
+          subscription: t.subscription,
+          lastActivity: t.last_activity,
+          storageUsed: t.storage_used,
+          apiCalls: t.api_calls,
+          billingStatus: t.billing_status,
+          userCount: usersByTenant.get(t.id) ?? 0,
           status: t.is_active === false ? 'suspended' : 'active',
         })),
         200,
@@ -229,14 +267,48 @@ export default async function handler(req: Request) {
     // GET /root-admin/audit-logs - Audit logs
     if (req.method === 'GET' && endpoint === 'audit-logs') {
       const limit = parseInt(url.searchParams.get('limit') || '100');
-      const { data: logs } = await admin
+      const { data: logs, error: logsError } = await admin
         .from('audit_logs')
-        .select('*')
+        .select('id, action, resource, resource_id, timestamp, user_id')
         // audit_logs records `timestamp`, not created_at.
         .order('timestamp', { ascending: false })
         .limit(limit);
 
-      return createCorsResponse(logs || [], 200, req);
+      if (logsError) {
+        console.error('Error fetching audit logs:', logsError);
+        return createCorsResponse({ error: 'Failed to fetch audit logs' }, 500, req);
+      }
+
+      // Round 178: DatabaseManagement renders `${action} on ${tableName}` and
+      // `userName`; this answered raw rows, so every entry read "update on
+      // undefined" by "System". Same keys the Express copy answered, with the
+      // user names in one batched read rather than one per row.
+      const rows = logs ?? [];
+      const userIds = [...new Set(rows.map((l: any) => l.user_id).filter(Boolean))] as string[];
+      const names = new Map<string, string>();
+      if (userIds.length > 0) {
+        const { data: people } = await admin
+          .from('users')
+          .select(USER_NAME_COLUMNS)
+          .in('id', userIds);
+        for (const u of people ?? []) {
+          const n = [u.first_name, u.last_name].filter(Boolean).join(' ');
+          if (n) names.set(u.id as string, n);
+        }
+      }
+
+      return createCorsResponse(
+        rows.map((l: any) => ({
+          id: l.id,
+          action: l.action,
+          tableName: l.resource,
+          recordId: l.resource_id,
+          timestamp: l.timestamp,
+          userName: (l.user_id && names.get(l.user_id)) || null,
+        })),
+        200,
+        req,
+      );
     }
 
     // POST /root-admin/tenants/:id/suspend - Suspend tenant

@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { db } from './db';
 import { validateReadOnlyQuery, MAX_ROWS } from './lib/sql-console-guard';
-import { users, roles, tenants, auditLogs } from '../shared/schema';
+import { users, roles, tenants } from '../shared/schema';
 import { rbacAuditLog } from './enhanced-rbac-schema';
 import { eq, desc, sql, count, and, gte, lte, like, inArray } from 'drizzle-orm';
 // Auth helpers for Supabase JWT + session fallback
@@ -12,27 +12,6 @@ import { logAdminAction } from './services/audit-log-service';
 const log = createModuleLogger('routes-root-admin');
 
 const router = Router();
-
-/** How far back the security views look. audit_logs is append-only and unbounded. */
-const SECURITY_WINDOW_DAYS = 30;
-const SECURITY_WINDOW = () => new Date(Date.now() - SECURITY_WINDOW_DAYS * 24 * 60 * 60 * 1000);
-
-/**
- * The dashboard renders an alert `type` from a fixed vocabulary. audit_logs stores
- * a category and an action instead, so map one onto the other rather than inventing
- * a column.
- */
-function alertType(
-  category: string | null,
-  action: string | null,
-): 'failed_login' | 'unauthorized_access' | 'security_breach' | 'suspicious_activity' {
-  if (category === 'authentication') {
-    return action?.includes('failure') ? 'failed_login' : 'suspicious_activity';
-  }
-  if (category === 'authorization') return 'unauthorized_access';
-  if (category === 'data_modification') return 'security_breach';
-  return 'suspicious_activity';
-}
 
 /**
  * AUDIT-007: batch-load user display fields for a page of rows.
@@ -111,164 +90,14 @@ export const requireRootAdmin = async (req: any, res: any, next: any) => {
   }
 };
 
-// System Overview
-router.get('/overview', requireRootAdmin, async (req, res) => {
-  try {
-    // Get total tenants
-    const totalTenants = await db.select({ count: count() }).from(tenants);
+// Round 178: GET /overview is served by supabase/functions/root-admin/ on both
+// hosts (scoped crmProxies entry), so the Express copy is deleted.
 
-    // Get active tenants (those with recent activity)
-    const activeTenants = await db
-      .select({ count: count() })
-      .from(tenants)
-      .where(gte(tenants.lastActivity, new Date(Date.now() - 30 * 24 * 60 * 60 * 1000))); // Last 30 days
+// Round 178: GET /tenants is served by supabase/functions/root-admin/ on both
+// hosts (scoped crmProxies entry), so the Express copy is deleted.
 
-    // Get total users
-    const totalUsers = await db.select({ count: count() }).from(users);
-
-    // Get active users (logged in recently)
-    const activeUsers = await db
-      .select({ count: count() })
-      .from(users)
-      .where(gte(users.lastLoginAt, new Date(Date.now() - 7 * 24 * 60 * 60 * 1000))); // Last 7 days
-
-    // Critical alerts. This used to count activity_reports rows with
-    // type='security_alert' / severity / resolved — activity_reports is the SALES
-    // metrics table (calls, emails, meetings, win rates) and has none of those
-    // columns, so the query raised and the whole endpoint 500'd. audit_logs is the
-    // security trail: it carries severity and category and is what
-    // services/audit-log-service.ts writes to.
-    const criticalAlerts = await db
-      .select({ count: count() })
-      .from(auditLogs)
-      .where(and(eq(auditLogs.severity, 'critical'), gte(auditLogs.timestamp, SECURITY_WINDOW())));
-
-    // Calculate system uptime (mock for now - would come from monitoring service)
-    const systemUptime = 99.97;
-
-    res.json({
-      totalTenants: totalTenants[0]?.count || 0,
-      activeTenants: activeTenants[0]?.count || 0,
-      totalUsers: totalUsers[0]?.count || 0,
-      activeUsers: activeUsers[0]?.count || 0,
-      systemUptime,
-      criticalAlerts: criticalAlerts[0]?.count || 0,
-      pendingActions: 0, // Would be calculated based on open tickets/tasks
-      systemHealth: criticalAlerts[0]?.count > 0 ? 'warning' : 'healthy',
-    });
-  } catch (error) {
-    log.error('Error fetching system overview:', error);
-    res.status(500).json({ message: 'Failed to fetch system overview' });
-  }
-});
-
-// Tenant Management
-router.get('/tenants', requireRootAdmin, async (req, res) => {
-  try {
-    const tenantMetrics = await db
-      .select({
-        id: tenants.id,
-        name: tenants.name,
-        isActive: tenants.isActive,
-        subscription: tenants.subscription,
-        lastActivity: tenants.lastActivity,
-        storageUsed: tenants.storageUsed,
-        apiCalls: tenants.apiCalls,
-        billingStatus: tenants.billingStatus,
-        userCount: count(users.id),
-      })
-      .from(tenants)
-      .leftJoin(users, eq(users.tenantId, tenants.id))
-      .groupBy(tenants.id)
-      .orderBy(desc(tenants.lastActivity));
-
-    // `tenants` has is_active, not a status string. The dashboard reads
-    // 'active' | 'suspended' | 'trial', so keep that key and derive it.
-    res.json(
-      tenantMetrics.map(({ isActive, ...tenant }) => ({
-        ...tenant,
-        status: isActive === false ? 'suspended' : 'active',
-      })),
-    );
-  } catch (error) {
-    log.error('Error fetching tenant metrics:', error);
-    res.status(500).json({ message: 'Failed to fetch tenant metrics' });
-  }
-});
-
-// Security Alerts
-router.get(
-  '/security-alerts',
-
-  requireRootAdmin,
-  async (req, res) => {
-    try {
-      // Same wrong-table bug as /overview: this read activity_reports, the SALES
-      // metrics table, for type/severity/description/metadata/resolved columns it
-      // does not have. audit_logs is where audit-log-service.ts records
-      // authentication, authorization and destructive actions, with a severity and
-      // a category on each row.
-      const alerts = await db
-        .select({
-          id: auditLogs.id,
-          action: auditLogs.action,
-          category: auditLogs.category,
-          severity: auditLogs.severity,
-          resource: auditLogs.resource,
-          resourceId: auditLogs.resourceId,
-          ipAddress: auditLogs.ipAddress,
-          tenantId: auditLogs.tenantId,
-          userId: auditLogs.userId,
-          timestamp: auditLogs.timestamp,
-        })
-        .from(auditLogs)
-        .where(
-          and(
-            inArray(auditLogs.severity, ['high', 'critical']),
-            gte(auditLogs.timestamp, SECURITY_WINDOW()),
-          ),
-        )
-        .orderBy(desc(auditLogs.timestamp))
-        .limit(50);
-
-      // AUDIT-007: was TWO queries PER ALERT (tenant + user) — up to 100 round-trips
-      // for a 50-row page. Two batched lookups over the distinct ids instead.
-      const alertUsers = await loadUsersByIds(alerts.map((a) => a.userId));
-      const alertTenantIds = [
-        ...new Set(alerts.map((a) => a.tenantId).filter((id): id is string => !!id)),
-      ];
-      const tenantRows = alertTenantIds.length
-        ? await db
-            .select({ id: tenants.id, name: tenants.name })
-            .from(tenants)
-            .where(inArray(tenants.id, alertTenantIds))
-        : [];
-      const tenantsById = new Map(tenantRows.map((t) => [t.id, t.name]));
-
-      const enrichedAlerts = alerts.map((alert) => {
-        const user = alert.userId ? alertUsers.get(alert.userId) : undefined;
-        return {
-          ...alert,
-          type: alertType(alert.category, alert.action),
-          // audit_logs records what happened; it has no resolution workflow, so
-          // there is nothing here that could report anything but 'open'.
-          status: 'open' as const,
-          message: alert.resourceId
-            ? `${alert.action} on ${alert.resource} (${alert.resourceId})`
-            : `${alert.action} on ${alert.resource}`,
-          tenant: (alert.tenantId ? tenantsById.get(alert.tenantId) : null) || 'Unknown',
-          userName: user?.name || 'Unknown',
-          userEmail: user?.email || 'unknown@example.com',
-        };
-      });
-
-      res.json(enrichedAlerts);
-    } catch (error) {
-      log.error('Error fetching security alerts:', error);
-      res.status(500).json({ message: 'Failed to fetch security alerts' });
-    }
-  },
-);
+// Round 178: GET /security-alerts is served by supabase/functions/root-admin/ on both
+// hosts (scoped crmProxies entry), so the Express copy is deleted.
 
 // System Resources
 router.get(
@@ -455,44 +284,8 @@ router.get('/roles', requireRootAdmin, async (req, res) => {
   }
 });
 
-// Audit Logs
-router.get('/audit-logs', requireRootAdmin, async (req, res) => {
-  try {
-    const logs = await db
-      .select({
-        id: auditLogs.id,
-        userId: auditLogs.userId,
-        action: auditLogs.action,
-        // The columns are resource/resource_id; the dashboard reads
-        // tableName/recordId, so alias rather than rename its contract.
-        tableName: auditLogs.resource,
-        recordId: auditLogs.resourceId,
-        oldValues: auditLogs.oldValues,
-        newValues: auditLogs.newValues,
-        timestamp: auditLogs.timestamp,
-      })
-      .from(auditLogs)
-      .orderBy(desc(auditLogs.timestamp))
-      .limit(100);
-
-    // Enrich with user information
-    // AUDIT-007: was one user query PER LOG ROW; now a single batched lookup.
-    const logUsers = await loadUsersByIds(logs.map((l) => l.userId));
-    const enrichedLogs = logs.map((log) => {
-      const user = log.userId ? logUsers.get(log.userId) : undefined;
-      return {
-        ...log,
-        userName: user?.name || 'System',
-        userEmail: user?.email || 'system@printyx.com',
-      };
-    });
-
-    res.json(enrichedLogs);
-  } catch (error) {
-    log.error('Error fetching audit logs:', error);
-    res.status(500).json({ message: 'Failed to fetch audit logs' });
-  }
-});
+// Round 178: GET /audit-logs is served by supabase/functions/root-admin/ on both
+// hosts (scoped crmProxies entry), so the Express copy is deleted.
 
 // Database Tables Information
 router.get(
