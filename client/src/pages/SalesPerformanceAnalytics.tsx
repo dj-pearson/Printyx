@@ -66,6 +66,14 @@ import {
   chartExportUtils,
 } from '@/components/reports/DataVisualization';
 import { type BusinessRecord, type Deal, type ServiceTicket } from '@shared/schema';
+import { useRefreshQueries } from '@/hooks/use-refresh-queries';
+
+/** Every endpoint this page reads; its Refresh button refetches these. */
+const REFRESH_PATHS = [
+  '/api/reports/sales-reps',
+  '/api/reports/team-performance',
+  '/api/reports/pipeline-funnel',
+] as const;
 
 // Sales rep performance data types
 interface SalesRep {
@@ -212,6 +220,8 @@ export default function SalesPerformanceAnalytics() {
   ];
 
   // Fetch sales reps (filtered by manager permissions)
+  // UI-DEAD-BUTTONS-001: the Refresh button had no handler.
+  const { refresh: refreshPage, refreshing } = useRefreshQueries(REFRESH_PATHS);
   const { data: salesReps = [], isLoading: repsLoading } = useQuery<SalesRep[]>({
     queryKey: ['/api/reports/sales-reps', dateRange],
     queryFn: () => apiRequest(`/api/reports/sales-reps?period=${dateRange}`),
@@ -324,8 +334,13 @@ export default function SalesPerformanceAnalytics() {
                   <Download className="h-4 w-4 mr-2" />
                   Export
                 </Button>
-                <Button variant="outline" size="sm">
-                  <RefreshCw className="h-4 w-4 mr-2" />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void refreshPage()}
+                  disabled={refreshing}
+                >
+                  <RefreshCw className={`${refreshing ? 'animate-spin ' : ''}h-4 w-4 mr-2`} />
                   Refresh
                 </Button>
               </div>

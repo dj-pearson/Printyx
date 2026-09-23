@@ -61,6 +61,17 @@ import {
   Area,
   ComposedChart,
 } from 'recharts';
+import { useRefreshQueries } from '@/hooks/use-refresh-queries';
+
+/** Every endpoint this page reads; its Refresh button refetches these. */
+const REFRESH_PATHS = [
+  '/api/reports/executive-summary',
+  '/api/reports/kpi-scorecards',
+  '/api/reports/business-insights',
+  '/api/reports/competitive-metrics',
+  '/api/reports/territory-performance',
+  '/api/reports/revenue-attribution',
+] as const;
 
 // Executive data types
 interface ExecutiveSummary {
@@ -178,6 +189,8 @@ export default function ExecutiveDashboard() {
   const [selectedView, setSelectedView] = useState<'overview' | 'detailed'>('overview');
 
   // Fetch executive summary
+  // UI-DEAD-BUTTONS-001: the Refresh button had no handler.
+  const { refresh: refreshPage, refreshing } = useRefreshQueries(REFRESH_PATHS);
   const summaryQuery = useQuery<ExecutiveSummary>({
     queryKey: ['/api/reports/executive-summary', selectedPeriod],
     queryFn: () => apiRequest(`/api/reports/executive-summary?period=${selectedPeriod}`),
@@ -324,8 +337,13 @@ export default function ExecutiveDashboard() {
                     <Calendar className="h-4 w-4 mr-2" />
                     Schedule
                   </Button>
-                  <Button variant="outline" size="sm">
-                    <RefreshCw className="h-4 w-4 mr-2" />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void refreshPage()}
+                    disabled={refreshing}
+                  >
+                    <RefreshCw className={`${refreshing ? 'animate-spin ' : ''}h-4 w-4 mr-2`} />
                     Refresh
                   </Button>
                 </div>

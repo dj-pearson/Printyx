@@ -56,6 +56,16 @@ import {
   type Technician,
   type BusinessRecord,
 } from '@shared/schema';
+import { useRefreshQueries } from '@/hooks/use-refresh-queries';
+
+/** Every endpoint this page reads; its Refresh button refetches these. */
+const REFRESH_PATHS = [
+  '/api/reports/service-forecasts',
+  '/api/reports/customer-health',
+  '/api/reports/technician-capacity',
+  '/api/reports/inventory-forecast',
+  '/api/reports/service-summary',
+] as const;
 
 // Service forecasting data types
 interface ServiceForecast {
@@ -132,6 +142,8 @@ export default function ServiceForecastingAnalytics() {
   );
 
   // Fetch service forecasts
+  // UI-DEAD-BUTTONS-001: the Refresh button had no handler.
+  const { refresh: refreshPage, refreshing } = useRefreshQueries(REFRESH_PATHS);
   const { data: forecasts = [], isLoading: forecastsLoading } = useQuery<ServiceForecast[]>({
     queryKey: ['/api/reports/service-forecasts', timeHorizon, selectedTerritory, forecastType],
     queryFn: () =>
@@ -254,8 +266,13 @@ export default function ServiceForecastingAnalytics() {
                   <Download className="h-4 w-4 mr-2" />
                   Export
                 </Button>
-                <Button variant="outline" size="sm">
-                  <RefreshCw className="h-4 w-4 mr-2" />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void refreshPage()}
+                  disabled={refreshing}
+                >
+                  <RefreshCw className={`${refreshing ? 'animate-spin ' : ''}h-4 w-4 mr-2`} />
                   Refresh
                 </Button>
               </div>

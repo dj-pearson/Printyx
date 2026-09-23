@@ -51,6 +51,15 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import MainLayout from '@/components/layout/main-layout';
+import { useRefreshQueries } from '@/hooks/use-refresh-queries';
+
+/** Every endpoint this page reads; its Refresh button refetches these. */
+const REFRESH_PATHS = [
+  '/api/root-admin/overview',
+  '/api/root-admin/tenants',
+  '/api/root-admin/security-alerts',
+  '/api/root-admin/system-resources',
+] as const;
 
 interface SystemOverview {
   totalTenants: number;
@@ -99,6 +108,8 @@ interface SystemResource {
 
 export default function RootAdminDashboard() {
   const { toast } = useToast();
+  // UI-DEAD-BUTTONS-001: the Refresh button had no handler.
+  const { refresh: refreshPage, refreshing } = useRefreshQueries(REFRESH_PATHS);
   const queryClient = useQueryClient();
   const [selectedTimeRange, setSelectedTimeRange] = useState('24h');
 
@@ -238,8 +249,13 @@ export default function RootAdminDashboard() {
                 <SelectItem value="30d">Last 30 days</SelectItem>
               </SelectContent>
             </Select>
-            <Button size="sm" variant="outline">
-              <RefreshCw className="w-4 h-4 mr-2" />
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => void refreshPage()}
+              disabled={refreshing}
+            >
+              <RefreshCw className={`${refreshing ? 'animate-spin ' : ''}w-4 h-4 mr-2`} />
               Refresh
             </Button>
           </div>

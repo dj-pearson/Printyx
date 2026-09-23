@@ -57,6 +57,17 @@ import {
   Area,
 } from 'recharts';
 import { type Invoice, type Contract, type BusinessRecord } from '@shared/schema';
+import { useRefreshQueries } from '@/hooks/use-refresh-queries';
+
+/** Every endpoint this page reads; its Refresh button refetches these. */
+const REFRESH_PATHS = [
+  '/api/reports/financial-summary',
+  '/api/reports/payment-alerts',
+  '/api/reports/ar-aging',
+  '/api/reports/customer-profitability',
+  '/api/reports/cash-flow-forecast',
+  '/api/reports/territory-financials',
+] as const;
 
 // Financial data types
 interface FinancialSummary {
@@ -140,6 +151,8 @@ export default function FinancialIntelligenceDashboard() {
   const [alertFilter, setAlertFilter] = useState<'all' | 'critical' | 'overdue'>('all');
 
   // Fetch financial summary
+  // UI-DEAD-BUTTONS-001: the Refresh button had no handler.
+  const { refresh: refreshPage, refreshing } = useRefreshQueries(REFRESH_PATHS);
   const summaryQuery = useQuery<FinancialSummary>({
     queryKey: ['/api/reports/financial-summary', selectedPeriod, selectedTerritory],
     queryFn: () =>
@@ -272,8 +285,13 @@ export default function FinancialIntelligenceDashboard() {
                   <Download className="h-4 w-4 mr-2" />
                   Export
                 </Button>
-                <Button variant="outline" size="sm">
-                  <RefreshCw className="h-4 w-4 mr-2" />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void refreshPage()}
+                  disabled={refreshing}
+                >
+                  <RefreshCw className={`${refreshing ? 'animate-spin ' : ''}h-4 w-4 mr-2`} />
                   Refresh
                 </Button>
               </div>

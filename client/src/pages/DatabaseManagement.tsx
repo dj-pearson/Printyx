@@ -51,6 +51,15 @@ import {
 import { format } from 'date-fns';
 import MainLayout from '@/components/layout/main-layout';
 import { apiRequest } from '@/lib/queryClient';
+import { useRefreshQueries } from '@/hooks/use-refresh-queries';
+
+/** Every endpoint this page reads; its Refresh button refetches these. */
+const REFRESH_PATHS = [
+  '/api/root-admin/system-resources',
+  '/api/root-admin/database-tables',
+  '/api/root-admin/audit-logs',
+  '/api/database-updater/status',
+] as const;
 
 interface DatabaseStats {
   totalSize: string;
@@ -116,6 +125,8 @@ interface DatabaseUpdaterApiResponse {
 
 export default function DatabaseManagement() {
   const { toast } = useToast();
+  // UI-DEAD-BUTTONS-001: the Refresh button had no handler.
+  const { refresh: refreshPage, refreshing } = useRefreshQueries(REFRESH_PATHS);
   const queryClient = useQueryClient();
   const [selectedTab, setSelectedTab] = useState('overview');
   const [sqlQuery, setSqlQuery] = useState('');
@@ -429,8 +440,13 @@ export default function DatabaseManagement() {
               <CheckCircle className="w-4 h-4 mr-1" />
               Database Online
             </Badge>
-            <Button size="sm" variant="outline">
-              <RefreshCw className="w-4 h-4 mr-2" />
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => void refreshPage()}
+              disabled={refreshing}
+            >
+              <RefreshCw className={`${refreshing ? 'animate-spin ' : ''}w-4 h-4 mr-2`} />
               Refresh
             </Button>
           </div>
