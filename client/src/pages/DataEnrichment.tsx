@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import ApolloLeadEnrichment from './ApolloLeadEnrichment';
+import { exportToCSV, type ExportColumn } from '@/lib/export-utils';
 
 interface EnrichedContact {
   id: string;
@@ -69,11 +70,37 @@ interface ProspectingCampaign {
 
 interface ContactsData {
   contacts?: EnrichedContact[];
+  total?: number;
 }
 
 interface CompaniesData {
   companies?: EnrichedCompany[];
+  total?: number;
 }
+
+const CONTACT_EXPORT_COLUMNS: ExportColumn<EnrichedContact>[] = [
+  { key: 'first_name', label: 'First Name' },
+  { key: 'last_name', label: 'Last Name' },
+  { key: 'email', label: 'Email' },
+  { key: 'job_title', label: 'Title' },
+  { key: 'company_name', label: 'Company' },
+  { key: 'department', label: 'Department' },
+  { key: 'prospecting_status', label: 'Status' },
+  { key: 'lead_score', label: 'Lead Score' },
+  { key: 'enrichment_source', label: 'Source' },
+  { key: 'last_enriched_date', label: 'Last Enriched' },
+];
+
+const COMPANY_EXPORT_COLUMNS: ExportColumn<EnrichedCompany>[] = [
+  { key: 'company_name', label: 'Company' },
+  { key: 'primary_industry', label: 'Industry' },
+  { key: 'employee_count', label: 'Employees' },
+  { key: 'annual_revenue', label: 'Annual Revenue' },
+  { key: 'website', label: 'Website' },
+  { key: 'target_account_tier', label: 'Tier' },
+  { key: 'enrichment_source', label: 'Source' },
+  { key: 'last_enriched_date', label: 'Last Enriched' },
+];
 
 interface EnrichmentAnalytics {
   contacts?: any;
@@ -192,13 +219,37 @@ export default function DataEnrichment() {
             </p>
           </div>
           <div className="hidden sm:flex gap-2">
-            <Button variant="outline" size="sm">
+            {/* Imports run through the Apollo flow on the Integrations tab
+                (POST /enrichment/import/apollo/contacts); every Import button
+                on this page opens it. */}
+            <Button variant="outline" size="sm" onClick={() => setActiveTab('integrations')}>
               <Upload className="w-4 h-4 mr-2" />
               Import
             </Button>
-            <Button variant="outline" size="sm">
+            {/* Exports the page of rows on screen, and says so: the lists are
+                paginated at 25. */}
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={
+                !(activeTab === 'contacts'
+                  ? contacts.length
+                  : activeTab === 'companies'
+                    ? companies.length
+                    : 0)
+              }
+              onClick={() =>
+                activeTab === 'companies'
+                  ? exportToCSV(companies, COMPANY_EXPORT_COLUMNS, {
+                      filename: 'enriched-companies-page',
+                    })
+                  : exportToCSV(contacts, CONTACT_EXPORT_COLUMNS, {
+                      filename: 'enriched-contacts-page',
+                    })
+              }
+            >
               <Download className="w-4 h-4 mr-2" />
-              Export
+              Export this page
             </Button>
             <Button size="sm">
               <Plus className="w-4 h-4 mr-2" />
@@ -367,7 +418,9 @@ export default function DataEnrichment() {
                 ) : contacts.length === 0 ? (
                   <div className="text-center py-8">
                     <div className="text-muted-foreground mb-4">No contacts found</div>
-                    <Button>Import Your First Contacts</Button>
+                    <Button onClick={() => setActiveTab('integrations')}>
+                      Import Your First Contacts
+                    </Button>
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -429,7 +482,9 @@ export default function DataEnrichment() {
                 ) : companies.length === 0 ? (
                   <div className="text-center py-8">
                     <div className="text-muted-foreground mb-4">No companies found</div>
-                    <Button>Import Company Data</Button>
+                    <Button onClick={() => setActiveTab('integrations')}>
+                      Import Company Data
+                    </Button>
                   </div>
                 ) : (
                   <div className="space-y-4">
