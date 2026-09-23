@@ -1,0 +1,3753 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`renewal analysis parity (Express service vs edge _shared) > buildRenewalAnalysisPrompt > renders identical prompt text: at risk - low satisfaction, heavy tickets, escalations, poor fix rate 1`] = `
+"Analyze this contract renewal opportunity and predict renewal likelihood:
+
+Contract Information:
+- Type: maintenance
+- Customer: Bellweather Legal
+- Days Until Expiration: 12
+- Current MRR: $900
+- Current ACV: $10800
+
+Customer Engagement Metrics:
+- NPS Score: 2
+- Satisfaction Score: 1/5
+- Last Interaction: 1/9/2026
+- Interaction Frequency: 1 per month
+- Support Tickets (90d): 22
+- Escalations (90d): 5
+
+Service Performance:
+- Equipment Count: 3
+- Average Uptime: 86.4%
+- Service Calls (90d): 19
+- Average Response Time: 9 hours
+- First Time Fix Rate: 61%
+
+Please analyze and provide:
+1. Renewal probability (0-100)
+2. Churn risk score (0-100, higher = more risk)
+3. Risk classification (very_low/low/medium/high/very_high)
+4. Recommended action
+5. Key strengths (positive factors)
+6. Concerns (risk factors)
+7. Upsell opportunities
+8. Overall strategy recommendation
+
+Format response as JSON:
+{
+  "renewalProbability": 75,
+  "churnRiskScore": 25,
+  "renewalRisk": "low",
+  "recommendedAction": "send_proposal",
+  "summary": "Overall assessment",
+  "strengths": ["strength1", "strength2"],
+  "concerns": ["concern1", "concern2"],
+  "opportunities": ["opportunity1", "opportunity2"],
+  "recommendedStrategy": "Detailed strategy",
+  "confidenceScore": 85
+}"
+`;
+
+exports[`renewal analysis parity (Express service vs edge _shared) > buildRenewalAnalysisPrompt > renders identical prompt text: empty object - every field absent 1`] = `
+"Analyze this contract renewal opportunity and predict renewal likelihood:
+
+Contract Information:
+- Type: undefined
+- Customer: undefined
+- Days Until Expiration: undefined
+- Current MRR: $0
+- Current ACV: $0
+
+Customer Engagement Metrics:
+- NPS Score: Unknown
+- Satisfaction Score: Unknown
+- Last Interaction: Unknown
+- Interaction Frequency: Unknown per month
+- Support Tickets (90d): undefined
+- Escalations (90d): undefined
+
+Service Performance:
+- Equipment Count: undefined
+- Average Uptime: Unknown%
+- Service Calls (90d): undefined
+- Average Response Time: Unknown hours
+- First Time Fix Rate: Unknown%
+
+Please analyze and provide:
+1. Renewal probability (0-100)
+2. Churn risk score (0-100, higher = more risk)
+3. Risk classification (very_low/low/medium/high/very_high)
+4. Recommended action
+5. Key strengths (positive factors)
+6. Concerns (risk factors)
+7. Upsell opportunities
+8. Overall strategy recommendation
+
+Format response as JSON:
+{
+  "renewalProbability": 75,
+  "churnRiskScore": 25,
+  "renewalRisk": "low",
+  "recommendedAction": "send_proposal",
+  "summary": "Overall assessment",
+  "strengths": ["strength1", "strength2"],
+  "concerns": ["concern1", "concern2"],
+  "opportunities": ["opportunity1", "opportunity2"],
+  "recommendedStrategy": "Detailed strategy",
+  "confidenceScore": 85
+}"
+`;
+
+exports[`renewal analysis parity (Express service vs edge _shared) > buildRenewalAnalysisPrompt > renders identical prompt text: exactly on every threshold - satisfaction 4, tickets 10, escalations 2, fix rate 80 1`] = `
+"Analyze this contract renewal opportunity and predict renewal likelihood:
+
+Contract Information:
+- Type: service
+- Customer: Edge Case Industries
+- Days Until Expiration: 90
+- Current MRR: $1500
+- Current ACV: $18000
+
+Customer Engagement Metrics:
+- NPS Score: 7
+- Satisfaction Score: 4/5
+- Last Interaction: Unknown
+- Interaction Frequency: Unknown per month
+- Support Tickets (90d): 10
+- Escalations (90d): 2
+
+Service Performance:
+- Equipment Count: 5
+- Average Uptime: Unknown%
+- Service Calls (90d): undefined
+- Average Response Time: Unknown hours
+- First Time Fix Rate: 80%
+
+Please analyze and provide:
+1. Renewal probability (0-100)
+2. Churn risk score (0-100, higher = more risk)
+3. Risk classification (very_low/low/medium/high/very_high)
+4. Recommended action
+5. Key strengths (positive factors)
+6. Concerns (risk factors)
+7. Upsell opportunities
+8. Overall strategy recommendation
+
+Format response as JSON:
+{
+  "renewalProbability": 75,
+  "churnRiskScore": 25,
+  "renewalRisk": "low",
+  "recommendedAction": "send_proposal",
+  "summary": "Overall assessment",
+  "strengths": ["strength1", "strength2"],
+  "concerns": ["concern1", "concern2"],
+  "opportunities": ["opportunity1", "opportunity2"],
+  "recommendedStrategy": "Detailed strategy",
+  "confidenceScore": 85
+}"
+`;
+
+exports[`renewal analysis parity (Express service vs edge _shared) > buildRenewalAnalysisPrompt > renders identical prompt text: healthy - high satisfaction, quiet support, large fleet 1`] = `
+"Analyze this contract renewal opportunity and predict renewal likelihood:
+
+Contract Information:
+- Type: service
+- Customer: Northgate Dental
+- Days Until Expiration: 45
+- Current MRR: $2400.00
+- Current ACV: $28800.00
+
+Customer Engagement Metrics:
+- NPS Score: 9
+- Satisfaction Score: 5/5
+- Last Interaction: 7/2/2026
+- Interaction Frequency: 4 per month
+- Support Tickets (90d): 2
+- Escalations (90d): 0
+
+Service Performance:
+- Equipment Count: 12
+- Average Uptime: 99.1%
+- Service Calls (90d): 3
+- Average Response Time: 2.5 hours
+- First Time Fix Rate: 92%
+
+Please analyze and provide:
+1. Renewal probability (0-100)
+2. Churn risk score (0-100, higher = more risk)
+3. Risk classification (very_low/low/medium/high/very_high)
+4. Recommended action
+5. Key strengths (positive factors)
+6. Concerns (risk factors)
+7. Upsell opportunities
+8. Overall strategy recommendation
+
+Format response as JSON:
+{
+  "renewalProbability": 75,
+  "churnRiskScore": 25,
+  "renewalRisk": "low",
+  "recommendedAction": "send_proposal",
+  "summary": "Overall assessment",
+  "strengths": ["strength1", "strength2"],
+  "concerns": ["concern1", "concern2"],
+  "opportunities": ["opportunity1", "opportunity2"],
+  "recommendedStrategy": "Detailed strategy",
+  "confidenceScore": 85
+}"
+`;
+
+exports[`renewal analysis parity (Express service vs edge _shared) > buildRenewalAnalysisPrompt > renders identical prompt text: just past every threshold - satisfaction 2, tickets 11, escalations 3, fix rate 79 1`] = `
+"Analyze this contract renewal opportunity and predict renewal likelihood:
+
+Contract Information:
+- Type: service
+- Customer: Just Over Ltd
+- Days Until Expiration: 30
+- Current MRR: $1500
+- Current ACV: $18000
+
+Customer Engagement Metrics:
+- NPS Score: 3
+- Satisfaction Score: 2/5
+- Last Interaction: Unknown
+- Interaction Frequency: Unknown per month
+- Support Tickets (90d): 11
+- Escalations (90d): 3
+
+Service Performance:
+- Equipment Count: 6
+- Average Uptime: Unknown%
+- Service Calls (90d): undefined
+- Average Response Time: Unknown hours
+- First Time Fix Rate: 79%
+
+Please analyze and provide:
+1. Renewal probability (0-100)
+2. Churn risk score (0-100, higher = more risk)
+3. Risk classification (very_low/low/medium/high/very_high)
+4. Recommended action
+5. Key strengths (positive factors)
+6. Concerns (risk factors)
+7. Upsell opportunities
+8. Overall strategy recommendation
+
+Format response as JSON:
+{
+  "renewalProbability": 75,
+  "churnRiskScore": 25,
+  "renewalRisk": "low",
+  "recommendedAction": "send_proposal",
+  "summary": "Overall assessment",
+  "strengths": ["strength1", "strength2"],
+  "concerns": ["concern1", "concern2"],
+  "opportunities": ["opportunity1", "opportunity2"],
+  "recommendedStrategy": "Detailed strategy",
+  "confidenceScore": 85
+}"
+`;
+
+exports[`renewal analysis parity (Express service vs edge _shared) > buildRenewalAnalysisPrompt > renders identical prompt text: sparse - nulls and undefined everywhere 1`] = `
+"Analyze this contract renewal opportunity and predict renewal likelihood:
+
+Contract Information:
+- Type: null
+- Customer: null
+- Days Until Expiration: null
+- Current MRR: $0
+- Current ACV: $0
+
+Customer Engagement Metrics:
+- NPS Score: Unknown
+- Satisfaction Score: Unknown
+- Last Interaction: Unknown
+- Interaction Frequency: Unknown per month
+- Support Tickets (90d): null
+- Escalations (90d): null
+
+Service Performance:
+- Equipment Count: null
+- Average Uptime: Unknown%
+- Service Calls (90d): null
+- Average Response Time: Unknown hours
+- First Time Fix Rate: Unknown%
+
+Please analyze and provide:
+1. Renewal probability (0-100)
+2. Churn risk score (0-100, higher = more risk)
+3. Risk classification (very_low/low/medium/high/very_high)
+4. Recommended action
+5. Key strengths (positive factors)
+6. Concerns (risk factors)
+7. Upsell opportunities
+8. Overall strategy recommendation
+
+Format response as JSON:
+{
+  "renewalProbability": 75,
+  "churnRiskScore": 25,
+  "renewalRisk": "low",
+  "recommendedAction": "send_proposal",
+  "summary": "Overall assessment",
+  "strengths": ["strength1", "strength2"],
+  "concerns": ["concern1", "concern2"],
+  "opportunities": ["opportunity1", "opportunity2"],
+  "recommendedStrategy": "Detailed strategy",
+  "confidenceScore": 85
+}"
+`;
+
+exports[`renewal analysis parity (Express service vs edge _shared) > heuristicRenewalAnalysis > returns an identical result: at risk - low satisfaction, heavy tickets, escalations, poor fix rate 1`] = `
+{
+  "aiAnalysis": {
+    "concerns": [
+      "Low satisfaction score",
+      "High support ticket volume",
+      "Recent escalations",
+      "Low first-time fix rate",
+    ],
+    "opportunities": [],
+    "recommendedStrategy": "Review customer engagement and address any concerns before renewal",
+    "strengths": [],
+    "summary": "Heuristic analysis based on key metrics",
+  },
+  "churnRiskScore": 85,
+  "confidenceScore": 60,
+  "opportunityFactors": [],
+  "recommendedAction": "escalate_to_sales",
+  "renewalProbability": 15,
+  "renewalRisk": "very_high",
+  "riskFactors": [
+    "Low satisfaction score",
+    "High support ticket volume",
+    "Recent escalations",
+    "Low first-time fix rate",
+  ],
+}
+`;
+
+exports[`renewal analysis parity (Express service vs edge _shared) > heuristicRenewalAnalysis > returns an identical result: empty object - every field absent 1`] = `
+{
+  "aiAnalysis": {
+    "concerns": [],
+    "opportunities": [],
+    "recommendedStrategy": "Review customer engagement and address any concerns before renewal",
+    "strengths": [
+      "Stable customer relationship",
+    ],
+    "summary": "Heuristic analysis based on key metrics",
+  },
+  "churnRiskScore": 30,
+  "confidenceScore": 60,
+  "opportunityFactors": [],
+  "recommendedAction": "send_proposal",
+  "renewalProbability": 70,
+  "renewalRisk": "low",
+  "riskFactors": [],
+}
+`;
+
+exports[`renewal analysis parity (Express service vs edge _shared) > heuristicRenewalAnalysis > returns an identical result: exactly on every threshold - satisfaction 4, tickets 10, escalations 2, fix rate 80 1`] = `
+{
+  "aiAnalysis": {
+    "concerns": [],
+    "opportunities": [],
+    "recommendedStrategy": "Review customer engagement and address any concerns before renewal",
+    "strengths": [
+      "Stable customer relationship",
+    ],
+    "summary": "Heuristic analysis based on key metrics",
+  },
+  "churnRiskScore": 15,
+  "confidenceScore": 60,
+  "opportunityFactors": [],
+  "recommendedAction": "send_proposal",
+  "renewalProbability": 85,
+  "renewalRisk": "low",
+  "riskFactors": [],
+}
+`;
+
+exports[`renewal analysis parity (Express service vs edge _shared) > heuristicRenewalAnalysis > returns an identical result: healthy - high satisfaction, quiet support, large fleet 1`] = `
+{
+  "aiAnalysis": {
+    "concerns": [],
+    "opportunities": [
+      "Large equipment fleet - potential for expanded services",
+    ],
+    "recommendedStrategy": "Review customer engagement and address any concerns before renewal",
+    "strengths": [
+      "Stable customer relationship",
+    ],
+    "summary": "Heuristic analysis based on key metrics",
+  },
+  "churnRiskScore": 15,
+  "confidenceScore": 60,
+  "opportunityFactors": [
+    "Large equipment fleet - potential for expanded services",
+  ],
+  "recommendedAction": "send_proposal",
+  "renewalProbability": 85,
+  "renewalRisk": "low",
+  "riskFactors": [],
+}
+`;
+
+exports[`renewal analysis parity (Express service vs edge _shared) > heuristicRenewalAnalysis > returns an identical result: just past every threshold - satisfaction 2, tickets 11, escalations 3, fix rate 79 1`] = `
+{
+  "aiAnalysis": {
+    "concerns": [
+      "Low satisfaction score",
+      "High support ticket volume",
+      "Recent escalations",
+      "Low first-time fix rate",
+    ],
+    "opportunities": [
+      "Large equipment fleet - potential for expanded services",
+    ],
+    "recommendedStrategy": "Review customer engagement and address any concerns before renewal",
+    "strengths": [],
+    "summary": "Heuristic analysis based on key metrics",
+  },
+  "churnRiskScore": 85,
+  "confidenceScore": 60,
+  "opportunityFactors": [
+    "Large equipment fleet - potential for expanded services",
+  ],
+  "recommendedAction": "escalate_to_sales",
+  "renewalProbability": 15,
+  "renewalRisk": "very_high",
+  "riskFactors": [
+    "Low satisfaction score",
+    "High support ticket volume",
+    "Recent escalations",
+    "Low first-time fix rate",
+  ],
+}
+`;
+
+exports[`renewal analysis parity (Express service vs edge _shared) > heuristicRenewalAnalysis > returns an identical result: sparse - nulls and undefined everywhere 1`] = `
+{
+  "aiAnalysis": {
+    "concerns": [],
+    "opportunities": [],
+    "recommendedStrategy": "Review customer engagement and address any concerns before renewal",
+    "strengths": [
+      "Stable customer relationship",
+    ],
+    "summary": "Heuristic analysis based on key metrics",
+  },
+  "churnRiskScore": 30,
+  "confidenceScore": 60,
+  "opportunityFactors": [],
+  "recommendedAction": "send_proposal",
+  "renewalProbability": 70,
+  "renewalRisk": "low",
+  "riskFactors": [],
+}
+`;
+
+exports[`renewal analysis parity (Express service vs edge _shared) > risk banding > agrees on the action for high 1`] = `"escalate_to_sales"`;
+
+exports[`renewal analysis parity (Express service vs edge _shared) > risk banding > agrees on the action for low 1`] = `"send_proposal"`;
+
+exports[`renewal analysis parity (Express service vs edge _shared) > risk banding > agrees on the action for medium 1`] = `"schedule_call"`;
+
+exports[`renewal analysis parity (Express service vs edge _shared) > risk banding > agrees on the action for very_high 1`] = `"escalate_to_sales"`;
+
+exports[`renewal analysis parity (Express service vs edge _shared) > risk banding > agrees on the action for very_low 1`] = `"send_proposal"`;
+
+exports[`renewal analysis parity (Express service vs edge _shared) > risk banding > agrees on the band at -5 1`] = `"very_high"`;
+
+exports[`renewal analysis parity (Express service vs edge _shared) > risk banding > agrees on the band at 0 1`] = `"very_high"`;
+
+exports[`renewal analysis parity (Express service vs edge _shared) > risk banding > agrees on the band at 29 1`] = `"very_high"`;
+
+exports[`renewal analysis parity (Express service vs edge _shared) > risk banding > agrees on the band at 30 1`] = `"high"`;
+
+exports[`renewal analysis parity (Express service vs edge _shared) > risk banding > agrees on the band at 31 1`] = `"high"`;
+
+exports[`renewal analysis parity (Express service vs edge _shared) > risk banding > agrees on the band at 49 1`] = `"high"`;
+
+exports[`renewal analysis parity (Express service vs edge _shared) > risk banding > agrees on the band at 50 1`] = `"medium"`;
+
+exports[`renewal analysis parity (Express service vs edge _shared) > risk banding > agrees on the band at 51 1`] = `"medium"`;
+
+exports[`renewal analysis parity (Express service vs edge _shared) > risk banding > agrees on the band at 69 1`] = `"medium"`;
+
+exports[`renewal analysis parity (Express service vs edge _shared) > risk banding > agrees on the band at 70 1`] = `"low"`;
+
+exports[`renewal analysis parity (Express service vs edge _shared) > risk banding > agrees on the band at 71 1`] = `"low"`;
+
+exports[`renewal analysis parity (Express service vs edge _shared) > risk banding > agrees on the band at 89 1`] = `"low"`;
+
+exports[`renewal analysis parity (Express service vs edge _shared) > risk banding > agrees on the band at 90 1`] = `"very_low"`;
+
+exports[`renewal analysis parity (Express service vs edge _shared) > risk banding > agrees on the band at 91 1`] = `"very_low"`;
+
+exports[`renewal analysis parity (Express service vs edge _shared) > risk banding > agrees on the band at 100 1`] = `"very_low"`;
+
+exports[`renewal analysis parity (Express service vs edge _shared) > risk banding > agrees on the band at 105 1`] = `"very_low"`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > buildRenewalPricingPrompt > renders identical prompt text: high / all null - falls back to 15 and 5 1`] = `
+"Generate optimal renewal pricing for this contract:
+
+Current Contract:
+- MRR: $2400
+- ACV: $28800
+- Renewal Probability: 40%
+- Churn Risk: high
+
+Analysis:
+- Strengths: s1, s2
+- Concerns: c1
+- Opportunities: o1, o2
+
+Pricing Constraints:
+- Max Discount: null%
+- Min Price Increase: null%
+- Max Price Increase: null%
+
+Recommend:
+1. New MRR and ACV
+2. Discount percentage (if any)
+3. Contract term length (12-60 months)
+4. Incentive offering (if needed)
+5. Pricing strategy rationale
+6. Up to 3 upsell opportunities with values
+
+Format as JSON:
+{
+  "proposedMrr": 5000,"
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > buildRenewalPricingPrompt > renders identical prompt text: high / empty rules object 1`] = `
+"Generate optimal renewal pricing for this contract:
+
+Current Contract:
+- MRR: $2400
+- ACV: $28800
+- Renewal Probability: 40%
+- Churn Risk: high
+
+Analysis:
+- Strengths: s1, s2
+- Concerns: c1
+- Opportunities: o1, o2
+
+Pricing Constraints:
+- Max Discount: undefined%
+- Min Price Increase: undefined%
+- Max Price Increase: undefined%
+
+Recommend:
+1. New MRR and ACV
+2. Discount percentage (if any)
+3. Contract term length (12-60 months)
+4. Incentive offering (if needed)
+5. Pricing strategy rationale
+6. Up to 3 upsell opportunities with values
+
+Format as JSON:
+{
+  "proposedMrr": 5000,"
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > buildRenewalPricingPrompt > renders identical prompt text: high / schema defaults 1`] = `
+"Generate optimal renewal pricing for this contract:
+
+Current Contract:
+- MRR: $2400
+- ACV: $28800
+- Renewal Probability: 40%
+- Churn Risk: high
+
+Analysis:
+- Strengths: s1, s2
+- Concerns: c1
+- Opportunities: o1, o2
+
+Pricing Constraints:
+- Max Discount: 15.00%
+- Min Price Increase: 2.00%
+- Max Price Increase: 10.00%
+
+Recommend:
+1. New MRR and ACV
+2. Discount percentage (if any)
+3. Contract term length (12-60 months)
+4. Incentive offering (if needed)
+5. Pricing strategy rationale
+6. Up to 3 upsell opportunities with values
+
+Format as JSON:
+{
+  "proposedMrr": 5000,"
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > buildRenewalPricingPrompt > renders identical prompt text: high / tenant caps BELOW the hardcoded clamps - 5% discount, 1% increase 1`] = `
+"Generate optimal renewal pricing for this contract:
+
+Current Contract:
+- MRR: $2400
+- ACV: $28800
+- Renewal Probability: 40%
+- Churn Risk: high
+
+Analysis:
+- Strengths: s1, s2
+- Concerns: c1
+- Opportunities: o1, o2
+
+Pricing Constraints:
+- Max Discount: 5%
+- Min Price Increase: 0.5%
+- Max Price Increase: 1%
+
+Recommend:
+1. New MRR and ACV
+2. Discount percentage (if any)
+3. Contract term length (12-60 months)
+4. Incentive offering (if needed)
+5. Pricing strategy rationale
+6. Up to 3 upsell opportunities with values
+
+Format as JSON:
+{
+  "proposedMrr": 5000,"
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > buildRenewalPricingPrompt > renders identical prompt text: low / all null - falls back to 15 and 5 1`] = `
+"Generate optimal renewal pricing for this contract:
+
+Current Contract:
+- MRR: $2400
+- ACV: $28800
+- Renewal Probability: 80%
+- Churn Risk: low
+
+Analysis:
+- Strengths: s1, s2
+- Concerns: c1
+- Opportunities: o1, o2
+
+Pricing Constraints:
+- Max Discount: null%
+- Min Price Increase: null%
+- Max Price Increase: null%
+
+Recommend:
+1. New MRR and ACV
+2. Discount percentage (if any)
+3. Contract term length (12-60 months)
+4. Incentive offering (if needed)
+5. Pricing strategy rationale
+6. Up to 3 upsell opportunities with values
+
+Format as JSON:
+{
+  "proposedMrr": 5000,"
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > buildRenewalPricingPrompt > renders identical prompt text: low / empty rules object 1`] = `
+"Generate optimal renewal pricing for this contract:
+
+Current Contract:
+- MRR: $2400
+- ACV: $28800
+- Renewal Probability: 80%
+- Churn Risk: low
+
+Analysis:
+- Strengths: s1, s2
+- Concerns: c1
+- Opportunities: o1, o2
+
+Pricing Constraints:
+- Max Discount: undefined%
+- Min Price Increase: undefined%
+- Max Price Increase: undefined%
+
+Recommend:
+1. New MRR and ACV
+2. Discount percentage (if any)
+3. Contract term length (12-60 months)
+4. Incentive offering (if needed)
+5. Pricing strategy rationale
+6. Up to 3 upsell opportunities with values
+
+Format as JSON:
+{
+  "proposedMrr": 5000,"
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > buildRenewalPricingPrompt > renders identical prompt text: low / schema defaults 1`] = `
+"Generate optimal renewal pricing for this contract:
+
+Current Contract:
+- MRR: $2400
+- ACV: $28800
+- Renewal Probability: 80%
+- Churn Risk: low
+
+Analysis:
+- Strengths: s1, s2
+- Concerns: c1
+- Opportunities: o1, o2
+
+Pricing Constraints:
+- Max Discount: 15.00%
+- Min Price Increase: 2.00%
+- Max Price Increase: 10.00%
+
+Recommend:
+1. New MRR and ACV
+2. Discount percentage (if any)
+3. Contract term length (12-60 months)
+4. Incentive offering (if needed)
+5. Pricing strategy rationale
+6. Up to 3 upsell opportunities with values
+
+Format as JSON:
+{
+  "proposedMrr": 5000,"
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > buildRenewalPricingPrompt > renders identical prompt text: low / tenant caps BELOW the hardcoded clamps - 5% discount, 1% increase 1`] = `
+"Generate optimal renewal pricing for this contract:
+
+Current Contract:
+- MRR: $2400
+- ACV: $28800
+- Renewal Probability: 80%
+- Churn Risk: low
+
+Analysis:
+- Strengths: s1, s2
+- Concerns: c1
+- Opportunities: o1, o2
+
+Pricing Constraints:
+- Max Discount: 5%
+- Min Price Increase: 0.5%
+- Max Price Increase: 1%
+
+Recommend:
+1. New MRR and ACV
+2. Discount percentage (if any)
+3. Contract term length (12-60 months)
+4. Incentive offering (if needed)
+5. Pricing strategy rationale
+6. Up to 3 upsell opportunities with values
+
+Format as JSON:
+{
+  "proposedMrr": 5000,"
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > buildRenewalPricingPrompt > renders identical prompt text: medium / all null - falls back to 15 and 5 1`] = `
+"Generate optimal renewal pricing for this contract:
+
+Current Contract:
+- MRR: $2400
+- ACV: $28800
+- Renewal Probability: 60%
+- Churn Risk: medium
+
+Analysis:
+- Strengths: s1, s2
+- Concerns: c1
+- Opportunities: o1, o2
+
+Pricing Constraints:
+- Max Discount: null%
+- Min Price Increase: null%
+- Max Price Increase: null%
+
+Recommend:
+1. New MRR and ACV
+2. Discount percentage (if any)
+3. Contract term length (12-60 months)
+4. Incentive offering (if needed)
+5. Pricing strategy rationale
+6. Up to 3 upsell opportunities with values
+
+Format as JSON:
+{
+  "proposedMrr": 5000,"
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > buildRenewalPricingPrompt > renders identical prompt text: medium / empty rules object 1`] = `
+"Generate optimal renewal pricing for this contract:
+
+Current Contract:
+- MRR: $2400
+- ACV: $28800
+- Renewal Probability: 60%
+- Churn Risk: medium
+
+Analysis:
+- Strengths: s1, s2
+- Concerns: c1
+- Opportunities: o1, o2
+
+Pricing Constraints:
+- Max Discount: undefined%
+- Min Price Increase: undefined%
+- Max Price Increase: undefined%
+
+Recommend:
+1. New MRR and ACV
+2. Discount percentage (if any)
+3. Contract term length (12-60 months)
+4. Incentive offering (if needed)
+5. Pricing strategy rationale
+6. Up to 3 upsell opportunities with values
+
+Format as JSON:
+{
+  "proposedMrr": 5000,"
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > buildRenewalPricingPrompt > renders identical prompt text: medium / schema defaults 1`] = `
+"Generate optimal renewal pricing for this contract:
+
+Current Contract:
+- MRR: $2400
+- ACV: $28800
+- Renewal Probability: 60%
+- Churn Risk: medium
+
+Analysis:
+- Strengths: s1, s2
+- Concerns: c1
+- Opportunities: o1, o2
+
+Pricing Constraints:
+- Max Discount: 15.00%
+- Min Price Increase: 2.00%
+- Max Price Increase: 10.00%
+
+Recommend:
+1. New MRR and ACV
+2. Discount percentage (if any)
+3. Contract term length (12-60 months)
+4. Incentive offering (if needed)
+5. Pricing strategy rationale
+6. Up to 3 upsell opportunities with values
+
+Format as JSON:
+{
+  "proposedMrr": 5000,"
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > buildRenewalPricingPrompt > renders identical prompt text: medium / tenant caps BELOW the hardcoded clamps - 5% discount, 1% increase 1`] = `
+"Generate optimal renewal pricing for this contract:
+
+Current Contract:
+- MRR: $2400
+- ACV: $28800
+- Renewal Probability: 60%
+- Churn Risk: medium
+
+Analysis:
+- Strengths: s1, s2
+- Concerns: c1
+- Opportunities: o1, o2
+
+Pricing Constraints:
+- Max Discount: 5%
+- Min Price Increase: 0.5%
+- Max Price Increase: 1%
+
+Recommend:
+1. New MRR and ACV
+2. Discount percentage (if any)
+3. Contract term length (12-60 months)
+4. Incentive offering (if needed)
+5. Pricing strategy rationale
+6. Up to 3 upsell opportunities with values
+
+Format as JSON:
+{
+  "proposedMrr": 5000,"
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > buildRenewalPricingPrompt > renders identical prompt text: very_high / all null - falls back to 15 and 5 1`] = `
+"Generate optimal renewal pricing for this contract:
+
+Current Contract:
+- MRR: $2400
+- ACV: $28800
+- Renewal Probability: 10%
+- Churn Risk: very_high
+
+Analysis:
+- Strengths: s1, s2
+- Concerns: c1
+- Opportunities: o1, o2
+
+Pricing Constraints:
+- Max Discount: null%
+- Min Price Increase: null%
+- Max Price Increase: null%
+
+Recommend:
+1. New MRR and ACV
+2. Discount percentage (if any)
+3. Contract term length (12-60 months)
+4. Incentive offering (if needed)
+5. Pricing strategy rationale
+6. Up to 3 upsell opportunities with values
+
+Format as JSON:
+{
+  "proposedMrr": 5000,"
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > buildRenewalPricingPrompt > renders identical prompt text: very_high / empty rules object 1`] = `
+"Generate optimal renewal pricing for this contract:
+
+Current Contract:
+- MRR: $2400
+- ACV: $28800
+- Renewal Probability: 10%
+- Churn Risk: very_high
+
+Analysis:
+- Strengths: s1, s2
+- Concerns: c1
+- Opportunities: o1, o2
+
+Pricing Constraints:
+- Max Discount: undefined%
+- Min Price Increase: undefined%
+- Max Price Increase: undefined%
+
+Recommend:
+1. New MRR and ACV
+2. Discount percentage (if any)
+3. Contract term length (12-60 months)
+4. Incentive offering (if needed)
+5. Pricing strategy rationale
+6. Up to 3 upsell opportunities with values
+
+Format as JSON:
+{
+  "proposedMrr": 5000,"
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > buildRenewalPricingPrompt > renders identical prompt text: very_high / schema defaults 1`] = `
+"Generate optimal renewal pricing for this contract:
+
+Current Contract:
+- MRR: $2400
+- ACV: $28800
+- Renewal Probability: 10%
+- Churn Risk: very_high
+
+Analysis:
+- Strengths: s1, s2
+- Concerns: c1
+- Opportunities: o1, o2
+
+Pricing Constraints:
+- Max Discount: 15.00%
+- Min Price Increase: 2.00%
+- Max Price Increase: 10.00%
+
+Recommend:
+1. New MRR and ACV
+2. Discount percentage (if any)
+3. Contract term length (12-60 months)
+4. Incentive offering (if needed)
+5. Pricing strategy rationale
+6. Up to 3 upsell opportunities with values
+
+Format as JSON:
+{
+  "proposedMrr": 5000,"
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > buildRenewalPricingPrompt > renders identical prompt text: very_high / tenant caps BELOW the hardcoded clamps - 5% discount, 1% increase 1`] = `
+"Generate optimal renewal pricing for this contract:
+
+Current Contract:
+- MRR: $2400
+- ACV: $28800
+- Renewal Probability: 10%
+- Churn Risk: very_high
+
+Analysis:
+- Strengths: s1, s2
+- Concerns: c1
+- Opportunities: o1, o2
+
+Pricing Constraints:
+- Max Discount: 5%
+- Min Price Increase: 0.5%
+- Max Price Increase: 1%
+
+Recommend:
+1. New MRR and ACV
+2. Discount percentage (if any)
+3. Contract term length (12-60 months)
+4. Incentive offering (if needed)
+5. Pricing strategy rationale
+6. Up to 3 upsell opportunities with values
+
+Format as JSON:
+{
+  "proposedMrr": 5000,"
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > buildRenewalPricingPrompt > renders identical prompt text: very_low / all null - falls back to 15 and 5 1`] = `
+"Generate optimal renewal pricing for this contract:
+
+Current Contract:
+- MRR: $2400
+- ACV: $28800
+- Renewal Probability: 95%
+- Churn Risk: very_low
+
+Analysis:
+- Strengths: s1, s2
+- Concerns: c1
+- Opportunities: o1, o2
+
+Pricing Constraints:
+- Max Discount: null%
+- Min Price Increase: null%
+- Max Price Increase: null%
+
+Recommend:
+1. New MRR and ACV
+2. Discount percentage (if any)
+3. Contract term length (12-60 months)
+4. Incentive offering (if needed)
+5. Pricing strategy rationale
+6. Up to 3 upsell opportunities with values
+
+Format as JSON:
+{
+  "proposedMrr": 5000,"
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > buildRenewalPricingPrompt > renders identical prompt text: very_low / empty rules object 1`] = `
+"Generate optimal renewal pricing for this contract:
+
+Current Contract:
+- MRR: $2400
+- ACV: $28800
+- Renewal Probability: 95%
+- Churn Risk: very_low
+
+Analysis:
+- Strengths: s1, s2
+- Concerns: c1
+- Opportunities: o1, o2
+
+Pricing Constraints:
+- Max Discount: undefined%
+- Min Price Increase: undefined%
+- Max Price Increase: undefined%
+
+Recommend:
+1. New MRR and ACV
+2. Discount percentage (if any)
+3. Contract term length (12-60 months)
+4. Incentive offering (if needed)
+5. Pricing strategy rationale
+6. Up to 3 upsell opportunities with values
+
+Format as JSON:
+{
+  "proposedMrr": 5000,"
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > buildRenewalPricingPrompt > renders identical prompt text: very_low / schema defaults 1`] = `
+"Generate optimal renewal pricing for this contract:
+
+Current Contract:
+- MRR: $2400
+- ACV: $28800
+- Renewal Probability: 95%
+- Churn Risk: very_low
+
+Analysis:
+- Strengths: s1, s2
+- Concerns: c1
+- Opportunities: o1, o2
+
+Pricing Constraints:
+- Max Discount: 15.00%
+- Min Price Increase: 2.00%
+- Max Price Increase: 10.00%
+
+Recommend:
+1. New MRR and ACV
+2. Discount percentage (if any)
+3. Contract term length (12-60 months)
+4. Incentive offering (if needed)
+5. Pricing strategy rationale
+6. Up to 3 upsell opportunities with values
+
+Format as JSON:
+{
+  "proposedMrr": 5000,"
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > buildRenewalPricingPrompt > renders identical prompt text: very_low / tenant caps BELOW the hardcoded clamps - 5% discount, 1% increase 1`] = `
+"Generate optimal renewal pricing for this contract:
+
+Current Contract:
+- MRR: $2400
+- ACV: $28800
+- Renewal Probability: 95%
+- Churn Risk: very_low
+
+Analysis:
+- Strengths: s1, s2
+- Concerns: c1
+- Opportunities: o1, o2
+
+Pricing Constraints:
+- Max Discount: 5%
+- Min Price Increase: 0.5%
+- Max Price Increase: 1%
+
+Recommend:
+1. New MRR and ACV
+2. Discount percentage (if any)
+3. Contract term length (12-60 months)
+4. Incentive offering (if needed)
+5. Pricing strategy rationale
+6. Up to 3 upsell opportunities with values
+
+Format as JSON:
+{
+  "proposedMrr": 5000,"
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > buildRenewalProposalRow > builds an identical row: high / empty contract 1`] = `
+{
+  "additional_services_offered": [],
+  "ai_pricing_strategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "base_price": null,
+  "base_services_included": [
+    "Standard service agreement",
+    "Equipment maintenance",
+  ],
+  "competitive_analysis": {
+    "analysis": "Market-competitive pricing",
+  },
+  "contract_id": null,
+  "current_acv": null,
+  "current_mrr": null,
+  "current_term_months": null,
+  "customer_id": null,
+  "customer_name": null,
+  "discount_amount": "0",
+  "discount_percentage": "10",
+  "executive_summary": "We value your partnership and are pleased to present this renewal proposal for your undefined.",
+  "expiration_date": "2026-09-19T12:00:00.000Z",
+  "generated_by": "ai_autopilot",
+  "incentive_offered": "Loyalty discount for continued partnership",
+  "incentive_value": "0",
+  "pricing_summary": "Proposed MRR: $2160.00 | ACV: $25920.00",
+  "proposal_date": "2026-08-20T12:00:00.000Z",
+  "proposal_number": "REN-FIXED-1",
+  "proposed_acv": "25920",
+  "proposed_end_date": null,
+  "proposed_mrr": "2160",
+  "proposed_start_date": null,
+  "proposed_term_months": 24,
+  "risk_mitigation": {
+    "concerns": [
+      "c1",
+    ],
+  },
+  "services_summary": "Continued comprehensive service coverage for all equipment.",
+  "status": "draft",
+  "upsell_value": "0",
+  "value_proposition": {
+    "concerns": [
+      "c1",
+    ],
+    "opportunities": [
+      "o1",
+      "o2",
+    ],
+    "recommendedStrategy": "strategy",
+    "strengths": [
+      "s1",
+      "s2",
+    ],
+    "summary": "summary",
+  },
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > buildRenewalProposalRow > builds an identical row: high / full contract 1`] = `
+{
+  "additional_services_offered": [],
+  "ai_pricing_strategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "base_price": "2400.00",
+  "base_services_included": [
+    "Standard service agreement",
+    "Equipment maintenance",
+  ],
+  "competitive_analysis": {
+    "analysis": "Market-competitive pricing",
+  },
+  "contract_id": "ct-1",
+  "current_acv": "28800.00",
+  "current_mrr": "2400.00",
+  "current_term_months": 25,
+  "customer_id": "cu-1",
+  "customer_name": "Northgate Dental",
+  "discount_amount": "2880",
+  "discount_percentage": "10",
+  "executive_summary": "We value your partnership and are pleased to present this renewal proposal for your service.",
+  "expiration_date": "2026-09-19T12:00:00.000Z",
+  "generated_by": "ai_autopilot",
+  "incentive_offered": "Loyalty discount for continued partnership",
+  "incentive_value": "0",
+  "pricing_summary": "Proposed MRR: $2160.00 | ACV: $25920.00",
+  "proposal_date": "2026-08-20T12:00:00.000Z",
+  "proposal_number": "REN-FIXED-1",
+  "proposed_acv": "25920",
+  "proposed_end_date": "2028-08-21T00:00:00.000Z",
+  "proposed_mrr": "2160",
+  "proposed_start_date": "2026-09-01T00:00:00.000Z",
+  "proposed_term_months": 24,
+  "risk_mitigation": {
+    "concerns": [
+      "c1",
+    ],
+  },
+  "services_summary": "Continued comprehensive service coverage for all equipment.",
+  "status": "draft",
+  "upsell_value": "0",
+  "value_proposition": {
+    "concerns": [
+      "c1",
+    ],
+    "opportunities": [
+      "o1",
+      "o2",
+    ],
+    "recommendedStrategy": "strategy",
+    "strengths": [
+      "s1",
+      "s2",
+    ],
+    "summary": "summary",
+  },
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > buildRenewalProposalRow > builds an identical row: high / no MRR - discount amount must be 0, not NaN 1`] = `
+{
+  "additional_services_offered": [],
+  "ai_pricing_strategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "base_price": null,
+  "base_services_included": [
+    "Standard service agreement",
+    "Equipment maintenance",
+  ],
+  "competitive_analysis": {
+    "analysis": "Market-competitive pricing",
+  },
+  "contract_id": "ct-3",
+  "current_acv": null,
+  "current_mrr": null,
+  "current_term_months": 13,
+  "customer_id": "cu-3",
+  "customer_name": "Zero MRR Inc",
+  "discount_amount": "0",
+  "discount_percentage": "10",
+  "executive_summary": "We value your partnership and are pleased to present this renewal proposal for your service.",
+  "expiration_date": "2026-09-19T12:00:00.000Z",
+  "generated_by": "ai_autopilot",
+  "incentive_offered": "Loyalty discount for continued partnership",
+  "incentive_value": "0",
+  "pricing_summary": "Proposed MRR: $2160.00 | ACV: $25920.00",
+  "proposal_date": "2026-08-20T12:00:00.000Z",
+  "proposal_number": "REN-FIXED-1",
+  "proposed_acv": "25920",
+  "proposed_end_date": "2027-12-22T00:00:00.000Z",
+  "proposed_mrr": "2160",
+  "proposed_start_date": "2026-01-01T00:00:00.000Z",
+  "proposed_term_months": 24,
+  "risk_mitigation": {
+    "concerns": [
+      "c1",
+    ],
+  },
+  "services_summary": "Continued comprehensive service coverage for all equipment.",
+  "status": "draft",
+  "upsell_value": "0",
+  "value_proposition": {
+    "concerns": [
+      "c1",
+    ],
+    "opportunities": [
+      "o1",
+      "o2",
+    ],
+    "recommendedStrategy": "strategy",
+    "strengths": [
+      "s1",
+      "s2",
+    ],
+    "summary": "summary",
+  },
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > buildRenewalProposalRow > builds an identical row: high / no dates - term and proposed window unknown 1`] = `
+{
+  "additional_services_offered": [],
+  "ai_pricing_strategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "base_price": "900",
+  "base_services_included": [
+    "Standard service agreement",
+    "Equipment maintenance",
+  ],
+  "competitive_analysis": {
+    "analysis": "Market-competitive pricing",
+  },
+  "contract_id": "ct-2",
+  "current_acv": null,
+  "current_mrr": "900",
+  "current_term_months": null,
+  "customer_id": "cu-2",
+  "customer_name": "No Dates Ltd",
+  "discount_amount": "1080",
+  "discount_percentage": "10",
+  "executive_summary": "We value your partnership and are pleased to present this renewal proposal for your maintenance.",
+  "expiration_date": "2026-09-19T12:00:00.000Z",
+  "generated_by": "ai_autopilot",
+  "incentive_offered": "Loyalty discount for continued partnership",
+  "incentive_value": "0",
+  "pricing_summary": "Proposed MRR: $2160.00 | ACV: $25920.00",
+  "proposal_date": "2026-08-20T12:00:00.000Z",
+  "proposal_number": "REN-FIXED-1",
+  "proposed_acv": "25920",
+  "proposed_end_date": null,
+  "proposed_mrr": "2160",
+  "proposed_start_date": null,
+  "proposed_term_months": 24,
+  "risk_mitigation": {
+    "concerns": [
+      "c1",
+    ],
+  },
+  "services_summary": "Continued comprehensive service coverage for all equipment.",
+  "status": "draft",
+  "upsell_value": "0",
+  "value_proposition": {
+    "concerns": [
+      "c1",
+    ],
+    "opportunities": [
+      "o1",
+      "o2",
+    ],
+    "recommendedStrategy": "strategy",
+    "strengths": [
+      "s1",
+      "s2",
+    ],
+    "summary": "summary",
+  },
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > buildRenewalProposalRow > builds an identical row: low / empty contract 1`] = `
+{
+  "additional_services_offered": [],
+  "ai_pricing_strategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "base_price": null,
+  "base_services_included": [
+    "Standard service agreement",
+    "Equipment maintenance",
+  ],
+  "competitive_analysis": {
+    "analysis": "Market-competitive pricing",
+  },
+  "contract_id": null,
+  "current_acv": null,
+  "current_mrr": null,
+  "current_term_months": null,
+  "customer_id": null,
+  "customer_name": null,
+  "discount_amount": "0",
+  "discount_percentage": "0",
+  "executive_summary": "We value your partnership and are pleased to present this renewal proposal for your undefined.",
+  "expiration_date": "2026-09-19T12:00:00.000Z",
+  "generated_by": "ai_autopilot",
+  "incentive_offered": null,
+  "incentive_value": "0",
+  "pricing_summary": "Proposed MRR: $2472.00 | ACV: $29664.00",
+  "proposal_date": "2026-08-20T12:00:00.000Z",
+  "proposal_number": "REN-FIXED-1",
+  "proposed_acv": "29664",
+  "proposed_end_date": null,
+  "proposed_mrr": "2472",
+  "proposed_start_date": null,
+  "proposed_term_months": 24,
+  "risk_mitigation": {
+    "concerns": [
+      "c1",
+    ],
+  },
+  "services_summary": "Continued comprehensive service coverage for all equipment.",
+  "status": "draft",
+  "upsell_value": "0",
+  "value_proposition": {
+    "concerns": [
+      "c1",
+    ],
+    "opportunities": [
+      "o1",
+      "o2",
+    ],
+    "recommendedStrategy": "strategy",
+    "strengths": [
+      "s1",
+      "s2",
+    ],
+    "summary": "summary",
+  },
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > buildRenewalProposalRow > builds an identical row: low / full contract 1`] = `
+{
+  "additional_services_offered": [],
+  "ai_pricing_strategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "base_price": "2400.00",
+  "base_services_included": [
+    "Standard service agreement",
+    "Equipment maintenance",
+  ],
+  "competitive_analysis": {
+    "analysis": "Market-competitive pricing",
+  },
+  "contract_id": "ct-1",
+  "current_acv": "28800.00",
+  "current_mrr": "2400.00",
+  "current_term_months": 25,
+  "customer_id": "cu-1",
+  "customer_name": "Northgate Dental",
+  "discount_amount": "0",
+  "discount_percentage": "0",
+  "executive_summary": "We value your partnership and are pleased to present this renewal proposal for your service.",
+  "expiration_date": "2026-09-19T12:00:00.000Z",
+  "generated_by": "ai_autopilot",
+  "incentive_offered": null,
+  "incentive_value": "0",
+  "pricing_summary": "Proposed MRR: $2472.00 | ACV: $29664.00",
+  "proposal_date": "2026-08-20T12:00:00.000Z",
+  "proposal_number": "REN-FIXED-1",
+  "proposed_acv": "29664",
+  "proposed_end_date": "2028-08-21T00:00:00.000Z",
+  "proposed_mrr": "2472",
+  "proposed_start_date": "2026-09-01T00:00:00.000Z",
+  "proposed_term_months": 24,
+  "risk_mitigation": {
+    "concerns": [
+      "c1",
+    ],
+  },
+  "services_summary": "Continued comprehensive service coverage for all equipment.",
+  "status": "draft",
+  "upsell_value": "0",
+  "value_proposition": {
+    "concerns": [
+      "c1",
+    ],
+    "opportunities": [
+      "o1",
+      "o2",
+    ],
+    "recommendedStrategy": "strategy",
+    "strengths": [
+      "s1",
+      "s2",
+    ],
+    "summary": "summary",
+  },
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > buildRenewalProposalRow > builds an identical row: low / no MRR - discount amount must be 0, not NaN 1`] = `
+{
+  "additional_services_offered": [],
+  "ai_pricing_strategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "base_price": null,
+  "base_services_included": [
+    "Standard service agreement",
+    "Equipment maintenance",
+  ],
+  "competitive_analysis": {
+    "analysis": "Market-competitive pricing",
+  },
+  "contract_id": "ct-3",
+  "current_acv": null,
+  "current_mrr": null,
+  "current_term_months": 13,
+  "customer_id": "cu-3",
+  "customer_name": "Zero MRR Inc",
+  "discount_amount": "0",
+  "discount_percentage": "0",
+  "executive_summary": "We value your partnership and are pleased to present this renewal proposal for your service.",
+  "expiration_date": "2026-09-19T12:00:00.000Z",
+  "generated_by": "ai_autopilot",
+  "incentive_offered": null,
+  "incentive_value": "0",
+  "pricing_summary": "Proposed MRR: $2472.00 | ACV: $29664.00",
+  "proposal_date": "2026-08-20T12:00:00.000Z",
+  "proposal_number": "REN-FIXED-1",
+  "proposed_acv": "29664",
+  "proposed_end_date": "2027-12-22T00:00:00.000Z",
+  "proposed_mrr": "2472",
+  "proposed_start_date": "2026-01-01T00:00:00.000Z",
+  "proposed_term_months": 24,
+  "risk_mitigation": {
+    "concerns": [
+      "c1",
+    ],
+  },
+  "services_summary": "Continued comprehensive service coverage for all equipment.",
+  "status": "draft",
+  "upsell_value": "0",
+  "value_proposition": {
+    "concerns": [
+      "c1",
+    ],
+    "opportunities": [
+      "o1",
+      "o2",
+    ],
+    "recommendedStrategy": "strategy",
+    "strengths": [
+      "s1",
+      "s2",
+    ],
+    "summary": "summary",
+  },
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > buildRenewalProposalRow > builds an identical row: low / no dates - term and proposed window unknown 1`] = `
+{
+  "additional_services_offered": [],
+  "ai_pricing_strategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "base_price": "900",
+  "base_services_included": [
+    "Standard service agreement",
+    "Equipment maintenance",
+  ],
+  "competitive_analysis": {
+    "analysis": "Market-competitive pricing",
+  },
+  "contract_id": "ct-2",
+  "current_acv": null,
+  "current_mrr": "900",
+  "current_term_months": null,
+  "customer_id": "cu-2",
+  "customer_name": "No Dates Ltd",
+  "discount_amount": "0",
+  "discount_percentage": "0",
+  "executive_summary": "We value your partnership and are pleased to present this renewal proposal for your maintenance.",
+  "expiration_date": "2026-09-19T12:00:00.000Z",
+  "generated_by": "ai_autopilot",
+  "incentive_offered": null,
+  "incentive_value": "0",
+  "pricing_summary": "Proposed MRR: $2472.00 | ACV: $29664.00",
+  "proposal_date": "2026-08-20T12:00:00.000Z",
+  "proposal_number": "REN-FIXED-1",
+  "proposed_acv": "29664",
+  "proposed_end_date": null,
+  "proposed_mrr": "2472",
+  "proposed_start_date": null,
+  "proposed_term_months": 24,
+  "risk_mitigation": {
+    "concerns": [
+      "c1",
+    ],
+  },
+  "services_summary": "Continued comprehensive service coverage for all equipment.",
+  "status": "draft",
+  "upsell_value": "0",
+  "value_proposition": {
+    "concerns": [
+      "c1",
+    ],
+    "opportunities": [
+      "o1",
+      "o2",
+    ],
+    "recommendedStrategy": "strategy",
+    "strengths": [
+      "s1",
+      "s2",
+    ],
+    "summary": "summary",
+  },
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > buildRenewalProposalRow > builds an identical row: medium / empty contract 1`] = `
+{
+  "additional_services_offered": [],
+  "ai_pricing_strategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "base_price": null,
+  "base_services_included": [
+    "Standard service agreement",
+    "Equipment maintenance",
+  ],
+  "competitive_analysis": {
+    "analysis": "Market-competitive pricing",
+  },
+  "contract_id": null,
+  "current_acv": null,
+  "current_mrr": null,
+  "current_term_months": null,
+  "customer_id": null,
+  "customer_name": null,
+  "discount_amount": "0",
+  "discount_percentage": "0",
+  "executive_summary": "We value your partnership and are pleased to present this renewal proposal for your undefined.",
+  "expiration_date": "2026-09-19T12:00:00.000Z",
+  "generated_by": "ai_autopilot",
+  "incentive_offered": null,
+  "incentive_value": "0",
+  "pricing_summary": "Proposed MRR: $2400.00 | ACV: $28800.00",
+  "proposal_date": "2026-08-20T12:00:00.000Z",
+  "proposal_number": "REN-FIXED-1",
+  "proposed_acv": "28800",
+  "proposed_end_date": null,
+  "proposed_mrr": "2400",
+  "proposed_start_date": null,
+  "proposed_term_months": 24,
+  "risk_mitigation": {
+    "concerns": [
+      "c1",
+    ],
+  },
+  "services_summary": "Continued comprehensive service coverage for all equipment.",
+  "status": "draft",
+  "upsell_value": "0",
+  "value_proposition": {
+    "concerns": [
+      "c1",
+    ],
+    "opportunities": [
+      "o1",
+      "o2",
+    ],
+    "recommendedStrategy": "strategy",
+    "strengths": [
+      "s1",
+      "s2",
+    ],
+    "summary": "summary",
+  },
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > buildRenewalProposalRow > builds an identical row: medium / full contract 1`] = `
+{
+  "additional_services_offered": [],
+  "ai_pricing_strategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "base_price": "2400.00",
+  "base_services_included": [
+    "Standard service agreement",
+    "Equipment maintenance",
+  ],
+  "competitive_analysis": {
+    "analysis": "Market-competitive pricing",
+  },
+  "contract_id": "ct-1",
+  "current_acv": "28800.00",
+  "current_mrr": "2400.00",
+  "current_term_months": 25,
+  "customer_id": "cu-1",
+  "customer_name": "Northgate Dental",
+  "discount_amount": "0",
+  "discount_percentage": "0",
+  "executive_summary": "We value your partnership and are pleased to present this renewal proposal for your service.",
+  "expiration_date": "2026-09-19T12:00:00.000Z",
+  "generated_by": "ai_autopilot",
+  "incentive_offered": null,
+  "incentive_value": "0",
+  "pricing_summary": "Proposed MRR: $2400.00 | ACV: $28800.00",
+  "proposal_date": "2026-08-20T12:00:00.000Z",
+  "proposal_number": "REN-FIXED-1",
+  "proposed_acv": "28800",
+  "proposed_end_date": "2028-08-21T00:00:00.000Z",
+  "proposed_mrr": "2400",
+  "proposed_start_date": "2026-09-01T00:00:00.000Z",
+  "proposed_term_months": 24,
+  "risk_mitigation": {
+    "concerns": [
+      "c1",
+    ],
+  },
+  "services_summary": "Continued comprehensive service coverage for all equipment.",
+  "status": "draft",
+  "upsell_value": "0",
+  "value_proposition": {
+    "concerns": [
+      "c1",
+    ],
+    "opportunities": [
+      "o1",
+      "o2",
+    ],
+    "recommendedStrategy": "strategy",
+    "strengths": [
+      "s1",
+      "s2",
+    ],
+    "summary": "summary",
+  },
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > buildRenewalProposalRow > builds an identical row: medium / no MRR - discount amount must be 0, not NaN 1`] = `
+{
+  "additional_services_offered": [],
+  "ai_pricing_strategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "base_price": null,
+  "base_services_included": [
+    "Standard service agreement",
+    "Equipment maintenance",
+  ],
+  "competitive_analysis": {
+    "analysis": "Market-competitive pricing",
+  },
+  "contract_id": "ct-3",
+  "current_acv": null,
+  "current_mrr": null,
+  "current_term_months": 13,
+  "customer_id": "cu-3",
+  "customer_name": "Zero MRR Inc",
+  "discount_amount": "0",
+  "discount_percentage": "0",
+  "executive_summary": "We value your partnership and are pleased to present this renewal proposal for your service.",
+  "expiration_date": "2026-09-19T12:00:00.000Z",
+  "generated_by": "ai_autopilot",
+  "incentive_offered": null,
+  "incentive_value": "0",
+  "pricing_summary": "Proposed MRR: $2400.00 | ACV: $28800.00",
+  "proposal_date": "2026-08-20T12:00:00.000Z",
+  "proposal_number": "REN-FIXED-1",
+  "proposed_acv": "28800",
+  "proposed_end_date": "2027-12-22T00:00:00.000Z",
+  "proposed_mrr": "2400",
+  "proposed_start_date": "2026-01-01T00:00:00.000Z",
+  "proposed_term_months": 24,
+  "risk_mitigation": {
+    "concerns": [
+      "c1",
+    ],
+  },
+  "services_summary": "Continued comprehensive service coverage for all equipment.",
+  "status": "draft",
+  "upsell_value": "0",
+  "value_proposition": {
+    "concerns": [
+      "c1",
+    ],
+    "opportunities": [
+      "o1",
+      "o2",
+    ],
+    "recommendedStrategy": "strategy",
+    "strengths": [
+      "s1",
+      "s2",
+    ],
+    "summary": "summary",
+  },
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > buildRenewalProposalRow > builds an identical row: medium / no dates - term and proposed window unknown 1`] = `
+{
+  "additional_services_offered": [],
+  "ai_pricing_strategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "base_price": "900",
+  "base_services_included": [
+    "Standard service agreement",
+    "Equipment maintenance",
+  ],
+  "competitive_analysis": {
+    "analysis": "Market-competitive pricing",
+  },
+  "contract_id": "ct-2",
+  "current_acv": null,
+  "current_mrr": "900",
+  "current_term_months": null,
+  "customer_id": "cu-2",
+  "customer_name": "No Dates Ltd",
+  "discount_amount": "0",
+  "discount_percentage": "0",
+  "executive_summary": "We value your partnership and are pleased to present this renewal proposal for your maintenance.",
+  "expiration_date": "2026-09-19T12:00:00.000Z",
+  "generated_by": "ai_autopilot",
+  "incentive_offered": null,
+  "incentive_value": "0",
+  "pricing_summary": "Proposed MRR: $2400.00 | ACV: $28800.00",
+  "proposal_date": "2026-08-20T12:00:00.000Z",
+  "proposal_number": "REN-FIXED-1",
+  "proposed_acv": "28800",
+  "proposed_end_date": null,
+  "proposed_mrr": "2400",
+  "proposed_start_date": null,
+  "proposed_term_months": 24,
+  "risk_mitigation": {
+    "concerns": [
+      "c1",
+    ],
+  },
+  "services_summary": "Continued comprehensive service coverage for all equipment.",
+  "status": "draft",
+  "upsell_value": "0",
+  "value_proposition": {
+    "concerns": [
+      "c1",
+    ],
+    "opportunities": [
+      "o1",
+      "o2",
+    ],
+    "recommendedStrategy": "strategy",
+    "strengths": [
+      "s1",
+      "s2",
+    ],
+    "summary": "summary",
+  },
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > buildRenewalProposalRow > builds an identical row: very_high / empty contract 1`] = `
+{
+  "additional_services_offered": [],
+  "ai_pricing_strategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "base_price": null,
+  "base_services_included": [
+    "Standard service agreement",
+    "Equipment maintenance",
+  ],
+  "competitive_analysis": {
+    "analysis": "Market-competitive pricing",
+  },
+  "contract_id": null,
+  "current_acv": null,
+  "current_mrr": null,
+  "current_term_months": null,
+  "customer_id": null,
+  "customer_name": null,
+  "discount_amount": "0",
+  "discount_percentage": "10",
+  "executive_summary": "We value your partnership and are pleased to present this renewal proposal for your undefined.",
+  "expiration_date": "2026-09-19T12:00:00.000Z",
+  "generated_by": "ai_autopilot",
+  "incentive_offered": "Loyalty discount for continued partnership",
+  "incentive_value": "0",
+  "pricing_summary": "Proposed MRR: $2160.00 | ACV: $25920.00",
+  "proposal_date": "2026-08-20T12:00:00.000Z",
+  "proposal_number": "REN-FIXED-1",
+  "proposed_acv": "25920",
+  "proposed_end_date": null,
+  "proposed_mrr": "2160",
+  "proposed_start_date": null,
+  "proposed_term_months": 24,
+  "risk_mitigation": {
+    "concerns": [
+      "c1",
+    ],
+  },
+  "services_summary": "Continued comprehensive service coverage for all equipment.",
+  "status": "draft",
+  "upsell_value": "0",
+  "value_proposition": {
+    "concerns": [
+      "c1",
+    ],
+    "opportunities": [
+      "o1",
+      "o2",
+    ],
+    "recommendedStrategy": "strategy",
+    "strengths": [
+      "s1",
+      "s2",
+    ],
+    "summary": "summary",
+  },
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > buildRenewalProposalRow > builds an identical row: very_high / full contract 1`] = `
+{
+  "additional_services_offered": [],
+  "ai_pricing_strategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "base_price": "2400.00",
+  "base_services_included": [
+    "Standard service agreement",
+    "Equipment maintenance",
+  ],
+  "competitive_analysis": {
+    "analysis": "Market-competitive pricing",
+  },
+  "contract_id": "ct-1",
+  "current_acv": "28800.00",
+  "current_mrr": "2400.00",
+  "current_term_months": 25,
+  "customer_id": "cu-1",
+  "customer_name": "Northgate Dental",
+  "discount_amount": "2880",
+  "discount_percentage": "10",
+  "executive_summary": "We value your partnership and are pleased to present this renewal proposal for your service.",
+  "expiration_date": "2026-09-19T12:00:00.000Z",
+  "generated_by": "ai_autopilot",
+  "incentive_offered": "Loyalty discount for continued partnership",
+  "incentive_value": "0",
+  "pricing_summary": "Proposed MRR: $2160.00 | ACV: $25920.00",
+  "proposal_date": "2026-08-20T12:00:00.000Z",
+  "proposal_number": "REN-FIXED-1",
+  "proposed_acv": "25920",
+  "proposed_end_date": "2028-08-21T00:00:00.000Z",
+  "proposed_mrr": "2160",
+  "proposed_start_date": "2026-09-01T00:00:00.000Z",
+  "proposed_term_months": 24,
+  "risk_mitigation": {
+    "concerns": [
+      "c1",
+    ],
+  },
+  "services_summary": "Continued comprehensive service coverage for all equipment.",
+  "status": "draft",
+  "upsell_value": "0",
+  "value_proposition": {
+    "concerns": [
+      "c1",
+    ],
+    "opportunities": [
+      "o1",
+      "o2",
+    ],
+    "recommendedStrategy": "strategy",
+    "strengths": [
+      "s1",
+      "s2",
+    ],
+    "summary": "summary",
+  },
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > buildRenewalProposalRow > builds an identical row: very_high / no MRR - discount amount must be 0, not NaN 1`] = `
+{
+  "additional_services_offered": [],
+  "ai_pricing_strategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "base_price": null,
+  "base_services_included": [
+    "Standard service agreement",
+    "Equipment maintenance",
+  ],
+  "competitive_analysis": {
+    "analysis": "Market-competitive pricing",
+  },
+  "contract_id": "ct-3",
+  "current_acv": null,
+  "current_mrr": null,
+  "current_term_months": 13,
+  "customer_id": "cu-3",
+  "customer_name": "Zero MRR Inc",
+  "discount_amount": "0",
+  "discount_percentage": "10",
+  "executive_summary": "We value your partnership and are pleased to present this renewal proposal for your service.",
+  "expiration_date": "2026-09-19T12:00:00.000Z",
+  "generated_by": "ai_autopilot",
+  "incentive_offered": "Loyalty discount for continued partnership",
+  "incentive_value": "0",
+  "pricing_summary": "Proposed MRR: $2160.00 | ACV: $25920.00",
+  "proposal_date": "2026-08-20T12:00:00.000Z",
+  "proposal_number": "REN-FIXED-1",
+  "proposed_acv": "25920",
+  "proposed_end_date": "2027-12-22T00:00:00.000Z",
+  "proposed_mrr": "2160",
+  "proposed_start_date": "2026-01-01T00:00:00.000Z",
+  "proposed_term_months": 24,
+  "risk_mitigation": {
+    "concerns": [
+      "c1",
+    ],
+  },
+  "services_summary": "Continued comprehensive service coverage for all equipment.",
+  "status": "draft",
+  "upsell_value": "0",
+  "value_proposition": {
+    "concerns": [
+      "c1",
+    ],
+    "opportunities": [
+      "o1",
+      "o2",
+    ],
+    "recommendedStrategy": "strategy",
+    "strengths": [
+      "s1",
+      "s2",
+    ],
+    "summary": "summary",
+  },
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > buildRenewalProposalRow > builds an identical row: very_high / no dates - term and proposed window unknown 1`] = `
+{
+  "additional_services_offered": [],
+  "ai_pricing_strategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "base_price": "900",
+  "base_services_included": [
+    "Standard service agreement",
+    "Equipment maintenance",
+  ],
+  "competitive_analysis": {
+    "analysis": "Market-competitive pricing",
+  },
+  "contract_id": "ct-2",
+  "current_acv": null,
+  "current_mrr": "900",
+  "current_term_months": null,
+  "customer_id": "cu-2",
+  "customer_name": "No Dates Ltd",
+  "discount_amount": "1080",
+  "discount_percentage": "10",
+  "executive_summary": "We value your partnership and are pleased to present this renewal proposal for your maintenance.",
+  "expiration_date": "2026-09-19T12:00:00.000Z",
+  "generated_by": "ai_autopilot",
+  "incentive_offered": "Loyalty discount for continued partnership",
+  "incentive_value": "0",
+  "pricing_summary": "Proposed MRR: $2160.00 | ACV: $25920.00",
+  "proposal_date": "2026-08-20T12:00:00.000Z",
+  "proposal_number": "REN-FIXED-1",
+  "proposed_acv": "25920",
+  "proposed_end_date": null,
+  "proposed_mrr": "2160",
+  "proposed_start_date": null,
+  "proposed_term_months": 24,
+  "risk_mitigation": {
+    "concerns": [
+      "c1",
+    ],
+  },
+  "services_summary": "Continued comprehensive service coverage for all equipment.",
+  "status": "draft",
+  "upsell_value": "0",
+  "value_proposition": {
+    "concerns": [
+      "c1",
+    ],
+    "opportunities": [
+      "o1",
+      "o2",
+    ],
+    "recommendedStrategy": "strategy",
+    "strengths": [
+      "s1",
+      "s2",
+    ],
+    "summary": "summary",
+  },
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > buildRenewalProposalRow > builds an identical row: very_low / empty contract 1`] = `
+{
+  "additional_services_offered": [],
+  "ai_pricing_strategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "base_price": null,
+  "base_services_included": [
+    "Standard service agreement",
+    "Equipment maintenance",
+  ],
+  "competitive_analysis": {
+    "analysis": "Market-competitive pricing",
+  },
+  "contract_id": null,
+  "current_acv": null,
+  "current_mrr": null,
+  "current_term_months": null,
+  "customer_id": null,
+  "customer_name": null,
+  "discount_amount": "0",
+  "discount_percentage": "0",
+  "executive_summary": "We value your partnership and are pleased to present this renewal proposal for your undefined.",
+  "expiration_date": "2026-09-19T12:00:00.000Z",
+  "generated_by": "ai_autopilot",
+  "incentive_offered": null,
+  "incentive_value": "0",
+  "pricing_summary": "Proposed MRR: $2472.00 | ACV: $29664.00",
+  "proposal_date": "2026-08-20T12:00:00.000Z",
+  "proposal_number": "REN-FIXED-1",
+  "proposed_acv": "29664",
+  "proposed_end_date": null,
+  "proposed_mrr": "2472",
+  "proposed_start_date": null,
+  "proposed_term_months": 24,
+  "risk_mitigation": {
+    "concerns": [
+      "c1",
+    ],
+  },
+  "services_summary": "Continued comprehensive service coverage for all equipment.",
+  "status": "draft",
+  "upsell_value": "0",
+  "value_proposition": {
+    "concerns": [
+      "c1",
+    ],
+    "opportunities": [
+      "o1",
+      "o2",
+    ],
+    "recommendedStrategy": "strategy",
+    "strengths": [
+      "s1",
+      "s2",
+    ],
+    "summary": "summary",
+  },
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > buildRenewalProposalRow > builds an identical row: very_low / full contract 1`] = `
+{
+  "additional_services_offered": [],
+  "ai_pricing_strategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "base_price": "2400.00",
+  "base_services_included": [
+    "Standard service agreement",
+    "Equipment maintenance",
+  ],
+  "competitive_analysis": {
+    "analysis": "Market-competitive pricing",
+  },
+  "contract_id": "ct-1",
+  "current_acv": "28800.00",
+  "current_mrr": "2400.00",
+  "current_term_months": 25,
+  "customer_id": "cu-1",
+  "customer_name": "Northgate Dental",
+  "discount_amount": "0",
+  "discount_percentage": "0",
+  "executive_summary": "We value your partnership and are pleased to present this renewal proposal for your service.",
+  "expiration_date": "2026-09-19T12:00:00.000Z",
+  "generated_by": "ai_autopilot",
+  "incentive_offered": null,
+  "incentive_value": "0",
+  "pricing_summary": "Proposed MRR: $2472.00 | ACV: $29664.00",
+  "proposal_date": "2026-08-20T12:00:00.000Z",
+  "proposal_number": "REN-FIXED-1",
+  "proposed_acv": "29664",
+  "proposed_end_date": "2028-08-21T00:00:00.000Z",
+  "proposed_mrr": "2472",
+  "proposed_start_date": "2026-09-01T00:00:00.000Z",
+  "proposed_term_months": 24,
+  "risk_mitigation": {
+    "concerns": [
+      "c1",
+    ],
+  },
+  "services_summary": "Continued comprehensive service coverage for all equipment.",
+  "status": "draft",
+  "upsell_value": "0",
+  "value_proposition": {
+    "concerns": [
+      "c1",
+    ],
+    "opportunities": [
+      "o1",
+      "o2",
+    ],
+    "recommendedStrategy": "strategy",
+    "strengths": [
+      "s1",
+      "s2",
+    ],
+    "summary": "summary",
+  },
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > buildRenewalProposalRow > builds an identical row: very_low / no MRR - discount amount must be 0, not NaN 1`] = `
+{
+  "additional_services_offered": [],
+  "ai_pricing_strategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "base_price": null,
+  "base_services_included": [
+    "Standard service agreement",
+    "Equipment maintenance",
+  ],
+  "competitive_analysis": {
+    "analysis": "Market-competitive pricing",
+  },
+  "contract_id": "ct-3",
+  "current_acv": null,
+  "current_mrr": null,
+  "current_term_months": 13,
+  "customer_id": "cu-3",
+  "customer_name": "Zero MRR Inc",
+  "discount_amount": "0",
+  "discount_percentage": "0",
+  "executive_summary": "We value your partnership and are pleased to present this renewal proposal for your service.",
+  "expiration_date": "2026-09-19T12:00:00.000Z",
+  "generated_by": "ai_autopilot",
+  "incentive_offered": null,
+  "incentive_value": "0",
+  "pricing_summary": "Proposed MRR: $2472.00 | ACV: $29664.00",
+  "proposal_date": "2026-08-20T12:00:00.000Z",
+  "proposal_number": "REN-FIXED-1",
+  "proposed_acv": "29664",
+  "proposed_end_date": "2027-12-22T00:00:00.000Z",
+  "proposed_mrr": "2472",
+  "proposed_start_date": "2026-01-01T00:00:00.000Z",
+  "proposed_term_months": 24,
+  "risk_mitigation": {
+    "concerns": [
+      "c1",
+    ],
+  },
+  "services_summary": "Continued comprehensive service coverage for all equipment.",
+  "status": "draft",
+  "upsell_value": "0",
+  "value_proposition": {
+    "concerns": [
+      "c1",
+    ],
+    "opportunities": [
+      "o1",
+      "o2",
+    ],
+    "recommendedStrategy": "strategy",
+    "strengths": [
+      "s1",
+      "s2",
+    ],
+    "summary": "summary",
+  },
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > buildRenewalProposalRow > builds an identical row: very_low / no dates - term and proposed window unknown 1`] = `
+{
+  "additional_services_offered": [],
+  "ai_pricing_strategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "base_price": "900",
+  "base_services_included": [
+    "Standard service agreement",
+    "Equipment maintenance",
+  ],
+  "competitive_analysis": {
+    "analysis": "Market-competitive pricing",
+  },
+  "contract_id": "ct-2",
+  "current_acv": null,
+  "current_mrr": "900",
+  "current_term_months": null,
+  "customer_id": "cu-2",
+  "customer_name": "No Dates Ltd",
+  "discount_amount": "0",
+  "discount_percentage": "0",
+  "executive_summary": "We value your partnership and are pleased to present this renewal proposal for your maintenance.",
+  "expiration_date": "2026-09-19T12:00:00.000Z",
+  "generated_by": "ai_autopilot",
+  "incentive_offered": null,
+  "incentive_value": "0",
+  "pricing_summary": "Proposed MRR: $2472.00 | ACV: $29664.00",
+  "proposal_date": "2026-08-20T12:00:00.000Z",
+  "proposal_number": "REN-FIXED-1",
+  "proposed_acv": "29664",
+  "proposed_end_date": null,
+  "proposed_mrr": "2472",
+  "proposed_start_date": null,
+  "proposed_term_months": 24,
+  "risk_mitigation": {
+    "concerns": [
+      "c1",
+    ],
+  },
+  "services_summary": "Continued comprehensive service coverage for all equipment.",
+  "status": "draft",
+  "upsell_value": "0",
+  "value_proposition": {
+    "concerns": [
+      "c1",
+    ],
+    "opportunities": [
+      "o1",
+      "o2",
+    ],
+    "recommendedStrategy": "strategy",
+    "strengths": [
+      "s1",
+      "s2",
+    ],
+    "summary": "summary",
+  },
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: high / all null - falls back to 15 and 5 / mrr 0 1`] = `
+{
+  "discountPercentage": 10,
+  "incentiveOffered": "Loyalty discount for continued partnership",
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 0,
+  "proposedMrr": 0,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: high / all null - falls back to 15 and 5 / mrr 1 1`] = `
+{
+  "discountPercentage": 10,
+  "incentiveOffered": "Loyalty discount for continued partnership",
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 10.8,
+  "proposedMrr": 0.9,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: high / all null - falls back to 15 and 5 / mrr 1234.56 1`] = `
+{
+  "discountPercentage": 10,
+  "incentiveOffered": "Loyalty discount for continued partnership",
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 13333.248,
+  "proposedMrr": 1111.104,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: high / all null - falls back to 15 and 5 / mrr 98765.43 1`] = `
+{
+  "discountPercentage": 10,
+  "incentiveOffered": "Loyalty discount for continued partnership",
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 1066666.644,
+  "proposedMrr": 88888.887,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: high / empty rules object / mrr 0 1`] = `
+{
+  "discountPercentage": 10,
+  "incentiveOffered": "Loyalty discount for continued partnership",
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 0,
+  "proposedMrr": 0,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: high / empty rules object / mrr 1 1`] = `
+{
+  "discountPercentage": 10,
+  "incentiveOffered": "Loyalty discount for continued partnership",
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 10.8,
+  "proposedMrr": 0.9,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: high / empty rules object / mrr 1234.56 1`] = `
+{
+  "discountPercentage": 10,
+  "incentiveOffered": "Loyalty discount for continued partnership",
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 13333.248,
+  "proposedMrr": 1111.104,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: high / empty rules object / mrr 98765.43 1`] = `
+{
+  "discountPercentage": 10,
+  "incentiveOffered": "Loyalty discount for continued partnership",
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 1066666.644,
+  "proposedMrr": 88888.887,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: high / schema defaults / mrr 0 1`] = `
+{
+  "discountPercentage": 10,
+  "incentiveOffered": "Loyalty discount for continued partnership",
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 0,
+  "proposedMrr": 0,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: high / schema defaults / mrr 1 1`] = `
+{
+  "discountPercentage": 10,
+  "incentiveOffered": "Loyalty discount for continued partnership",
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 10.8,
+  "proposedMrr": 0.9,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: high / schema defaults / mrr 1234.56 1`] = `
+{
+  "discountPercentage": 10,
+  "incentiveOffered": "Loyalty discount for continued partnership",
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 13333.248,
+  "proposedMrr": 1111.104,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: high / schema defaults / mrr 98765.43 1`] = `
+{
+  "discountPercentage": 10,
+  "incentiveOffered": "Loyalty discount for continued partnership",
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 1066666.644,
+  "proposedMrr": 88888.887,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: high / tenant caps BELOW the hardcoded clamps - 5% discount, 1% increase / mrr 0 1`] = `
+{
+  "discountPercentage": 5,
+  "incentiveOffered": "Loyalty discount for continued partnership",
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 0,
+  "proposedMrr": 0,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: high / tenant caps BELOW the hardcoded clamps - 5% discount, 1% increase / mrr 1 1`] = `
+{
+  "discountPercentage": 5,
+  "incentiveOffered": "Loyalty discount for continued partnership",
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 11.399999999999999,
+  "proposedMrr": 0.95,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: high / tenant caps BELOW the hardcoded clamps - 5% discount, 1% increase / mrr 1234.56 1`] = `
+{
+  "discountPercentage": 5,
+  "incentiveOffered": "Loyalty discount for continued partnership",
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 14073.983999999999,
+  "proposedMrr": 1172.8319999999999,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: high / tenant caps BELOW the hardcoded clamps - 5% discount, 1% increase / mrr 98765.43 1`] = `
+{
+  "discountPercentage": 5,
+  "incentiveOffered": "Loyalty discount for continued partnership",
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 1125925.9019999998,
+  "proposedMrr": 93827.15849999999,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: low / all null - falls back to 15 and 5 / mrr 0 1`] = `
+{
+  "discountPercentage": 0,
+  "incentiveOffered": null,
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 0,
+  "proposedMrr": 0,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: low / all null - falls back to 15 and 5 / mrr 1 1`] = `
+{
+  "discountPercentage": 0,
+  "incentiveOffered": null,
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 12.36,
+  "proposedMrr": 1.03,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: low / all null - falls back to 15 and 5 / mrr 1234.56 1`] = `
+{
+  "discountPercentage": 0,
+  "incentiveOffered": null,
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 15259.1616,
+  "proposedMrr": 1271.5968,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: low / all null - falls back to 15 and 5 / mrr 98765.43 1`] = `
+{
+  "discountPercentage": 0,
+  "incentiveOffered": null,
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 1220740.7148,
+  "proposedMrr": 101728.39289999999,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: low / empty rules object / mrr 0 1`] = `
+{
+  "discountPercentage": 0,
+  "incentiveOffered": null,
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 0,
+  "proposedMrr": 0,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: low / empty rules object / mrr 1 1`] = `
+{
+  "discountPercentage": 0,
+  "incentiveOffered": null,
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 12.36,
+  "proposedMrr": 1.03,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: low / empty rules object / mrr 1234.56 1`] = `
+{
+  "discountPercentage": 0,
+  "incentiveOffered": null,
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 15259.1616,
+  "proposedMrr": 1271.5968,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: low / empty rules object / mrr 98765.43 1`] = `
+{
+  "discountPercentage": 0,
+  "incentiveOffered": null,
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 1220740.7148,
+  "proposedMrr": 101728.39289999999,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: low / schema defaults / mrr 0 1`] = `
+{
+  "discountPercentage": 0,
+  "incentiveOffered": null,
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 0,
+  "proposedMrr": 0,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: low / schema defaults / mrr 1 1`] = `
+{
+  "discountPercentage": 0,
+  "incentiveOffered": null,
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 12.36,
+  "proposedMrr": 1.03,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: low / schema defaults / mrr 1234.56 1`] = `
+{
+  "discountPercentage": 0,
+  "incentiveOffered": null,
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 15259.1616,
+  "proposedMrr": 1271.5968,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: low / schema defaults / mrr 98765.43 1`] = `
+{
+  "discountPercentage": 0,
+  "incentiveOffered": null,
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 1220740.7148,
+  "proposedMrr": 101728.39289999999,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: low / tenant caps BELOW the hardcoded clamps - 5% discount, 1% increase / mrr 0 1`] = `
+{
+  "discountPercentage": 0,
+  "incentiveOffered": null,
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 0,
+  "proposedMrr": 0,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: low / tenant caps BELOW the hardcoded clamps - 5% discount, 1% increase / mrr 1 1`] = `
+{
+  "discountPercentage": 0,
+  "incentiveOffered": null,
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 12.120000000000001,
+  "proposedMrr": 1.01,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: low / tenant caps BELOW the hardcoded clamps - 5% discount, 1% increase / mrr 1234.56 1`] = `
+{
+  "discountPercentage": 0,
+  "incentiveOffered": null,
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 14962.8672,
+  "proposedMrr": 1246.9056,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: low / tenant caps BELOW the hardcoded clamps - 5% discount, 1% increase / mrr 98765.43 1`] = `
+{
+  "discountPercentage": 0,
+  "incentiveOffered": null,
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 1197037.0115999999,
+  "proposedMrr": 99753.08429999999,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: medium / all null - falls back to 15 and 5 / mrr 0 1`] = `
+{
+  "discountPercentage": 0,
+  "incentiveOffered": null,
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 0,
+  "proposedMrr": 0,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: medium / all null - falls back to 15 and 5 / mrr 1 1`] = `
+{
+  "discountPercentage": 0,
+  "incentiveOffered": null,
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 12,
+  "proposedMrr": 1,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: medium / all null - falls back to 15 and 5 / mrr 1234.56 1`] = `
+{
+  "discountPercentage": 0,
+  "incentiveOffered": null,
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 14814.72,
+  "proposedMrr": 1234.56,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: medium / all null - falls back to 15 and 5 / mrr 98765.43 1`] = `
+{
+  "discountPercentage": 0,
+  "incentiveOffered": null,
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 1185185.16,
+  "proposedMrr": 98765.43,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: medium / empty rules object / mrr 0 1`] = `
+{
+  "discountPercentage": 0,
+  "incentiveOffered": null,
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 0,
+  "proposedMrr": 0,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: medium / empty rules object / mrr 1 1`] = `
+{
+  "discountPercentage": 0,
+  "incentiveOffered": null,
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 12,
+  "proposedMrr": 1,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: medium / empty rules object / mrr 1234.56 1`] = `
+{
+  "discountPercentage": 0,
+  "incentiveOffered": null,
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 14814.72,
+  "proposedMrr": 1234.56,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: medium / empty rules object / mrr 98765.43 1`] = `
+{
+  "discountPercentage": 0,
+  "incentiveOffered": null,
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 1185185.16,
+  "proposedMrr": 98765.43,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: medium / schema defaults / mrr 0 1`] = `
+{
+  "discountPercentage": 0,
+  "incentiveOffered": null,
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 0,
+  "proposedMrr": 0,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: medium / schema defaults / mrr 1 1`] = `
+{
+  "discountPercentage": 0,
+  "incentiveOffered": null,
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 12,
+  "proposedMrr": 1,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: medium / schema defaults / mrr 1234.56 1`] = `
+{
+  "discountPercentage": 0,
+  "incentiveOffered": null,
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 14814.72,
+  "proposedMrr": 1234.56,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: medium / schema defaults / mrr 98765.43 1`] = `
+{
+  "discountPercentage": 0,
+  "incentiveOffered": null,
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 1185185.16,
+  "proposedMrr": 98765.43,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: medium / tenant caps BELOW the hardcoded clamps - 5% discount, 1% increase / mrr 0 1`] = `
+{
+  "discountPercentage": 0,
+  "incentiveOffered": null,
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 0,
+  "proposedMrr": 0,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: medium / tenant caps BELOW the hardcoded clamps - 5% discount, 1% increase / mrr 1 1`] = `
+{
+  "discountPercentage": 0,
+  "incentiveOffered": null,
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 12,
+  "proposedMrr": 1,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: medium / tenant caps BELOW the hardcoded clamps - 5% discount, 1% increase / mrr 1234.56 1`] = `
+{
+  "discountPercentage": 0,
+  "incentiveOffered": null,
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 14814.72,
+  "proposedMrr": 1234.56,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: medium / tenant caps BELOW the hardcoded clamps - 5% discount, 1% increase / mrr 98765.43 1`] = `
+{
+  "discountPercentage": 0,
+  "incentiveOffered": null,
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 1185185.16,
+  "proposedMrr": 98765.43,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: very_high / all null - falls back to 15 and 5 / mrr 0 1`] = `
+{
+  "discountPercentage": 10,
+  "incentiveOffered": "Loyalty discount for continued partnership",
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 0,
+  "proposedMrr": 0,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: very_high / all null - falls back to 15 and 5 / mrr 1 1`] = `
+{
+  "discountPercentage": 10,
+  "incentiveOffered": "Loyalty discount for continued partnership",
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 10.8,
+  "proposedMrr": 0.9,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: very_high / all null - falls back to 15 and 5 / mrr 1234.56 1`] = `
+{
+  "discountPercentage": 10,
+  "incentiveOffered": "Loyalty discount for continued partnership",
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 13333.248,
+  "proposedMrr": 1111.104,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: very_high / all null - falls back to 15 and 5 / mrr 98765.43 1`] = `
+{
+  "discountPercentage": 10,
+  "incentiveOffered": "Loyalty discount for continued partnership",
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 1066666.644,
+  "proposedMrr": 88888.887,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: very_high / empty rules object / mrr 0 1`] = `
+{
+  "discountPercentage": 10,
+  "incentiveOffered": "Loyalty discount for continued partnership",
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 0,
+  "proposedMrr": 0,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: very_high / empty rules object / mrr 1 1`] = `
+{
+  "discountPercentage": 10,
+  "incentiveOffered": "Loyalty discount for continued partnership",
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 10.8,
+  "proposedMrr": 0.9,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: very_high / empty rules object / mrr 1234.56 1`] = `
+{
+  "discountPercentage": 10,
+  "incentiveOffered": "Loyalty discount for continued partnership",
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 13333.248,
+  "proposedMrr": 1111.104,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: very_high / empty rules object / mrr 98765.43 1`] = `
+{
+  "discountPercentage": 10,
+  "incentiveOffered": "Loyalty discount for continued partnership",
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 1066666.644,
+  "proposedMrr": 88888.887,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: very_high / schema defaults / mrr 0 1`] = `
+{
+  "discountPercentage": 10,
+  "incentiveOffered": "Loyalty discount for continued partnership",
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 0,
+  "proposedMrr": 0,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: very_high / schema defaults / mrr 1 1`] = `
+{
+  "discountPercentage": 10,
+  "incentiveOffered": "Loyalty discount for continued partnership",
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 10.8,
+  "proposedMrr": 0.9,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: very_high / schema defaults / mrr 1234.56 1`] = `
+{
+  "discountPercentage": 10,
+  "incentiveOffered": "Loyalty discount for continued partnership",
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 13333.248,
+  "proposedMrr": 1111.104,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: very_high / schema defaults / mrr 98765.43 1`] = `
+{
+  "discountPercentage": 10,
+  "incentiveOffered": "Loyalty discount for continued partnership",
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 1066666.644,
+  "proposedMrr": 88888.887,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: very_high / tenant caps BELOW the hardcoded clamps - 5% discount, 1% increase / mrr 0 1`] = `
+{
+  "discountPercentage": 5,
+  "incentiveOffered": "Loyalty discount for continued partnership",
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 0,
+  "proposedMrr": 0,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: very_high / tenant caps BELOW the hardcoded clamps - 5% discount, 1% increase / mrr 1 1`] = `
+{
+  "discountPercentage": 5,
+  "incentiveOffered": "Loyalty discount for continued partnership",
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 11.399999999999999,
+  "proposedMrr": 0.95,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: very_high / tenant caps BELOW the hardcoded clamps - 5% discount, 1% increase / mrr 1234.56 1`] = `
+{
+  "discountPercentage": 5,
+  "incentiveOffered": "Loyalty discount for continued partnership",
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 14073.983999999999,
+  "proposedMrr": 1172.8319999999999,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: very_high / tenant caps BELOW the hardcoded clamps - 5% discount, 1% increase / mrr 98765.43 1`] = `
+{
+  "discountPercentage": 5,
+  "incentiveOffered": "Loyalty discount for continued partnership",
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 1125925.9019999998,
+  "proposedMrr": 93827.15849999999,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: very_low / all null - falls back to 15 and 5 / mrr 0 1`] = `
+{
+  "discountPercentage": 0,
+  "incentiveOffered": null,
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 0,
+  "proposedMrr": 0,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: very_low / all null - falls back to 15 and 5 / mrr 1 1`] = `
+{
+  "discountPercentage": 0,
+  "incentiveOffered": null,
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 12.36,
+  "proposedMrr": 1.03,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: very_low / all null - falls back to 15 and 5 / mrr 1234.56 1`] = `
+{
+  "discountPercentage": 0,
+  "incentiveOffered": null,
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 15259.1616,
+  "proposedMrr": 1271.5968,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: very_low / all null - falls back to 15 and 5 / mrr 98765.43 1`] = `
+{
+  "discountPercentage": 0,
+  "incentiveOffered": null,
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 1220740.7148,
+  "proposedMrr": 101728.39289999999,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: very_low / empty rules object / mrr 0 1`] = `
+{
+  "discountPercentage": 0,
+  "incentiveOffered": null,
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 0,
+  "proposedMrr": 0,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: very_low / empty rules object / mrr 1 1`] = `
+{
+  "discountPercentage": 0,
+  "incentiveOffered": null,
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 12.36,
+  "proposedMrr": 1.03,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: very_low / empty rules object / mrr 1234.56 1`] = `
+{
+  "discountPercentage": 0,
+  "incentiveOffered": null,
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 15259.1616,
+  "proposedMrr": 1271.5968,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: very_low / empty rules object / mrr 98765.43 1`] = `
+{
+  "discountPercentage": 0,
+  "incentiveOffered": null,
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 1220740.7148,
+  "proposedMrr": 101728.39289999999,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: very_low / schema defaults / mrr 0 1`] = `
+{
+  "discountPercentage": 0,
+  "incentiveOffered": null,
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 0,
+  "proposedMrr": 0,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: very_low / schema defaults / mrr 1 1`] = `
+{
+  "discountPercentage": 0,
+  "incentiveOffered": null,
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 12.36,
+  "proposedMrr": 1.03,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: very_low / schema defaults / mrr 1234.56 1`] = `
+{
+  "discountPercentage": 0,
+  "incentiveOffered": null,
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 15259.1616,
+  "proposedMrr": 1271.5968,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: very_low / schema defaults / mrr 98765.43 1`] = `
+{
+  "discountPercentage": 0,
+  "incentiveOffered": null,
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 1220740.7148,
+  "proposedMrr": 101728.39289999999,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: very_low / tenant caps BELOW the hardcoded clamps - 5% discount, 1% increase / mrr 0 1`] = `
+{
+  "discountPercentage": 0,
+  "incentiveOffered": null,
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 0,
+  "proposedMrr": 0,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: very_low / tenant caps BELOW the hardcoded clamps - 5% discount, 1% increase / mrr 1 1`] = `
+{
+  "discountPercentage": 0,
+  "incentiveOffered": null,
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 12.120000000000001,
+  "proposedMrr": 1.01,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: very_low / tenant caps BELOW the hardcoded clamps - 5% discount, 1% increase / mrr 1234.56 1`] = `
+{
+  "discountPercentage": 0,
+  "incentiveOffered": null,
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 14962.8672,
+  "proposedMrr": 1246.9056,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;
+
+exports[`renewal pricing parity (Express service vs edge _shared) > heuristicRenewalPricing > prices identically: very_low / tenant caps BELOW the hardcoded clamps - 5% discount, 1% increase / mrr 98765.43 1`] = `
+{
+  "discountPercentage": 0,
+  "incentiveOffered": null,
+  "incentiveValue": 0,
+  "pricingStrategy": {
+    "competitivePosition": "Competitive with market rates",
+    "reasoning": "Risk-based pricing strategy",
+    "valueJustification": "Continued service excellence and reliability",
+  },
+  "proposedAcv": 1197037.0115999999,
+  "proposedMrr": 99753.08429999999,
+  "proposedTermMonths": 24,
+  "upsellOpportunities": [],
+}
+`;

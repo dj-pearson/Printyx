@@ -26,7 +26,6 @@
     "server/routes/sso-routes.ts": 33,
     "server/routes/workflow-automation-routes.ts": 110,
     "server/routes-admin-subscriptions.ts": 32,
-    "server/routes-contract-renewal.ts": 28,
     "server/routes-document-automation.ts": 28,
     "server/routes-dod-enforcement.ts": 5,
     "server/routes-enhanced-rbac.ts": 35,

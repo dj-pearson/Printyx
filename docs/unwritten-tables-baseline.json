@@ -1,7 +1,7 @@
 {
   "note": "Declared tables (not views) that an edge function reads and that nothing anywhere inserts into. Each is a question - who fills this in? - not a defect: the answer is usually a UI that was never built, an importer never wired, or an external feed that should be named in a comment. See scripts/check-unwritten-tables.mjs. Do not grow it. AUDIT-036 CHANGED WHAT SOME OF THESE MEAN. Six entries - contract_renewal_tracking, renewal_analytics, supply_monitoring, supply_replenishment_analytics, supply_usage_history and client_collected_metrics - were not merely unwritten: their tenant_id was integer against a uuid tenants.id (AUDIT-032, migration 0062) and their foreign keys were integer against uuid targets (AUDIT-036, migration 0063), so nothing COULD write them. Both are fixed, which means the question this file asks is now a real one for those six rather than a symptom. platform_bant_qualification is a clean example of the shape: supabase/functions/platform-deals/ reads it correctly for the BANT tab, the table and its columns are real, and no code anywhere inserts a row - so the tab is honestly empty rather than wrong. REGENERATED 2026-09-18 (WF-L-10); --update-baseline REWRITES THIS NOTE, so restore it by hand after running it. Two changes worth knowing. Five entries LEFT because they gained writers - commission_bonuses, commission_calculation_details and commission_calculations from WF-C-07's commission engine, and the two onboarding tables this story wrote. Seven entries ARRIVED for two different reasons: commission_plan_tiers, commission_product_rates and employee_commission_assignments are the engine's INPUTS, which a plan-administration UI would fill and nothing does yet, so they are the honest version of the same question; seo_competitor_analysis, seo_page_scores and their siblings are SEO-004's five 501 stubs, whose analysers were retired rather than replaced. THIS GUARD CANNOT SEE A READ THROUGH A HELPER. supabase/functions/onboarding/ reads both onboarding tables via a local `related(table)` function, and a table name passed to a helper is invisible here - which is why neither ever appeared in this list despite being read and unwritten for as long as they existed. WF-L-07 hit the same blind spot in check:phantom-cols, for the same reason. A clean run is not proof that every read table has a writer.",
-  "generated": "2026-09-20",
-  "ofTablesRead": 550,
+  "generated": "2026-09-23",
+  "ofTablesRead": 544,
   "tables": [
     "ai_employee_workflows",
     "alert_configurations",
@@ -35,6 +35,7 @@
     "platform_sales_goals",
     "platform_signups",
     "renewal_analytics",
+    "renewal_automation_rules",
     "sales_forecasts",
     "sales_metrics",
     "seo_alerts",

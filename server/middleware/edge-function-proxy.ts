@@ -1055,6 +1055,11 @@ export function registerEdgeFunctionProxy(app: any) {
     // analyze-all). Router and Node service deleted.
     '/api/auto-supply-replenishment': 'auto-supply-replenishment',
 
+    // Round 165. routes-contract-renewal.ts had no /upcoming, /dashboard or
+    // /:id/renew, which the page and the iOS renew action call, so those 404'd
+    // in dev. The edge function serves all of them.
+    '/api/contract-renewal': 'contract-renewal',
+
     // PROD-011. Full parity: all EIGHT Express endpoints (inbound, submit,
     // submissions list/:id/approve/reject, GET/PUT settings), which is also
     // everything MeterReadReview.tsx calls. This pipeline writes billing rows,

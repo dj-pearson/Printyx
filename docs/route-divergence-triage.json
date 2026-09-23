@@ -5,10 +5,6 @@
       "verdict": "express-only-capability",
       "reason": "Round 153 read both. The six console paths (connections, connect, links, query-log) ran on an Express copy with no role check while the edge function needs a MANAGER to change an install or a mapping; they are proxied with scoped entries and the Express handlers deleted. POST /query stays Express-only on purpose - the edge function answers 501 CHATBOT_QUERY_NOT_PORTED because the tool registry needs CLAUDE_API_KEY at the edge - and its caller-supplied platformUserId could resolve to another user's scope, now refused unless the link is the caller's own."
     },
-    "contract-renewal": {
-      "verdict": "unexamined",
-      "reason": "AUDIT-026 holds the renewal model question open - a complete feature over four real tables, never wired to a screen, beside a different renewal model that was. Which host serves which has not been settled."
-    },
     "database-updater": {
       "verdict": "unexamined",
       "reason": "database-updater/seeders/ STORE SQL for report definitions to run later rather than executing it (check:sql-string-tables baselines 78 of them). Not examined as a routing question."

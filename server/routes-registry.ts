@@ -59,7 +59,6 @@ import {
   // setupSalesPipelineRoutes — migrated to supabase/functions/sales-pipeline/
   registerLeadMapRoutes,
   registerRenewalManagementRoutes,
-  contractRenewalRoutes,
 } from './domains/sales';
 
 import {
@@ -898,7 +897,7 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   // match that 'https://api.printyx.net.evil.com' satisfies.
   registerChatbotRoutes(app);
   // Round 164: autoSupplyReplenishmentRoutes retired; the prefix is proxied.
-  app.use('/api/contract-renewal', contractRenewalRoutes);
+  // Round 165: contractRenewalRoutes retired; /api/contract-renewal is proxied.
   // registerSalesHandoffRoutes was called here and is DELETED (WF-P-07).
   //
   // WF-C-06 moved its handoff, task and template handlers to the edge

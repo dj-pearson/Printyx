@@ -7,10 +7,10 @@
  * which is what actually runs whenever the model call fails or no API key is
  * configured.
  *
- * Node and Deno cannot import each other, so the logic lives here and
- * server/services/contract-renewal-service.ts re-exports its own copy through
- * thin wrappers. server/tests/unit/renewal-analysis-parity.test.ts imports both
- * and asserts identical output, so a change landing in only one file fails.
+ * The Node copy (server/services/contract-renewal-service.ts) was deleted in
+ * round 165 with the Express router that was its only caller. Its outputs are
+ * frozen as snapshots in server/tests/unit/renewal-analysis-parity.test.ts, so a
+ * change to the behaviour here fails the suite.
  *
  * This module is intentionally free of Deno and Node APIs: it is pure, which is
  * what makes it testable from vitest.
