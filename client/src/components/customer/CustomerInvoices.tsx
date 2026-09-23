@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'wouter';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { exportToCSV, type ExportColumn } from '@/lib/export-utils';
@@ -55,6 +56,8 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { apiRequest } from '@/lib/queryClient';
+import { useConfirm } from '@/components/ui/confirm-dialog';
+import { sendStatements, statementSendToast } from '@/lib/invoice-statements';
 import { formatCurrency } from '@/lib/utils';
 
 interface Invoice {
@@ -119,6 +122,30 @@ export function CustomerInvoices({ customerId, customerName }: CustomerInvoicesP
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const confirm = useConfirm();
+  const [sendingStatements, setSendingStatements] = useState(false);
+
+  const handleSendStatements = async () => {
+    const ids = [...selectedInvoices];
+    const ok = await confirm({
+      title: `Email ${ids.length} ${ids.length === 1 ? 'invoice' : 'invoices'} to the customer?`,
+      description: 'Each invoice is emailed with its PDF to the billing email on file.',
+      confirmLabel: 'Send',
+      destructive: false,
+    });
+    if (!ok) return;
+    setSendingStatements(true);
+    try {
+      const outcome = await sendStatements(ids, (id) =>
+        apiRequest(`/api/billing/invoices/${id}/email`, 'POST', {}),
+      );
+      toast(statementSendToast(outcome));
+      setSelectedInvoices(outcome.failed);
+      queryClient.invalidateQueries({ queryKey: [`/api/customers/${customerId}/invoices`] });
+    } finally {
+      setSendingStatements(false);
+    }
+  };
 
   // Fetch invoices for this customer
   const { data: invoices = [], isLoading } = useQuery<Invoice[]>({
@@ -294,9 +321,14 @@ export function CustomerInvoices({ customerId, customerName }: CustomerInvoicesP
                 {selectedInvoices.length === 1 ? '' : 's'} selected
               </span>
               <div className="flex gap-2">
-                <Button size="sm" variant="outline">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={sendingStatements}
+                  onClick={() => void handleSendStatements()}
+                >
                   <Mail className="h-4 w-4 mr-2" />
-                  Send Statements
+                  {sendingStatements ? 'Sending...' : 'Send Statements'}
                 </Button>
                 <Button
                   size="sm"
@@ -444,9 +476,13 @@ export function CustomerInvoices({ customerId, customerName }: CustomerInvoicesP
                 ? 'No invoices match your search criteria.'
                 : 'No invoices have been created for this customer yet.'}
             </p>
-            <Button>
-              <Plus className="w-4 h-4 mr-2" />
-              Create First Invoice
+            {/* Invoices are generated from a contract, so this opens the
+                generator rather than a blank invoice form. */}
+            <Button asChild>
+              <Link href="/invoices?action=new">
+                <Plus className="w-4 h-4 mr-2" />
+                Create First Invoice
+              </Link>
             </Button>
           </CardContent>
         </Card>

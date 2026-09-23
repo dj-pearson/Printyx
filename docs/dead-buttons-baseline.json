@@ -1,6 +1,6 @@
 {
   "note": "UI-DEAD-BUTTONS-001. A <Button> whose label carries an action verb and which has no onClick, type=\"submit\", asChild, href or form, and is not inside a <form> or a trigger wrapper. ANCESTRY IS RESOLVED BY A TAG WALK, not a line window: the unhardened predecessor excluded anything within 15 lines of a form or trigger, which let a submit button declared thirty lines below its form read as dead and let a button merely following a </form> read as alive. Every entry carries a VERDICT and a REASON - wired, deleted, by-design, or unexamined. \"unexamined\" is permitted and is the point: saying nobody has looked beats implying somebody has, and this list is a WORKLIST rather than settled debt. Round 96 built the guard and resolved two entries; the remaining 93 are product calls about whether each feature should exist, which is the rest of the story. Shrink this list; see scripts/check-dead-buttons.mjs.",
-  "count": 39,
+  "count": 33,
   "triage": {
     "client/src/components/CustomerEquipmentProfile.tsx:Schedule": {
       "file": "client/src/components/CustomerEquipmentProfile.tsx",
@@ -11,42 +11,6 @@
     "client/src/components/customer-portal/EquipmentHealthDashboard.tsx:Schedule Service": {
       "file": "client/src/components/customer-portal/EquipmentHealthDashboard.tsx",
       "label": "Schedule Service",
-      "verdict": "unexamined",
-      "reason": ""
-    },
-    "client/src/components/customer/CustomerContracts.tsx:Create First Contract": {
-      "file": "client/src/components/customer/CustomerContracts.tsx",
-      "label": "Create First Contract",
-      "verdict": "unexamined",
-      "reason": ""
-    },
-    "client/src/components/customer/CustomerEquipment.tsx:Add First Equipment": {
-      "file": "client/src/components/customer/CustomerEquipment.tsx",
-      "label": "Add First Equipment",
-      "verdict": "unexamined",
-      "reason": ""
-    },
-    "client/src/components/customer/CustomerInvoices.tsx:Create First Invoice": {
-      "file": "client/src/components/customer/CustomerInvoices.tsx",
-      "label": "Create First Invoice",
-      "verdict": "unexamined",
-      "reason": ""
-    },
-    "client/src/components/customer/CustomerInvoices.tsx:Send Statements": {
-      "file": "client/src/components/customer/CustomerInvoices.tsx",
-      "label": "Send Statements",
-      "verdict": "unexamined",
-      "reason": ""
-    },
-    "client/src/components/customer/CustomerQuotes.tsx:Create First Quote": {
-      "file": "client/src/components/customer/CustomerQuotes.tsx",
-      "label": "Create First Quote",
-      "verdict": "unexamined",
-      "reason": ""
-    },
-    "client/src/components/customer/CustomerServiceHistory.tsx:Create First": {
-      "file": "client/src/components/customer/CustomerServiceHistory.tsx",
-      "label": "Create First",
       "verdict": "unexamined",
       "reason": ""
     },

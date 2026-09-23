@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -105,6 +106,16 @@ const statusLabels = {
   expired: 'Expired',
   converted: 'Converted',
 };
+
+/**
+ * The quote builder prefills a company from `leadId` + `prefill=true`, looked
+ * up in /api/companies - the same table a customer id comes from.
+ */
+export function newQuoteHref(customerId: string, customerName?: string): string {
+  const params = new URLSearchParams({ leadId: customerId, prefill: 'true' });
+  if (customerName) params.set('companyName', customerName);
+  return `/quotes/new?${params.toString()}`;
+}
 
 export function CustomerQuotes({ customerId, customerName }: CustomerQuotesProps) {
   const [searchTerm, setSearchTerm] = useState('');
@@ -296,9 +307,11 @@ export function CustomerQuotes({ customerId, customerName }: CustomerQuotesProps
                   ? 'No quotes match your current filters.'
                   : "This customer doesn't have any quotes yet."}
               </p>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Create First Quote
+              <Button asChild>
+                <Link href={newQuoteHref(customerId, customerName)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create First Quote
+                </Link>
               </Button>
             </div>
           ) : (

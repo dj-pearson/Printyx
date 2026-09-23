@@ -162,6 +162,24 @@ export default function Contracts() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const quoteIdFromUrl = params.get('quoteId');
+    // A customer record's "Create First Contract" links here with
+    // ?action=new&customerId=; open the dialog with the customer filled in.
+    const customerIdFromUrl = params.get('customerId');
+    if (params.get('action') === 'new' || customerIdFromUrl) {
+      setIsCreateOpen(true);
+      if (customerIdFromUrl) {
+        setContractForm((prev) => ({ ...prev, customerId: customerIdFromUrl }));
+      }
+      // Consumed once, as use-action-param does: a refresh must not reopen it.
+      params.delete('action');
+      params.delete('customerId');
+      const rest = params.toString();
+      window.history.replaceState(
+        null,
+        '',
+        window.location.pathname + (rest ? `?${rest}` : '') + window.location.hash,
+      );
+    }
     if (quoteIdFromUrl) {
       setIsCreateOpen(true);
       setQuoteSearch(quoteIdFromUrl);

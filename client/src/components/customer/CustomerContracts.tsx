@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -259,9 +260,11 @@ export function CustomerContracts({ customerId, customerName }: CustomerContract
                   ? 'No contracts match your current filters.'
                   : "This customer doesn't have any contracts yet."}
               </p>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Create First Contract
+              <Button asChild>
+                <Link href={`/contracts?action=new&customerId=${encodeURIComponent(customerId)}`}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create First Contract
+                </Link>
               </Button>
             </div>
           ) : (

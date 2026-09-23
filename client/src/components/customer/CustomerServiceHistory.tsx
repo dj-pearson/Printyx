@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -600,10 +601,17 @@ export function CustomerServiceHistory({ customerId, customerName }: CustomerSer
                       activeTab === 'tickets' ? 'service tickets' : 'service calls'
                     } have been created for this customer yet.`}
               </p>
-              <Button>
-                <Plus className="w-4 h-4 mr-2" />
-                Create First {activeTab === 'tickets' ? 'Ticket' : 'Service Call'}
-              </Button>
+              {/* A ticket is raised in the Service Hub. Nothing on this page
+                  creates a service call, so no button is offered on that tab
+                  rather than one that would open the ticket form. */}
+              {activeTab === 'tickets' && (
+                <Button asChild>
+                  <Link href="/service-hub?action=new">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create First Ticket
+                  </Link>
+                </Button>
+              )}
             </CardContent>
           </Card>
         )}
