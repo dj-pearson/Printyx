@@ -3,7 +3,8 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
-import { denyWithoutPermission } from '../_shared/rbac.ts';
+import { denyWithoutPermission, resolveRoleLevel } from '../_shared/rbac.ts';
+import { pricingVisibilityFor } from '../../../shared/pricing-visibility.ts';
 
 const REQUIRED_PERMISSION = 'operations.inventory.manage';
 
@@ -100,31 +101,30 @@ export default async function handler(req: Request) {
       return createCorsResponse(settings, 200, req);
     }
 
-    // GET /pricing/visibility - Get price visibility settings
+    // GET /pricing-settings/visibility - what THIS caller may see and change.
+    //
+    // Round 156. This returned the stored pricing_visibility row (snake_case,
+    // and about nobody in particular), while usePricingVisibility() reads a
+    // per-caller camelCase answer - so every field was undefined in production,
+    // no manager saw margin in the quote builder and nobody could edit dealer
+    // cost. The answer is computed from the caller's role level and the
+    // company pricing policy by shared/pricing-visibility.ts, the same levels
+    // the pricing function enforces. A policy row that fails to load falls back
+    // to the column defaults: visibility decides what is SHOWN, and every write
+    // is gated again server-side.
     if (req.method === 'GET' && resource === 'visibility') {
-      const { data: settings, error } = await admin
-        .from('pricing_visibility')
-        .select('*')
+      const level = await resolveRoleLevel(admin, user);
+      const { data: policy, error } = await admin
+        .from('company_pricing_settings')
+        .select(
+          'show_margin_to_reps, allow_rep_price_edit, require_approval_for_price_edit, max_discount_percentage, min_margin_percentage',
+        )
         .eq('tenant_id', tenantId)
         .maybeSingle();
-
-      // Visibility is non-critical: if the row is missing OR the query errors
-      // (e.g. the table isn't provisioned for this tenant), fall back to safe
-      // defaults rather than 500-ing and breaking every page that reads it.
-      if (error && error.code !== 'PGRST116') {
-        console.warn('pricing-settings: visibility lookup failed, using defaults:', error.message);
+      if (error) {
+        console.warn('pricing-settings: policy lookup failed, using defaults:', error.message);
       }
-
-      return createCorsResponse(
-        settings || {
-          show_msrp: true,
-          show_dealer_cost: false,
-          show_margin: false,
-          show_competitor_pricing: false,
-        },
-        200,
-        req,
-      );
+      return createCorsResponse(pricingVisibilityFor(level, policy ?? null), 200, req);
     }
 
     // PUT /pricing/visibility - Update visibility settings

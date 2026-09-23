@@ -1028,6 +1028,12 @@ export function registerEdgeFunctionProxy(app: any) {
     // /dedupe branch although the page calls both, so dev 404'd on them.
     '/api/software-products': 'software-products',
 
+    // Round 156. No Express router serves this prefix, so on a developer
+    // machine usePricingVisibility() 404'd - and in production it received a
+    // stored row instead of a per-caller answer. The edge function now answers
+    // per caller; dev runs it too.
+    '/api/pricing-settings': 'pricing-settings',
+
     // PROD-011. Full parity: all EIGHT Express endpoints (inbound, submit,
     // submissions list/:id/approve/reject, GET/PUT settings), which is also
     // everything MeterReadReview.tsx calls. This pipeline writes billing rows,
