@@ -39,6 +39,7 @@ import {
 } from '@/components/ui/select';
 import { useForm } from 'react-hook-form';
 import { toast } from '@/hooks/use-toast';
+import { exportToCSV, type ExportColumn } from '@/lib/export-utils';
 import {
   LineChart,
   Line,
@@ -129,6 +130,91 @@ interface CommissionCalculation {
   };
   calculatedAt?: Date;
   calculatedBy: string;
+}
+
+/**
+ * UI-DEAD-BUTTONS-001 (round 184): each calculation's Export had no handler.
+ * It exports that calculation as a statement - every commission line, bonus
+ * and adjustment the card shows, then the totals - so the rep reading it can
+ * reconcile the net figure line by line.
+ */
+interface StatementRow {
+  section: string;
+  description: string;
+  basis: number | null;
+  rate: number | null;
+  amount: number;
+  note: string;
+}
+
+const STATEMENT_COLUMNS: ExportColumn<StatementRow>[] = [
+  { key: 'section', label: 'Section' },
+  { key: 'description', label: 'Description' },
+  { key: 'basis', label: 'Sales amount' },
+  { key: 'rate', label: 'Rate' },
+  { key: 'amount', label: 'Amount' },
+  { key: 'note', label: 'Note' },
+];
+
+function commissionStatementRows(calc: CommissionCalculation): StatementRow[] {
+  return [
+    ...calc.commissionDetails.map((d) => ({
+      section: 'Commission',
+      description: d.description || d.category,
+      basis: d.salesAmount,
+      rate: d.commissionRate,
+      amount: d.commissionAmount,
+      note: d.category,
+    })),
+    ...calc.bonuses.map((b) => ({
+      section: 'Bonus',
+      description: b.description,
+      basis: null,
+      rate: null,
+      amount: b.amount,
+      note: b.eligibilityMet ? 'eligible' : 'not eligible',
+    })),
+    ...calc.adjustments.map((a) => ({
+      section: 'Adjustment',
+      description: a.description,
+      basis: null,
+      rate: null,
+      amount: a.amount,
+      note: a.reason,
+    })),
+    {
+      section: 'Total',
+      description: 'Gross commission',
+      basis: null,
+      rate: null,
+      amount: calc.summary.grossCommission,
+      note: '',
+    },
+    {
+      section: 'Total',
+      description: 'Bonuses',
+      basis: null,
+      rate: null,
+      amount: calc.summary.totalBonuses,
+      note: '',
+    },
+    {
+      section: 'Total',
+      description: 'Adjustments',
+      basis: null,
+      rate: null,
+      amount: calc.summary.totalAdjustments,
+      note: '',
+    },
+    {
+      section: 'Total',
+      description: 'Net commission',
+      basis: null,
+      rate: null,
+      amount: calc.summary.netCommission,
+      note: calc.summary.status,
+    },
+  ];
 }
 
 const getPlanTypeColor = (type: string) => {
@@ -588,7 +674,15 @@ export default function CommissionManagement() {
                         <Button size="sm" variant="outline">
                           View Details
                         </Button>
-                        <Button size="sm" variant="outline">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            exportToCSV(commissionStatementRows(calc), STATEMENT_COLUMNS, {
+                              filename: `commission-${calc.employeeName}-${calc.calculationPeriod.periodName}`,
+                            })
+                          }
+                        >
                           <FileText className="h-4 w-4 mr-2" />
                           Export
                         </Button>

@@ -36,6 +36,7 @@ import {
   Cell,
 } from 'recharts';
 import MainLayout from '@/components/layout/main-layout';
+import { exportToCSV, type ExportColumn } from '@/lib/export-utils';
 import {
   Users,
   TrendingUp,
@@ -87,6 +88,19 @@ interface HighValueSignups {
   data?: any[];
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const SIGNUP_EXPORT_COLUMNS: ExportColumn<any>[] = [
+  { key: 'companyName', label: 'Company' },
+  { key: 'firstName', label: 'First Name' },
+  { key: 'lastName', label: 'Last Name' },
+  { key: 'email', label: 'Email' },
+  { key: 'status', label: 'Status' },
+  { key: 'source', label: 'Source' },
+  { key: 'qualificationScore', label: 'Qualification Score' },
+  { key: 'createdAt', label: 'Signed Up' },
+  { key: 'lastActivityAt', label: 'Last Activity' },
+];
+
 export default function RootAdminSignupsCRM() {
   const [statusFilter, setStatusFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -131,9 +145,16 @@ export default function RootAdminSignupsCRM() {
               Manage platform signups and monitor trial engagement
             </p>
           </div>
-          <Button>
+          {/* The list is paginated, so this exports the rows on screen and
+              says so rather than implying the whole signup base. */}
+          <Button
+            disabled={signups.length === 0}
+            onClick={() =>
+              exportToCSV(signups, SIGNUP_EXPORT_COLUMNS, { filename: 'platform-signups-page' })
+            }
+          >
             <Download className="w-4 h-4 mr-2" />
-            Export Data
+            Export this page
           </Button>
         </div>
 

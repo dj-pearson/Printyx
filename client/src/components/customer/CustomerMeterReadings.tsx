@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/select';
 import { Calendar, Printer, TrendingUp, TrendingDown, Eye, Download } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
+import { exportToCSV, type ExportColumn } from '@/lib/export-utils';
 import {
   LineChart,
   Line,
@@ -36,6 +37,22 @@ interface MeterReading {
   tonerLevels: { [key: string]: number };
   rawData: any;
 }
+
+/**
+ * UI-DEAD-BUTTONS-001 (round 184): Export had no handler. It exports the
+ * readings the chart is drawing - the selected device, inside the chosen
+ * period - one row per collection.
+ */
+const METER_EXPORT_COLUMNS: ExportColumn<MeterReading>[] = [
+  {
+    key: 'collectionTimestamp',
+    label: 'Collected at',
+    format: (v) => (v instanceof Date ? v.toISOString() : String(v ?? '')),
+  },
+  { key: 'totalImpressions', label: 'Total impressions' },
+  { key: 'bwImpressions', label: 'B&W impressions' },
+  { key: 'colorImpressions', label: 'Colour impressions' },
+];
 
 interface DeviceWithReadings {
   deviceId: string;
@@ -271,7 +288,16 @@ export default function CustomerMeterReadings({ customerId }: Props) {
                 </Select>
               )}
 
-              <Button variant="outline" size="sm">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={filteredReadings.length === 0}
+                onClick={() =>
+                  exportToCSV(filteredReadings, METER_EXPORT_COLUMNS, {
+                    filename: `meter-readings-${selectedDeviceData?.serialNumber || 'device'}`,
+                  })
+                }
+              >
                 <Download className="h-4 w-4 mr-2" />
                 Export
               </Button>
