@@ -80,7 +80,6 @@ import {
   registerServiceAnalysisRoutes,
   registerTechnicianManagementRoutes,
   serviceDispatchRouter,
-  equipmentLifecycleStateMachineRoutes,
   equipmentDisposalRoutes,
   equipmentQRRoutes,
   enhancedServiceRoutes,
@@ -409,7 +408,7 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   // setupSalesPipelineRoutes(app, storage, requireAuth) — migrated to supabase/functions/sales-pipeline/
 
   // ─── Equipment ────────────────────────────────────────────────────
-  app.use(equipmentLifecycleStateMachineRoutes);
+  // Round 158: equipmentLifecycleStateMachineRoutes retired; the prefix is proxied.
   app.use(equipmentDisposalRoutes);
 
   // ─── Consolidated Billing ─────────────────────────────────────────

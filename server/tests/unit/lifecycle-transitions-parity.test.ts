@@ -14,18 +14,15 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import {
-  EquipmentLifecycleStateMachine,
-  LIFECYCLE_STAGES,
-} from '../../services/equipment-lifecycle-state-machine';
+// Round 158: the Node state machine (server/services/equipment-lifecycle-state-
+// machine.ts) was deleted with the Express router that was its only caller.
+// These assertions now drive the edge module, which production has always run.
+import * as EquipmentLifecycleStateMachine from '../../../supabase/functions/_shared/equipment-lifecycle-transitions';
+import { LIFECYCLE_STAGES } from '../../../supabase/functions/_shared/equipment-lifecycle-transitions';
 
 const repo = join(__dirname, '../../..');
 const edgeSrc = readFileSync(
   join(repo, 'supabase/functions/_shared/equipment-lifecycle-transitions.ts'),
-  'utf8',
-);
-const nodeSrc = readFileSync(
-  join(repo, 'server/services/equipment-lifecycle-state-machine.ts'),
   'utf8',
 );
 const dialogSrc = readFileSync(
@@ -45,9 +42,7 @@ function graph(src: string, marker: string): string[] {
 
 describe('the two transition graphs agree', () => {
   it('allows the same moves from every stage', () => {
-    const node = graph(nodeSrc, 'VALID_TRANSITIONS: Record<string, string[]> = {');
-    expect(node.length).toBe(11);
-    expect(graph(edgeSrc, 'VALID_TRANSITIONS: Record<string, string[]> = {')).toEqual(node);
+    expect(graph(edgeSrc, 'VALID_TRANSITIONS: Record<string, string[]> = {').length).toBe(11);
   });
 
   it('keeps both terminal states terminal', () => {
@@ -96,23 +91,6 @@ describe('the two transition graphs agree', () => {
 });
 
 describe('no host claims a requirement was verified', () => {
-  it('the Node validator reports every requirement outstanding', async () => {
-    const result = await EquipmentLifecycleStateMachine.validateTransition(
-      'equipment-1',
-      LIFECYCLE_STAGES.RETIRED,
-      LIFECYCLE_STAGES.DISPOSED,
-    );
-
-    // It used to answer passed:true with "<requirement> verified" for each one.
-    expect(result.passed).toEqual([]);
-    expect(result.failed).toHaveLength(3);
-    expect(result.failed.every((f) => f.passed === false)).toBe(true);
-    expect(result.requirementsChecked).toBe(false);
-    for (const check of result.failed) {
-      expect(check.message).not.toMatch(/verified$/);
-    }
-  });
-
   it('a transition with no requirements is still allowed', () => {
     expect(
       EquipmentLifecycleStateMachine.getValidationRequirements(

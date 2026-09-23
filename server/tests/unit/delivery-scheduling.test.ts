@@ -187,14 +187,14 @@ describe('both hosts run the same handler', () => {
       'assets',
       'purchase-orders',
     ]) {
-      expect(proxy, seg).toContain(`'/api/equipment-lifecycle/${seg}'`);
+      // Round 158: covered by the whole-prefix entry, and served by the edge.
+      expect(proxy, seg).toMatch(/'\/api\/equipment-lifecycle':\s*'equipment-lifecycle'/);
+      expect(edge, seg).toContain(`'${seg}'`);
     }
   });
 
-  it('but NOT the bare prefix, which a live Express router still owns', () => {
-    // routes-equipment-lifecycle-state-machine.ts holds the transition paths; a
-    // bare entry would 404 them in dev.
-    expect(proxy).not.toMatch(/'\/api\/equipment-lifecycle':\s*'equipment-lifecycle'/);
+  it('and the whole prefix, once the transition router was retired (round 158)', () => {
+    expect(proxy).toMatch(/'\/api\/equipment-lifecycle':\s*'equipment-lifecycle'/);
   });
 
   it('scopes the crew day to the caller by default', () => {
