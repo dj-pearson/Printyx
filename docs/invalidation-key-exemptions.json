@@ -2,6 +2,11 @@
   "note": "INVALIDATE-002. check:invalidation-keys proves every invalidation key reaches a query key. These are the ones it cannot prove either way, each with the reason - a key assembled at runtime from a value the scanner has no way to enumerate. An entry here is a statement that somebody opened the file, not a way to silence a finding: a key that CAN be resolved and does not match is a defect, and the guard fails on a stale entry so this file cannot outlive the code.",
   "exempt": [
     {
+      "file": "client/src/pages/CalendarPage.tsx",
+      "key": "invalidateApiPath('/api/meetings/calendar/events')",
+      "reason": "Round 219. CalendarView keys its query as [monthEventsUrl(currentDate)], a URL of the form /api/meetings/calendar/events?start=...&end= built from the month on screen, so no literal exists for the scanner to match. invalidateApiPath matches a key that continues with '?', which is exactly that shape; lib/calendar-events.ts is the one place the URL is built."
+    },
+    {
       "file": "client/src/components/product-import/ProductImport.tsx",
       "key": "[selectedType.endpoint.replace('/import', '')]",
       "reason": "The key is the selected product type's endpoint with '/import' stripped, chosen from a productTypes array at runtime. Every entry in that array resolves to a real list endpoint, so this refreshes the list the import just wrote to - but which one is a user choice, not a literal."
