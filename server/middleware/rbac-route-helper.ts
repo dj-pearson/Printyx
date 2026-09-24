@@ -420,15 +420,11 @@ export function requireSensitiveAccess(permission: string | string[]): RequestHa
 export function getQueryBuilder(req: AuthenticatedRequest): HierarchicalQueryBuilder | null {
   if (!req.user) return null;
 
-  return new HierarchicalQueryBuilder({
-    id: req.user.id,
-    tenantId: req.user.tenantId,
-    scope: req.user.territoryScope,
-    locationId: req.user.locationId,
-    regionId: req.user.regionId,
-    teamId: req.user.teamId,
-    managerId: req.user.managerId,
-  });
+  // The builder takes the user context itself. This used to copy seven
+  // fields into a new object and spell territoryScope as `scope`, so the
+  // builder saw an undefined scope and every accessible-location list it
+  // produced was empty (round 244). Nothing calls this today.
+  return new HierarchicalQueryBuilder(req.user);
 }
 
 // =====================================================================
