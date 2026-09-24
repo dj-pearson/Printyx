@@ -51,6 +51,8 @@ interface AllTasksViewProps {
   isLoading: boolean;
   teamMembers: any[];
   projects: any[];
+  /** Opens TaskHub's create dialog in a board column's status. */
+  onAddTask?: (status: string) => void;
 }
 
 interface ViewConfig {
@@ -65,7 +67,13 @@ interface ViewConfig {
   };
 }
 
-export function AllTasksView({ tasks, isLoading, teamMembers, projects }: AllTasksViewProps) {
+export function AllTasksView({
+  tasks,
+  isLoading,
+  teamMembers,
+  projects,
+  onAddTask,
+}: AllTasksViewProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [view, setView] = useState<ViewConfig>({
     type: 'list',
@@ -265,6 +273,7 @@ export function AllTasksView({ tasks, isLoading, teamMembers, projects }: AllTas
           teamMembers={teamMembers}
           onInlineEdit={handleInlineEdit}
           isLoading={isLoading}
+          onAddTask={onAddTask}
         />
       )}
 

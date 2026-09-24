@@ -46,8 +46,9 @@ interface Task {
   id: string;
   title: string;
   description?: string;
-  status: 'todo' | 'in_progress' | 'review' | 'completed' | 'cancelled';
-  priority: 'low' | 'medium' | 'high' | 'urgent';
+  // The API row's shape (tasks.status / priority are free varchars).
+  status: string;
+  priority: string;
   assignedTo?: string;
   assignedToName?: string;
   assignedToAvatar?: string;
@@ -57,16 +58,25 @@ interface Task {
   estimatedHours?: number;
   completionPercentage: number;
   tags: string[];
-  commentCount: number;
-  attachmentCount: number;
-  timeTracked: number;
-  watchers: string[];
+  // Not on every row the API returns; read with a fallback.
+  commentCount?: number;
+  attachmentCount?: number;
+  timeTracked?: number;
+  watchers?: string[];
 }
 
 interface TaskBoardViewProps {
-  groupedTasks: [string, Task[]][];
+  /**
+   * Round 213: this took `groupedTasks` while its only caller (AllTasksView)
+   * passes `tasks`, so `groupedTasks.forEach` threw on undefined and choosing
+   * the Board view crashed. tsc reported it; the error sat in the ratchet.
+   */
+  tasks: Task[];
   onInlineEdit: (taskId: string, field: string, value: any) => void;
   teamMembers: any[];
+  isLoading?: boolean;
+  /** Opens the create dialog in a column's status; the empty-column button. */
+  onAddTask?: (status: string) => void;
 }
 
 const statusColumns = [
@@ -83,7 +93,7 @@ const priorityConfig = {
   low: { label: 'Low', color: 'bg-green-500', icon: '📋' },
 };
 
-export function TaskBoardView({ groupedTasks, onInlineEdit, teamMembers }: TaskBoardViewProps) {
+export function TaskBoardView({ tasks, onInlineEdit, teamMembers, onAddTask }: TaskBoardViewProps) {
   const [activeTask, setActiveTask] = useState<Task | null>(null);
 
   // Configure sensors for mobile-first drag and drop
@@ -111,14 +121,9 @@ export function TaskBoardView({ groupedTasks, onInlineEdit, teamMembers }: TaskB
     {} as Record<string, Task[]>,
   );
 
-  // Flatten all tasks and organize by status
-  groupedTasks.forEach(([groupName, tasks]) => {
-    tasks.forEach((task) => {
-      if (tasksByStatus[task.status]) {
-        tasksByStatus[task.status].push(task);
-      }
-    });
-  });
+  for (const task of tasks) {
+    if (tasksByStatus[task.status]) tasksByStatus[task.status].push(task);
+  }
 
   const handleDragStart = (event: DragStartEvent) => {
     const task = findTaskById(event.active.id as string, tasksByStatus);
@@ -156,7 +161,7 @@ export function TaskBoardView({ groupedTasks, onInlineEdit, teamMembers }: TaskB
       <div className="flex gap-3 sm:gap-4 md:gap-6 overflow-x-auto pb-6 min-h-[600px] -mx-4 px-4 sm:mx-0 sm:px-0 snap-x snap-mandatory md:snap-none">
         {statusColumns.map((column) => {
           const tasks = tasksByStatus[column.id] || [];
-          const isOverLimit = column.limit && tasks.length > column.limit;
+          const isOverLimit = column.limit !== null && tasks.length > column.limit;
 
           return (
             <DroppableColumn
@@ -169,6 +174,7 @@ export function TaskBoardView({ groupedTasks, onInlineEdit, teamMembers }: TaskB
               isOverLimit={isOverLimit}
               teamMembers={teamMembers}
               onInlineEdit={onInlineEdit}
+              onAddTask={onAddTask}
             />
           );
         })}
@@ -210,6 +216,7 @@ function DroppableColumn({
   isOverLimit,
   teamMembers,
   onInlineEdit,
+  onAddTask,
 }: {
   id: string;
   title: string;
@@ -219,6 +226,7 @@ function DroppableColumn({
   isOverLimit: boolean;
   teamMembers: any[];
   onInlineEdit: (taskId: string, field: string, value: any) => void;
+  onAddTask?: (status: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id });
 
@@ -267,14 +275,17 @@ function DroppableColumn({
           {tasks.length === 0 && (
             <div className="text-center py-12 text-gray-400">
               <p className="text-sm">No tasks in {title.toLowerCase()}</p>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="mt-3 text-xs touch-manipulation active:scale-95"
-              >
-                <Plus className="h-3 w-3 mr-1" />
-                Add task
-              </Button>
+              {onAddTask && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="mt-3 text-xs touch-manipulation active:scale-95"
+                  onClick={() => onAddTask(id)}
+                >
+                  <Plus className="h-3 w-3 mr-1" />
+                  Add task
+                </Button>
+              )}
             </div>
           )}
         </CardContent>
@@ -330,7 +341,8 @@ function TaskCard({
 }) {
   const assignee = teamMembers.find((member) => member.id === task.assignedTo);
   const dueDateStatus = getDueDateStatus(task.dueDate);
-  const priorityConf = priorityConfig[task.priority];
+  const priorityConf =
+    priorityConfig[task.priority as keyof typeof priorityConfig] ?? priorityConfig.medium;
 
   const getDueDateColor = (status: string | null) => {
     switch (status) {
@@ -478,14 +490,14 @@ function TaskCard({
           {/* Right side - Assignee and Indicators */}
           <div className="flex items-center gap-2">
             {/* Comment and Attachment Count */}
-            {task.commentCount > 0 && (
+            {(task.commentCount ?? 0) > 0 && (
               <div className="flex items-center text-xs text-gray-500">
                 <MessageSquare className="h-3 w-3 sm:h-4 sm:w-4 mr-0.5" />
                 {task.commentCount}
               </div>
             )}
 
-            {task.attachmentCount > 0 && (
+            {(task.attachmentCount ?? 0) > 0 && (
               <div className="flex items-center text-xs text-gray-500">
                 <Paperclip className="h-3 w-3 sm:h-4 sm:w-4 mr-0.5" />
                 {task.attachmentCount}
@@ -493,10 +505,10 @@ function TaskCard({
             )}
 
             {/* Watchers */}
-            {task.watchers.length > 0 && (
+            {(task.watchers ?? []).length > 0 && (
               <div className="flex items-center text-xs text-gray-500">
                 <Users className="h-3 w-3 sm:h-4 sm:w-4 mr-0.5" />
-                {task.watchers.length}
+                {(task.watchers ?? []).length}
               </div>
             )}
 

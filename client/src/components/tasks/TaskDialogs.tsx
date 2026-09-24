@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -87,6 +87,7 @@ export function CreateTaskDialog({
   customers = [],
   deals = [],
   relatedTo,
+  initialStatus,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -99,6 +100,8 @@ export function CreateTaskDialog({
   deals?: RelatedRecord[];
   /** Pre-linked when the dialog is opened from a record page. */
   relatedTo?: Pick<Task, 'customerId' | 'dealId' | 'handoffId'>;
+  /** Starting status, when opened from a board column (round 213). */
+  initialStatus?: string;
 }) {
   const EMPTY: Partial<Task> = {
     title: '',
@@ -115,6 +118,12 @@ export function CreateTaskDialog({
     tags: [],
   };
   const [formData, setFormData] = useState<Partial<Task>>(EMPTY);
+  // Opened from a board column: start in that column's status. It is only a
+  // starting value - the status select below still decides.
+  useEffect(() => {
+    if (open && initialStatus)
+      setFormData((prev) => ({ ...prev, status: initialStatus as Task['status'] }));
+  }, [open, initialStatus]);
 
   const [newTag, setNewTag] = useState('');
 
