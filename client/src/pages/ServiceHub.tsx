@@ -53,7 +53,6 @@ import {
   useWorkflowAutomation,
 } from '@/hooks/useCrossModuleIntegration';
 import { useMobileDetection } from '@/hooks/useExternalIntegrations';
-import { MobileServiceDispatch } from '@/components/mobile/MobileServiceDispatch';
 import { CustomerEquipmentProfile } from '@/components/CustomerEquipmentProfile';
 import { useActionParam } from '@/hooks/use-action-param';
 import {
