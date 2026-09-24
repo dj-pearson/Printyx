@@ -100,7 +100,9 @@ export default async function handler(req: Request) {
     const resourceId = parts[1];
 
     // GET /maintenance/schedules - List maintenance schedules
-    if (req.method === 'GET' && endpoint === 'schedules') {
+    // (Round 225: `!resourceId` - without it GET /schedules/:id, declared below,
+    // answered the whole list.)
+    if (req.method === 'GET' && endpoint === 'schedules' && !resourceId) {
       const equipmentId =
         url.searchParams.get('equipmentId') || url.searchParams.get('equipment_id');
       const status = url.searchParams.get('status');
@@ -400,7 +402,12 @@ export default async function handler(req: Request) {
     }
 
     // POST /maintenance/schedules - Create maintenance schedule
-    if (req.method === 'POST' && endpoint === 'schedules') {
+    //
+    // Round 225: this matched ANY POST under /schedules, so
+    // POST /schedules/:id/complete - declared further down - was read as a
+    // create, built a schedule from the completion body and failed on the NOT
+    // NULL name and equipment_id. Completing maintenance had never worked.
+    if (req.method === 'POST' && endpoint === 'schedules' && !resourceId) {
       const body = await req.json();
 
       const scheduleData = {
@@ -535,8 +542,10 @@ export default async function handler(req: Request) {
           break;
       }
 
-      // Update schedule with new due date
-      await admin
+      // Update schedule with new due date. The record above is already
+      // written, so a failure here is reported rather than turned into a 500
+      // that invites a second completion; the schedule keeps its old due date.
+      const { error: rollError } = await admin
         .from('maintenance_schedules')
         .update({
           last_completed_date: new Date().toISOString(),
@@ -546,11 +555,18 @@ export default async function handler(req: Request) {
         .eq('id', resourceId)
         .eq('tenant_id', tenantId);
 
+      if (rollError) {
+        console.error('Error rolling the schedule forward:', rollError);
+      }
+
       return createCorsResponse(
         {
           record,
-          nextDueDate: nextDueDate.toISOString(),
-          message: 'Maintenance completed successfully',
+          nextDueDate: rollError ? null : nextDueDate.toISOString(),
+          scheduleUpdated: !rollError,
+          message: rollError
+            ? 'Maintenance recorded, but the next due date could not be updated'
+            : 'Maintenance completed successfully',
         },
         200,
         req,

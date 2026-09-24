@@ -29,8 +29,9 @@ const state: { tables: Record<string, Row[]>; lastInsert: Row[] | null } = {
 function tableApi(name: string) {
   const eqs: Array<[string, unknown]> = [];
   const ins: Array<[string, unknown[]]> = [];
-  let mode: 'select' | 'insert' = 'select';
+  let mode: 'select' | 'insert' | 'update' = 'select';
   let pending: Row[] = [];
+  let patch: Row = {};
 
   const api: Record<string, unknown> = {
     select: () => api,
@@ -43,6 +44,11 @@ function tableApi(name: string) {
     },
     in(col: string, vals: unknown[]) {
       ins.push([col, vals]);
+      return api;
+    },
+    update(p: Row) {
+      mode = 'update';
+      patch = p;
       return api;
     },
     insert(rows: Row | Row[]) {
@@ -62,6 +68,13 @@ function tableApi(name: string) {
       const stored = pending.map((r, i) => ({ id: `${name}-${i + 1}`, ...r }));
       state.tables[name].push(...stored);
       return { data: single ? stored[0] : stored, error: null };
+    }
+    if (mode === 'update') {
+      const matched = state.tables[name].filter((r) =>
+        eqs.every(([c, v]) => String(r[c]) === String(v)),
+      );
+      for (const r of matched) Object.assign(r, patch);
+      return { data: single ? (matched[0] ?? null) : matched, error: null };
     }
     const hits = state.tables[name].filter(
       (r) =>
@@ -245,5 +258,71 @@ describe('WF-V-04: analytics reports only what the tables answer', () => {
     expect(body.totalCost).toBeNull();
     expect(body.unbacked.join(' ')).toMatch(/complianceRate/);
     expect(body.unbacked.join(' ')).toMatch(/costSavings/);
+  });
+});
+
+describe('round 225: completing a schedule is a completion, not a create', () => {
+  beforeEach(() => {
+    state.tables = {
+      maintenance_schedules: [
+        {
+          id: 's1',
+          tenant_id: 'tenant-1',
+          equipment_id: 'eq-1',
+          name: 'Quarterly PM',
+          maintenance_type: 'preventive',
+          frequency: 'quarterly',
+          frequency_value: 1,
+          next_due_date: '2020-01-01T00:00:00.000Z',
+          status: 'active',
+        },
+      ],
+      maintenance_records: [],
+    };
+    state.lastInsert = null;
+  });
+
+  it('POST /schedules/:id/complete writes a record and rolls the due date forward', async () => {
+    const res = await (
+      await handler()
+    )(req('/schedules/s1/complete', 'POST', { notes: 'Cleaned rollers', laborHours: 1.5 }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.scheduleUpdated).toBe(true);
+    // The old routing sent this to the create branch: a second schedule row.
+    expect(state.tables['maintenance_schedules']).toHaveLength(1);
+    expect(state.tables['maintenance_records']).toHaveLength(1);
+    expect(state.tables['maintenance_records'][0]).toMatchObject({
+      schedule_id: 's1',
+      equipment_id: 'eq-1',
+      notes: 'Cleaned rollers',
+      labor_hours: 1.5,
+    });
+    const s1 = state.tables['maintenance_schedules'][0];
+    expect(new Date(String(s1.next_due_date)).getTime()).toBeGreaterThan(Date.now());
+    expect(s1.last_completed_date).toBeTruthy();
+  });
+
+  it('GET /schedules/:id answers the one schedule, not the list', async () => {
+    const res = await (await handler())(req('/schedules/s1'));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(Array.isArray(body)).toBe(false);
+    expect(body.id).toBe('s1');
+  });
+
+  it('POST /schedules still creates', async () => {
+    const res = await (
+      await handler()
+    )(
+      req('/schedules', 'POST', {
+        equipmentId: 'eq-1',
+        name: 'Monthly clean',
+        frequency: 'monthly',
+        nextDueDate: '2027-01-01T00:00:00.000Z',
+      }),
+    );
+    expect(res.status).toBe(201);
+    expect(state.tables['maintenance_schedules']).toHaveLength(2);
   });
 });
