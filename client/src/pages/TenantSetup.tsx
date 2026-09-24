@@ -1,287 +1,99 @@
-import { useState } from 'react';
+/**
+ * Tenant onboarding (round 221).
+ *
+ * This page offered a "Create Tenant Instance" form (company name, slug, plan)
+ * whose button had no handler, and nothing in either backend creates a tenant
+ * from an admin screen: root-admin lists, suspends and activates tenants and
+ * has no create route. It also priced the plans at $49/$99/$199 against the
+ * $79/$99/$149 shared/pricing-plans.ts publishes and Stripe charges; promised
+ * a `<slug>.printyx.net` subdomain, which only the Express tenancy middleware
+ * resolves and production never runs for a page load; and showed a "Current
+ * Demo Tenant Status" card with a hardcoded tenant id, slug, plan and status.
+ *
+ * A new organisation is created one way: self-service signup, which calls
+ * supabase/functions/signup, creates the tenant and makes the person who
+ * signed up its Company Admin (LAUNCH-008). This page says so and hands over
+ * the link.
+ */
 import { MainLayout } from '@/components/layout/main-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { Copy, ExternalLink, Settings, Users, Globe, Shield } from 'lucide-react';
+import { Copy, ExternalLink, Rocket } from 'lucide-react';
+import { Link } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
+import { PRICING_PLANS } from '@shared/pricing-plans';
+import { formatCurrencyWhole } from '@/lib/utils';
+
+export const SIGNUP_PATH = '/signup';
 
 export default function TenantSetup() {
-  const [companyName, setCompanyName] = useState('XYZ Company');
-  const [slug, setSlug] = useState('xyz-company');
-  const [plan, setPlan] = useState('professional');
   const { toast } = useToast();
+  const signupUrl = `${window.location.origin}${SIGNUP_PATH}`;
 
-  const createSlugFromName = (name: string) => {
-    return name
-      .toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-')
-      .replace(/^-|-$/g, '');
-  };
-
-  const handleCompanyNameChange = (value: string) => {
-    setCompanyName(value);
-    setSlug(createSlugFromName(value));
-  };
-
-  const copyToClipboard = (text: string, label: string) => {
-    navigator.clipboard.writeText(text);
-    toast({
-      title: 'Copied!',
-      description: `${label} copied to clipboard`,
-    });
-  };
-
-  const openUrl = (url: string) => {
-    window.open(url, '_blank');
-  };
-
-  const tenantUrls = {
-    primary: `https://${slug}.printyx.net`, // Subdomain (Primary)
-    ...(import.meta.env.DEV
-      ? {
-          primaryDev: `https://${slug}.replit.dev`,
-          current: `http://localhost:5000`,
-        }
-      : {}),
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(signupUrl);
+      toast({ title: 'Signup link copied' });
+    } catch {
+      toast({
+        title: 'Could not copy',
+        description: 'Select the link and copy it by hand.',
+        variant: 'destructive',
+      });
+    }
   };
 
   return (
     <MainLayout
-      title="Multi-Tenant Setup"
-      description="Configure company-specific instances with subdomain or path-based routing"
+      title="Tenant Onboarding"
+      description="How a new dealer organisation gets its own Printyx instance"
     >
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Configuration Panel */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Settings className="h-5 w-5" />
-                Tenant Configuration
-              </CardTitle>
-              <CardDescription>Set up your company's dedicated instance</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="companyName">Company Name</Label>
-                <Input
-                  id="companyName"
-                  value={companyName}
-                  onChange={(e) => handleCompanyNameChange(e.target.value)}
-                  placeholder="Enter company name"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="slug">URL Slug</Label>
-                <Input
-                  id="slug"
-                  value={slug}
-                  onChange={(e) => setSlug(e.target.value)}
-                  placeholder="url-friendly-name"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="plan">Plan</Label>
-                <Select value={plan} onValueChange={setPlan}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="basic">Basic - $49/month</SelectItem>
-                    <SelectItem value="professional">Professional - $99/month</SelectItem>
-                    <SelectItem value="enterprise">Enterprise - $199/month</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <Button className="w-full" size="lg">
-                Create Tenant Instance
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* URL Preview */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Globe className="h-5 w-5" />
-                Access URLs
-              </CardTitle>
-              <CardDescription>Different ways to access your company instance</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-3">
-                <div>
-                  <Label className="text-sm font-medium">Primary URL (Subdomain)</Label>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Input value={tenantUrls.primary} readOnly className="text-sm" />
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => copyToClipboard(tenantUrls.primary, 'Primary URL')}
-                    >
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => openUrl(tenantUrls.primary)}>
-                      <ExternalLink className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Recommended for production use
-                  </p>
-                </div>
-
-                {import.meta.env.DEV && tenantUrls.primaryDev && (
-                  <div>
-                    <Label className="text-sm font-medium">Development URL (Replit)</Label>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Input value={tenantUrls.primaryDev} readOnly className="text-sm" />
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => copyToClipboard(tenantUrls.primaryDev!, 'Development URL')}
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => openUrl(tenantUrls.primaryDev!)}
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      For testing and development
-                    </p>
-                  </div>
-                )}
-
-                {import.meta.env.DEV && tenantUrls.current && (
-                  <div>
-                    <Label className="text-sm font-medium">Local Development (Current)</Label>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Input value={tenantUrls.current} readOnly className="text-sm" />
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => copyToClipboard(tenantUrls.current!, 'Development URL')}
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => (window.location.href = '/')}
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Currently active environment
-                    </p>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Feature Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Users className="h-5 w-5" />
-                Isolated Data
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Each tenant has completely isolated data with row-level security
-              </p>
-              <Badge variant="secondary" className="mt-2">
-                Multi-tenant
-              </Badge>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Globe className="h-5 w-5" />
-                Subdomain Routing
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Clean, professional subdomain URLs for each company tenant
-              </p>
-              <Badge variant="secondary" className="mt-2">
-                Primary Method
-              </Badge>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Shield className="h-5 w-5" />
-                Role-based Access
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Comprehensive RBAC with department-level permissions
-              </p>
-              <Badge variant="secondary" className="mt-2">
-                Secure
-              </Badge>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Current Status */}
+      <div className="space-y-6 max-w-3xl">
         <Card>
           <CardHeader>
-            <CardTitle>Current Demo Tenant Status</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Rocket className="h-5 w-5" />
+              New organisations sign up themselves
+            </CardTitle>
             <CardDescription>
-              You're currently viewing the Printyx Demo tenant instance
+              Signing up creates the tenant, and the person who signs up becomes its Company Admin.
+              Tenants are not created from this screen.
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div>
-                <Label className="text-sm text-muted-foreground">Tenant ID</Label>
-                <p className="font-mono text-sm">550e8400-e29b-41d4-a716-446655440000</p>
-              </div>
-              <div>
-                <Label className="text-sm text-muted-foreground">Slug</Label>
-                <p className="font-medium">printyx-demo</p>
-              </div>
-              <div>
-                <Label className="text-sm text-muted-foreground">Plan</Label>
-                <Badge>Enterprise</Badge>
-              </div>
-              <div>
-                <Label className="text-sm text-muted-foreground">Status</Label>
-                <Badge variant="secondary">Active</Badge>
-              </div>
+          <CardContent className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Input value={signupUrl} readOnly aria-label="Signup link" className="text-sm" />
+              <Button variant="outline" size="sm" onClick={copy} aria-label="Copy signup link">
+                <Copy className="h-4 w-4" />
+              </Button>
             </div>
+            <Button asChild variant="outline">
+              <Link href={SIGNUP_PATH}>
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Open signup
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Plans</CardTitle>
+            <CardDescription>What a new organisation is offered at signup</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-2 text-sm">
+              {PRICING_PLANS.map((p) => (
+                <li key={p.name} className="flex justify-between border-b pb-2 last:border-b-0">
+                  <span>{p.name}</span>
+                  <span className="text-muted-foreground">
+                    {formatCurrencyWhole(p.monthlyPrice / 100)}/month for the tenant,{' '}
+                    {p.maxUsers === 'unlimited' ? 'unlimited users' : `up to ${p.maxUsers} users`}
+                  </span>
+                </li>
+              ))}
+            </ul>
           </CardContent>
         </Card>
       </div>
