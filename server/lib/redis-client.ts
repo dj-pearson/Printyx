@@ -269,7 +269,12 @@ export async function initCache(): Promise<CacheClient> {
 
   try {
     // Dynamically import ioredis (allows graceful fallback if not installed)
-    const Redis = (await import('ioredis')).default;
+    // ioredis is deliberately NOT a dependency: with REDIS_URL unset the
+    // in-memory cache is used and this line never runs. A non-literal
+    // specifier keeps tsc from demanding its types; a missing package still
+    // throws here and falls back below.
+    const optionalModule = 'ioredis';
+    const Redis = (await import(optionalModule)).default;
 
     const redisOptions: any = {
       retryDelayOnFailover: 1000,
