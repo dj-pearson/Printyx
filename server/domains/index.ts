@@ -13,7 +13,8 @@ export * as ProductsDomain from './products';
 export * as WarehouseDomain from './warehouse';
 export * as ServiceDomain from './service';
 export * as MobileDomain from './mobile';
-export * as ReportingDomain from './reporting';
+// ReportingDomain: domains/reporting.ts holds only a comment (its routers were
+// retired), so there is nothing to re-export.
 export * as AdminDomain from './admin';
 export * as SecurityDomain from './security';
 export * as KnowledgeDomain from './knowledge';

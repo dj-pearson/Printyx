@@ -337,7 +337,8 @@ export async function checkCoreWebVitalsWithAPI(
 export function extractPageFacts(html: string): PageFacts {
   const $ = cheerio.load(html);
 
-  const attr = (el: cheerio.AnyNode, name: string): string | null => {
+  // cheerio no longer exports AnyNode; take the element type from $ itself.
+  const attr = (el: Parameters<typeof $>[0], name: string): string | null => {
     const value = $(el).attr(name);
     return value === undefined ? null : value;
   };

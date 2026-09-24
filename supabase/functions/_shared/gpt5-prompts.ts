@@ -210,7 +210,6 @@ export function buildResponsesRequest(
   previousResponseId?: string,
 ): Record<string, any> {
   const requestData: Record<string, any> = {
-    model: config.model,
     input,
     ...config,
   };

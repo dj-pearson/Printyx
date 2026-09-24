@@ -406,7 +406,7 @@ export function performanceMiddleware() {
     const marks: Record<string, number> = {};
 
     // Add performance utilities to request
-    (req as Request & { perf: typeof perfUtils }).perf = {
+    const perfUtils = {
       mark: (name: string) => {
         marks[name] = Date.now();
       },
@@ -417,8 +417,7 @@ export function performanceMiddleware() {
       },
       getTimings: () => ({ ...timings }),
     };
-
-    const perfUtils = (req as Request & { perf: typeof perfUtils }).perf;
+    (req as Request & { perf: typeof perfUtils }).perf = perfUtils;
 
     res.on('finish', () => {
       // Log performance metrics if there are any
