@@ -8,7 +8,6 @@
 import React, { createContext, useContext, useMemo, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSupabaseAuth, type AuthUser } from '@/hooks/useSupabaseAuth';
-import { config } from '@/lib/config';
 
 interface AuthContextValue {
   user: AuthUser | null;
@@ -18,29 +17,10 @@ interface AuthContextValue {
   // Auth methods
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-  signup: (data: SignupData) => Promise<void>;
+  signup: (email: string, password: string, metadata?: Record<string, unknown>) => Promise<unknown>;
   resetPassword: (email: string) => Promise<void>;
   updatePassword: (newPassword: string) => Promise<void>;
   getAccessToken: () => Promise<string | null>;
-}
-
-interface SignupData {
-  email: string;
-  password: string;
-  firstName: string;
-  lastName: string;
-  companyName: string;
-  industry?: string;
-  companySize?: string;
-  phone?: string;
-  address?: string;
-  city?: string;
-  state?: string;
-  zip?: string;
-  country?: string;
-  timezone?: string;
-  planSlug?: string;
-  billingCycle?: 'monthly' | 'annual';
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -49,50 +29,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
   const supabaseAuth = useSupabaseAuth();
 
-  // Signup via Edge Function (creates tenant + admin user)
-  const signup = useCallback(async (data: SignupData) => {
-    const functionsUrl = config.supabase.functionsUrl;
-
-    if (!functionsUrl) {
-      throw new Error('Edge Functions URL not configured. Set VITE_FUNCTIONS_URL.');
-    }
-
-    const response = await fetch(`${functionsUrl}/signup`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        email: data.email,
-        password: data.password,
-        metadata: {
-          companyName: data.companyName,
-          industry: data.industry,
-          companySize: data.companySize,
-          website: '',
-          firstName: data.firstName,
-          lastName: data.lastName,
-          phone: data.phone,
-          address: data.address,
-          city: data.city,
-          state: data.state,
-          zip: data.zip,
-          country: data.country || 'US',
-          timezone: data.timezone || 'America/New_York',
-          planSlug: data.planSlug || 'starter',
-          billingCycle: data.billingCycle || 'monthly',
-        },
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || errorData.error || 'Signup failed');
-    }
-
-    // Signup successful - user needs to verify email
-    return;
-  }, []);
+  // Round 231. This used to be a SECOND signup implementation taking one
+  // object - (data) => fetch(`${functionsUrl}/signup`) - while Signup.tsx, its
+  // only caller, calls signup(email, password, metadata). So `data` was the
+  // email string, data.email and data.password were undefined, and every
+  // self-service registration posted an empty email and password. LAUNCH-008
+  // fixed useSupabaseAuth.signup; the page never reached it. There is one
+  // implementation now, and the context passes it through.
+  const signup = supabaseAuth.signup;
 
   // Logout handler
   const logout = useCallback(async () => {
@@ -153,4 +97,4 @@ export function useAuthContext() {
 }
 
 // Re-export for convenience
-export type { AuthUser, SignupData };
+export type { AuthUser };
