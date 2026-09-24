@@ -1081,7 +1081,9 @@ function Router() {
                 <Route path="/sales-pipeline" component={SalesPipelineWorkflow} />
                 <Route path="/esignature-integration" component={ESignatureIntegration} />
                 <Route path="/service-hub" component={ServiceHub} />
-                <Route path="/apollo-leads" component={ApolloLeadEnrichment} />
+                <Route path="/apollo-leads">
+                  <ApolloLeadEnrichment />
+                </Route>
                 <Route
                   path="/preventive-maintenance-automation"
                   component={PreventiveMaintenanceAutomation}

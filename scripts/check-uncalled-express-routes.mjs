@@ -71,6 +71,8 @@ const update = process.argv.includes('--update-baseline');
 const CALLED_FROM_ELSEWHERE = {
   'csp-report':
     'The BROWSER posts here, via the CSP report-uri directive set in server/index.ts. No client source references it and none should.',
+  extension:
+    'printyx-extension/ (the Chrome extension) calls /api/extension/health and /leads/check-duplicate through its own api-client.js, building the base URL from stored configuration rather than getApiUrl. computeParity walks client/src only, so it cannot see that caller.',
 };
 
 const { expressServed, frontendCalls, edgeFns } = computeParity(repo);

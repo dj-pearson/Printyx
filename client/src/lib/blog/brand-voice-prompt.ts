@@ -21,7 +21,10 @@ export interface BrandVoiceLike {
   persona_description?: string | null;
   sample_corpus?: string | null;
   pov?: string | null;
-  voice_attributes?: Record<string, unknown> | null;
+  // `object`, not Record<string, unknown>: a named interface such as the
+  // settings page's VoiceAttributes has no index signature and is not
+  // assignable to a Record. The body only reads it through Object.entries.
+  voice_attributes?: object | null;
 }
 
 const POV_LABELS: Record<string, string> = {
