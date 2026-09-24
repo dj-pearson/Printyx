@@ -19,8 +19,27 @@ const CSRF_SECRET =
   process.env.SESSION_SECRET ||
   'printyx-csrf-secret-change-in-production';
 
-const { generateToken, doubleCsrfProtection } = doubleCsrf({
+/**
+ * Round 230. This was written against csrf-csrf v3 and the package is v4,
+ * which broke it three ways, each proven by mounting it on Express:
+ *  - v4 renamed generateToken to generateCsrfToken, so the token endpoint
+ *    threw "generateToken is not a function", caught it, and answered 200
+ *    with { csrfToken: null } - a success-shaped response carrying no token;
+ *  - v4 REQUIRES getSessionIdentifier, which was absent, and renamed the
+ *    token retriever to getCsrfTokenFromRequest, so the custom one was
+ *    ignored;
+ *  - csrf-csrf reads req.cookies and nothing in this app populates it (no
+ *    cookie-parser), so validating any cookie-authenticated mutation threw
+ *    "Cannot read properties of undefined" and answered 500.
+ * Bearer-authenticated requests - the web client's - skip CSRF entirely, which
+ * is why nobody saw it.
+ */
+const { generateCsrfToken, doubleCsrfProtection } = doubleCsrf({
   getSecret: () => CSRF_SECRET,
+  // Binds a token to the session that fetched it. express-session gives every
+  // request a sessionID; an empty string would make any token valid for any
+  // session, so a request without one is refused by the token handler below.
+  getSessionIdentifier: (req: Request) => (req as Request & { sessionID?: string }).sessionID ?? '',
   cookieName: '__csrf',
   cookieOptions: {
     httpOnly: true,
@@ -28,11 +47,29 @@ const { generateToken, doubleCsrfProtection } = doubleCsrf({
     secure: process.env.NODE_ENV === 'production',
     path: '/',
   },
-  getTokenFromRequest: (req: Request) => {
-    // Check X-CSRF-Token header first, then x-csrf-token (lowercase)
-    return (req.headers['x-csrf-token'] as string) || (req.headers['x-xsrf-token'] as string) || '';
-  },
+  getCsrfTokenFromRequest: (req: Request) =>
+    (req.headers['x-csrf-token'] as string) || (req.headers['x-xsrf-token'] as string) || '',
 });
+
+/** Parse the Cookie header into req.cookies when nothing else has. */
+export function ensureCookies(req: Request): Record<string, string> {
+  const r = req as Request & { cookies?: Record<string, string> };
+  if (r.cookies) return r.cookies;
+  const out: Record<string, string> = {};
+  for (const part of (req.headers.cookie ?? '').split(';')) {
+    const eq = part.indexOf('=');
+    if (eq <= 0) continue;
+    const name = part.slice(0, eq).trim();
+    const raw = part.slice(eq + 1).trim();
+    try {
+      out[name] = decodeURIComponent(raw);
+    } catch {
+      out[name] = raw;
+    }
+  }
+  r.cookies = out;
+  return out;
+}
 
 // Paths exempt from CSRF validation (webhooks, external callbacks)
 const EXEMPT_PATHS = [
@@ -77,6 +114,7 @@ export function csrfProtection(req: Request, res: Response, next: NextFunction) 
     return next();
   }
 
+  ensureCookies(req);
   doubleCsrfProtection(req, res, (err: any) => {
     if (err) {
       log.warn({ path: req.path, method: req.method, ip: req.ip }, 'CSRF validation failed');
@@ -94,13 +132,21 @@ export function csrfProtection(req: Request, res: Response, next: NextFunction) 
  * GET /api/csrf-token
  */
 export function csrfTokenHandler(req: Request, res: Response) {
+  if (!(req as Request & { sessionID?: string }).sessionID) {
+    return res.status(503).json({
+      message: 'CSRF tokens need a session and none is available',
+      code: 'CSRF_NO_SESSION',
+    });
+  }
   try {
-    const token = generateToken(req, res);
+    ensureCookies(req);
+    const token = generateCsrfToken(req, res);
     res.json({ csrfToken: token });
   } catch (error) {
+    // A 200 with a null token read as success; say it failed.
     log.error('Error generating CSRF token:', error);
-    res.json({ csrfToken: null });
+    res.status(500).json({ message: 'Could not generate a CSRF token', code: 'CSRF_ERROR' });
   }
 }
 
-export { generateToken };
+export { generateCsrfToken };
