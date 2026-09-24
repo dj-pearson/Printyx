@@ -34,8 +34,11 @@ import { WarehouseReportingService } from './warehouse-reporting-service';
 import { ServiceSupervisorReportingService } from './service-supervisor-reporting-service';
 import type { EnhancedUserContext } from '../middleware/enhanced-rbac-middleware';
 
+// Matches server/services/email-service.ts, whose method is `send`. This
+// declared `sendEmail`, so the alert path called a method that does not exist
+// (round 253).
 interface EmailService {
-  sendEmail(options: {
+  send(options: {
     to: string;
     subject: string;
     html: string;
@@ -47,10 +50,9 @@ interface EmailService {
 let emailService: EmailService | null = null;
 
 async function getEmailService(): Promise<EmailService> {
-  if (!emailService) {
-    const { default: service } = await import('./email-service');
-    emailService = service;
-  }
+  // email-service has no default export; the instance is `emailService`.
+  // Destructuring `default` gave undefined, so every alert email threw.
+  emailService ??= (await import('./email-service')).emailService;
   return emailService;
 }
 
@@ -71,7 +73,7 @@ export class TeamAlertService {
         .where(
           and(
             eq(alertConfigurations.tenantId, userContext.tenantId),
-            eq(alertConfigurations.userId, userContext.userId),
+            eq(alertConfigurations.userId, userContext.id),
             eq(alertConfigurations.enabled, true),
           ),
         );
@@ -173,7 +175,7 @@ export class TeamAlertService {
         .where(
           and(
             eq(alertConfigurations.tenantId, userContext.tenantId),
-            eq(alertConfigurations.userId, userContext.userId),
+            eq(alertConfigurations.userId, userContext.id),
             eq(alertConfigurations.enabled, true),
           ),
         );
@@ -377,7 +379,7 @@ export class TeamAlertService {
 
       // Send to all recipients
       for (const recipient of recipients) {
-        const result = await emailSvc.sendEmail({
+        const result = await emailSvc.send({
           to: recipient,
           subject: `🚨 Team Alert: ${alert.title}`,
           html,

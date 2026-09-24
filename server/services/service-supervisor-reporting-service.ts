@@ -1,3 +1,10 @@
+/**
+ * ROUND 253: the "would work if wired" premise does not hold for this file.
+ * Its raw SQL names camelCase columns without quotes - sc.tenantId,
+ * te.userId, l.tenantId and more - which Postgres folds to lowercase
+ * (tenantid, userid) and cannot find, so every query here is a 42703. Wiring
+ * it means rewriting the SQL, not just mounting it.
+ */
 // =====================================================================
 // SERVICE SUPERVISOR REPORTING SERVICE
 // Business logic for service supervisor reports (Level 3 - Reports 29-32)
@@ -599,8 +606,11 @@ export class ServiceSupervisorReportingService {
       csatTrend: 'up' | 'down' | 'stable';
     };
   }> {
-    const cacheKey = `team-quick-stats-${userContext.userId}`;
-    const cached = ReportCache.get(cacheKey);
+    const cacheKey = `team-quick-stats-${userContext.id}`;
+    const cached =
+      ReportCache.get<
+        Awaited<ReturnType<typeof ServiceSupervisorReportingService.getTeamQuickStats>>
+      >(cacheKey);
     if (cached) return cached;
 
     const queryBuilder = new HierarchicalQueryBuilder(userContext);
