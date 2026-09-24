@@ -29,15 +29,48 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest, extractRecords } from '@/lib/queryClient';
-import type { JournalEntry } from '@shared/schema';
+import type { JournalEntry as JournalEntryRow } from '@shared/journal-entries-schema';
+
 import { todayLocalDate } from '@/lib/date-utils';
 import { useConfirm } from '@/components/ui/confirm-dialog';
+
+/**
+ * Round 233. The page imported JournalEntry from '@shared/schema', which does
+ * not export it, so the type was `any` and two defects went unseen:
+ *  - total_debit/total_credit are numeric columns, which PostgREST sends as
+ *    STRINGS ("100.00"), and the normalizer passed them through, so
+ *    `.toFixed(2)` threw on render the moment one entry existed;
+ *  - a Notes field was offered and posted, and journal_entries has no notes
+ *    column, so what a user typed there was discarded. It is removed.
+ */
+type JournalEntry = Omit<JournalEntryRow, 'totalDebit' | 'totalCredit'> & {
+  totalDebit: number;
+  totalCredit: number;
+};
+
+const amount = (v: unknown): number => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+};
+
+/** A journal_entries row as the page reads it; the totals as numbers. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function journalEntryFromRow(entry: any): JournalEntry {
+  return {
+    ...entry,
+    id: entry.id,
+    entryNumber: entry.entry_number || entry.entryNumber || '',
+    entryDate: entry.entry_date || entry.entryDate || '',
+    totalDebit: amount(entry.total_debit ?? entry.totalDebit),
+    totalCredit: amount(entry.total_credit ?? entry.totalCredit),
+    createdAt: entry.created_at || entry.createdAt || '',
+  };
+}
 
 // Form schema for journal entries
 const journalEntrySchema = z
@@ -49,7 +82,6 @@ const journalEntrySchema = z
     totalDebit: z.number().min(0, 'Total debit must be positive'),
     totalCredit: z.number().min(0, 'Total credit must be positive'),
     status: z.string().default('draft'),
-    notes: z.string().optional(),
   })
   .refine((data) => data.totalDebit === data.totalCredit, {
     message: 'Total debits must equal total credits',
@@ -68,19 +100,11 @@ export default function JournalEntries() {
   const confirm = useConfirm();
   const queryClient = useQueryClient();
 
-  const { data: entries = [], isLoading } = useQuery({
+  const { data: entries = [], isLoading } = useQuery<JournalEntry[]>({
     queryKey: ['/api/journal-entries'],
     queryFn: async () => {
       const response = await apiRequest('/api/journal-entries', 'GET');
-      return extractRecords(response).map((entry: any) => ({
-        ...entry,
-        id: entry.id,
-        entryNumber: entry.entry_number || entry.entryNumber || '',
-        entryDate: entry.entry_date || entry.entryDate || '',
-        totalDebit: entry.total_debit || entry.totalDebit || 0,
-        totalCredit: entry.total_credit || entry.totalCredit || 0,
-        createdAt: entry.created_at || entry.createdAt || '',
-      }));
+      return extractRecords(response).map(journalEntryFromRow);
     },
   });
 
@@ -94,7 +118,6 @@ export default function JournalEntries() {
       totalDebit: 0,
       totalCredit: 0,
       status: 'draft',
-      notes: '',
     },
   });
 
@@ -179,7 +202,6 @@ export default function JournalEntries() {
         totalDebit: entry.totalDebit,
         totalCredit: entry.totalCredit,
         status: entry.status,
-        notes: entry.notes || '',
       });
     } else {
       setEditingEntry(null);
@@ -394,24 +416,6 @@ export default function JournalEntries() {
                     />
                   </div>
 
-                  <FormField
-                    control={form.control}
-                    name="notes"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Notes</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Additional notes or details..."
-                            className="resize-none"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
                   <div className="flex justify-end space-x-2 pt-4">
                     <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                       Cancel
@@ -598,13 +602,6 @@ export default function JournalEntries() {
                   <h3 className="font-medium text-gray-900">Description</h3>
                   <p className="mt-1 text-sm text-gray-600">{viewingEntry.description}</p>
                 </div>
-
-                {viewingEntry.notes && (
-                  <div>
-                    <h3 className="font-medium text-gray-900">Notes</h3>
-                    <p className="mt-1 text-sm text-gray-600">{viewingEntry.notes}</p>
-                  </div>
-                )}
 
                 <div className="flex justify-end">
                   <Button variant="outline" onClick={() => setViewingEntry(null)}>

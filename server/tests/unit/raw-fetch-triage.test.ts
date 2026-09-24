@@ -68,9 +68,22 @@ describe('the summary cannot be read as the wrong fact', () => {
 });
 
 describe('every baselined entry is reachable and reasoned', () => {
-  it('the guard still classifies something, so this is not vacuous', () => {
+  it('the parse agrees with the counts the guard prints, so this is not vacuous', () => {
+    // Round 233: this was `live + dead > 5`, a floor on how much debt is left,
+    // which failed the moment an orphan holding one raw fetch was deleted.
+    // The property is that the guard ran and this parser read what it said:
+    // each section header states its own count, and the parse must match it.
+    const out = execFileSync('node', ['scripts/check-raw-api-fetch.mjs', '--list'], {
+      cwd: repo,
+      encoding: 'utf8',
+    });
+    const liveCount = Number(/LIVE[^\n]*\((\d+)\)/.exec(out)?.[1]);
+    const deadCount = Number(/DEAD[^\n]*\((\d+)\)/.exec(out)?.[1]);
+    expect(Number.isInteger(liveCount)).toBe(true);
+    expect(Number.isInteger(deadCount)).toBe(true);
     const { live, dead } = listed();
-    expect(live.length + dead.length).toBeGreaterThan(5);
+    expect(live.length).toBe(liveCount);
+    expect(dead.length).toBe(deadCount);
   });
 
   it("each one appears in the guard's own LIVE list", () => {
