@@ -30,7 +30,6 @@
     "server/routes-dod-enforcement.ts": 5,
     "server/routes-enhanced-rbac.ts": 35,
     "server/routes-enhanced-service.ts": 10,
-    "server/routes-intelligent-alerts.ts": 30,
     "server/routes-mobile-logs.ts": 2,
     "server/routes-platform-deals.ts": 18,
     "server/routes-products-crud.ts": 2,

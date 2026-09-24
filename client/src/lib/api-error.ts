@@ -16,7 +16,7 @@
  * here, because the thrown value is a plain Error and not an axios error, so
  * pages that tried to reach the server's reason got the generic fallback.
  *
- * WHY THE STRING IS STILL PARSED. `queryClient.ts` and `rbacQueryClient.ts`
+ * WHY THE STRING IS STILL PARSED. `queryClient.ts` (and callers elsewhere)
  * branch on `message.includes('403')` and `message.startsWith('404')` to decide
  * retries and returnNull behaviour, so the `NNN: ` prefix is load-bearing and
  * cannot be removed from `Error.message`. Instead the thrown Error now CARRIES
