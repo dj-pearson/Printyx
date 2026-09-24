@@ -922,7 +922,7 @@ export function CsvImportWizard({
                 <p className="text-muted-foreground">
                   {importJob?.validRows} records will be imported
                 </p>
-                <Button onClick={() => executeMutation.mutate()}>Start Import</Button>
+                <Button onClick={() => executeMutation.mutate({})}>Start Import</Button>
               </div>
             )}
           </div>

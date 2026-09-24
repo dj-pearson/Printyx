@@ -459,13 +459,21 @@ export function useVerifyCheckoutSession(sessionId: string | null) {
     queryFn: async () => {
       if (!sessionId) throw new Error('No session ID provided');
 
-      return await apiRequest(`/api/subscriptions/checkout/session/${sessionId}`);
+      const session = await apiRequest<{
+        id: string;
+        status: string;
+        paymentStatus: string;
+        customerEmail: string;
+        subscriptionId?: string;
+      }>(`/api/subscriptions/checkout/session/${sessionId}`);
+      // A verified session changes the plan, so the cached subscription is
+      // stale. This used to be a query-level onSuccess, which TanStack v5
+      // removed: it never ran, and a page using this hook would have shown
+      // the old plan after a successful checkout (round 237).
+      await queryClient.invalidateQueries({ queryKey: ['subscription'] });
+      return session;
     },
     enabled: !!sessionId,
-    onSuccess: () => {
-      // Invalidate subscription data to fetch updated status
-      queryClient.invalidateQueries({ queryKey: ['subscription'] });
-    },
   });
 }
 

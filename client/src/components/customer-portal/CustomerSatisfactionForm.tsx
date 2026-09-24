@@ -624,7 +624,7 @@ export const CustomerSatisfactionForm = ({
             <div>
               <DialogTitle className="flex items-center">
                 <MessageSquare className="h-5 w-5 text-blue-500 mr-2" />
-                {survey.templateName || 'Customer Satisfaction Survey'}
+                Customer Satisfaction Survey
               </DialogTitle>
               <p className="text-sm text-gray-600 mt-1">
                 Question {currentQuestionIndex + 1} of {questions.length}

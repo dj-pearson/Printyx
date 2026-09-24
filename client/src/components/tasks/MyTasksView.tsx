@@ -47,14 +47,14 @@ import {
 } from 'lucide-react';
 import { EmptyState } from '@/components/ui/empty-state';
 import { formatDistanceToNow, isPast, isToday, format } from 'date-fns';
-import { EditTaskDialog } from './TaskDialogs';
+import { EditTaskDialog, type TaskPriority, type TaskStatus } from './TaskDialogs';
 
 interface Task {
   id: string;
   title: string;
   description?: string;
-  status: string;
-  priority: string;
+  status: TaskStatus;
+  priority: TaskPriority;
   dueDate?: string;
   assignedTo?: string;
   completionPercentage: number;

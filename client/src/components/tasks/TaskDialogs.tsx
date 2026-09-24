@@ -48,12 +48,15 @@ import { toDateInputValue } from '@/lib/date-utils';
  * customerId, dealId and handoffId replace them: what the task is ABOUT, which
  * is the thing tasks never recorded.
  */
+export type TaskStatus = 'todo' | 'in_progress' | 'review' | 'completed' | 'cancelled';
+export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
+
 interface Task {
   id: string;
   title: string;
   description?: string;
-  status: 'todo' | 'in_progress' | 'review' | 'completed' | 'cancelled';
-  priority: 'low' | 'medium' | 'high' | 'urgent';
+  status: TaskStatus;
+  priority: TaskPriority;
   assignedTo?: string;
   projectId?: string;
   customerId?: string;
@@ -61,7 +64,9 @@ interface Task {
   handoffId?: string;
   dueDate?: string;
   estimatedHours?: number;
-  tags: string[];
+  // Optional: the edit dialog reads `task.tags || []`, and MyTasksView's rows
+  // carry none.
+  tags?: string[];
 }
 
 /** A record a task can be about, for the related-record picker. */

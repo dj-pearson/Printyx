@@ -98,7 +98,8 @@ export interface OrganizationSchema {
   sameAs?: string[]; // Social media profiles
   contactPoint?: Array<{
     '@type': 'ContactPoint';
-    telephone: string;
+    // Optional in schema.org; an email-only contact point is valid.
+    telephone?: string;
     contactType: string;
     email?: string;
   }>;

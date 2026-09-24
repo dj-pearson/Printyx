@@ -177,7 +177,7 @@ class MobileLogger {
   /**
    * Log a React ErrorBoundary catch
    */
-  logErrorBoundary(error: Error, errorInfo?: { componentStack?: string }) {
+  logErrorBoundary(error: Error, errorInfo?: { componentStack?: string | null }) {
     this.error('ErrorBoundary caught', {
       message: error.message,
       stack: error.stack?.slice(0, 500),
