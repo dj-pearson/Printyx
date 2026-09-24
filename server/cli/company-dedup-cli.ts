@@ -114,7 +114,8 @@ program
   .command('merge')
   .description('Execute merge of duplicate companies (DESTRUCTIVE - backs up recommended)')
   .requiredOption('-t, --tenant <id>', 'Tenant ID (required)')
-  .option('-u, --user <id>', 'User ID performing the merge', 'cli-user')
+  // No default: merge history records a user uuid, and 'cli-user' is not one.
+  .requiredOption('-u, --user <id>', 'User ID (uuid) performing the merge')
   .option('--confirm', 'Confirm execution without prompt')
   .action(async (options) => {
     try {

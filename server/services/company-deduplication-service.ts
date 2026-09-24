@@ -160,6 +160,8 @@ export async function findDuplicateGroups(tenantId: string): Promise<Deduplicati
  * - Logs merge history
  * - Deletes duplicate company records
  */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function mergeCompanies(
   survivorId: string,
   duplicateIds: string[],
@@ -174,6 +176,21 @@ export async function mergeCompanies(
       contactsMoved: 0,
       activitiesMoved: 0,
       enhancedContactsMoved: 0,
+    };
+  }
+
+  // merged_by is a NOT NULL uuid. 'system' and the CLI's old 'cli-user'
+  // default could never be stored, so refuse before anything moves.
+  if (!performedBy || !UUID_RE.test(performedBy)) {
+    return {
+      success: false,
+      survivorId,
+      mergedCompanyIds: [],
+      contactsMoved: 0,
+      activitiesMoved: 0,
+      enhancedContactsMoved: 0,
+      error:
+        'A merge must be performed by a user id (uuid) so the merge history can record who did it',
     };
   }
 
@@ -202,70 +219,92 @@ export async function mergeCompanies(
       .from(companies)
       .where(and(inArray(companies.id, duplicateIds), eq(companies.tenantId, tenantId)));
 
-    // 1. Move company_contacts to survivor
-    const contactsResult = await db
-      .update(companyContacts)
-      .set({ companyId: survivorId, updatedAt: new Date() })
-      .where(
-        and(
-          inArray(companyContacts.companyId, duplicateIds),
-          eq(companyContacts.tenantId, tenantId),
-        ),
-      )
-      .returning({ id: companyContacts.id });
+    const { contactsMoved, activitiesMoved, enhancedContactsMoved } = await db.transaction(
+      async (tx) => {
+        // 1. Move company_contacts to survivor
+        const contactsResult = await tx
+          .update(companyContacts)
+          .set({ companyId: survivorId, updatedAt: new Date() })
+          .where(
+            and(
+              inArray(companyContacts.companyId, duplicateIds),
+              eq(companyContacts.tenantId, tenantId),
+            ),
+          )
+          .returning({ id: companyContacts.id });
 
-    const contactsMoved = contactsResult.length;
+        const contactsMoved = contactsResult.length;
 
-    // 2. Move business_record_activities to survivor
-    const activitiesResult = await db
-      .update(businessRecordActivities)
-      .set({ companyId: survivorId, updatedAt: new Date() })
-      .where(
-        and(
-          inArray(businessRecordActivities.companyId, duplicateIds),
-          eq(businessRecordActivities.tenantId, tenantId),
-        ),
-      )
-      .returning({ id: businessRecordActivities.id });
+        // 2. Move business_record_activities to survivor
+        const activitiesResult = await tx
+          .update(businessRecordActivities)
+          .set({ companyId: survivorId, updatedAt: new Date() })
+          .where(
+            and(
+              inArray(businessRecordActivities.companyId, duplicateIds),
+              eq(businessRecordActivities.tenantId, tenantId),
+            ),
+          )
+          .returning({ id: businessRecordActivities.id });
 
-    const activitiesMoved = activitiesResult.length;
+        const activitiesMoved = activitiesResult.length;
 
-    // 3. Update enhanced_contacts references
-    const enhancedResult = await db
-      .update(enhancedContacts)
-      .set({ companyId: survivorId, updatedAt: new Date() })
-      .where(
-        and(
-          inArray(enhancedContacts.companyId, duplicateIds),
-          eq(enhancedContacts.tenantId, tenantId),
-        ),
-      )
-      .returning({ id: enhancedContacts.id });
+        // 3. Update enhanced_contacts references
+        const enhancedResult = await tx
+          .update(enhancedContacts)
+          .set({ companyId: survivorId, updatedAt: new Date() })
+          .where(
+            and(
+              inArray(enhancedContacts.companyId, duplicateIds),
+              eq(enhancedContacts.tenantId, tenantId),
+            ),
+          )
+          .returning({ id: enhancedContacts.id });
 
-    const enhancedContactsMoved = enhancedResult.length;
+        const enhancedContactsMoved = enhancedResult.length;
 
-    // 4. Log merge history for each duplicate
-    for (const duplicate of duplicateCompanies) {
-      await db.insert(contactMergeHistory).values({
-        tenantId,
-        sourceContactId: duplicate.id,
-        targetContactId: survivorId,
-        mergedFields: JSON.stringify({
-          type: 'company_merge',
-          sourceBusinessName: duplicate.businessName,
-          targetBusinessName: survivor.businessName,
-          contactsMoved: contactsMoved,
-          activitiesMoved: activitiesMoved,
-        }),
-        mergedBy: performedBy || 'system',
-        mergedAt: new Date(),
-      });
-    }
+        // 4. Log merge history for each duplicate. This named sourceContactId,
+        // targetContactId and mergedFields - none of them columns - and omitted
+        // the required entity_type, surviving_record_id and merged_record_id, so it
+        // always failed; and it failed AFTER steps 1-3 had moved every contact and
+        // activity and BEFORE step 5, leaving the duplicates in place with their
+        // records moved away (round 246). The whole merge is one transaction now.
+        for (const duplicate of duplicateCompanies) {
+          await tx.insert(contactMergeHistory).values({
+            tenantId,
+            entityType: 'company',
+            survivingRecordId: survivorId,
+            mergedRecordId: duplicate.id,
+            mergedRecordSnapshot: duplicate,
+            relatedUpdates: [
+              {
+                tableName: 'company_contacts',
+                recordCount: contactsMoved,
+                fieldUpdated: 'company_id',
+                oldValue: duplicate.id,
+                newValue: survivorId,
+              },
+              {
+                tableName: 'business_record_activities',
+                recordCount: activitiesMoved,
+                fieldUpdated: 'company_id',
+                oldValue: duplicate.id,
+                newValue: survivorId,
+              },
+            ],
+            mergeType: 'bulk',
+            mergedBy: performedBy!,
+          });
+        }
 
-    // 5. Delete duplicate company records
-    await db
-      .delete(companies)
-      .where(and(inArray(companies.id, duplicateIds), eq(companies.tenantId, tenantId)));
+        // 5. Delete duplicate company records
+        await tx
+          .delete(companies)
+          .where(and(inArray(companies.id, duplicateIds), eq(companies.tenantId, tenantId)));
+
+        return { contactsMoved, activitiesMoved, enhancedContactsMoved };
+      },
+    );
 
     return {
       success: true,
