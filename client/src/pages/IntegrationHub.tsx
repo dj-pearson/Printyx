@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { MainLayout } from '@/components/layout/main-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -347,6 +347,12 @@ const renderStarRating = (rating: number | undefined) => {
 };
 
 export default function IntegrationHub() {
+  const [tab, setTab] = useState('marketplace');
+  const tabsRef = useRef<HTMLDivElement>(null);
+  const showTab = (value: string) => {
+    setTab(value);
+    tabsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
   const [selectedTab, setSelectedTab] = useState('overview');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -507,12 +513,17 @@ export default function IntegrationHub() {
               Refresh
             </Button>
 
-            <Button variant="outline">
+            {/* Round 217: Monitor and Add Integration had no handler. They
+                open the tab where that work already happens. */}
+            <Button variant="outline" onClick={() => showTab('active')}>
               <Eye className="h-4 w-4 mr-2" />
               Monitor
             </Button>
 
-            <Button className="bg-blue-600 hover:bg-blue-700">
+            <Button
+              className="bg-blue-600 hover:bg-blue-700"
+              onClick={() => showTab('marketplace')}
+            >
               <Plus className="h-4 w-4 mr-2" />
               Add Integration
             </Button>
@@ -616,7 +627,7 @@ export default function IntegrationHub() {
               </Card>
             </div>
 
-            <Tabs defaultValue="marketplace" className="space-y-6">
+            <Tabs ref={tabsRef} value={tab} onValueChange={setTab} className="space-y-6">
               <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1 sm:gap-0">
                 <TabsTrigger value="marketplace" className="text-xs sm:text-sm px-2 py-2">
                   API
