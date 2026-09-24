@@ -25,6 +25,7 @@
  * the screen already falls back to the word "Service".
  */
 
+/** Dates arrive as text from PostgREST and as Date objects from Drizzle. */
 export interface ServiceTicketHistoryRow {
   id?: string | null;
   ticket_number?: string | null;
@@ -35,10 +36,10 @@ export interface ServiceTicketHistoryRow {
   status?: string | null;
   resolution_notes?: string | null;
   resolutionNotes?: string | null;
-  created_at?: string | null;
-  createdAt?: string | null;
-  resolved_at?: string | null;
-  resolvedAt?: string | null;
+  created_at?: string | Date | null;
+  createdAt?: string | Date | null;
+  resolved_at?: string | Date | null;
+  resolvedAt?: string | Date | null;
 }
 
 export interface ServiceHistoryEntry {

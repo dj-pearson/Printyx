@@ -101,7 +101,12 @@ interface MaintenanceAppointment {
  * been. Removing it is behaviour-preserving; leaving it implied a second auth
  * mechanism that does not exist.
  */
-export const MaintenanceSchedulingComponent = () => {
+export const MaintenanceSchedulingComponent = ({
+  equipmentId,
+}: {
+  /** Preselected machine, when the customer arrived from its health card. */
+  equipmentId?: string;
+} = {}) => {
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [isBookingDialogOpen, setIsBookingDialogOpen] = useState(false);
   const [isRescheduleDialogOpen, setIsRescheduleDialogOpen] = useState(false);
@@ -117,6 +122,7 @@ export const MaintenanceSchedulingComponent = () => {
       duration: 60,
       contactMethod: 'email',
       maintenanceType: 'routine_maintenance',
+      equipmentId,
     },
   });
 

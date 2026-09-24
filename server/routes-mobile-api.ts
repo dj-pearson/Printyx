@@ -5,6 +5,7 @@
  * Provides: service-tickets list/stats, equipment CRUD, time tracking, ticket status updates.
  */
 
+import { toServiceHistory } from '@shared/service-history';
 import { Router, type Request, type Response } from 'express';
 import { db } from './db';
 import {
@@ -220,7 +221,10 @@ router.get('/api/equipment/:id/service-history', async (req: any, res) => {
       .orderBy(desc(serviceTickets.createdAt))
       .limit(50);
 
-    res.json(tickets);
+    // Round 224: this answered raw Drizzle rows while production answers
+    // toServiceHistory entries, so one screen read two shapes depending on the
+    // host. Both go through the one mapper now.
+    res.json(toServiceHistory(tickets));
   } catch (error: any) {
     log.error('Error fetching equipment service history:', error);
     res.status(500).json({ message: 'Failed to fetch service history' });

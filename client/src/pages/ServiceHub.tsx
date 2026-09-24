@@ -786,7 +786,7 @@ export default function ServiceHub() {
                               size="sm"
                               variant="outline"
                               onClick={() => {
-                                setSelectedCustomerId(ticket.customerId || 'default-customer');
+                                setSelectedCustomerId(ticket.customerId || null);
                                 setShowEquipmentProfile(true);
                               }}
                               className="flex items-center gap-1"
@@ -956,7 +956,7 @@ export default function ServiceHub() {
 
         {/* Customer Equipment Profile Modal */}
         <CustomerEquipmentProfile
-          customerId={selectedCustomerId || ''}
+          customerId={selectedCustomerId}
           isOpen={showEquipmentProfile}
           onClose={() => {
             setShowEquipmentProfile(false);
