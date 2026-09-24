@@ -388,7 +388,23 @@ router.post('/corrections', async (req: any, res) => {
 
     const { emailId, aiParsedData, correctedData, correctionReason } = validation.data;
 
+    // tenant_id and corrected_by are NOT NULL and this insert supplied neither
+    // reliably - it had no tenantId at all, so every correction failed - and it
+    // accepted any emailId, including another tenant's (round 248).
+    if (!tenantId || !userId) {
+      return res.status(401).json({ message: 'Authentication required', code: 'UNAUTHENTICATED' });
+    }
+    const [owned] = await db
+      .select({ id: processedEmails.id })
+      .from(processedEmails)
+      .where(and(eq(processedEmails.emailId, emailId), eq(processedEmails.tenantId, tenantId)))
+      .limit(1);
+    if (!owned) {
+      return res.status(404).json({ message: 'Email not found', code: 'EMAIL_NOT_FOUND' });
+    }
+
     await db.insert(parsingCorrections).values({
+      tenantId,
       emailId,
       aiParsedData,
       correctedData,

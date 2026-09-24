@@ -57,7 +57,6 @@ import {
   registerTechnicianManagementRoutes,
   serviceDispatchRouter,
   equipmentDisposalRoutes,
-  enhancedServiceRoutes,
 } from './domains/service';
 
 import {
@@ -727,7 +726,13 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   // supabase/functions/predictive-maintenance/ matches PredictiveMaintenanceHub.tsx
   // key for key on both the dashboard overview and the parts forecast, with its
   // AI-prediction degradation disclosed in the payload.
-  app.use('/api', enhancedServiceRoutes);
+  // Round 248: routes-enhanced-service.ts (mounted at the /api root) retired.
+  // Its five /service-tickets/:id handlers were shadowed by the service-tickets
+  // proxy (the mobile field-service flow they sketched is served since round
+  // 113 on /api/mobile); /parts-requests/:id/approve|reject updated by id with
+  // no tenant filter; /phone-tickets/* read the tenant from an x-tenant-id
+  // header; and /service-requests had no caller. No client tree and no edge
+  // function named any of its paths.
 
   // ─── Reporting ────────────────────────────────────────────────────
   // All persona-scoped + second-tier reports live at /api/reports/* via the
