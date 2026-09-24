@@ -21,7 +21,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Palette,
   Upload,
-  Download,
   Copy,
   Trash2,
   Plus,
@@ -1009,14 +1008,6 @@ export default function BrandManager({
                   <Smartphone className="h-4 w-4" />
                 </Button>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex-1 sm:flex-initial touch-manipulation active:scale-[0.98] min-h-[44px]"
-              >
-                <Download className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">Export</span>
-              </Button>
             </div>
           </div>
         </div>
