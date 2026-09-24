@@ -1,6 +1,6 @@
 {
   "note": "UI-DEAD-BUTTONS-001. A <Button> whose label carries an action verb and which has no onClick, type=\"submit\", asChild, href or form, and is not inside a <form> or a trigger wrapper. ANCESTRY IS RESOLVED BY A TAG WALK, not a line window: the unhardened predecessor excluded anything within 15 lines of a form or trigger, which let a submit button declared thirty lines below its form read as dead and let a button merely following a </form> read as alive. Every entry carries a VERDICT and a REASON - wired, deleted, by-design, or unexamined. \"unexamined\" is permitted and is the point: saying nobody has looked beats implying somebody has, and this list is a WORKLIST rather than settled debt. Round 96 built the guard and resolved two entries; the remaining 93 are product calls about whether each feature should exist, which is the rest of the story. Shrink this list; see scripts/check-dead-buttons.mjs.",
-  "count": 21,
+  "count": 20,
   "triage": {
     "client/src/components/CustomerEquipmentProfile.tsx:Schedule": {
       "file": "client/src/components/CustomerEquipmentProfile.tsx",
@@ -41,12 +41,6 @@
     "client/src/components/proposal-builder/QuoteTransformer.tsx:Save Template": {
       "file": "client/src/components/proposal-builder/QuoteTransformer.tsx",
       "label": "Save Template",
-      "verdict": "unexamined",
-      "reason": ""
-    },
-    "client/src/components/service/TechnicianTicketWorkflow.tsx:Add Notes": {
-      "file": "client/src/components/service/TechnicianTicketWorkflow.tsx",
-      "label": "Add Notes",
       "verdict": "unexamined",
       "reason": ""
     },
