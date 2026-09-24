@@ -194,7 +194,7 @@ export default async function handler(req: Request) {
     // category authentication|authorization|data_access|data_modification|
     // system|security, stamped with `timestamp` (not created_at).
     if (req.method === 'GET' && endpoint === 'security-alerts') {
-      const { data: alerts } = await admin
+      const { data: alerts, error: alertsError } = await admin
         .from('audit_logs')
         .select(
           'id, action, resource, severity, category, tenant_id, user_id, timestamp, additional_context',
@@ -202,6 +202,14 @@ export default async function handler(req: Request) {
         .in('category', ['security', 'authentication', 'authorization'])
         .order('timestamp', { ascending: false })
         .limit(50);
+
+      // Round 218: the error was discarded, so a failed read answered [] and
+      // the security page said no events were recorded - a clean bill of
+      // health from a query that never ran.
+      if (alertsError) {
+        console.error('Error fetching security alerts:', alertsError);
+        return createCorsResponse({ error: 'Failed to fetch security alerts' }, 500, req);
+      }
 
       const rows = alerts ?? [];
       const tenantIds = [...new Set(rows.map((a: any) => a.tenant_id).filter(Boolean))];
