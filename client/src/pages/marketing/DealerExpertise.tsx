@@ -91,14 +91,6 @@ const DealerExpertise = () => {
                   Start Free Trial
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="text-lg px-10 py-7 border-2 border-white text-white hover:bg-white hover:text-blue-600"
-                  onClick={() => (window.location.href = '/login')}
-                >
-                  Schedule Demo
-                </Button>
               </div>
             </div>
           </div>
@@ -431,14 +423,6 @@ const DealerExpertise = () => {
               >
                 Start Free Trial
                 <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                className="text-lg px-10 py-7 border-2 border-white text-white hover:bg-white hover:text-blue-600"
-                onClick={() => (window.location.href = '/login')}
-              >
-                Schedule Demo
               </Button>
             </div>
           </div>
