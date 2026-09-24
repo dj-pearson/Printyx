@@ -18,7 +18,7 @@
  *   escalateDispute named its third parameter userId while writing it straight
  *   into escalated_to, so the argument means the opposite of what it was called.
  */
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({ queries: [] as { text: string; values: unknown[] }[] }));
 
@@ -35,7 +35,20 @@ vi.mock('../../db', async () => {
   return { db: drizzle(client as never) };
 });
 
-import { storage } from '../../storage';
+// Round 256: this file failed intermittently in full runs only, with
+// `storage.resolveAnomaly is not a function` - the storage it got was the
+// two-method stub auth-hardening.test.ts mocks, leaked across files in the
+// single fork (vitest.config.ts singleFork). It never reproduced with the two
+// files alone, so the fix does not depend on ordering: unmock storage here,
+// reset the registry, and import the real module fresh. The db mock above is
+// kept - reset does not clear registered mocks.
+vi.unmock('../../storage');
+let storage: typeof import('../../storage').storage;
+beforeAll(async () => {
+  vi.resetModules();
+  storage = (await import('../../storage')).storage;
+  expect(typeof storage.resolveAnomaly).toBe('function');
+});
 
 const last = () => state.queries[state.queries.length - 1];
 

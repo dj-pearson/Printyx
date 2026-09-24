@@ -6,7 +6,6 @@ import {
   dataImportValidations,
   tenantHealthScores,
   onboardingAnalytics,
-  tenantCloneOperations,
   TenantOnboardingTemplate,
   TenantOnboardingSession,
   DataImportValidation,
@@ -58,26 +57,6 @@ export interface SetupIntegrationParams {
   tenantId?: string;
   integrationType: 'quickbooks' | 'salesforce' | 'email' | 'eautomate';
   configuration: any;
-}
-
-export interface CloneTenantParams {
-  sourceTenantId: string;
-  cloneSettings: {
-    organizationalStructure?: boolean;
-    roleAssignments?: boolean;
-    customFields?: boolean;
-    workflows?: boolean;
-    integrationSettings?: boolean;
-    emailTemplates?: boolean;
-    branding?: boolean;
-    sampleData?: boolean;
-  };
-  modifications: Array<{
-    field: string;
-    originalValue: any;
-    newValue: any;
-  }>;
-  initiatedBy: string;
 }
 
 // ========== TENANT ONBOARDING SERVICE ==========
@@ -152,9 +131,10 @@ export class TenantOnboardingService {
 
     let template: TenantOnboardingTemplate | null = null;
     if (templateId) {
-      template = await db.query.tenantOnboardingTemplates.findFirst({
-        where: eq(tenantOnboardingTemplates.id, templateId),
-      });
+      template =
+        (await db.query.tenantOnboardingTemplates.findFirst({
+          where: eq(tenantOnboardingTemplates.id, templateId),
+        })) ?? null;
 
       if (!template) {
         throw new Error(`Template not found: ${templateId}`);
@@ -1299,48 +1279,10 @@ export class TenantOnboardingService {
   }
 
   // ==================== TENANT CLONING ====================
-
-  /**
-   * Clone tenant configuration
-   */
-  static async cloneTenant(params: CloneTenantParams): Promise<{
-    operationId: string;
-    targetTenantId: string;
-  }> {
-    const { sourceTenantId, cloneSettings, modifications, initiatedBy } = params;
-
-    // TODO: Implement actual tenant cloning
-    // This would copy configuration from source to new tenant
-
-    const targetTenantId = `tenant_${Date.now()}`;
-
-    const [operation] = await db
-      .insert(tenantCloneOperations)
-      .values({
-        sourceTenantId,
-        targetTenantId,
-        cloneType: 'configuration_only',
-        cloneSettings,
-        modifications,
-        initiatedBy,
-        status: 'completed',
-        progressPercent: 100,
-        itemsCloned: {
-          organizationalUnits: 0,
-          roleTemplates: 0,
-          customFields: 0,
-          workflows: 0,
-          emailTemplates: 0,
-        },
-        startedAt: new Date(),
-        completedAt: new Date(),
-        duration: 5,
-      })
-      .returning();
-
-    return {
-      operationId: operation.id,
-      targetTenantId,
-    };
-  }
+  //
+  // cloneTenant was removed in round 256. It copied nothing - its body was a
+  // TODO - yet recorded a tenant_clone_operations row with status 'completed',
+  // progress 100 and an invented `tenant_<timestamp>` target id, and its route
+  // answered 201 success. A clone that reports success without cloning is a
+  // fabricated write outcome; the route now answers 501 until one is built.
 }

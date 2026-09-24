@@ -840,15 +840,20 @@ class LeadIntelligenceService {
             .select({
               id: businessRecords.id,
               companyName: businessRecords.companyName,
-              firstName: businessRecords.firstName,
-              lastName: businessRecords.lastName,
-              email: businessRecords.email,
+              // business_records has no first_name/last_name/email columns; a
+              // select naming them threw before the query ran, so this list of
+              // hot leads never loaded (round 256). The contact lives in the
+              // primary_contact_* columns.
+              contactName: businessRecords.primaryContactName,
+              email: businessRecords.primaryContactEmail,
               phone: businessRecords.phone,
               status: businessRecords.status,
               ownerId: businessRecords.ownerId,
             })
             .from(businessRecords)
-            .where(inArray(businessRecords.id, leadIds))
+            .where(
+              and(inArray(businessRecords.id, leadIds), eq(businessRecords.tenantId, tenantId)),
+            )
         : [];
 
     // Build a map for O(1) lookup
@@ -862,8 +867,7 @@ class LeadIntelligenceService {
           ? {
               id: lead.id,
               companyName: lead.companyName,
-              firstName: lead.firstName,
-              lastName: lead.lastName,
+              contactName: lead.contactName,
               email: lead.email,
               phone: lead.phone,
               status: lead.status,

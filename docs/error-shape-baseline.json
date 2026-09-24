@@ -36,7 +36,7 @@
     "server/routes-sample-data.ts": 7,
     "server/routes-subscriptions.ts": 70,
     "server/routes-technician-management.ts": 1,
-    "server/routes-tenant-onboarding.ts": 35,
+    "server/routes-tenant-onboarding.ts": 33,
     "server/routes-user-lifecycle.ts": 32,
     "server/routes-user-profile.ts": 6,
     "server/routes-validate.ts": 8,

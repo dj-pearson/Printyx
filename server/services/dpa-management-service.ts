@@ -134,8 +134,12 @@ export class DpaManagementService {
 
     // Validate status transition if status is being updated
     if (updates.status && updates.status !== existing.status) {
-      const currentStatusConfig = DPA_STATUSES[existing.status as DpaStatus];
-      if (!currentStatusConfig.allowedTransitions.includes(updates.status as any)) {
+      // A status missing from DPA_STATUSES used to throw a TypeError here; it
+      // allows no transition instead. The list is widened to string[] because
+      // a terminal status's empty tuple types as never[].
+      const allowed: readonly string[] =
+        DPA_STATUSES[existing.status as DpaStatus]?.allowedTransitions ?? [];
+      if (!allowed.includes(updates.status)) {
         throw new Error(`Cannot transition from ${existing.status} to ${updates.status}`);
       }
     }
@@ -204,13 +208,12 @@ export class DpaManagementService {
     }
     if (expiringWithinDays) {
       const futureDate = addDays(new Date(), expiringWithinDays);
-      conditions.push(
-        and(
-          eq(dataProcessingAgreements.status, 'active'),
-          lte(dataProcessingAgreements.expirationDate, futureDate),
-          gte(dataProcessingAgreements.expirationDate, new Date()),
-        ),
+      const expiring = and(
+        eq(dataProcessingAgreements.status, 'active'),
+        lte(dataProcessingAgreements.expirationDate, futureDate),
+        gte(dataProcessingAgreements.expirationDate, new Date()),
       );
+      if (expiring) conditions.push(expiring);
     }
 
     const whereClause = and(...conditions);
