@@ -270,7 +270,8 @@ export class SubscriptionService {
       isOverLimit,
       overageDetails,
       daysUntilRenewal: daysUntil(subscription.currentPeriodEnd, now),
-      isTrialing: subscription.isTrialing,
+      // Nullable column; a subscription with no recorded trial flag is not trialing.
+      isTrialing: subscription.isTrialing === true,
       trialDaysRemaining: trialDaysRemaining(subscription as any, now),
       features: plan.features as string[],
     };

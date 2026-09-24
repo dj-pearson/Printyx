@@ -284,7 +284,7 @@ export function autoRateLimit() {
     } else if (method === 'GET') {
       category = 'read';
     } else if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
-      category = 'write';
+      category = 'mutation';
     }
 
     // Apply rate limiting with detected category

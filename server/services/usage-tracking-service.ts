@@ -534,7 +534,8 @@ export class UsageTrackingService {
       current: usage,
       limits,
       percentages,
-      isOverLimit: usage.isOverLimit,
+      // Nullable column: unset is not over the limit, and the type says boolean.
+      isOverLimit: usage.isOverLimit === true,
     };
   }
 }

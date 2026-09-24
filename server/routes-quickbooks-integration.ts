@@ -100,7 +100,8 @@ export function registerQuickBooksRoutes(app: Express) {
       // Store connection details (in a real app, save to database)
       req.session.qb_access_token = tokenData.access_token;
       req.session.qb_refresh_token = tokenData.refresh_token;
-      req.session.qb_company_id = realmId;
+      // A repeated ?realmId= arrives as an array; only a single string is a company id.
+      req.session.qb_company_id = typeof realmId === 'string' ? realmId : undefined;
       req.session.qb_token_expires = Date.now() + tokenData.expires_in * 1000;
 
       // Clean up OAuth state

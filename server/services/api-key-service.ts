@@ -666,7 +666,10 @@ export class ApiKeyService {
       rateLimitPerMinute: oldKey.rateLimitPerMinute || 1000,
       rateLimitPerHour: oldKey.rateLimitPerHour || 10000,
       rateLimitPerDay: oldKey.rateLimitPerDay || 100000,
-      environment: oldKey.environment || 'production',
+      // A rotated key keeps its environment when it is one the type allows.
+      environment:
+        (['staging', 'development', 'production'] as const).find((e) => e === oldKey.environment) ??
+        'production',
       metadata: (oldKey.metadata as Record<string, any>) || {},
       tags: (oldKey.tags as string[]) || [],
     });
