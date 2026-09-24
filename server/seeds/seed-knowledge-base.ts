@@ -113,8 +113,10 @@ async function seedArticles(categoryMap: Map<string, string>) {
           tags: (article.tags || []) as any,
           relatedArticles: (article.relatedArticleSlugs || []) as any,
           featured: article.featured || false,
-          isPublic: article.isPublic !== false,
-          allowFeedback: article.allowFeedback !== false,
+          // The article definitions carry neither flag, so both were always
+          // true through `!== false`; stated as what it is.
+          isPublic: true,
+          allowFeedback: true,
           metaTitle: article.metaTitle || article.title,
           metaDescription: article.metaDescription || article.excerpt,
           status: (article.status || 'published') as any,
