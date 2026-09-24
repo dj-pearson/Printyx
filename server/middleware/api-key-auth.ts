@@ -5,6 +5,7 @@
  * Supports both header-based and query parameter authentication.
  */
 
+import type { RequestHandler } from 'express';
 import { Request, Response, NextFunction } from 'express';
 import { createModuleLogger } from '../lib/logger';
 const log = createModuleLogger('api-key-auth');
@@ -354,7 +355,7 @@ export function apiKeyAuth(
     logUsage?: boolean;
   } = {},
 ) {
-  const middlewares = [
+  const middlewares: RequestHandler[] = [
     requireApiKey({
       requiredScopes: options.requiredScopes,
       requiredPermissions: options.requiredPermissions,

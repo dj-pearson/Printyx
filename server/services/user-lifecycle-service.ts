@@ -462,7 +462,9 @@ export class UserLifecycleService {
     await sendEmail({
       to: email,
       subject: 'Welcome to Printyx!',
-      body: `
+      // EmailMessage's field is `html`; `body` was not a property, so the
+      // welcome email went out with no content.
+      html: `
         <h1>Welcome, ${name}!</h1>
         <p>Your account has been created successfully.</p>
         <p>Please check your email for login instructions.</p>

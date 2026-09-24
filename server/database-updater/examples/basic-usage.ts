@@ -86,6 +86,8 @@ async function customConfigExample() {
           },
           maxConcurrentExecutions: 2,
           executionTimeoutMinutes: 10,
+          enableMetrics: true,
+          enableAlerts: true,
         },
       },
     });
