@@ -9,5 +9,5 @@ export { serviceDispatchRouter } from '../routes-service-dispatch';
 // Round 158: equipmentLifecycleStateMachineRoutes retired; /api/equipment-lifecycle
 // is proxied whole to supabase/functions/equipment-lifecycle/.
 export { default as equipmentDisposalRoutes } from '../routes-equipment-disposal';
-export { default as equipmentQRRoutes } from '../routes-equipment-qr';
+// equipmentQRRoutes: deleted in round 228 (routes-equipment-qr.ts); see routes-registry.
 export { default as enhancedServiceRoutes } from '../routes-enhanced-service';

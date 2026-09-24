@@ -58,7 +58,6 @@ import {
   registerTechnicianManagementRoutes,
   serviceDispatchRouter,
   equipmentDisposalRoutes,
-  equipmentQRRoutes,
   enhancedServiceRoutes,
 } from './domains/service';
 
@@ -782,7 +781,12 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   // /api/mobile/jobs/:jobId (routes-mobile.ts) and /api/mobile/time-tracking/*
   // (routes-mobile-api.ts) are all still Express-only. Proxying would take those
   // from working-in-dev to 404-in-dev.
-  app.use('/api/equipment', equipmentQRRoutes);
+  // Round 228: equipmentQRRoutes (routes-equipment-qr.ts) was mounted here and is
+  // DELETED. /qr-code answered 503 on every call, /asset-label and
+  // /bulk-qr-codes read columns equipment does not have (model, location,
+  // customer.name), no client tree called any of the three, and production
+  // never served them. Asset labels are built in the browser now
+  // (client/src/lib/asset-labels.ts).
 
   // ─── Mobile App API (service-tickets, equipment list, time tracking) ──
   registerMobileApiRoutes(app);

@@ -609,6 +609,13 @@ export default async function handler(req: Request) {
 
     // GET /crm/teams/:teamId/members
     //
+    // NOTHING WRITES sales_team_members (AUDIT-028's question, answered round
+    // 228). Its only insert was server/seed-crm-goals.ts, a seeder no npm script
+    // ran and nothing imported, deleted as an orphan; the crm function creates
+    // TEAMS but has no add-member branch. So a team's member list is always
+    // empty until a member-management write exists - an empty list here means
+    // nobody could add anyone, not that the team has no members.
+    //
     // Two reads rather than a join: PostgREST embeds through a declared foreign
     // key, and sales_team_members.user_id has none to users in this schema, so
     // a `users(...)` select 400s. The member rows decide the order the ids are
