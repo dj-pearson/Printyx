@@ -332,7 +332,7 @@
     "dompurify": "^3.3.1",
     "dotenv": "^17.2.3",
     "drizzle-orm": "^0.39.1",
-    "drizzle-zod": "^0.7.0",
+    "drizzle-zod": "^0.7.1",
     "embla-carousel-react": "^8.6.0",
     "exceljs": "^4.4.0",
     "express": "^4.21.2",
