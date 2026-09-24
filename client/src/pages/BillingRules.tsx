@@ -75,7 +75,6 @@ export default function BillingRules() {
   });
 
   const rules = rulesData?.rules || [];
-  const pagination = rulesData?.pagination;
 
   // Activate/deactivate rule mutation
   const toggleRuleMutation = useMutation({

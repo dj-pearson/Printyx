@@ -271,9 +271,12 @@ export function ContactManager({ companyId, companyName, className }: ContactMan
     }
   };
 
-  const formatDate = (date: string) => {
+  const formatDate = (date: string | null | undefined) => {
     if (!date) return 'Never';
-    return format(new Date(date), 'MMM dd, yyyy');
+    const d = new Date(date);
+    // date-fns throws "Invalid time value" on an unparseable date, which would
+    // take the whole contact table down over one bad row.
+    return Number.isNaN(d.getTime()) ? 'Never' : format(d, 'MMM dd, yyyy');
   };
 
   const getInitials = (firstName: string, lastName: string) => {
