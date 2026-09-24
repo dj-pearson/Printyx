@@ -24,6 +24,7 @@ import {
   monitoringClients,
   manufacturerIntegrations,
   supplies,
+  clientDiscoveredDevices,
 } from '@shared/schema';
 import { eq, and, inArray, like, or } from 'drizzle-orm';
 import { createModuleLogger } from '../lib/logger';
@@ -100,17 +101,32 @@ export async function maybeAutoOrder(
 
     // Look up the toner product. Reuses the same matching heuristic the
     // agent's customer portal flow uses.
-    const product = await lookupTonerProduct(
-      input.tenantId,
-      device.manufacturer || null,
-      device.model || null,
-      input.supplyType,
-    );
+    // device_registrations has no manufacturer column: this read
+    // device.manufacturer, which was always undefined, so the lookup fell to a
+    // colour-only pattern and would order whichever toner of that colour it
+    // found first (round 239). The maker is recorded on the discovered-device
+    // row /submit writes beside the registration.
+    const discovered = await db.query.clientDiscoveredDevices.findFirst({
+      where: and(
+        eq(clientDiscoveredDevices.tenantId, input.tenantId),
+        eq(clientDiscoveredDevices.registeredDeviceId, device.id),
+      ),
+    });
+    const manufacturer = discovered?.manufacturer || null;
+    const model = device.model || discovered?.model || null;
+
+    const product = await lookupTonerProduct(input.tenantId, manufacturer, model, input.supplyType);
     if (!product) {
-      log.info(
-        `auto-order: no product match for ${device.manufacturer}/${device.model}/${input.supplyType}`,
-      );
-      return { ordered: false, reason: 'no product match' };
+      log.info(`auto-order: no product match for ${manufacturer}/${model}/${input.supplyType}`);
+      return {
+        ordered: false,
+        reason: model ? 'no product match' : 'device model not recorded',
+      };
+    }
+    if (product.unitPrice === null) {
+      // It used to order at an invented 99.99. An order carries a price a
+      // customer is billed; with none recorded, a person decides.
+      return { ordered: false, reason: `product ${product.productSku} has no price` };
     }
 
     const unitPrice = product.unitPrice;
@@ -140,7 +156,7 @@ export async function maybeAutoOrder(
     await db
       .update(deviceAlerts)
       .set({ triggeredOrderId: order.id, updatedAt: new Date() })
-      .where(eq(deviceAlerts.id, input.alertId));
+      .where(and(eq(deviceAlerts.id, input.alertId), eq(deviceAlerts.tenantId, input.tenantId)));
 
     log.info(
       `auto-order: created ${order.id} (${product.productSku}) for device=${device.id} supply=${input.supplyType}`,
@@ -164,31 +180,10 @@ async function lookupTonerProduct(
   productId: string;
   productSku: string;
   productName: string;
-  unitPrice: string;
+  unitPrice: string | null;
 } | null> {
-  const normalizedColor = color.toLowerCase();
-  const patterns: string[] = [];
-
-  if (manufacturer && model) {
-    const cleanModel = model.replace(/\s+/g, '-').toUpperCase();
-    const cleanManufacturer = manufacturer.replace(/\s+/g, '-').toUpperCase();
-    patterns.push(
-      `%TONER%${normalizedColor.toUpperCase()}%${cleanManufacturer}%${cleanModel}%`,
-      `%${cleanManufacturer}%${cleanModel}%${normalizedColor.toUpperCase()}%TONER%`,
-      `%${normalizedColor.toUpperCase()}%${cleanManufacturer}%${cleanModel}%`,
-    );
-  } else if (manufacturer) {
-    const cleanManufacturer = manufacturer.replace(/\s+/g, '-').toUpperCase();
-    patterns.push(
-      `%TONER%${normalizedColor.toUpperCase()}%${cleanManufacturer}%`,
-      `%${cleanManufacturer}%${normalizedColor.toUpperCase()}%`,
-    );
-  } else {
-    patterns.push(
-      `%TONER%${normalizedColor.toUpperCase()}%`,
-      `%${normalizedColor.toUpperCase()}%TONER%`,
-    );
-  }
+  const patterns = tonerPatterns(manufacturer, model, color);
+  if (!patterns) return null;
 
   const conditions = patterns.map((p) =>
     or(like(supplies.productCode, p), like(supplies.productName, p)),
@@ -203,7 +198,7 @@ async function lookupTonerProduct(
   if (results.length === 0) return null;
   const product = results[0];
 
-  let unitPrice = '99.99';
+  let unitPrice: string | null = null;
   if (product.newRepPrice) unitPrice = product.newRepPrice;
   else if (product.upgradeRepPrice) unitPrice = product.upgradeRepPrice;
   else if (product.lexmarkRepPrice) unitPrice = product.lexmarkRepPrice;
@@ -215,4 +210,29 @@ async function lookupTonerProduct(
     productName: product.productName || '',
     unitPrice,
   };
+}
+
+/**
+ * LIKE patterns naming this machine's cartridge, or null when the machine's
+ * model is unknown. A colour-only pattern matches every cartridge of that
+ * colour in the catalogue, so without a model there is nothing to order
+ * (round 239). Exported for its test.
+ */
+export function tonerPatterns(
+  manufacturer: string | null,
+  model: string | null,
+  color: string,
+): string[] | null {
+  if (!model || !model.trim()) return null;
+  const c = color.toUpperCase();
+  const cleanModel = model.trim().replace(/\s+/g, '-').toUpperCase();
+  if (manufacturer && manufacturer.trim()) {
+    const m = manufacturer.trim().replace(/\s+/g, '-').toUpperCase();
+    return [
+      `%TONER%${c}%${m}%${cleanModel}%`,
+      `%${m}%${cleanModel}%${c}%TONER%`,
+      `%${c}%${m}%${cleanModel}%`,
+    ];
+  }
+  return [`%TONER%${c}%${cleanModel}%`, `%${cleanModel}%${c}%TONER%`, `%${c}%${cleanModel}%`];
 }

@@ -23,7 +23,6 @@ import {
   articleVersions,
   articleViews,
   articleRatings,
-  articleVotes,
 } from '@shared/schema';
 import { z } from 'zod';
 import { requireRootAdmin } from '../routes-root-admin';
