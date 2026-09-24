@@ -135,7 +135,9 @@ export class BusinessRecordUpdater extends BaseUpdater {
             website: lead.website,
             industry: lead.industry,
             companySize: lead.companySize,
-            annualRevenue: lead.annualRevenue,
+            // Decimal columns take strings in drizzle; undefined stays undefined.
+            annualRevenue:
+              lead.annualRevenue === undefined ? undefined : String(lead.annualRevenue),
             primaryContactName: lead.primaryContactName,
             primaryContactEmail: lead.primaryContactEmail,
             primaryContactPhone: lead.primaryContactPhone,
@@ -145,13 +147,19 @@ export class BusinessRecordUpdater extends BaseUpdater {
             state: lead.state,
             postalCode: lead.postalCode,
             country: lead.country,
-            source: lead.source,
+            // The drizzle property is leadSource (column `source`). Written as
+            // `source:` it was dropped and every lead took the 'website'
+            // default, whatever source it was generated with (round 249).
+            leadSource: lead.source,
             interestLevel: lead.interestLevel,
             accountManagerId: lead.accountManagerId,
             lastContactDate: lead.lastContactDate,
             nextFollowUpDate: lead.nextFollowUpDate,
             salesStage: lead.salesStage,
-            estimatedDealValue: lead.estimatedDealValue,
+            // Drizzle property is estimatedAmount (column estimated_deal_value);
+            // `estimatedDealValue` was dropped the same way `source` was.
+            estimatedAmount:
+              lead.estimatedDealValue === undefined ? undefined : String(lead.estimatedDealValue),
             createdBy: lead.createdBy,
             createdAt: lead.createdAt,
             updatedAt: lead.updatedAt,

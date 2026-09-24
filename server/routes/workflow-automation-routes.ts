@@ -45,6 +45,7 @@ import {
   insertWorkflowTemplateSchema,
   insertTemplateVariableSchema,
   insertWorkflowEventRegistrySchema,
+  type InsertWorkflowVersion,
 } from '@shared/schema';
 
 const router = express.Router();
@@ -681,7 +682,7 @@ router.post('/workflow-templates/:id/clone', async (req: Request, res: Response)
       workflowId: workflow.id,
       version: 1,
       schemaHash: null,
-      definition: template.definition,
+      definition: template.definition as InsertWorkflowVersion['definition'],
       changelog: `Cloned from template: ${template.name}`,
       createdBy: user.id,
     });
