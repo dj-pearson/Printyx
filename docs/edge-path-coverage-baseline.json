@@ -1,14 +1,7 @@
 {
   "note": "Sub-paths a reachable client file calls whose literal segment appears nowhere in that domain's edge function. An entry is either a bare segment (/api/<domain>/<seg>) or, since PA-025, a normalized shape with ids collapsed to :id (/api/<domain>/:id/<seg>). Likely prod-only 404s, or worse - a request that falls through to a generic :id branch and answers 200 with the PARENT OBJECT, which a component maps over and renders as empty. Do not grow this list; see scripts/check-edge-path-coverage.mjs. PROD-008 (2026-09-21): the count grew from 33 to 43 because the GUARD improved, not because ten endpoints broke. It read client/src and nothing else, so the seven other client trees this repo ships - printyx-client, printyx-desktop, mobile-app, mobile, browser-extensions, printyx-extension and the iOS project - could not put a domain on this list. They can now, with native test fixtures excluded and Swift/Kotlin interpolation understood as a placeholder. The defect that exposed it: iOS posted to /api/leads/:id/activities from its quick-log FAB and the leads function had no such branch, so every field-logged call was a 404 in production - and this guard reported `leads` as carrying one unrelated gap. PROD-008 (2026-09-21, round 115): 43 -> 34. The four that closed are the last native READ paths - /api/activities/recent, /api/analytics/performance-metrics, /api/equipment/:id/service-history and /api/mobile/dashboard. What is left under `mobile` is not more of the same: device-tokens and push-token want a token table and a push sender, neither of which exists anywhere in the tree, so a branch there would be a 501 naming the gap rather than a feature.",
   "gaps": {
-    "admin": [
-      "audit-logs",
-      "disposable-emails",
-      "mobile-logs",
-      "security",
-      "tenant-stats",
-      "user-stats"
-    ],
+    "admin": ["disposable-emails", "mobile-logs"],
     "blog-post-revisions": ["single"],
     "blog-serp": ["single"],
     "companies": ["stats"],

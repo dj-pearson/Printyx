@@ -24,7 +24,13 @@
 // holds an :employeeId on the other route. The literal branch MUST be matched
 // first or /analytics/overview is read as employeeId='analytics'.
 //
-// Dir name == URL segment, so prod routing needs no server.ts override.
+// CORRECTED round 220: this directory is NOT what serves /api/ai-employees.
+// supabase/functions/server.ts renames the whole prefix to `ai-employee`
+// (stripSegments = 0), and the dev proxy sends it there too, so nothing
+// executes this file on either host. It is kept for now only because it is
+// the sole caller of the ai_employee_analytics_overview RPC that
+// drizzle/functions/README.md credits to it; retiring it means checking that
+// ai-employee's /analytics/overview answers the shape the dashboard reads.
 
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';

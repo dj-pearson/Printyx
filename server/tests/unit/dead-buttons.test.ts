@@ -148,7 +148,9 @@ describe('the baseline is a triage file, not a list', () => {
 
   it('counts match the entries', () => {
     expect(entries.length).toBe(baseline.count);
-    expect(entries.length).toBeGreaterThan(10);
+    // Round 220: a `> 10` floor here failed the moment the worklist reached
+    // 10, on work that shrank it. A worklist is allowed to empty; the walk's
+    // own floor lives in the guard.
   });
 
   it('carries file and label as FIELDS, not only inside the key', () => {

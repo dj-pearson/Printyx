@@ -163,7 +163,15 @@ describe('the findings are recorded as findings', () => {
   });
 
   it('keeps the depth-1 entries alongside them in one list', () => {
-    expect(flat).toContain('admin/audit-logs');
+    // Round 220: this pinned 'admin/audit-logs', which left the baseline when
+    // round 218 removed its only caller - a debt entry is not a property. The
+    // property is that there is ONE map: no second key holding the shapes, and
+    // every entry is either a bare segment or an :id shape inside it.
+    expect(Object.keys(baseline).sort()).toEqual(['gaps', 'note']);
+    for (const entry of flat) {
+      const segs = entry.split('/').slice(1);
+      expect({ entry, ok: segs.length === 1 || segs.includes(':id') }).toEqual({ entry, ok: true });
+    }
   });
 
   it('says in its note what a shape entry means', () => {
