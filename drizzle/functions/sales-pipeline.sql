@@ -11,10 +11,15 @@
 --     Tenant-wide pipeline stats (value, active/qualified opps, monthly revenue,
 --     conversion rate, avg sales cycle). Returns a single JSONB object.
 --
--- Both functions COALESCE goal figures to defaults (50K revenue / 5 deals per
--- rep, 200K tenant-wide) since the historical Express code referenced a
--- never-defined `crm_goals` table. When real goal tracking lands (see
--- shared/schema.ts::salesGoals), update these functions to join against it.
+-- GOALS ARE NULL (round 226). These functions used to COALESCE goals to
+-- defaults - 50K revenue / 5 deals per rep, 200K tenant-wide - because the
+-- historical Express code referenced a never-defined `crm_goals` table, and
+-- then reported "goal achievement" against those invented figures. No table
+-- holds a per-rep or tenant revenue target (sales_goals counts ACTIVITIES), so
+-- revenue_goal, deals_goal and goal_achievement are null, as is an average
+-- sales cycle with no closed deal (the default was 30 days) and a growth rate
+-- with no previous month (the default was 0%). Re-apply this file for the
+-- change to reach a database (it is hand-applied, see the README).
 --
 -- SECURITY INVOKER. Tenant isolation enforced by explicit p_tenant_id — caller
 -- (edge function) must pass the JWT tenant, never trust client input.
@@ -56,9 +61,9 @@ BEGIN
           AVG(br.estimated_deal_value::numeric) FILTER (WHERE br.status = 'closed_won'),
           0
         ),
-        'avg_sales_cycle', COALESCE(
+        'avg_sales_cycle', ROUND(
           AVG(EXTRACT(DAY FROM br.updated_at - br.created_at)) FILTER (WHERE br.status = 'closed_won'),
-          30
+          1
         ),
         'activity_score', CASE
           WHEN MAX(br.last_contact_date) >= NOW() - INTERVAL '3 days'  THEN 100
@@ -69,13 +74,10 @@ BEGIN
         END,
         'last_activity', COALESCE(to_char(MAX(br.last_contact_date), 'MM/DD/YY'), 'No recent activity'),
 
-        -- Hardcoded defaults (see header comment)
-        'revenue_goal', 50000,
-        'deals_goal',    5,
-        'goal_achievement', ROUND(
-          (COALESCE(SUM(br.estimated_deal_value::numeric) FILTER (WHERE br.status = 'closed_won'), 0) / 50000.0) * 100,
-          1
-        ),
+        -- No goal table exists; see the header.
+        'revenue_goal', NULL,
+        'deals_goal', NULL,
+        'goal_achievement', NULL,
         'conversion_rate', CASE
           WHEN COUNT(br.id) FILTER (WHERE br.record_type = 'lead') > 0
             THEN ROUND(
@@ -121,7 +123,6 @@ DECLARE
   v_avg_sales_cycle            numeric;
   v_last_month_revenue         numeric;
   v_growth_rate                numeric;
-  v_revenue_goal               numeric := 200000;
   v_goal_achievement           numeric;
 BEGIN
   -- Single-pass aggregation of the major pipeline metrics
@@ -143,9 +144,9 @@ BEGIN
     ), 0),
     COUNT(*) FILTER (WHERE record_type = 'lead'),
     COUNT(*) FILTER (WHERE status = 'closed_won'),
-    COALESCE(AVG(EXTRACT(DAY FROM updated_at - created_at)) FILTER (
+    ROUND(AVG(EXTRACT(DAY FROM updated_at - created_at)) FILTER (
       WHERE status = 'closed_won'
-    ), 30)
+    ), 1)
   INTO
     v_total_value,
     v_active_opportunities,
@@ -175,10 +176,10 @@ BEGIN
   v_growth_rate := CASE
     WHEN v_last_month_revenue > 0
       THEN ROUND(((v_monthly_revenue / v_last_month_revenue) - 1) * 100, 1)
-    ELSE 0
+    ELSE NULL
   END;
 
-  v_goal_achievement := ROUND((v_monthly_revenue / v_revenue_goal) * 100, 1);
+  v_goal_achievement := NULL;
 
   RETURN jsonb_build_object(
     'totalValue',              v_total_value,

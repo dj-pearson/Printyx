@@ -42,6 +42,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -59,7 +60,6 @@ import {
   Target,
   CheckCircle,
   Clock,
-  AlertCircle,
   Download,
   Award,
   Briefcase,
@@ -67,6 +67,9 @@ import {
 } from 'lucide-react';
 
 import { clickableProps } from '@/lib/accessibility';
+import { Input } from '@/components/ui/input';
+import { describeApiError } from '@/lib/api-error';
+import { coachingReasons, formatGrowth, oneOnOneBody } from '@/lib/rep-coaching';
 
 // Dynamic Pipeline Stage Interface
 /**
@@ -95,8 +98,10 @@ interface SalesRepMetrics {
   total_revenue: number;
   conversion_rate: number;
   avg_deal_size: number;
-  avg_sales_cycle: number;
-  goal_achievement: number;
+  /** Null when the rep has closed nothing: there is no cycle to average. */
+  avg_sales_cycle: number | null;
+  /** Always null (round 226): no table holds a per-rep revenue target. */
+  goal_achievement: number | null;
   activity_score: number;
   last_activity: string;
 }
@@ -138,18 +143,86 @@ const OPPORTUNITY_EXPORT_COLUMNS: ExportColumn<PipelineOpportunity>[] = [
 
 interface PipelineSummary {
   totalValue?: number;
-  growthRate?: number;
+  growthRate?: number | null;
   activeOpportunities?: number;
   qualifiedOpportunities?: number;
   conversionRate?: number;
-  avgSalesCycle?: number;
+  avgSalesCycle?: number | null;
   monthlyRevenue?: number;
-  goalAchievement?: number;
+  goalAchievement?: number | null;
+}
+
+/**
+ * Round 226: "Schedule 1:1" had no handler. It now puts the meeting on the
+ * manager's own calendar through POST /api/meetings/calendar/events, which
+ * writes the caller as the owner and records the rep in related_entity_*.
+ */
+function OneOnOneDialog({ rep, onClose }: { rep: SalesRepMetrics | null; onClose: () => void }) {
+  const { toast } = useToast();
+  const [date, setDate] = useState('');
+  const [time, setTime] = useState('09:00');
+  const [minutes, setMinutes] = useState('30');
+  const body = rep ? oneOnOneBody(rep, date, time, Number(minutes)) : null;
+
+  const create = useMutation({
+    mutationFn: () => apiRequest('/api/meetings/calendar/events', 'POST', body),
+    onSuccess: () => {
+      toast({ title: '1:1 scheduled', description: body?.title });
+      setDate('');
+      onClose();
+    },
+    onError: (err) =>
+      toast({
+        title: 'Could not schedule the 1:1',
+        description: describeApiError(err).message,
+        variant: 'destructive',
+      }),
+  });
+
+  return (
+    <Dialog open={rep !== null} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Schedule a 1:1</DialogTitle>
+          <DialogDescription>With {rep?.rep_name}, on your calendar.</DialogDescription>
+        </DialogHeader>
+        <div className="grid grid-cols-3 gap-3">
+          <label className="block space-y-1 text-sm col-span-3 sm:col-span-1">
+            <span className="font-medium">Date</span>
+            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          </label>
+          <label className="block space-y-1 text-sm">
+            <span className="font-medium">Time</span>
+            <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+          </label>
+          <label className="block space-y-1 text-sm">
+            <span className="font-medium">Minutes</span>
+            <Input
+              type="number"
+              min={5}
+              step={5}
+              value={minutes}
+              onChange={(e) => setMinutes(e.target.value)}
+            />
+          </label>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button disabled={!body || create.isPending} onClick={() => create.mutate()}>
+            {create.isPending ? 'Scheduling...' : 'Schedule'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 export default function SalesPipelineWorkflow() {
   const [selectedStage, setSelectedStage] = useState<string>('all');
   const [selectedRep, setSelectedRep] = useState<string>('all');
+  const [oneOnOneRep, setOneOnOneRep] = useState<SalesRepMetrics | null>(null);
   const [viewMode, setViewMode] = useState<'pipeline' | 'metrics' | 'team'>('pipeline');
   const [selectedOpportunity, setSelectedOpportunity] = useState<PipelineOpportunity | null>(null);
   const [isActionDialogOpen, setIsActionDialogOpen] = useState(false);
@@ -295,16 +368,6 @@ export default function SalesPipelineWorkflow() {
     return percentOfOr(metrics.deals_closed, metrics.total_leads);
   };
 
-  const getPerformanceStatus = (achievement: number) => {
-    if (achievement >= 100)
-      return { status: 'Exceeds', color: 'text-green-600', bgColor: 'bg-green-100' };
-    if (achievement >= 80)
-      return { status: 'Meets', color: 'text-blue-600', bgColor: 'bg-blue-100' };
-    if (achievement >= 60)
-      return { status: 'Below', color: 'text-yellow-600', bgColor: 'bg-yellow-100' };
-    return { status: 'Critical', color: 'text-red-600', bgColor: 'bg-red-100' };
-  };
-
   if (pipelineLoading || opportunitiesLoading || metricsLoading) {
     return (
       <MainLayout
@@ -370,9 +433,7 @@ export default function SalesPipelineWorkflow() {
               <div className="text-2xl font-bold">
                 ${pipelineSummary?.totalValue?.toLocaleString() || '0'}
               </div>
-              <p className="text-xs text-muted-foreground">
-                +{pipelineSummary?.growthRate || 0}% vs last month
-              </p>
+              <p className="text-xs text-muted-foreground">Open deal value</p>
             </CardContent>
           </Card>
           <Card>
@@ -397,7 +458,9 @@ export default function SalesPipelineWorkflow() {
                 {pipelineSummary?.conversionRate?.toFixed(1) || 0}%
               </div>
               <p className="text-xs text-muted-foreground">
-                {pipelineSummary?.avgSalesCycle || 0} day cycle
+                {pipelineSummary?.avgSalesCycle == null
+                  ? 'No closed deals to time'
+                  : `${pipelineSummary.avgSalesCycle} day cycle`}
               </p>
             </CardContent>
           </Card>
@@ -411,7 +474,9 @@ export default function SalesPipelineWorkflow() {
                 ${pipelineSummary?.monthlyRevenue?.toLocaleString() || '0'}
               </div>
               <p className="text-xs text-muted-foreground">
-                {pipelineSummary?.goalAchievement || 0}% of goal
+                {formatGrowth(pipelineSummary?.growthRate) == null
+                  ? 'Nothing closed last month to compare'
+                  : `${formatGrowth(pipelineSummary?.growthRate)} vs last month`}
               </p>
             </CardContent>
           </Card>
@@ -627,7 +692,6 @@ export default function SalesPipelineWorkflow() {
           <TabsContent value="metrics" className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
               {repMetrics.map((rep) => {
-                const performance = getPerformanceStatus(rep.goal_achievement);
                 const conversionRate = calculateConversionRate(rep);
 
                 return (
@@ -637,16 +701,8 @@ export default function SalesPipelineWorkflow() {
                         <div>
                           <CardTitle>{rep.rep_name}</CardTitle>
                           <CardDescription>
-                            <Badge
-                              className={`${performance.bgColor} ${performance.color} text-xs`}
-                            >
-                              {performance.status} Goal
-                            </Badge>
+                            No revenue goal is recorded for this rep
                           </CardDescription>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-lg font-bold">{rep.goal_achievement}%</div>
-                          <div className="text-sm text-gray-600">Goal Achievement</div>
                         </div>
                       </div>
                     </CardHeader>
@@ -693,7 +749,11 @@ export default function SalesPipelineWorkflow() {
                       {/* Sales Cycle */}
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-gray-600">Avg Sales Cycle</span>
-                        <span className="font-medium">{rep.avg_sales_cycle} days</span>
+                        <span className="font-medium">
+                          {rep.avg_sales_cycle == null
+                            ? 'Nothing closed yet'
+                            : `${rep.avg_sales_cycle} days`}
+                        </span>
                       </div>
 
                       {/* Last Activity */}
@@ -734,57 +794,19 @@ export default function SalesPipelineWorkflow() {
                         </div>
                       </div>
                       <div>
-                        <div className="text-gray-600">Team Goal Achievement</div>
+                        <div className="text-gray-600">Deals closed</div>
                         <div className="text-2xl font-bold text-blue-600">
-                          {repMetrics.length > 0
-                            ? (
-                                repMetrics.reduce((sum, rep) => sum + rep.goal_achievement, 0) /
-                                repMetrics.length
-                              ).toFixed(1)
-                            : 0}
-                          %
+                          {repMetrics.reduce((sum, rep) => sum + rep.deals_closed, 0)}
                         </div>
                       </div>
                     </div>
 
-                    {/* Performance Distribution */}
-                    <div className="space-y-2">
-                      <div className="text-sm font-medium">Performance Distribution</div>
-                      {[
-                        {
-                          label: 'Exceeds Goals',
-                          count: repMetrics.filter((r) => r.goal_achievement >= 100).length,
-                          color: 'bg-green-500',
-                        },
-                        {
-                          label: 'Meets Goals',
-                          count: repMetrics.filter(
-                            (r) => r.goal_achievement >= 80 && r.goal_achievement < 100,
-                          ).length,
-                          color: 'bg-blue-500',
-                        },
-                        {
-                          label: 'Below Goals',
-                          count: repMetrics.filter(
-                            (r) => r.goal_achievement >= 60 && r.goal_achievement < 80,
-                          ).length,
-                          color: 'bg-yellow-500',
-                        },
-                        {
-                          label: 'Needs Support',
-                          count: repMetrics.filter((r) => r.goal_achievement < 60).length,
-                          color: 'bg-red-500',
-                        },
-                      ].map((item) => (
-                        <div key={item.label} className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className={`w-3 h-3 rounded ${item.color}`}></div>
-                            <span className="text-sm">{item.label}</span>
-                          </div>
-                          <span className="text-sm font-medium">{item.count} reps</span>
-                        </div>
-                      ))}
-                    </div>
+                    {/* Round 226: a four-bucket "performance distribution"
+                        ranked reps against a hardcoded $50,000 goal. No goal
+                        table exists, so the ranking is gone and says why. */}
+                    <p className="text-sm text-muted-foreground">
+                      Goal achievement is not shown: no revenue goals are recorded for reps.
+                    </p>
                   </div>
                 </CardContent>
               </Card>
@@ -798,8 +820,9 @@ export default function SalesPipelineWorkflow() {
                 <CardContent>
                   <div className="space-y-4">
                     {repMetrics
-                      .filter((rep) => rep.goal_achievement < 80 || rep.activity_score < 70)
-                      .map((rep) => (
+                      .map((rep) => ({ rep, reasons: coachingReasons(rep) }))
+                      .filter(({ reasons }) => reasons.length > 0)
+                      .map(({ rep, reasons }) => (
                         <div key={rep.rep_id} className="border rounded-lg p-3">
                           <div className="flex items-center justify-between mb-2">
                             <div className="font-medium">{rep.rep_name}</div>
@@ -809,47 +832,55 @@ export default function SalesPipelineWorkflow() {
                           </div>
 
                           <div className="space-y-2 text-sm">
-                            {rep.goal_achievement < 80 && (
-                              <div className="flex items-center gap-2 text-red-600">
-                                <AlertCircle className="h-4 w-4" />
-                                <span>Below goal achievement ({rep.goal_achievement}%)</span>
-                              </div>
-                            )}
-
-                            {rep.activity_score < 70 && (
-                              <div className="flex items-center gap-2 text-orange-600">
-                                <Clock className="h-4 w-4" />
-                                <span>Low activity score ({rep.activity_score}/100)</span>
-                              </div>
-                            )}
-
-                            {calculateConversionRate(rep) < 5 && (
-                              <div className="flex items-center gap-2 text-yellow-600">
-                                <Target className="h-4 w-4" />
-                                <span>
-                                  Low conversion rate ({calculateConversionRate(rep).toFixed(1)}%)
-                                </span>
-                              </div>
+                            {reasons.map((r) =>
+                              r.kind === 'activity' ? (
+                                <div
+                                  key="activity"
+                                  className="flex items-center gap-2 text-orange-600"
+                                >
+                                  <Clock className="h-4 w-4" />
+                                  <span>Low activity score ({r.score}/100)</span>
+                                </div>
+                              ) : (
+                                <div
+                                  key="conversion"
+                                  className="flex items-center gap-2 text-yellow-600"
+                                >
+                                  <Target className="h-4 w-4" />
+                                  <span>Low conversion rate ({r.pct.toFixed(1)}%)</span>
+                                </div>
+                              ),
                             )}
                           </div>
 
                           <div className="mt-3 flex gap-2">
-                            <Button size="sm" variant="outline" className="text-xs">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-xs"
+                              onClick={() => setOneOnOneRep(rep)}
+                            >
                               Schedule 1:1
                             </Button>
-                            <Button size="sm" variant="outline" className="text-xs">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-xs"
+                              onClick={() => {
+                                setSelectedRep(rep.rep_id);
+                                setViewMode('pipeline');
+                              }}
+                            >
                               Review Pipeline
                             </Button>
                           </div>
                         </div>
                       ))}
 
-                    {repMetrics.filter(
-                      (rep) => rep.goal_achievement >= 80 && rep.activity_score >= 70,
-                    ).length === repMetrics.length && (
+                    {repMetrics.every((rep) => coachingReasons(rep).length === 0) && (
                       <div className="text-center py-8 text-gray-500">
                         <CheckCircle className="h-8 w-8 mx-auto mb-2 text-green-500" />
-                        <p className="text-sm">All team members are performing well!</p>
+                        <p className="text-sm">Nobody is flagged for low activity or conversion.</p>
                       </div>
                     )}
                   </div>
@@ -858,6 +889,8 @@ export default function SalesPipelineWorkflow() {
             </div>
           </TabsContent>
         </Tabs>
+
+        <OneOnOneDialog rep={oneOnOneRep} onClose={() => setOneOnOneRep(null)} />
 
         {/* Action Dialog */}
         <Dialog open={isActionDialogOpen} onOpenChange={setIsActionDialogOpen}>
