@@ -127,11 +127,11 @@ export class TemplateRenderingService {
   static async fetchDataContext(
     fieldMapping: Record<string, string>,
     contextIds: {
-      businessRecordId?: number;
-      quoteId?: number;
-      dealId?: number;
-      serviceCallId?: number;
-      invoiceId?: number;
+      businessRecordId?: string;
+      quoteId?: string;
+      dealId?: string;
+      serviceCallId?: string;
+      invoiceId?: string;
     },
     tenantId: string,
   ): Promise<Record<string, any>> {
@@ -344,15 +344,15 @@ export class DocumentGenerationService {
   static async generateDocument(
     templateId: number,
     contextIds: {
-      businessRecordId?: number;
-      quoteId?: number;
-      dealId?: number;
-      serviceCallId?: number;
-      invoiceId?: number;
-      workflowId?: number;
-      taskId?: number;
+      businessRecordId?: string;
+      quoteId?: string;
+      dealId?: string;
+      serviceCallId?: string;
+      invoiceId?: string;
+      workflowId?: string;
+      taskId?: string;
     },
-    userId: number,
+    userId: string,
     tenantId: string,
     options?: {
       name?: string;
@@ -477,15 +477,15 @@ export class DocumentGenerationService {
   static async batchGenerateDocuments(
     templateId: number,
     contextList: Array<{
-      businessRecordId?: number;
-      quoteId?: number;
-      dealId?: number;
-      serviceCallId?: number;
-      invoiceId?: number;
-      workflowId?: number;
-      taskId?: number;
+      businessRecordId?: string;
+      quoteId?: string;
+      dealId?: string;
+      serviceCallId?: string;
+      invoiceId?: string;
+      workflowId?: string;
+      taskId?: string;
     }>,
-    userId: number,
+    userId: string,
     tenantId: string,
     options?: {
       format?: 'pdf' | 'docx' | 'html';

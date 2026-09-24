@@ -249,6 +249,10 @@ router.post('/api/documents/generate', async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId;
     const userId = getUserId(req);
+    // generated_by / uploaded_by are NOT NULL: an anonymous caller is refused.
+    if (!userId) {
+      return res.status(401).json({ message: 'Authentication required', code: 'UNAUTHENTICATED' });
+    }
     const {
       templateId,
       businessRecordId,
@@ -303,6 +307,10 @@ router.post('/api/documents/batch-generate', async (req: Request, res: Response)
   try {
     const tenantId = (req as any).tenantId;
     const userId = getUserId(req);
+    // generated_by / uploaded_by are NOT NULL: an anonymous caller is refused.
+    if (!userId) {
+      return res.status(401).json({ message: 'Authentication required', code: 'UNAUTHENTICATED' });
+    }
     const { templateId, contextList, format } = req.body;
 
     if (!templateId || !contextList || !Array.isArray(contextList)) {
@@ -402,6 +410,10 @@ router.post('/api/documents/upload', upload.single('file'), async (req: Request,
   try {
     const tenantId = (req as any).tenantId;
     const userId = getUserId(req);
+    // generated_by / uploaded_by are NOT NULL: an anonymous caller is refused.
+    if (!userId) {
+      return res.status(401).json({ message: 'Authentication required', code: 'UNAUTHENTICATED' });
+    }
 
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
@@ -416,9 +428,13 @@ router.post('/api/documents/upload', upload.single('file'), async (req: Request,
       fileSize: req.file.size,
       filePath: req.file.path,
       targetEntityType,
-      targetEntityId: targetEntityId ? parseInt(targetEntityId) : undefined,
-      workflowId: workflowId ? parseInt(workflowId) : undefined,
-      taskId: taskId ? parseInt(taskId) : undefined,
+      // All three are varchar columns holding uuids. They went through
+      // parseInt, which reads '550e8400-...' as 550 and a uuid starting with a
+      // letter as NaN, so an upload linked itself to a record that does not
+      // exist (round 252 - AUDIT-032's parseInt trap).
+      targetEntityId: targetEntityId ? String(targetEntityId) : undefined,
+      workflowId: workflowId ? String(workflowId) : undefined,
+      taskId: taskId ? String(taskId) : undefined,
       uploadedBy: userId,
     };
 
