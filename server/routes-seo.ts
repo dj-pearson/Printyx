@@ -1,4 +1,5 @@
 import express from 'express';
+import { storableVitals } from '@shared/seo-checks';
 import { desc, eq, and, asc, gte, lte, inArray } from 'drizzle-orm';
 import crypto from 'crypto';
 import { db } from './db';
@@ -528,11 +529,21 @@ router.post('/api/seo/core-web-vitals', async (req: any, res) => {
     // Store results
     const [stored] = await db
       .insert(seoCoreWebVitals)
+      // Named columns, not a spread: the integer columns need rounding (see
+      // storableVitals) and drizzle's decimal columns take strings (round 247).
       .values({
         tenantId,
         url,
         device,
-        ...vitals,
+        ...(() => {
+          const row = storableVitals(vitals);
+          return {
+            ...row,
+            cls: row.cls === null ? null : String(row.cls),
+            si: row.si === null ? null : String(row.si),
+          };
+        })(),
+        diagnostics: vitals.diagnostics,
         measuredAt: new Date(),
       })
       .returning();

@@ -43,6 +43,17 @@ vi.mock('@shared/security-schema', () => ({
     category: 'category',
     timestamp: 'timestamp',
   },
+  auditSeverityEnum: { enumValues: ['low', 'medium', 'high', 'critical'] },
+  auditCategoryEnum: {
+    enumValues: [
+      'authentication',
+      'authorization',
+      'data_access',
+      'data_modification',
+      'system',
+      'security',
+    ],
+  },
 }));
 
 vi.mock('drizzle-orm', () => ({
@@ -274,6 +285,16 @@ describe('Audit Log Service', () => {
       await queryAuditLogs({ tenantId: 'tenant-1', category: 'authentication' });
 
       expect(mockSelect).toHaveBeenCalled();
+    });
+
+    it('ignores a category the enum column cannot hold (round 247)', async () => {
+      const { eq } = await import('drizzle-orm');
+      vi.mocked(eq).mockClear();
+      await queryAuditLogs({ tenantId: 'tenant-1', category: 'nonsense' as never });
+      expect(vi.mocked(eq).mock.calls.map((c) => c[0])).not.toContain('category');
+      vi.mocked(eq).mockClear();
+      await queryAuditLogs({ tenantId: 'tenant-1', category: 'security' });
+      expect(vi.mocked(eq).mock.calls.map((c) => c[0])).toContain('category');
     });
   });
 });

@@ -218,6 +218,32 @@ export interface CoreWebVitals {
 }
 
 /**
+ * The vitals as seo_core_web_vitals stores them (round 247). lcp, fid, fcp,
+ * ttfb, tti and tbt are INTEGER columns and Lighthouse reports milliseconds
+ * with a fraction almost every time, so an unrounded value is an insert
+ * Postgres refuses - the Express route stored them unrounded and failed on
+ * nearly every real measurement, while the edge function rounded inline. cls
+ * and si are decimals and keep their precision. Null stays null.
+ */
+export function storableVitals(v: CoreWebVitals) {
+  const ms = (n: number | null) => (n === null ? null : Math.round(n));
+  return {
+    lcp: ms(v.lcp),
+    fid: ms(v.fid),
+    cls: v.cls,
+    fcp: ms(v.fcp),
+    ttfb: ms(v.ttfb),
+    tti: ms(v.tti),
+    tbt: ms(v.tbt),
+    si: v.si,
+    performanceScore: v.performanceScore,
+    accessibilityScore: v.accessibilityScore,
+    bestPracticesScore: v.bestPracticesScore,
+    seoScore: v.seoScore,
+  };
+}
+
+/**
  * Read a PageSpeed Insights response.
  *
  * A MISSING AUDIT IS NULL, NOT ZERO. The original wrote `|| 0` on every metric,

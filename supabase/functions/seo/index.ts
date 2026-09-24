@@ -8,6 +8,7 @@ import {
   evaluateSecurityHeaders,
   MAX_REDIRECTS,
   readPageSpeedVitals,
+  storableVitals,
   type RedirectStep,
   summariseRedirectChain,
 } from '../../../shared/seo-checks.ts';
@@ -1269,21 +1270,22 @@ export default async function handler(req: Request) {
 
       const vitals = readPageSpeedVitals(payload);
 
+      const row = storableVitals(vitals);
       const { error: insertError } = await admin.from('seo_core_web_vitals').insert({
         tenant_id: tenantId,
         url: targetUrl,
-        lcp: vitals.lcp === null ? null : Math.round(vitals.lcp),
-        fid: vitals.fid === null ? null : Math.round(vitals.fid),
-        cls: vitals.cls,
-        fcp: vitals.fcp === null ? null : Math.round(vitals.fcp),
-        ttfb: vitals.ttfb === null ? null : Math.round(vitals.ttfb),
-        tti: vitals.tti === null ? null : Math.round(vitals.tti),
-        tbt: vitals.tbt === null ? null : Math.round(vitals.tbt),
-        si: vitals.si,
-        performance_score: vitals.performanceScore,
-        accessibility_score: vitals.accessibilityScore,
-        best_practices_score: vitals.bestPracticesScore,
-        seo_score: vitals.seoScore,
+        lcp: row.lcp,
+        fid: row.fid,
+        cls: row.cls,
+        fcp: row.fcp,
+        ttfb: row.ttfb,
+        tti: row.tti,
+        tbt: row.tbt,
+        si: row.si,
+        performance_score: row.performanceScore,
+        accessibility_score: row.accessibilityScore,
+        best_practices_score: row.bestPracticesScore,
+        seo_score: row.seoScore,
         device,
         measured_at: new Date().toISOString(),
       });
