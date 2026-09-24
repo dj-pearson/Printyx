@@ -1,12 +1,5 @@
 {
-  "note": "UI-DEAD-BUTTONS-001. A <Button> whose label carries an action verb and which has no onClick, type=\"submit\", asChild, href or form, and is not inside a <form> or a trigger wrapper. ANCESTRY IS RESOLVED BY A TAG WALK, not a line window: the unhardened predecessor excluded anything within 15 lines of a form or trigger, which let a submit button declared thirty lines below its form read as dead and let a button merely following a </form> read as alive. Every entry carries a VERDICT and a REASON - wired, deleted, by-design, or unexamined. \"unexamined\" is permitted and is the point: saying nobody has looked beats implying somebody has, and this list is a WORKLIST rather than settled debt. Round 96 built the guard and resolved two entries; the remaining 93 are product calls about whether each feature should exist, which is the rest of the story. Shrink this list; see scripts/check-dead-buttons.mjs.",
-  "count": 1,
-  "triage": {
-    "client/src/pages/EquipmentLifecycleHub.tsx:Generate QR Codes": {
-      "file": "client/src/pages/EquipmentLifecycleHub.tsx",
-      "label": "Generate QR Codes",
-      "verdict": "unexamined",
-      "reason": ""
-    }
-  }
+  "note": "UI-DEAD-BUTTONS-001. A <Button> whose label carries an action verb and which has no onClick, type=\"submit\", asChild, href or form, and is not inside a <form> or a trigger wrapper. ANCESTRY IS RESOLVED BY A TAG WALK, not a line window: the unhardened predecessor excluded anything within 15 lines of a form or trigger, which let a submit button declared thirty lines below its form read as dead and let a button merely following a </form> read as alive. Every entry carries a VERDICT and a REASON - wired, deleted, by-design, or unexamined. \"unexamined\" is permitted and is the point: saying nobody has looked beats implying somebody has, and this list is a WORKLIST rather than settled debt. Round 96 built the guard and resolved two entries; the remaining 93 are product calls about whether each feature should exist, which is the rest of the story. Shrink this list; see scripts/check-dead-buttons.mjs. ROUND 227: EMPTY. Every entry was resolved (wired, deleted, or replaced by a link to the page that does the thing), so the ratchet now holds at zero and any new handlerless action button fails the build. Several rounds found the dead button was the smallest defect on its page - a fixture list, a fake save, a shadowed route - so treat a new finding as a reason to read the page, not just to add an onClick.",
+  "count": 0,
+  "triage": {}
 }

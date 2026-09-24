@@ -13,7 +13,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { execFileSync } from 'node:child_process';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { findButtons, isDead, TRIGGER_TAGS } from '../../../scripts/check-dead-buttons.mjs';
 
@@ -193,15 +193,28 @@ describe('the baseline is a triage file, not a list', () => {
   it('the WRITER keeps file and label as fields', () => {
     // The mutant that drops them only changes --update-baseline output, which
     // reading the committed file cannot see.
+    //
+    // Round 227: the worklist reached zero, so there was no entry to sample.
+    // A probe file carrying one dead button gives the writer something to
+    // record, and is removed whatever happens.
     const path = join(repo, 'docs/dead-buttons-baseline.json');
+    const probe = join(repo, 'client/src/__dead_button_probe__.tsx');
     const original = readFileSync(path, 'utf8');
     try {
+      writeFileSync(
+        probe,
+        "import { Button } from '@/components/ui/button';\n" +
+          'export const Probe = () => <Button variant="outline">Delete Probe</Button>;\n',
+      );
       runGuard(['--update-baseline']);
       const written = JSON.parse(readFileSync(path, 'utf8'));
-      const sample = Object.values(written.triage)[0] as { file?: string; label?: string };
-      expect(sample.file).toMatch(/^client\/src\/.+\.tsx$/);
-      expect(typeof sample.label).toBe('string');
+      const sample = Object.values(written.triage).find(
+        (e) => (e as { file?: string }).file === 'client/src/__dead_button_probe__.tsx',
+      ) as { file?: string; label?: string } | undefined;
+      expect(sample?.file).toBe('client/src/__dead_button_probe__.tsx');
+      expect(sample?.label).toBe('Delete Probe');
     } finally {
+      rmSync(probe, { force: true });
       writeFileSync(path, original);
     }
   });
