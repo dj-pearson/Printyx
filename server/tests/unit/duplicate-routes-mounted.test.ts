@@ -101,11 +101,30 @@ describe('the collisions it exposed are gone', () => {
     );
   });
 
-  it('keeps the nine handlers that only the customization router owns', () => {
-    const cust = read('server/routes-dashboard-customization.ts');
-    expect(cust).not.toMatch(/router\.get\('\/layouts',/);
-    for (const path of ['/widgets', '/layout/:layoutId', '/preferences', '/snapshot']) {
-      expect(cust, path).toContain(`'${path}'`);
+  it('retires the customization router, whose own paths had no caller (round 243)', () => {
+    expect(existsSync(join(repo, 'server/routes-dashboard-customization.ts'))).toBe(false);
+    // Comments stripped: the registry's retirement note quotes this tuple.
+    const registry = read('server/routes-registry.ts')
+      .replace(/(?<![:/])\/\/.*$/gm, '')
+      .replace(/\/\*[\s\S]*?\*\//g, '');
+    expect(registry).not.toMatch(/\['\/api\/dashboard',\s*'\.\/routes-dashboard-customization'\]/);
+    const callers = (dir: string): string[] =>
+      readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+        const p = join(dir, e.name);
+        if (e.isDirectory()) return callers(p);
+        return /\.(ts|tsx)$/.test(e.name) ? [readFileSync(p, 'utf8')] : [];
+      });
+    const client = callers(join(repo, 'client/src'));
+    expect(client.length).toBeGreaterThan(500);
+    for (const p of [
+      '/api/dashboard/layout/',
+      '/api/dashboard/preferences',
+      '/api/dashboard/snapshot',
+    ]) {
+      expect(
+        client.some((src) => src.includes(p)),
+        p,
+      ).toBe(false);
     }
   });
 });

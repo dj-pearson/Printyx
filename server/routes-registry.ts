@@ -32,7 +32,6 @@ import {
   registerCrmBulkRoutes,
   registerBulkOperationsRoutes,
   registerCsvImportRoutes,
-  signupCrmRoutes,
   universalSearchRoutes,
   businessRecordsRoutes,
 } from './domains/crm';
@@ -437,7 +436,11 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
     // /execute-action, reported success for work it never did; that caller is
     // now gone too. The real /root-admin/pending-tasks lives in
     // supabase/functions/root-admin/.
-    ['/api/dashboard', './routes-dashboard-customization'],
+    // Round 243: ['/api/dashboard', './routes-dashboard-customization'] retired.
+    // Its /widgets was already shadowed by the proxy entry, and /layout,
+    // /preferences and /snapshot(s) had no caller in any of the seven client
+    // trees - the dashboard surfaces use /user-layout, /my-day-layout and
+    // /layouts, all edge-served.
   ];
   for (const [mountPath, modulePath] of asyncMounts) {
     const mod = await import(modulePath);
@@ -455,7 +458,12 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
 
   const adminSeedRoutes = await import('./routes/admin-seed-routes');
   app.use('/api/admin/seed', adminSeedRoutes.default);
-  app.use('/api/root-admin/crm', signupCrmRoutes);
+  // Round 243: signupCrmRoutes (routes-signup-crm.ts) was mounted here at
+  // /api/root-admin/crm. Nothing in any client tree called that prefix - the
+  // signups CRM calls /api/root-admin/signups*, served by the root-admin edge
+  // function through scoped proxy entries (round 167) - so the router, its four
+  // uncalled extras (signups/:id, PATCH, log-activity, send-email) and a sortBy
+  // that indexed the table object with a raw query value were deleted.
 
   // ─── Admin Stats ──────────────────────────────────────────────��───
   registerAdminStatsRoutes(app);

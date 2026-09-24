@@ -382,13 +382,12 @@ export function registerEdgeFunctionProxy(app: any) {
     // caller in any client tree and are not ported.
     '/api/equipment-lifecycle': 'equipment-lifecycle',
 
-    // DASH-METRICS-001. /api/dashboard is SCOPED PER PATH, not proxied whole,
-    // and that is deliberate: server/routes-dashboard-customization.ts mounts at
-    // the /api/dashboard ROOT and owns /layout, /preferences and /snapshot(s),
-    // which no edge function serves. A bare '/api/dashboard' entry would take
-    // that router off Express and give dev a 404 where it has working handlers -
-    // the exact failure the header above warns about. Same reasoning as the
-    // per-path /api/sales-pipeline entries.
+    // DASH-METRICS-001. /api/dashboard is SCOPED PER PATH, not proxied whole.
+    // The original reason - routes-dashboard-customization.ts owning /layout,
+    // /preferences and /snapshot(s) on Express - is gone: round 243 deleted
+    // that router, because none of those paths had a caller. The per-path
+    // entries stay because each was checked against its function; a bare entry
+    // would send any path not listed here to `dashboard` unexamined.
     //
     // Order is load-bearing twice over. Express matches app.use prefixes in
     // registration order, so /api/dashboard/widgets and /api/dashboard/user-layout
