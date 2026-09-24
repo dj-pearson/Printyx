@@ -42,6 +42,7 @@ import {
   Users,
 } from 'lucide-react';
 import { cn, formatPercent, percentOf } from '@/lib/utils';
+import { describeApiError } from '@/lib/api-error';
 import { apiRequest } from '@/lib/queryClient';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 
@@ -82,6 +83,24 @@ interface FilterState {
   [key: string]: any;
 }
 
+/**
+ * The filters as a query string. Scalars only; the date range becomes
+ * from_date/to_date and anything empty is left out rather than sent as "".
+ */
+export function reportQueryString(filters: Record<string, unknown>): string {
+  const q = new URLSearchParams();
+  for (const [k, v] of Object.entries(filters)) {
+    if (k === 'dateRange' || v == null || v === '') continue;
+    if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') {
+      q.set(k, String(v));
+    }
+  }
+  const range = filters.dateRange as { from?: Date; to?: Date } | undefined;
+  if (range?.from) q.set('from_date', range.from.toISOString());
+  if (range?.to) q.set('to_date', range.to.toISOString());
+  return q.toString();
+}
+
 export function ReportViewer({
   reportId,
   reportName,
@@ -112,14 +131,10 @@ export function ReportViewer({
     dataUpdatedAt,
   } = useQuery<ReportData>({
     queryKey: ['report', reportId, filters],
+    // Round 232: this passed { params } to apiRequest, which has no such
+    // option, so every filter, sort and date range was silently discarded.
     queryFn: () =>
-      apiRequest(`/api/reporting/reports/${reportId}/data`, {
-        params: {
-          ...filters,
-          from_date: filters.dateRange?.from?.toISOString(),
-          to_date: filters.dateRange?.to?.toISOString(),
-        },
-      }),
+      apiRequest(`/api/reporting/reports/${reportId}/data?${reportQueryString(filters)}`),
     refetchInterval: autoRefresh ? refreshInterval * 1000 : false,
     staleTime: 30000, // 30 seconds
   });
@@ -183,7 +198,7 @@ export function ReportViewer({
       <Card className="p-6">
         <div className="flex items-center space-x-2 text-red-600">
           <AlertCircle className="h-5 w-5" />
-          <span>Failed to load report: {error.message}</span>
+          <span>{describeApiError(error).message}</span>
         </div>
         <Button variant="outline" onClick={() => refetch()} className="mt-4">
           <RefreshCw className="h-4 w-4 mr-2" />
