@@ -1,9 +1,17 @@
 /**
  * AI Hub Dashboard
- * Central hub for all AI-powered features and capabilities
+ * Central hub for all AI-powered features and capabilities.
+ *
+ * Round 220: six headline figures (1405 AI actions, 93% average accuracy,
+ * 156.5h saved, 12 active agents, 847 daily requests, 78% automation) and a
+ * usage count, an accuracy and a January 2025 "last used" date on every
+ * capability card were typed in; nothing counts AI calls per feature or scores
+ * one. They are deleted, the page is the directory it actually is, and the
+ * two header buttons and four quick actions that had no handler are either
+ * links to a real page or gone.
  */
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -16,22 +24,10 @@ import {
   Video,
   Search,
   MessageSquare,
-  Zap,
-  TrendingUp,
-  BarChart3,
-  Users,
   Clock,
   CheckCircle,
-  Star,
-  Activity,
   Sparkles,
   ArrowRight,
-  Settings,
-  Database,
-  Network,
-  Mic,
-  FileText,
-  Target,
   Lightbulb,
 } from 'lucide-react';
 
@@ -42,14 +38,11 @@ interface AICapability {
   icon: React.ComponentType<{ className?: string }>;
   path: string;
   status: 'active' | 'beta' | 'coming_soon';
-  usageCount: number;
-  accuracy: number;
-  lastUsed?: string;
   features: string[];
 }
 
 export default function AIHub() {
-  const [capabilities] = useState<AICapability[]>([
+  const capabilities: AICapability[] = [
     {
       id: 'ai-employees',
       title: 'AI Employees',
@@ -58,9 +51,6 @@ export default function AIHub() {
       icon: Bot,
       path: '/ai-employees',
       status: 'active',
-      usageCount: 247,
-      accuracy: 94,
-      lastUsed: '2025-01-15',
       features: ['Sales Assistant AI', 'Support Agent AI', 'Data Analyst AI', 'Project Manager AI'],
     },
     {
@@ -71,9 +61,6 @@ export default function AIHub() {
       icon: Calendar,
       path: '/calendar',
       status: 'active',
-      usageCount: 156,
-      accuracy: 96,
-      lastUsed: '2025-01-15',
       features: [
         'Smart Scheduling',
         'Conflict Resolution',
@@ -89,9 +76,6 @@ export default function AIHub() {
       icon: Video,
       path: '/meeting-transcription',
       status: 'active',
-      usageCount: 89,
-      accuracy: 92,
-      lastUsed: '2025-01-14',
       features: [
         'Real-time Transcription',
         'Speaker Recognition',
@@ -107,9 +91,6 @@ export default function AIHub() {
       icon: Search,
       path: '/ai-search',
       status: 'beta',
-      usageCount: 312,
-      accuracy: 89,
-      lastUsed: '2025-01-15',
       features: ['Semantic Search', 'Knowledge Graphs', 'Content Discovery', 'Answer Generation'],
     },
     {
@@ -120,9 +101,6 @@ export default function AIHub() {
       icon: Brain,
       path: '/ai-task-scheduling',
       status: 'active',
-      usageCount: 178,
-      accuracy: 91,
-      lastUsed: '2025-01-15',
       features: [
         'Smart Scheduling',
         'Dependency Analysis',
@@ -138,9 +116,6 @@ export default function AIHub() {
       icon: MessageSquare,
       path: '/conversational-ai-dashboard',
       status: 'active',
-      usageCount: 423,
-      accuracy: 95,
-      lastUsed: '2025-01-15',
       features: [
         'Chatbot Management',
         'Natural Language Processing',
@@ -148,16 +123,7 @@ export default function AIHub() {
         'Response Generation',
       ],
     },
-  ]);
-
-  const [stats] = useState({
-    totalAIActions: 1405,
-    averageAccuracy: 93,
-    timeSaved: 156.5, // hours
-    activeAIAgents: 12,
-    dailyProcessedRequests: 847,
-    automationRate: 78,
-  });
+  ];
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -177,105 +143,6 @@ export default function AIHub() {
       title="AI Hub"
       description="Central command center for all AI-powered features and intelligent automation"
     >
-      {/* AI Hub Action Buttons */}
-      <div className="flex justify-end gap-3 mb-6">
-        <Button className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700">
-          <Settings className="h-4 w-4" />
-          AI Settings
-        </Button>
-        <Button variant="outline" className="flex items-center gap-2">
-          <BarChart3 className="h-4 w-4" />
-          View Analytics
-        </Button>
-      </div>
-
-      {/* AI Performance Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-purple-100 rounded-lg">
-                <Zap className="h-6 w-6 text-purple-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{stats.totalAIActions}</p>
-                <p className="text-sm text-gray-600">AI Actions</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-green-100 rounded-lg">
-                <Target className="h-6 w-6 text-green-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{stats.averageAccuracy}%</p>
-                <p className="text-sm text-gray-600">Avg Accuracy</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-blue-100 rounded-lg">
-                <Clock className="h-6 w-6 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{stats.timeSaved}h</p>
-                <p className="text-sm text-gray-600">Time Saved</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-orange-100 rounded-lg">
-                <Bot className="h-6 w-6 text-orange-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{stats.activeAIAgents}</p>
-                <p className="text-sm text-gray-600">Active Agents</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-indigo-100 rounded-lg">
-                <Activity className="h-6 w-6 text-indigo-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{stats.dailyProcessedRequests}</p>
-                <p className="text-sm text-gray-600">Daily Requests</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-teal-100 rounded-lg">
-                <TrendingUp className="h-6 w-6 text-teal-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{stats.automationRate}%</p>
-                <p className="text-sm text-gray-600">Automation</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
       {/* AI Capabilities Grid */}
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -304,18 +171,6 @@ export default function AIHub() {
                 <CardDescription className="mt-3">{capability.description}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Performance Metrics */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="text-center p-3 bg-gray-50 rounded-lg">
-                    <p className="text-lg font-bold text-gray-900">{capability.usageCount}</p>
-                    <p className="text-xs text-gray-600">Uses</p>
-                  </div>
-                  <div className="text-center p-3 bg-gray-50 rounded-lg">
-                    <p className="text-lg font-bold text-gray-900">{capability.accuracy}%</p>
-                    <p className="text-xs text-gray-600">Accuracy</p>
-                  </div>
-                </div>
-
                 {/* Features List */}
                 <div className="space-y-2">
                   <p className="text-sm font-medium text-gray-900">Key Features:</p>
@@ -333,14 +188,6 @@ export default function AIHub() {
                     )}
                   </div>
                 </div>
-
-                {/* Last Used */}
-                {capability.lastUsed && (
-                  <div className="flex items-center gap-2 text-sm text-gray-500">
-                    <Clock className="h-4 w-4" />
-                    Last used: {capability.lastUsed}
-                  </div>
-                )}
 
                 {/* Action Button */}
                 <Link href={capability.path}>
@@ -368,47 +215,45 @@ export default function AIHub() {
         </div>
       </div>
 
-      {/* Quick Actions */}
+      {/* Quick Actions. Round 220: all four were buttons with no handler.
+          "AI Analysis" and "Smart Schedule" promised an analysis and a schedule
+          optimiser that nothing implements, so they are gone; the other two
+          are links to the pages that do the thing they name. */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Lightbulb className="h-5 w-5 text-yellow-500" />
             Quick AI Actions
           </CardTitle>
-          <CardDescription>Frequently used AI-powered actions and shortcuts</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Button variant="outline" className="p-4 h-auto flex flex-col items-start gap-2">
-              <div className="flex items-center gap-2">
-                <Brain className="h-4 w-4 text-purple-600" />
-                <span className="font-medium">AI Analysis</span>
-              </div>
-              <span className="text-sm text-gray-600">Analyze current business data</span>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Button
+              asChild
+              variant="outline"
+              className="p-4 h-auto flex flex-col items-start gap-2"
+            >
+              <Link href="/ai-search">
+                <span className="flex items-center gap-2 font-medium">
+                  <Search className="h-4 w-4 text-green-600" />
+                  Knowledge Search
+                </span>
+                <span className="text-sm text-gray-600">Find relevant information</span>
+              </Link>
             </Button>
 
-            <Button variant="outline" className="p-4 h-auto flex flex-col items-start gap-2">
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-blue-600" />
-                <span className="font-medium">Smart Schedule</span>
-              </div>
-              <span className="text-sm text-gray-600">Optimize today's schedule</span>
-            </Button>
-
-            <Button variant="outline" className="p-4 h-auto flex flex-col items-start gap-2">
-              <div className="flex items-center gap-2">
-                <Search className="h-4 w-4 text-green-600" />
-                <span className="font-medium">Knowledge Search</span>
-              </div>
-              <span className="text-sm text-gray-600">Find relevant information</span>
-            </Button>
-
-            <Button variant="outline" className="p-4 h-auto flex flex-col items-start gap-2">
-              <div className="flex items-center gap-2">
-                <Bot className="h-4 w-4 text-orange-600" />
-                <span className="font-medium">Deploy AI Agent</span>
-              </div>
-              <span className="text-sm text-gray-600">Create new AI employee</span>
+            <Button
+              asChild
+              variant="outline"
+              className="p-4 h-auto flex flex-col items-start gap-2"
+            >
+              <Link href="/ai-employees?action=new">
+                <span className="flex items-center gap-2 font-medium">
+                  <Bot className="h-4 w-4 text-orange-600" />
+                  Deploy AI Agent
+                </span>
+                <span className="text-sm text-gray-600">Create new AI employee</span>
+              </Link>
             </Button>
           </div>
         </CardContent>

@@ -4,6 +4,9 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { toCamelShallow } from '../_shared/case.ts';
+import { fetchAllRows } from '../_shared/paged-select.ts';
+import { buildAnalysisRow } from '../_shared/service-call-analysis.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -38,44 +41,49 @@ export default async function handler(req: Request) {
     const resource = parts[0]; // analysis ID or 'stats', 'recent'
     const subResource = parts[1];
 
-    // GET /service-analysis/stats - Get analysis statistics
+    // Round 163. Every branch from here to parts-order read or wrote
+    // `service_analyses` or `service_analysis_parts`, neither of which is in any
+    // schema or migration - the real tables are service_call_analysis and
+    // service_parts_used. Stats also counted `status` and `resolution_type`,
+    // which service_call_analysis does not have; its vocabulary is `outcome`
+    // and `analysis_type`. Creating an analysis is served by
+    // /service-tickets/:id/analysis, the path the page calls, so the POST
+    // that used to sit here (reachable only as /service-analysis/<ticketId>,
+    // which nothing requests) is gone.
+
+    // GET /service-analysis/stats
     if (req.method === 'GET' && resource === 'stats') {
-      const { data: analyses } = await admin
-        .from('service_analyses')
-        .select('status, resolution_type')
-        .eq('tenant_id', tenantId);
+      let analyses: Array<{ outcome: string | null; analysis_type: string | null }>;
+      try {
+        analyses = await fetchAllRows<{ outcome: string | null; analysis_type: string | null }>(
+          () =>
+            admin
+              .from('service_call_analysis')
+              .select('outcome, analysis_type')
+              .eq('tenant_id', tenantId),
+        );
+      } catch (error) {
+        console.error('Error fetching analysis stats:', error);
+        return createCorsResponse({ error: 'Failed to fetch analysis stats' }, 500, req);
+      }
 
-      const byStatus: Record<string, number> = {};
-      const byResolutionType: Record<string, number> = {};
+      const byOutcome: Record<string, number> = {};
+      const byAnalysisType: Record<string, number> = {};
+      for (const a of analyses) {
+        const outcome = a.outcome ?? 'unrecorded';
+        const type = a.analysis_type ?? 'unrecorded';
+        byOutcome[outcome] = (byOutcome[outcome] ?? 0) + 1;
+        byAnalysisType[type] = (byAnalysisType[type] ?? 0) + 1;
+      }
 
-      (analyses || []).forEach((a: any) => {
-        byStatus[a.status] = (byStatus[a.status] || 0) + 1;
-        if (a.resolution_type) {
-          byResolutionType[a.resolution_type] = (byResolutionType[a.resolution_type] || 0) + 1;
-        }
-      });
-
-      return createCorsResponse(
-        {
-          total: analyses?.length || 0,
-          byStatus,
-          byResolutionType,
-        },
-        200,
-        req,
-      );
+      return createCorsResponse({ total: analyses.length, byOutcome, byAnalysisType }, 200, req);
     }
 
-    // GET /service-analysis/recent - Get recent analyses
+    // GET /service-analysis/recent
     if (req.method === 'GET' && resource === 'recent') {
       const { data: analyses, error } = await admin
-        .from('service_analyses')
-        .select(
-          `
-          *,
-          ticket:ticket_id (id, title)
-        `,
-        )
+        .from('service_call_analysis')
+        .select('*')
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false })
         .limit(20);
@@ -84,98 +92,77 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to fetch recent analyses' }, 500, req);
       }
 
-      return createCorsResponse(analyses || [], 200, req);
+      return createCorsResponse((analyses ?? []).map(toCamelShallow), 200, req);
     }
 
-    // GET /service-analysis/:analysisId - Get single analysis
-    if (
-      req.method === 'GET' &&
-      resource &&
-      !subResource &&
-      resource !== 'stats' &&
-      resource !== 'recent'
-    ) {
+    // GET /service-analysis/:analysisId
+    if (req.method === 'GET' && resource && !subResource) {
       const { data: analysis, error } = await admin
-        .from('service_analyses')
-        .select(
-          `
-          *,
-          ticket:ticket_id (*)
-        `,
-        )
+        .from('service_call_analysis')
+        .select('*')
         .eq('id', resource)
         .eq('tenant_id', tenantId)
-        .single();
+        .maybeSingle();
 
       if (error) {
+        return createCorsResponse({ error: 'Failed to load service analysis' }, 500, req);
+      }
+      if (!analysis) {
         return createCorsResponse({ error: 'Service analysis not found' }, 404, req);
       }
 
-      return createCorsResponse(analysis, 200, req);
+      return createCorsResponse(toCamelShallow(analysis), 200, req);
     }
 
-    // POST /service-tickets/:ticketId/analysis - Create analysis for ticket
-    if (req.method === 'POST' && resource && !subResource) {
-      const body = await req.json();
-
-      const { data: analysis, error } = await admin
-        .from('service_analyses')
-        .insert({
-          tenant_id: tenantId,
-          ticket_id: body.ticketId || body.ticket_id || resource,
-          diagnosis: body.diagnosis,
-          root_cause: body.rootCause || body.root_cause,
-          resolution_type: body.resolutionType || body.resolution_type,
-          recommended_actions: body.recommendedActions || body.recommended_actions || [],
-          parts_needed: body.partsNeeded || body.parts_needed || [],
-          estimated_time: body.estimatedTime || body.estimated_time,
-          status: body.status || 'pending',
-          analyzed_by: user.id,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
-
-      if (error) {
-        return createCorsResponse({ error: 'Failed to create service analysis' }, 500, req);
+    // PUT /service-analysis/:id - update only the fields sent
+    if (req.method === 'PUT' && resource && !subResource) {
+      const body = await req.json().catch(() => ({}));
+      const plan = buildAnalysisRow(body, { tenantId, ticketId: '', userId: user.id }, 'update');
+      if (plan.invalid.length > 0) {
+        return createCorsResponse(
+          { error: 'Invalid analysis', code: 'INVALID_ANALYSIS', invalid: plan.invalid },
+          400,
+          req,
+        );
+      }
+      if (Object.keys(plan.row).length === 0) {
+        return createCorsResponse(
+          {
+            error: 'No writable fields',
+            code: 'NO_WRITABLE_FIELDS',
+            ignoredFields: plan.ignoredFields,
+          },
+          400,
+          req,
+        );
       }
 
-      return createCorsResponse(analysis, 201, req);
-    }
-
-    // PUT /service-analysis/:id - Update analysis
-    if (req.method === 'PUT' && resource && !subResource) {
-      const body = await req.json();
-
       const { data: analysis, error } = await admin
-        .from('service_analyses')
-        .update({
-          diagnosis: body.diagnosis,
-          root_cause: body.rootCause || body.root_cause,
-          resolution_type: body.resolutionType || body.resolution_type,
-          recommended_actions: body.recommendedActions || body.recommended_actions,
-          parts_needed: body.partsNeeded || body.parts_needed,
-          estimated_time: body.estimatedTime || body.estimated_time,
-          status: body.status,
-          updated_at: new Date().toISOString(),
-        })
+        .from('service_call_analysis')
+        .update({ ...plan.row, updated_at: new Date().toISOString() })
         .eq('id', resource)
         .eq('tenant_id', tenantId)
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) {
         return createCorsResponse({ error: 'Failed to update service analysis' }, 500, req);
       }
+      if (!analysis) {
+        return createCorsResponse({ error: 'Service analysis not found' }, 404, req);
+      }
 
-      return createCorsResponse(analysis, 200, req);
+      return createCorsResponse(
+        { ...toCamelShallow(analysis), ignoredFields: plan.ignoredFields },
+        200,
+        req,
+      );
     }
 
-    // GET /service-analysis/:analysisId/parts-used - Get parts used
+    // GET /service-analysis/:analysisId/parts-used
     if (req.method === 'GET' && resource && subResource === 'parts-used') {
       const { data: parts, error } = await admin
-        .from('service_analysis_parts')
+        .from('service_parts_used')
         .select('*')
         .eq('analysis_id', resource)
         .eq('tenant_id', tenantId);
@@ -184,23 +171,48 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to fetch parts used' }, 500, req);
       }
 
-      return createCorsResponse(parts || [], 200, req);
+      return createCorsResponse((parts ?? []).map(toCamelShallow), 200, req);
     }
 
-    // POST /service-analysis/:analysisId/parts-used - Add part used
+    // POST /service-analysis/:analysisId/parts-used
     if (req.method === 'POST' && resource && subResource === 'parts-used') {
-      const body = await req.json();
+      const body = await req.json().catch(() => ({}));
+      const partNumber = body.partNumber ?? body.part_number;
+      const partName = body.partName ?? body.part_name;
+      const quantityUsed = Number(body.quantityUsed ?? body.quantity_used ?? body.quantity);
+      const missing = [
+        !partNumber && 'partNumber',
+        !partName && 'partName',
+        !(quantityUsed > 0) && 'quantityUsed',
+      ].filter(Boolean);
+      if (missing.length > 0) {
+        return createCorsResponse({ error: 'Missing required fields', missing }, 400, req);
+      }
 
+      const { data: analysisRow } = await admin
+        .from('service_call_analysis')
+        .select('id')
+        .eq('id', resource)
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+      if (!analysisRow) {
+        return createCorsResponse({ error: 'Analysis not found' }, 404, req);
+      }
+
+      const unitCost = body.unitCost ?? body.unit_cost ?? null;
       const { data: part, error } = await admin
-        .from('service_analysis_parts')
+        .from('service_parts_used')
         .insert({
           tenant_id: tenantId,
           analysis_id: resource,
-          part_id: body.partId || body.part_id,
-          part_number: body.partNumber || body.part_number,
-          quantity: body.quantity || 1,
-          cost: body.cost,
-          created_at: new Date().toISOString(),
+          part_number: partNumber,
+          part_name: partName,
+          part_description: body.partDescription ?? body.part_description ?? null,
+          quantity_used: quantityUsed,
+          was_in_stock: body.wasInStock ?? body.was_in_stock ?? false,
+          unit_cost: unitCost,
+          total_cost: unitCost === null ? null : Number(unitCost) * quantityUsed,
+          billable: body.billable ?? true,
         })
         .select()
         .single();
@@ -209,7 +221,7 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to add part used' }, 500, req);
       }
 
-      return createCorsResponse(part, 201, req);
+      return createCorsResponse(toCamelShallow(part), 201, req);
     }
 
     // POST /service-analysis/:analysisId/parts-order - Create parts order
@@ -312,7 +324,7 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to fetch parts orders' }, 500, req);
       }
 
-      return createCorsResponse(orders || [], 200, req);
+      return createCorsResponse((orders ?? []).map(toCamelShallow), 200, req);
     }
 
     return createCorsResponse({ error: 'Endpoint not found' }, 404, req);

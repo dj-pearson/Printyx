@@ -12,6 +12,9 @@ import { normalizePath } from '../_shared/path.ts';
 import { toCamel } from '../_shared/case.ts';
 import { buildRoleClaims, claimsPatch, syncRoleClaims } from '../_shared/role-claims.ts';
 import { fetchAllRows } from '../_shared/paged-select.ts';
+import { ilikeAnyFilter } from '../_shared/postgrest-or.ts';
+import { ADMIN_ROLE_LEVEL, summariseUserStats } from '../../../shared/user-stats.ts';
+import { decideRoleGrant } from '../../../shared/role-grant.ts';
 
 // Helper to check if user has admin permissions
 async function checkAdminPermission(
@@ -184,6 +187,58 @@ export default async function handler(req: Request) {
         req,
       );
     }
+
+    // Round 187. A role id supplied by the caller is a grant, and this function
+    // used to accept any - see shared/role-grant.ts. Returns the 403 to send,
+    // or null when the grant is allowed.
+    const refuseRoleGrant = async (roleId: string): Promise<Response | null> => {
+      const { data: target } = await admin
+        .from('roles')
+        .select('level, can_access_all_tenants')
+        .eq('id', roleId)
+        .maybeSingle();
+      const decision = decideRoleGrant(
+        {
+          level: currentRole?.level ?? null,
+          canAccessAllTenants: currentRole?.can_access_all_tenants ?? null,
+        },
+        target ? { level: target.level, canAccessAllTenants: target.can_access_all_tenants } : null,
+      );
+      if (decision.ok) return null;
+      return createCorsResponse({ error: decision.reason, code: decision.code }, 403, req);
+    };
+
+    // The same rule applied to the user being acted on: a caller may edit or
+    // deactivate only someone whose role they could have granted. Without
+    // this, a company admin could deactivate the platform admin in their
+    // tenant or rewrite their details. A user with no role is fair game.
+    const refuseActingOn = async (targetRoleId: string | null): Promise<Response | null> => {
+      if (!targetRoleId) return null;
+      const { data: target } = await admin
+        .from('roles')
+        .select('level, can_access_all_tenants')
+        .eq('id', targetRoleId)
+        .maybeSingle();
+      // A dangling role id is repairable, so it must not lock the user out
+      // of being edited - that is the one situation an admin most needs to fix.
+      if (!target) return null;
+      const decision = decideRoleGrant(
+        {
+          level: currentRole?.level ?? null,
+          canAccessAllTenants: currentRole?.can_access_all_tenants ?? null,
+        },
+        { level: target.level, canAccessAllTenants: target.can_access_all_tenants },
+      );
+      if (decision.ok) return null;
+      return createCorsResponse(
+        {
+          error: 'You cannot change a user whose role is above your own.',
+          code: 'USER_ABOVE_ACTOR',
+        },
+        403,
+        req,
+      );
+    };
 
     // =====================================================
     // ORG STRUCTURE (WF-R-08)
@@ -369,6 +424,76 @@ export default async function handler(req: Request) {
     // USER MANAGEMENT ENDPOINTS
     // =====================================================
 
+    // GET /admin/user-stats - the four headline cards on /admin/user-management.
+    //
+    // This was an Express-only handler, so in production the page's stats query
+    // 404'd - and because the page wraps it and the user list in one
+    // QueryStates, the whole page rendered "Could not load users". The Express
+    // copy also counted every user on the platform; these counts are scoped to
+    // the tenant, like the list beside them. See shared/user-stats.ts.
+    if (req.method === 'GET' && resource === 'user-stats') {
+      const monthStart = new Date();
+      monthStart.setUTCDate(1);
+      monthStart.setUTCHours(0, 0, 0, 0);
+
+      // Each count is written out as its own chain rather than through a
+      // helper that narrows a builder: check:phantom-cols attributes a column
+      // literal to the chain it sits on, and a helper has none.
+      const countOf = (r: { count: number | null; error: unknown }) =>
+        r.error ? null : (r.count ?? 0);
+
+      const { data: adminRoles, error: adminRolesError } = await admin
+        .from('roles')
+        .select('id')
+        .gte('level', ADMIN_ROLE_LEVEL);
+      const adminRoleIds = (adminRoles || []).map((r: any) => r.id);
+
+      const [totalR, activeR, suspendedR, newR] = await Promise.all([
+        admin.from('users').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId),
+        admin
+          .from('users')
+          .select('id', { count: 'exact', head: true })
+          .eq('tenant_id', tenantId)
+          .eq('is_active', true),
+        admin
+          .from('users')
+          .select('id', { count: 'exact', head: true })
+          .eq('tenant_id', tenantId)
+          .eq('is_active', false),
+        admin
+          .from('users')
+          .select('id', { count: 'exact', head: true })
+          .eq('tenant_id', tenantId)
+          .gte('created_at', monthStart.toISOString()),
+      ]);
+
+      let admins: number | null = null;
+      if (!adminRolesError) {
+        if (adminRoleIds.length === 0) {
+          admins = 0;
+        } else {
+          admins = countOf(
+            await admin
+              .from('users')
+              .select('id', { count: 'exact', head: true })
+              .eq('tenant_id', tenantId)
+              .in('role_id', adminRoleIds),
+          );
+        }
+      }
+
+      const total = countOf(totalR);
+      const active = countOf(activeR);
+      const suspended = countOf(suspendedR);
+      const newThisMonth = countOf(newR);
+
+      return createCorsResponse(
+        summariseUserStats({ total, active, suspended, admins, newThisMonth }),
+        200,
+        req,
+      );
+    }
+
     // GET /admin/users - List all users for tenant
     if (req.method === 'GET' && resource === 'users' && !resourceId) {
       const page = parseInt(url.searchParams.get('page') || '1');
@@ -403,9 +528,7 @@ export default async function handler(req: Request) {
         .range(offset, offset + limit - 1);
 
       if (search) {
-        query = query.or(
-          `email.ilike.%${search}%,first_name.ilike.%${search}%,last_name.ilike.%${search}%`,
-        );
+        query = query.or(ilikeAnyFilter(['email', 'first_name', 'last_name'], search));
       }
       if (roleId) {
         query = query.eq('role_id', roleId);
@@ -558,6 +681,13 @@ export default async function handler(req: Request) {
 
       if (existingUser) {
         return createCorsResponse({ error: 'User with this email already exists' }, 409, req);
+      }
+
+      // Checked BEFORE the invite: a refusal after inviteUserByEmail has
+      // already created the auth user and sent the email.
+      if (body.roleId) {
+        const refusal = await refuseRoleGrant(body.roleId);
+        if (refusal) return refusal;
       }
 
       // Create user in Supabase Auth (this sends invite email)
@@ -724,6 +854,16 @@ export default async function handler(req: Request) {
         }
       }
 
+      {
+        const refusal = await refuseActingOn(existingUser.role_id);
+        if (refusal) return refusal;
+      }
+
+      if (body.roleId && body.roleId !== existingUser.role_id) {
+        const refusal = await refuseRoleGrant(body.roleId);
+        if (refusal) return refusal;
+      }
+
       const updateData: Record<string, any> = {
         updated_at: new Date().toISOString(),
       };
@@ -847,6 +987,11 @@ export default async function handler(req: Request) {
 
       if (fetchError || !existingUser) {
         return createCorsResponse({ error: 'User not found' }, 404, req);
+      }
+
+      {
+        const refusal = await refuseActingOn(existingUser.role_id);
+        if (refusal) return refusal;
       }
 
       // Soft delete - set is_active to false

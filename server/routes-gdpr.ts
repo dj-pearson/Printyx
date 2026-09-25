@@ -7,6 +7,7 @@
  */
 
 import { createModuleLogger } from './lib/logger';
+import { GDPR_EXPORT_FORMATS, parseExportFormat } from './lib/gdpr-export-format';
 import { requireAuth } from './replitAuth';
 import { getUserId, getTenantId, isPlatformAdmin } from './utils/auth-helpers';
 import { gdprDataExportService } from './services/gdpr-data-export-service';
@@ -50,12 +51,24 @@ export function registerGdprRoutes(app: Express) {
         });
       }
 
+      const format = parseExportFormat(req.query.format);
+      if (!format) {
+        return res.status(400).json({
+          message: `Unsupported export format. Supported: ${GDPR_EXPORT_FORMATS.join(', ')}.`,
+          code: 'UNSUPPORTED_FORMAT',
+        });
+      }
+
       // Create the export request
       const exportRequest = await gdprDataExportService.createExportRequest(tenantId, {
         subjectType: 'user',
         subjectId: targetUserId,
         requestedBy: requestingUserId,
-        format: (req.query.format as string) || 'json',
+        // NOT NULL with no default, and never set: every export through this
+        // route failed at the insert (round 240). Derived from who is asking,
+        // never from the request, because it is an audit field.
+        requestedByType: targetUserId === requestingUserId ? 'subject' : 'admin',
+        format,
         includedCategories: req.query.categories
           ? (req.query.categories as string).split(',')
           : undefined,

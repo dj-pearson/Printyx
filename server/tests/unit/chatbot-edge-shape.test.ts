@@ -124,7 +124,6 @@ describe('the bot token never leaves', () => {
 
   it('obfuscates a pasted token before storing it', () => {
     expect(edge).toContain('obfuscateCredential(String(botToken))');
-    expect(express).toContain('obfuscateCredential(botToken)');
   });
 
   it('lists connections through the projection', () => {
@@ -144,8 +143,6 @@ describe('the console gets the keys it reads', () => {
     // blank cells with no error anywhere.
     expect(edge).toContain('(data ?? []).map(projectUserLink)');
     expect(edge).toContain('(data ?? []).map(projectQueryLogRow)');
-    expect(express).toContain('rows.map(projectUserLink)');
-    expect(express).toContain('rows.map(projectQueryLogRow)');
   });
 
   it('wraps every list as { data, total }', () => {

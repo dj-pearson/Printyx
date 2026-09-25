@@ -68,9 +68,8 @@ describe('the three Express routers are gone', () => {
     }
   });
 
-  it('keeps registerTodayDashboardRoutes, which owns a different prefix', () => {
-    // /api/dashboards/today is plural and is not proxied here.
-    expect(registry).toContain('registerTodayDashboardRoutes(app)');
+  it('retired registerTodayDashboardRoutes too; /api/dashboards is proxied (round 157)', () => {
+    expect(registry).not.toContain('registerTodayDashboardRoutes(app)');
   });
 });
 
@@ -115,9 +114,10 @@ describe('dev and production resolve the same handler', () => {
   });
 
   it('does NOT proxy the bare prefix', () => {
-    // routes-dashboard-customization.ts mounts at the /api/dashboard root and
-    // owns /layout, /preferences and /snapshot(s), which no edge function
-    // serves. A bare entry would 404 them in dev.
+    // The per-path entries were each checked against their function; a bare
+    // entry would send any unlisted path to `dashboard` unexamined. (The
+    // original reason, routes-dashboard-customization.ts, was retired in
+    // round 243.)
     expect(proxy).not.toMatch(/'\/api\/dashboard':\s*'dashboard'/);
   });
 

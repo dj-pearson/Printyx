@@ -1,7 +1,34 @@
 // client/src/pages/AIEmployeeDashboard.tsx
-import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { apiRequest } from '@/lib/queryClient';
+import React, { useEffect, useState } from 'react';
+import { useActionParam } from '@/hooks/use-action-param';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { apiRequest, invalidateApiPath } from '@/lib/queryClient';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { InlineQueryError } from '@/components/ui/inline-query-error';
+import { useToast } from '@/hooks/use-toast';
+import { describeApiError } from '@/lib/api-error';
+import {
+  assignTaskBody,
+  createEmployeeBody,
+  TASK_PRIORITIES,
+  type AiEmployeeTemplate,
+} from '@/lib/ai-employee-forms';
 import { MainLayout } from '@/components/layout/main-layout';
 import {
   Card,
@@ -157,6 +184,13 @@ const AIEmployeeDashboard: React.FC = () => {
     });
 
   const [selectedEmployee, setSelectedEmployee] = useState<AIEmployee | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  // AI Hub's "Deploy AI Agent" links here with ?action=new.
+  const action = useActionParam();
+  useEffect(() => {
+    if (action === 'new') setCreateOpen(true);
+  }, [action]);
+  const [assignTarget, setAssignTarget] = useState<AIEmployee | null>(null);
   const loading = employeesLoading || analyticsLoading;
 
   const getEmployeeIcon = (type: string) => {
@@ -202,15 +236,13 @@ const AIEmployeeDashboard: React.FC = () => {
     }
   };
 
-  // AUDIT-015: two controls were removed here rather than left as fiction.
-  //  - "Assign Task" only console.log'd. POST /api/ai-employees/tasks does exist, but
-  //    it needs a real task payload (type/title/description/context), i.e. a form —
-  //    that is a feature, not a wiring fix.
-  //  - The pause/resume toggle only flipped LOCAL state: there is no PATCH/PUT/DELETE
-  //    endpoint on this router at all, so it could never persist and the change
-  //    vanished on the next refetch. A button that pretends to change server state is
-  //    worse than no button (CLAUDE.md: delete features with no backing implementation
-  //    rather than fake them).
+  // AUDIT-015 removed a console.log "Assign Task" and a pause toggle that only
+  // flipped local state. Round 220 built the form that note said Assign Task
+  // needed: CreateEmployeeDialog posts a template-based body to POST
+  // /ai-employees, AssignTaskDialog posts to POST /ai-employees/tasks (which
+  // is rate-limited per tenant, since it calls Claude). The header Settings
+  // and the detail card's Configure buttons had no handler and there is still
+  // no PATCH on this router, so they are gone rather than wired to nothing.
 
   return (
     <MainLayout
@@ -219,13 +251,9 @@ const AIEmployeeDashboard: React.FC = () => {
     >
       {/* Action buttons */}
       <div className="flex justify-end gap-3 mb-6">
-        <Button>
+        <Button onClick={() => setCreateOpen(true)}>
           <Sparkles className="h-4 w-4 mr-2" />
           Create AI Employee
-        </Button>
-        <Button variant="outline">
-          <Settings className="h-4 w-4 mr-2" />
-          Settings
         </Button>
       </div>
 
@@ -694,20 +722,237 @@ const AIEmployeeDashboard: React.FC = () => {
               </div>
             </CardContent>
             <CardFooter className="flex gap-2">
-              <Button className="flex-1">
+              <Button
+                className="flex-1"
+                onClick={() => {
+                  // The detail card is a hand-built overlay; close it so the
+                  // task dialog is the only thing on screen.
+                  setAssignTarget(selectedEmployee);
+                  setSelectedEmployee(null);
+                }}
+              >
                 <Play className="h-4 w-4 mr-2" />
                 Assign Task
-              </Button>
-              <Button variant="outline">
-                <Settings className="h-4 w-4 mr-2" />
-                Configure
               </Button>
             </CardFooter>
           </Card>
         </div>
       )}
+
+      <CreateEmployeeDialog open={createOpen} onOpenChange={setCreateOpen} />
+      <AssignTaskDialog employee={assignTarget} onClose={() => setAssignTarget(null)} />
     </MainLayout>
   );
 };
+
+function CreateEmployeeDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const { toast } = useToast();
+  const [templateId, setTemplateId] = useState('');
+  const [name, setName] = useState('');
+
+  const templatesQuery = useQuery<AiEmployeeTemplate[]>({
+    queryKey: ['/api/ai-employees/templates'],
+    enabled: open,
+  });
+  const templates = templatesQuery.data ?? [];
+  const template = templates.find((t) => t.id === templateId) ?? null;
+  const body = createEmployeeBody(template, name);
+
+  const create = useMutation({
+    mutationFn: () => apiRequest('/api/ai-employees', 'POST', body),
+    onSuccess: () => {
+      toast({ title: 'AI employee created', description: body?.employeeName });
+      invalidateApiPath('/api/ai-employees');
+      setTemplateId('');
+      setName('');
+      onOpenChange(false);
+    },
+    onError: (err) =>
+      toast({
+        title: 'Could not create AI employee',
+        description: describeApiError(err).message,
+        variant: 'destructive',
+      }),
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Create AI employee</DialogTitle>
+          <DialogDescription>Start from one of the built-in roles.</DialogDescription>
+        </DialogHeader>
+        {templatesQuery.isError ? (
+          <InlineQueryError label="the role templates" onRetry={() => templatesQuery.refetch()} />
+        ) : (
+          <div className="space-y-4">
+            <label className="block space-y-1 text-sm">
+              <span className="font-medium">Role</span>
+              <Select value={templateId} onValueChange={setTemplateId}>
+                <SelectTrigger>
+                  <SelectValue
+                    placeholder={templatesQuery.isLoading ? 'Loading roles...' : 'Choose a role'}
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {templates.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </label>
+            {template?.description && (
+              <p className="text-sm text-muted-foreground">{template.description}</p>
+            )}
+            <label className="block space-y-1 text-sm">
+              <span className="font-medium">Name</span>
+              <Input value={name} onChange={(e) => setName(e.target.value)} maxLength={255} />
+            </label>
+          </div>
+        )}
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button disabled={!body || create.isPending} onClick={() => create.mutate()}>
+            {create.isPending ? 'Creating...' : 'Create'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function AssignTaskDialog({
+  employee,
+  onClose,
+}: {
+  employee: AIEmployee | null;
+  onClose: () => void;
+}) {
+  const { toast } = useToast();
+  const [taskType, setTaskType] = useState('');
+  const [taskTitle, setTaskTitle] = useState('');
+  const [taskDescription, setTaskDescription] = useState('');
+  const [taskPriority, setTaskPriority] = useState('medium');
+
+  const body = assignTaskBody(employee?.id, {
+    taskType,
+    taskTitle,
+    taskDescription,
+    taskPriority,
+  });
+
+  const reset = () => {
+    setTaskType('');
+    setTaskTitle('');
+    setTaskDescription('');
+    setTaskPriority('medium');
+  };
+
+  const assign = useMutation({
+    mutationFn: () => apiRequest('/api/ai-employees/tasks', 'POST', body),
+    onSuccess: () => {
+      toast({ title: 'Task assigned', description: body?.taskTitle });
+      invalidateApiPath('/api/ai-employees');
+      reset();
+      onClose();
+    },
+    onError: (err) =>
+      toast({
+        title: 'Could not assign task',
+        description: describeApiError(err).message,
+        variant: 'destructive',
+      }),
+  });
+
+  return (
+    <Dialog
+      open={employee !== null}
+      onOpenChange={(open) => {
+        if (!open) {
+          reset();
+          onClose();
+        }
+      }}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Assign task</DialogTitle>
+          <DialogDescription>{employee?.employeeName}</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <label className="block space-y-1 text-sm">
+            <span className="font-medium">Task type</span>
+            <Select value={taskType} onValueChange={setTaskType}>
+              <SelectTrigger>
+                <SelectValue placeholder="What kind of work" />
+              </SelectTrigger>
+              <SelectContent>
+                {(employee?.aiCapabilities.length
+                  ? employee.aiCapabilities
+                  : ['general_assistance']
+                ).map((c) => (
+                  <SelectItem key={c} value={c}>
+                    {c.replace(/_/g, ' ')}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </label>
+          <label className="block space-y-1 text-sm">
+            <span className="font-medium">Title</span>
+            <Input value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} />
+          </label>
+          <label className="block space-y-1 text-sm">
+            <span className="font-medium">Details</span>
+            <Textarea
+              value={taskDescription}
+              onChange={(e) => setTaskDescription(e.target.value)}
+              rows={4}
+            />
+          </label>
+          <label className="block space-y-1 text-sm">
+            <span className="font-medium">Priority</span>
+            <Select value={taskPriority} onValueChange={setTaskPriority}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {TASK_PRIORITIES.map((p) => (
+                  <SelectItem key={p} value={p}>
+                    {p}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </label>
+        </div>
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={() => {
+              reset();
+              onClose();
+            }}
+          >
+            Cancel
+          </Button>
+          <Button disabled={!body || assign.isPending} onClick={() => assign.mutate()}>
+            {assign.isPending ? 'Assigning...' : 'Assign'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 export default AIEmployeeDashboard;

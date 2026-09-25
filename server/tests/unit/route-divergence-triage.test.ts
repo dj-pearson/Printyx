@@ -47,15 +47,20 @@ describe('every divergent domain carries a verdict (round 124)', () => {
     expect(VERDICTS.has('unexamined')).toBe(true);
     expect(note).toMatch(/unexamined.*permitted|permitted verdict/i);
     const unexamined = Object.values(entries).filter((e) => e.verdict === 'unexamined');
-    expect(unexamined.length).toBeGreaterThan(0);
+    // Round 177 examined the last one. The property was never "something is
+    // unexamined" (round 91's floor-on-a-worklist lesson) - it is that an
+    // unexamined entry, whenever there is one, says what was not looked at.
     // An unexamined entry still has to say WHAT has not been looked at.
     for (const entry of unexamined) expect(entry.reason.length).toBeGreaterThan(40);
   });
 
   it('records the two findings that were in the list all along', () => {
-    expect(entries.leads.verdict).toBe('divergent');
+    // Round 171 ported the usage limit to the leads edge function.
+    expect(entries.leads.verdict).toBe('resolved');
     expect(entries.leads.reason).toContain('enforceUsageLimits');
-    expect(entries.import.verdict).toBe('divergent');
+    // Round 170 corrected `import`: the edge function has no AI branch, so the
+    // plan flag gates nothing there (import-ai-plan-gate.test.ts holds that).
+    expect(entries.import.verdict).toBe('express-only-capability');
     expect(entries.import.reason).toContain('ai_csv_import');
     expect(entries.gdpr.verdict).toBe('resolved');
   });

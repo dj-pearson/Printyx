@@ -3,6 +3,7 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { ilikeAnyFilter } from '../_shared/postgrest-or.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -50,7 +51,7 @@ export default async function handler(req: Request) {
         // address is `primary_contact_email`. A PostgREST `.or()` naming an
         // unknown column fails the WHOLE query, so searching by anything at
         // all returned a 42703 rather than just missing the email match.
-        query = query.or(`company_name.ilike.%${search}%,primary_contact_email.ilike.%${search}%`);
+        query = query.or(ilikeAnyFilter(['company_name', 'primary_contact_email'], search));
       }
       if (type) query = query.eq('record_type', type);
       if (status) query = query.eq('status', status);

@@ -319,7 +319,6 @@ export default function ProactiveServiceDashboard() {
                               <Progress
                                 value={item.healthScore}
                                 className="w-16 h-2"
-                                // @ts-ignore
                                 indicatorClassName={getHealthScoreProgress(item.healthScore)}
                               />
                               <span

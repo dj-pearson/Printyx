@@ -19,13 +19,18 @@
  * The fix is one of three, and it is a product call rather than cleanup:
  * migrate the handlers to getUserId/getTenantId from utils/auth-helpers and
  * build the caller, retire the file in favour of an edge function that covers
- * it, or delete it. Populating req.session.user in the login path would revive
+ * it, or delete it. Round 239: NOT a duplicate of advanced-billing-routes -
+ * that router stores billing schedules and generation logs but cannot RUN a
+ * schedule; the execute, process-pending-meters and generate endpoints here
+ * are that missing half, over the real billingEngine. Delete it only together
+ * with that feature. Populating req.session.user in the login path would revive
  * all twelve files at once and touches security-sensitive code.
  */
 import express, { Request, Response } from 'express';
 import { z } from 'zod';
 import { automatedBillingService } from '../services/automated-billing-service';
 import { billingEngine } from '../services/billing-engine-service';
+import { BULK_GENERATE_MAX, generateBulkInvoices } from '../lib/bulk-invoice-generation';
 import { db } from '../db';
 import { eq, and, desc } from 'drizzle-orm';
 import { billingSchedules, invoiceGenerationLogs } from '@shared/schema';
@@ -450,7 +455,8 @@ router.post('/bulk-generate', async (req: Request, res: Response) => {
 
   try {
     const bulkSchema = z.object({
-      contractIds: z.array(z.string()),
+      // Refused rather than truncated when oversized (COP-I01 on a write).
+      contractIds: z.array(z.string()).min(1).max(BULK_GENERATE_MAX),
       billingPeriodStart: z.coerce.date().optional(),
       billingPeriodEnd: z.coerce.date().optional(),
       autoSend: z.boolean().optional(),
@@ -458,11 +464,16 @@ router.post('/bulk-generate', async (req: Request, res: Response) => {
 
     const data = bulkSchema.parse(req.body);
 
-    const result = await billingEngine.generateBulkInvoices(data.contractIds, user.tenantId, {
-      billingPeriodStart: data.billingPeriodStart,
-      billingPeriodEnd: data.billingPeriodEnd,
-      autoSend: data.autoSend,
-    });
+    // This called billingEngine.generateBulkInvoices, a method the engine has
+    // never had, so every request was a TypeError answered as a generic 500
+    // (round 239). It now runs the engine's real per-contract generator.
+    const result = await generateBulkInvoices(data.contractIds, (contractId) =>
+      billingEngine.generateInvoiceFromContract(contractId, user.tenantId, {
+        billingPeriodStart: data.billingPeriodStart,
+        billingPeriodEnd: data.billingPeriodEnd,
+        autoSend: data.autoSend,
+      }),
+    );
 
     res.json(result);
   } catch (error) {

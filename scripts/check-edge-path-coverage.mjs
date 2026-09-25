@@ -383,6 +383,34 @@ function aliasTargets() {
 }
 
 /**
+ * Whole-prefix renames in server.ts, as domain -> fn (round 220).
+ *
+ * `if (functionName === 'ai-employees') { functionName = 'ai-employee'; ... }`
+ * sends EVERY request under the prefix to another directory, so the domain's
+ * own directory - when one exists at all - is never executed. Reading it
+ * anyway reported three paths the real handler serves as gaps, while the
+ * unreachable plural directory it read was the thing actually out of date.
+ * Only a condition naming functionName alone counts; one that also tests
+ * subPath is a per-segment override, which aliasTargets() reads.
+ */
+export function wholeAliasTargets(src) {
+  const out = {};
+  if (src === undefined) {
+    try {
+      src = stripComments(readFileSync(join(repo, 'supabase/functions/server.ts'), 'utf8'));
+    } catch {
+      return out;
+    }
+  }
+  for (const m of src.matchAll(
+    /if \(functionName === '([a-z0-9-]+)'\)\s*\{\s*functionName = '([a-z0-9-]+)';/g,
+  )) {
+    out[m[1]] = m[2];
+  }
+  return out;
+}
+
+/**
  * Client trees beyond `client/src`, and the source extensions each one uses.
  *
  * Same list as check:unreferenced-edge-fns, for the same reason: a caller in
@@ -457,6 +485,7 @@ function nativeCallersByDomain() {
 export function computeCoverageGaps() {
   const parity = computeParity(repo);
   const aliases = aliasTargets();
+  const renamed = wholeAliasTargets();
   const native = nativeCallersByDomain();
   const gaps = {};
 
@@ -464,7 +493,7 @@ export function computeCoverageGaps() {
     if (!row.edge) continue;
     const nativeFiles = native.get(row.domain) ?? [];
     if (!row.frontendLive && nativeFiles.length === 0) continue;
-    const dir = join(repo, 'supabase/functions', row.domain);
+    const dir = join(repo, 'supabase/functions', renamed[row.domain] ?? row.domain);
     if (!existsSync(dir)) continue;
     const src = readDirSrc(dir);
 

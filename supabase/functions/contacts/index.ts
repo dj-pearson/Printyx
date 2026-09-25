@@ -19,6 +19,7 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { toCamelShallow } from '../_shared/case.ts';
 import { denyWithoutPermission } from '../_shared/rbac.ts';
+import { ilikeAnyFilter } from '../_shared/postgrest-or.ts';
 
 const WRITE_PERMISSION = ['sales.customer.edit_own', 'sales.customer.create'];
 
@@ -238,9 +239,7 @@ export default async function handler(req: Request) {
           .eq('tenant_id', tenantId);
 
         if (search) {
-          query = query.or(
-            `first_name.ilike.%${search}%,last_name.ilike.%${search}%,email.ilike.%${search}%`,
-          );
+          query = query.or(ilikeAnyFilter(['first_name', 'last_name', 'email'], search));
         }
         if (status && status !== 'all') query = query.eq('lead_status', status);
 

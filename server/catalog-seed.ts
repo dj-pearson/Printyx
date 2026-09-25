@@ -267,12 +267,19 @@ export async function seedMasterCatalog() {
 
     // Insert master products
     for (const product of sampleProducts) {
-      await db.insert(masterProductModels).values(product).onConflictDoNothing(); // Prevent duplicates
+      // msrp is a decimal column; drizzle types those as strings.
+      await db
+        .insert(masterProductModels)
+        .values({ ...product, msrp: String(product.msrp) })
+        .onConflictDoNothing(); // Prevent duplicates
     }
 
     // Insert master accessories
     for (const accessory of sampleAccessories) {
-      await db.insert(masterProductAccessories).values(accessory).onConflictDoNothing();
+      await db
+        .insert(masterProductAccessories)
+        .values({ ...accessory, msrp: String(accessory.msrp) })
+        .onConflictDoNothing();
     }
 
     log.info(

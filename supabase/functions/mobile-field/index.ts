@@ -4,6 +4,7 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { ilikeAnyFilter } from '../_shared/postgrest-or.ts';
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -362,7 +363,7 @@ export default async function handler(req: Request) {
         .gt('quantity', 0);
 
       if (search) {
-        query = query.or(`name.ilike.%${search}%,sku.ilike.%${search}%`);
+        query = query.or(ilikeAnyFilter(['name', 'sku'], search));
       }
 
       const { data: parts } = await query.limit(50);

@@ -8,6 +8,7 @@ import { handleReadingHistory } from './handlers/reading-history.ts';
 import { generateRequestId } from '../_shared/http.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { ilikeAnyFilter } from '../_shared/postgrest-or.ts';
 
 // Helper to generate slug from title
 function generateSlug(title: string): string {
@@ -431,7 +432,7 @@ export default async function handler(req: Request) {
         .eq('tenant_id', tenantId)
         .eq('status', 'published')
         .eq('is_public', true)
-        .or(`title.ilike.%${query}%,excerpt.ilike.%${query}%,plain_text_content.ilike.%${query}%`)
+        .or(ilikeAnyFilter(['title', 'excerpt', 'plain_text_content'], query))
         .order('view_count', { ascending: false })
         .range(offset, offset + limit - 1);
 
@@ -535,7 +536,7 @@ export default async function handler(req: Request) {
       }
 
       if (search) {
-        query = query.or(`title.ilike.%${search}%,excerpt.ilike.%${search}%`);
+        query = query.or(ilikeAnyFilter(['title', 'excerpt'], search));
       }
 
       // Apply sorting

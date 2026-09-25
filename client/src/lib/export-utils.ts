@@ -17,6 +17,20 @@ export interface ExportOptions {
 }
 
 /**
+ * Spreadsheet formula injection (round 184). Excel, Sheets and LibreOffice
+ * evaluate a cell that starts with `=`, `+`, `-` or `@` (and a tab or carriage
+ * return before one) as a formula, so a contact whose name a stranger typed as
+ * `=HYPERLINK(...)` becomes a live link or command in whoever opens the
+ * export. Prefixing an apostrophe makes the cell text, which is the OWASP
+ * recommendation. A plain negative number is left alone: `-42` is data, and
+ * quoting it would stop it summing.
+ */
+export function neutraliseFormula(value: string): string {
+  if (/^-?\d+(\.\d+)?$/.test(value)) return value;
+  return /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+}
+
+/**
  * Export data to CSV format
  */
 export function exportToCSV<T extends Record<string, any>>(
@@ -51,7 +65,7 @@ export function exportToCSV<T extends Record<string, any>>(
       }
 
       // Convert to string and escape quotes
-      let stringValue = String(value);
+      let stringValue = neutraliseFormula(String(value));
 
       // Wrap in quotes if contains comma, newline, or quotes
       if (stringValue.includes(',') || stringValue.includes('\n') || stringValue.includes('"')) {

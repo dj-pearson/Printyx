@@ -17,7 +17,7 @@
  * control which columns to hide.
  */
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { getTableConfig } from 'drizzle-orm/pg-core';
 import { companyPricingSettings } from '@shared/product-pricing-schema';
@@ -341,34 +341,17 @@ describe('company pricing settings contract', () => {
   });
 });
 
-describe('the express bootstrap still agrees with the declared defaults', () => {
+describe('there is one bootstrap for company_pricing_settings', () => {
   /**
-   * The edge bootstrap inserts `tenant_id` alone and lets the column defaults
-   * apply, so it has nothing to drift. `getOrCreatePricingSettings` restates
-   * eleven of them, which is a live second copy of the discount ceiling.
+   * This used to check that server/services/pricing-service.ts's
+   * getOrCreatePricingSettings, which restated eleven column defaults, still
+   * agreed with the declaration - a live second copy of the discount ceiling.
+   * Round 175 deleted that file with the Express pricing routes (/api/pricing
+   * is proxied), so the second copy is gone rather than kept in step. The edge
+   * bootstrap inserts tenant_id alone and lets the defaults apply.
    */
-  const declared = new Map(
-    getTableConfig(companyPricingSettings as never).columns.map((c) => [c.name, c.default]),
-  );
-  const SRC = read('server/services/pricing-service.ts');
-
-  it('every value it restates matches the declaration', () => {
-    const at = SRC.indexOf('.insert(companyPricingSettings)');
-    expect(at).toBeGreaterThan(-1);
-    const body = SRC.slice(at, SRC.indexOf('.returning()', at));
-    const pairs = [...body.matchAll(/(\w+):\s*(?:'([^']*)'|(true|false))/g)];
-    expect(pairs.length).toBeGreaterThan(8);
-    for (const [, field, str, bool] of pairs) {
-      if (field === 'tenantId') continue;
-      const column = COMPANY_PRICING_SETTINGS_FIELDS[field];
-      expect({ field, mapped: Boolean(column) }).toEqual({ field, mapped: true });
-      const restated = str !== undefined ? str : bool === 'true';
-      expect({ field, restated, declared: declared.get(column!) }).toEqual({
-        field,
-        restated,
-        declared: restated,
-      });
-    }
+  it('no server file restates the defaults any more', () => {
+    expect(existsSync(join(repo, 'server/services/pricing-service.ts'))).toBe(false);
   });
 });
 
@@ -376,8 +359,6 @@ describe('the edge handlers use the contracts', () => {
   const MI = stripComments(read('supabase/functions/manufacturer-integrations/index.ts'));
   const PRICING = stripComments(read('supabase/functions/pricing/index.ts'));
   const SETTINGS = stripComments(read('supabase/functions/settings/index.ts'));
-  const EXPRESS_MI = stripComments(read('server/routes-manufacturer-integration.ts'));
-  const EXPRESS_PRICING = stripComments(read('server/routes-pricing.ts'));
 
   /** The slice of a branch, bounded by the next branch rather than a count. */
   const branch = (src: string, marker: string, next: RegExp) => {
@@ -410,14 +391,15 @@ describe('the edge handlers use the contracts', () => {
     expect(resolve).not.toMatch(/toIntegrationView/);
   });
 
-  it('express redacts too, on all four of its response paths', () => {
-    expect(EXPRESS_MI).toMatch(/toManufacturerIntegrationViews\(integrations\)/);
-    expect(EXPRESS_MI).toMatch(/toManufacturerIntegrationView\(integration\)/);
-    expect(EXPRESS_MI).toMatch(/toManufacturerIntegrationView\(integration\[0\]\)/);
-    expect(EXPRESS_MI).toMatch(/toManufacturerIntegrationView\(updatedIntegration\)/);
-    // And nothing answers with a bare row any more.
-    expect(EXPRESS_MI).not.toMatch(/res\.json\(integrations\)/);
-    expect(EXPRESS_MI).not.toMatch(/res\.json\(updatedIntegration\)/);
+  it('express no longer answers at all: the prefix is proxied (round 161)', () => {
+    // The Express copy redacted through the same view, and had no role gate on
+    // its writes. It is deleted, so the only responses are the edge function's.
+    expect(existsSync(join(process.cwd(), 'server/routes-manufacturer-integration.ts'))).toBe(
+      false,
+    );
+    expect(read('server/middleware/edge-function-proxy.ts')).toMatch(
+      /'\/api\/manufacturer-integrations': 'manufacturer-integrations'/,
+    );
   });
 
   it('connect builds its row through the plan and refuses an invalid one', () => {
@@ -458,7 +440,7 @@ describe('the edge handlers use the contracts', () => {
       "req.method === 'POST') &&",
       /\n {4}if \(req\.method === 'GET' && resource === 'products'/,
     );
-    const gate = put.indexOf('canEditDealerCost');
+    const gate = put.indexOf('if (!mayManagePricingPolicy)');
     const body = put.indexOf('await req.json()');
     expect({ gated: gate > -1 }).toEqual({ gated: true });
     expect({ order: gate < body && body > -1 }).toEqual({ order: true });
@@ -478,14 +460,11 @@ describe('the edge handlers use the contracts', () => {
     );
   });
 
-  it('express guards its second door to the same row', () => {
-    const handler = branch(
-      EXPRESS_PRICING,
-      'export async function updateCompanyPricingSettings',
-      /\nexport async function /,
-    );
-    expect(handler).toMatch(/canEditDealerCost\(/);
-    expect(handler).toMatch(/\.status\(403\)/);
+  it('the second door to the same row is gone, not left ungated', () => {
+    // The Express updateCompanyPricingSettings handler this checked was
+    // deleted in round 175; /api/pricing/company-settings reaches only the
+    // edge branch above, which carries the manager gate.
+    expect(existsSync(join(repo, 'server/routes-pricing.ts'))).toBe(false);
   });
 
   it('the two dead settings writers are retired, not rebound', () => {

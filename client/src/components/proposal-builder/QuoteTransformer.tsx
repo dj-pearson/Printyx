@@ -27,7 +27,6 @@ import {
   Calendar,
   CheckCircle,
   AlertCircle,
-  Settings,
   Palette,
   Eye,
   Download,
@@ -763,10 +762,6 @@ export default function QuoteTransformer({
           {sections.filter((s) => s.isIncluded).length} sections selected
         </div>
         <div className="flex flex-col sm:flex-row gap-2">
-          <Button variant="outline" className="touch-manipulation active:scale-[0.98] min-h-[44px]">
-            <Settings className="h-4 w-4 mr-2" />
-            Save Template
-          </Button>
           <Button
             onClick={handleTransform}
             className="touch-manipulation active:scale-[0.98] min-h-[44px]"

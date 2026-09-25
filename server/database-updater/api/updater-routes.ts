@@ -239,18 +239,9 @@ router.post('/disable/:updaterName', async (req, res) => {
       });
     }
 
-    // Update config to disable this updater
-    const newConfig = {
-      ...status.config,
-      enabledUpdaters: status.config.enabledUpdaters || [],
-    };
-
-    // Remove from enabled list
-    newConfig.enabledUpdaters = newConfig.enabledUpdaters.filter(
-      (name: string) => name !== updaterName,
-    );
-
-    await manager.updateConfiguration(newConfig);
+    // Flip the updater's own flag. This used to write an `enabledUpdaters`
+    // array the config does not have and answer success (round 241).
+    manager.setUpdaterEnabled(updaterName, false);
 
     res.json({
       success: true,
@@ -286,18 +277,9 @@ router.post('/enable/:updaterName', async (req, res) => {
       });
     }
 
-    // Update config to enable this updater
-    const newConfig = {
-      ...status.config,
-      enabledUpdaters: status.config.enabledUpdaters || [],
-    };
-
-    // Add to enabled list if not already there
-    if (!newConfig.enabledUpdaters.includes(updaterName)) {
-      newConfig.enabledUpdaters.push(updaterName);
-    }
-
-    await manager.updateConfiguration(newConfig);
+    // Flip the updater's own flag. This used to write an `enabledUpdaters`
+    // array the config does not have and answer success (round 241).
+    manager.setUpdaterEnabled(updaterName, true);
 
     res.json({
       success: true,

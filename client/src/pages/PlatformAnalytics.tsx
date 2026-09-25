@@ -20,7 +20,6 @@ import {
   Target,
   Activity,
   Download,
-  Filter,
   Percent,
   Clock,
   Briefcase,
@@ -42,6 +41,8 @@ import {
   AreaChart,
 } from 'recharts';
 import { formatCurrencyWhole as formatCurrency, formatPercent, percentBar } from '@/lib/utils';
+import { exportToCSV } from '@/lib/export-utils';
+import { platformMetricRows, METRIC_EXPORT_COLUMNS } from '@/lib/platform-analytics-export';
 
 // Chart row shapes returned (or mocked) for the analytics charts.
 interface RevenueDatum {
@@ -227,11 +228,24 @@ export default function PlatformAnalytics() {
                 <SelectItem value="all">All time</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="outline">
-              <Filter className="mr-2 h-4 w-4" />
-              Filter
-            </Button>
-            <Button variant="outline">
+            {/* A Filter button sat here with no handler; the timeframe select
+                is the page's only filter, so it was removed. */}
+            <Button
+              variant="outline"
+              onClick={() =>
+                exportToCSV(
+                  platformMetricRows({
+                    revenue: revenueQuery.data,
+                    conversion: conversionQuery.data,
+                    pipeline: pipelineQuery.data,
+                    performance: performanceQuery.data,
+                    growth: growthQuery.data,
+                  }),
+                  METRIC_EXPORT_COLUMNS,
+                  { filename: `platform-analytics-${timeframe}` },
+                )
+              }
+            >
               <Download className="mr-2 h-4 w-4" />
               Export
             </Button>

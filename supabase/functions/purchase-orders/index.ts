@@ -1,7 +1,7 @@
 // Purchase Orders Edge Function
 // Handles purchase order management with approval workflow and line items
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
-import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { handleCors, createCorsResponse, getCorsHeaders } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import {
   LINE_ITEM_TABLE,
@@ -42,6 +42,8 @@ import {
 import { hasPermissionClaim } from '../_shared/permission-claim.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 import { writeInBatches } from '../_shared/batch-fetch.ts';
+import { ilikeAnyFilter } from '../_shared/postgrest-or.ts';
+import { buildPoDocument } from './_po-document.ts';
 
 // Valid PO statuses
 const PO_STATUSES = [
@@ -157,15 +159,17 @@ export default async function handler(req: Request) {
       );
 
     if (req.method === 'GET' && poId && subResource === 'line-items' && !subResourceId) {
-      // Verify PO exists and belongs to tenant
+      // Verify PO exists, belongs to tenant, and is inside the caller's scope.
+      // Round 210: this checked tenant only, so a PO the list hid from a rep was
+      // readable here by id. Out of scope answers the same 404 as missing.
       const { data: po, error: poError } = await admin
         .from('purchase_orders')
-        .select('id')
+        .select('id, created_by')
         .eq('id', poId)
         .eq('tenant_id', tenantId)
         .single();
 
-      if (poError || !po) {
+      if (poError || !po || !rowInScope(po, 'created_by', poScope)) {
         return createCorsResponse({ error: 'Purchase order not found' }, 404, req);
       }
 
@@ -1231,7 +1235,7 @@ export default async function handler(req: Request) {
         // AUDIT-037: reference_number and notes are not columns on this table -
         // the searchable free text is `description`, and the reference is the
         // PO number itself. Naming them made every search a 42703.
-        query = query.or(`po_number.ilike.%${search}%,description.ilike.%${search}%`);
+        query = query.or(ilikeAnyFilter(['po_number', 'description'], search));
       }
 
       const { data: purchaseOrders, error, count } = await query;
@@ -1254,6 +1258,54 @@ export default async function handler(req: Request) {
     }
 
     // GET /purchase-orders/:id - Get single purchase order with line items
+    // GET /purchase-orders/:id/pdf - the document a vendor receives (round 210).
+    // Same scope as the detail read below; an unapproved order is watermarked.
+    if (req.method === 'GET' && poId && subResource === 'pdf') {
+      const { data: po, error: poError } = await admin
+        .from('purchase_orders')
+        .select(
+          '*, vendor:vendors(vendor_name, primary_contact_name, email, phone, address_line_1, address_line_2, city, state, zip_code)',
+        )
+        .eq('id', poId)
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+      if (poError) throw poError;
+      if (!po || !rowInScope(po, 'created_by', poScope)) {
+        return createCorsResponse({ error: 'Purchase order not found' }, 404, req);
+      }
+      const { data: items, error: itemsError } = await admin
+        .from(LINE_ITEM_TABLE)
+        .select('item_description, item_code, part_number, quantity, unit_price, total_price')
+        .eq('purchase_order_id', poId)
+        .eq('tenant_id', tenantId)
+        .order('line_number', { ascending: true });
+      if (itemsError) throw itemsError;
+
+      // Imported here, not at the top: _pdf.ts pulls pdf-lib from esm.sh, and a
+      // static import would stop this handler loading under Node, where the
+      // line-item tests exercise it.
+      const { renderPurchaseOrderPDF } = await import('./_pdf.ts');
+      let pdfBytes: Uint8Array;
+      try {
+        pdfBytes = await renderPurchaseOrderPDF(
+          buildPoDocument(po, po.vendor ?? null, items ?? []),
+        );
+      } catch (renderErr) {
+        console.error('Purchase order PDF render failed:', renderErr);
+        return createCorsResponse({ error: 'Failed to render purchase order PDF' }, 500, req);
+      }
+      const filename = `PO-${String(po.po_number ?? poId).replace(/[^A-Za-z0-9._-]/g, '-')}.pdf`;
+      return new Response(pdfBytes as unknown as BodyInit, {
+        status: 200,
+        headers: {
+          ...getCorsHeaders(req.headers.get('origin')),
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': `attachment; filename="${filename}"`,
+          'Content-Length': String(pdfBytes.byteLength),
+        },
+      });
+    }
+
     if (req.method === 'GET' && poId && !subResource) {
       const { data: po, error } = await admin
         .from('purchase_orders')
@@ -1271,6 +1323,11 @@ export default async function handler(req: Request) {
 
       if (error) {
         console.error('Error fetching purchase order:', error);
+        return createCorsResponse({ error: 'Purchase order not found' }, 404, req);
+      }
+      // Round 210: the list is scoped on created_by and this read was not, so a
+      // PO the list hid was readable by id. Out of scope is the same 404.
+      if (!rowInScope(po, 'created_by', poScope)) {
         return createCorsResponse({ error: 'Purchase order not found' }, 404, req);
       }
 

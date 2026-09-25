@@ -27,7 +27,8 @@ const code = (p: string) =>
 
 describe('the eleven filters moved into the query string', () => {
   const cases: Array<[string, string]> = [
-    ['client/src/pages/AdvancedAnalyticsDashboard.tsx', '/api/analytics/dashboard?period='],
+    // AdvancedAnalyticsDashboard was deleted in round 209 (it read eleven
+    // sections no endpoint sends and crashed on load).
     [
       'client/src/pages/CustomerSuccessManagement.tsx',
       '/api/customer-success/usage-analytics?period=',
@@ -125,12 +126,12 @@ describe('UserManagement no longer offers filters that cannot work', () => {
     expect(page).not.toContain('All Roles');
   });
 
-  it('the untouched Create User dialog is still dead, and that is a different story', () => {
-    // Every field in it is unbound and the button has no onClick, so it also
-    // still names Acme Corporation. Out of scope here (UI-DEAD-BUTTONS-001);
-    // asserted so that fixing it does not silently pass this file by.
-    const dialog = page.slice(page.indexOf('Create User'));
-    expect(dialog).toContain('Acme Corporation');
+  it('the Create User dialog is an invite that works, with no invented tenants', () => {
+    // This asserted the dialog was still dead so fixing it would not pass this
+    // file by silently. Round 187 fixed it: it posts to /api/admin/users (the
+    // caller's own tenant) with a role picked from /api/admin/roles.
+    expect(page).not.toContain('Acme Corporation');
+    expect(page).toMatch(/apiRequest\('\/api\/admin\/users', 'POST'/);
   });
 
   it('search and status are bound to the params the endpoint reads', () => {

@@ -161,6 +161,7 @@ type SupplyOrderForm = z.infer<typeof supplyOrderSchema>;
 
 export default function CustomerSelfServicePortal() {
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [scheduleEquipmentId, setScheduleEquipmentId] = useState<string | undefined>();
   const [isServiceRequestDialogOpen, setIsServiceRequestDialogOpen] = useState(false);
   const [isSupplyOrderDialogOpen, setIsSupplyOrderDialogOpen] = useState(false);
   const [isSatisfactionFormOpen, setIsSatisfactionFormOpen] = useState(false);
@@ -1002,7 +1003,12 @@ export default function CustomerSelfServicePortal() {
           </TabsContent>
 
           <TabsContent value="equipment-health" className="space-y-6">
-            <EquipmentHealthDashboard />
+            <EquipmentHealthDashboard
+              onScheduleService={(id) => {
+                setScheduleEquipmentId(id);
+                setActiveTab('maintenance-scheduling');
+              }}
+            />
           </TabsContent>
 
           <TabsContent value="usage-analytics" className="space-y-6">
@@ -1010,7 +1016,7 @@ export default function CustomerSelfServicePortal() {
           </TabsContent>
 
           <TabsContent value="maintenance-scheduling" className="space-y-6">
-            <MaintenanceSchedulingComponent />
+            <MaintenanceSchedulingComponent equipmentId={scheduleEquipmentId} />
           </TabsContent>
 
           <TabsContent value="knowledge-base" className="space-y-6">

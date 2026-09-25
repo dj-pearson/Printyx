@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { QueryStates } from '@/components/ui/query-state';
 import { DashboardSkeleton } from '@/components/ui/skeletons';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,20 +24,49 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Users, UserPlus, UserCheck, UserX, Shield, Eye, Edit, Trash2 } from 'lucide-react';
+import { Users, UserPlus, UserCheck, UserX, Shield, Edit, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { MainLayout } from '@/components/layout/main-layout';
+import { apiRequest } from '@/lib/queryClient';
+import { describeApiError } from '@/lib/api-error';
+import { exportToCSV, type ExportColumn } from '@/lib/export-utils';
+import { useRefreshQueries } from '@/hooks/use-refresh-queries';
 
 interface UserStats {
-  totalUsers?: string | number;
-  userGrowth?: string | number;
-  activeUsers?: string | number;
-  activeRate?: string | number;
-  suspendedUsers?: string | number;
-  suspendedRate?: string | number;
-  adminUsers?: string | number;
-  adminPercentage?: string | number;
+  totalUsers: number | null;
+  userGrowth: string | null;
+  activeUsers: number | null;
+  activeRate: string | null;
+  suspendedUsers: number | null;
+  suspendedRate: string | null;
+  adminUsers: number | null;
+  adminPercentage: string | null;
+  degraded?: string[];
 }
+
+/** GET /api/admin/roles: the global role catalogue with this tenant's active-user count per role. */
+interface RoleRow {
+  id: string;
+  name: string;
+  description: string | null;
+  level: number | null;
+  isSystemRole: boolean | null;
+  canAccessAllTenants: boolean | null;
+  userCount: number;
+}
+
+const ROLE_EXPORT_COLUMNS: ExportColumn<RoleRow>[] = [
+  { key: 'name', label: 'Role' },
+  { key: 'level', label: 'Level' },
+  { key: 'description', label: 'Description' },
+  { key: 'userCount', label: 'Active Users (this tenant)' },
+  { key: 'isSystemRole', label: 'System Role' },
+  { key: 'canAccessAllTenants', label: 'Cross-Tenant Access' },
+];
+
+/** A stat the server could not read is null; 0 is a real measurement. */
+const stat = (v: string | number | null | undefined) => (v === null || v === undefined ? '—' : v);
 
 export default function UserManagement() {
   const [activeTab, setActiveTab] = useState('overview');
@@ -57,7 +86,6 @@ export default function UserManagement() {
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
   const { toast } = useToast();
-  const queryClient = useQueryClient();
 
   const userQueryString = new URLSearchParams();
   if (search.trim()) userQueryString.set('search', search.trim());
@@ -77,74 +105,199 @@ export default function UserManagement() {
   const users = usersQuery.data;
   const userStats = statsQuery.data;
 
+  const rolesQuery = useQuery<RoleRow[]>({ queryKey: ['/api/admin/roles'] });
+  const roles = rolesQuery.data ?? [];
+  const rolesInUse = roles.filter((r) => r.userCount > 0);
+
+  const { refresh: refreshUsers } = useRefreshQueries([
+    '/api/admin/users',
+    '/api/admin/user-stats',
+    '/api/admin/roles',
+  ]);
+
+  const confirm = useConfirm();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [editing, setEditing] = useState<any | null>(null);
+  const [editRoleId, setEditRoleId] = useState('');
+
+  const failure = (title: string) => (err: unknown) =>
+    toast({ title, description: describeApiError(err).message, variant: 'destructive' });
+
+  const roleMutation = useMutation({
+    mutationFn: ({ id, roleId }: { id: string; roleId: string }) =>
+      apiRequest(`/api/admin/users/${id}`, 'PUT', { roleId }),
+    onSuccess: () => {
+      toast({ title: 'Role updated' });
+      setEditing(null);
+      void refreshUsers();
+    },
+    onError: failure('Could not change role'),
+  });
+
+  const deactivateMutation = useMutation({
+    mutationFn: (id: string) => apiRequest(`/api/admin/users/${id}`, 'DELETE'),
+    onSuccess: () => {
+      toast({ title: 'User deactivated' });
+      void refreshUsers();
+    },
+    onError: failure('Could not deactivate user'),
+  });
+
+  // POST /api/admin/users invites by email (GoTrue sends the link). The tenant
+  // is the caller's own - the old dialog offered three invented companies -
+  // and the server refuses a role above the caller's (shared/role-grant.ts).
+  const emptyInvite = { firstName: '', lastName: '', email: '', roleId: '' };
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [invite, setInvite] = useState(emptyInvite);
+  const inviteMutation = useMutation({
+    mutationFn: () =>
+      apiRequest('/api/admin/users', 'POST', {
+        firstName: invite.firstName.trim() || undefined,
+        lastName: invite.lastName.trim() || undefined,
+        email: invite.email.trim(),
+        roleId: invite.roleId || undefined,
+        redirectTo: `${window.location.origin}/auth/callback`,
+      }),
+    onSuccess: () => {
+      toast({ title: 'Invitation sent', description: `${invite.email.trim()} will get an email.` });
+      setInvite(emptyInvite);
+      setInviteOpen(false);
+      void refreshUsers();
+    },
+    onError: failure('Could not invite user'),
+  });
+
   return (
     <MainLayout>
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">User Management</h1>
-            <p className="text-gray-600 mt-2">Manage users across all tenant organizations</p>
+            <p className="text-gray-600 mt-2">Manage the users in your organization</p>
           </div>
-          <Dialog>
+          <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
             <DialogTrigger asChild>
               <Button>
                 <UserPlus className="h-4 w-4 mr-2" />
-                Create User
+                Invite User
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-md">
               <DialogHeader>
-                <DialogTitle>Create New User</DialogTitle>
-                <DialogDescription>Add a new user to a tenant organization</DialogDescription>
+                <DialogTitle>Invite User</DialogTitle>
+                <DialogDescription>
+                  They join your organization and receive an email to set a password.
+                </DialogDescription>
               </DialogHeader>
-              <div className="space-y-4">
+              <form
+                className="space-y-4"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  inviteMutation.mutate();
+                }}
+              >
                 <div>
                   <Label htmlFor="firstName">First Name</Label>
-                  <Input id="firstName" placeholder="Enter first name" />
+                  <Input
+                    id="firstName"
+                    value={invite.firstName}
+                    onChange={(e) => setInvite({ ...invite, firstName: e.target.value })}
+                  />
                 </div>
                 <div>
                   <Label htmlFor="lastName">Last Name</Label>
-                  <Input id="lastName" placeholder="Enter last name" />
+                  <Input
+                    id="lastName"
+                    value={invite.lastName}
+                    onChange={(e) => setInvite({ ...invite, lastName: e.target.value })}
+                  />
                 </div>
                 <div>
                   <Label htmlFor="email">Email</Label>
-                  <Input id="email" type="email" placeholder="user@company.com" />
-                </div>
-                <div>
-                  <Label htmlFor="tenant">Tenant</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select tenant" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="acme">Acme Corporation</SelectItem>
-                      <SelectItem value="techstart">TechStart Solutions</SelectItem>
-                      <SelectItem value="global">Global Industries</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Input
+                    id="email"
+                    type="email"
+                    required
+                    placeholder="user@company.com"
+                    value={invite.email}
+                    onChange={(e) => setInvite({ ...invite, email: e.target.value })}
+                  />
                 </div>
                 <div>
                   <Label htmlFor="role">Role</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select role" />
+                  <Select
+                    value={invite.roleId}
+                    onValueChange={(roleId) => setInvite({ ...invite, roleId })}
+                  >
+                    <SelectTrigger id="role">
+                      <SelectValue
+                        placeholder={rolesQuery.isError ? 'Roles could not load' : 'Select role'}
+                      />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="admin">Company Admin</SelectItem>
-                      <SelectItem value="manager">Regional Manager</SelectItem>
-                      <SelectItem value="sales">Sales Manager</SelectItem>
-                      <SelectItem value="user">User</SelectItem>
+                      {roles.map((r) => (
+                        <SelectItem key={r.id} value={r.id}>
+                          {r.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
-                <Button className="w-full">Create User</Button>
-              </div>
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={!invite.email.trim() || inviteMutation.isPending}
+                >
+                  {inviteMutation.isPending ? 'Sending...' : 'Send Invitation'}
+                </Button>
+              </form>
             </DialogContent>
           </Dialog>
         </div>
 
         {/* CR-033: the heading and tenant filter above stay usable — changing
             the filter is the retry. */}
+        <Dialog open={editing !== null} onOpenChange={(open) => !open && setEditing(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Change role</DialogTitle>
+              <DialogDescription>{editing?.email}</DialogDescription>
+            </DialogHeader>
+            <form
+              className="space-y-4"
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (editing && editRoleId) {
+                  roleMutation.mutate({ id: editing.id, roleId: editRoleId });
+                }
+              }}
+            >
+              <div>
+                <Label htmlFor="editRole">Role</Label>
+                <Select value={editRoleId} onValueChange={setEditRoleId}>
+                  <SelectTrigger id="editRole">
+                    <SelectValue placeholder="Select role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {roles.map((r) => (
+                      <SelectItem key={r.id} value={r.id}>
+                        {r.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={!editRoleId || editRoleId === editing?.roleId || roleMutation.isPending}
+              >
+                {roleMutation.isPending ? 'Saving...' : 'Save role'}
+              </Button>
+            </form>
+          </DialogContent>
+        </Dialog>
+
         <QueryStates
           queries={[usersQuery, statsQuery]}
           loading={<DashboardSkeleton />}
@@ -159,10 +312,8 @@ export default function UserManagement() {
                 <Users className="h-4 w-4 text-blue-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{userStats?.totalUsers || 'Loading...'}</div>
-                <p className="text-xs text-green-600 mt-2">
-                  {userStats?.userGrowth || 'Loading...'}
-                </p>
+                <div className="text-2xl font-bold">{stat(userStats?.totalUsers)}</div>
+                <p className="text-xs text-green-600 mt-2">{stat(userStats?.userGrowth)}</p>
               </CardContent>
             </Card>
 
@@ -172,10 +323,8 @@ export default function UserManagement() {
                 <UserCheck className="h-4 w-4 text-green-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{userStats?.activeUsers || 'Loading...'}</div>
-                <p className="text-xs text-green-600 mt-2">
-                  {userStats?.activeRate || 'Loading...'}
-                </p>
+                <div className="text-2xl font-bold">{stat(userStats?.activeUsers)}</div>
+                <p className="text-xs text-green-600 mt-2">{stat(userStats?.activeRate)}</p>
               </CardContent>
             </Card>
 
@@ -185,12 +334,8 @@ export default function UserManagement() {
                 <UserX className="h-4 w-4 text-red-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">
-                  {userStats?.suspendedUsers || 'Loading...'}
-                </div>
-                <p className="text-xs text-red-600 mt-2">
-                  {userStats?.suspendedRate || 'Loading...'}
-                </p>
+                <div className="text-2xl font-bold">{stat(userStats?.suspendedUsers)}</div>
+                <p className="text-xs text-red-600 mt-2">{stat(userStats?.suspendedRate)}</p>
               </CardContent>
             </Card>
 
@@ -200,10 +345,8 @@ export default function UserManagement() {
                 <Shield className="h-4 w-4 text-purple-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{userStats?.adminUsers || 'Loading...'}</div>
-                <p className="text-xs text-gray-500 mt-2">
-                  {userStats?.adminPercentage || 'Loading...'}
-                </p>
+                <div className="text-2xl font-bold">{stat(userStats?.adminUsers)}</div>
+                <p className="text-xs text-gray-500 mt-2">{stat(userStats?.adminPercentage)}</p>
               </CardContent>
             </Card>
           </div>
@@ -245,8 +388,8 @@ export default function UserManagement() {
                                 <p className="text-sm text-gray-500">{user.email}</p>
                               </div>
                             </div>
-                            <Badge variant={user.status === 'active' ? 'default' : 'destructive'}>
-                              {user.status}
+                            <Badge variant={user.isActive ? 'default' : 'destructive'}>
+                              {user.isActive ? 'Active' : 'Inactive'}
                             </Badge>
                           </div>
                         ))
@@ -262,18 +405,12 @@ export default function UserManagement() {
                     <CardTitle>User Distribution by Role</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {/* AUDIT-019: four role bars at fixed widths with fixed
-                        counts - 89 Company Admins, 423 Regional Managers, 567
-                        Sales Managers, 1,768 Users. Nothing was counted, and
-                        the bar widths did not even agree with the numbers
-                        beside them. The page loads the real user list; a role
-                        census can be derived from it, but not until the list is
-                        unpaginated, so this says nothing rather than the wrong
-                        thing. */}
-                    <p className="text-sm text-muted-foreground">
-                      Role distribution is not computed. The user list on this page is paginated, so
-                      a count taken from it would describe the current page rather than the tenant.
-                    </p>
+                    {/* Round 187: AUDIT-019 removed typed-in role bars and
+                        left this unmeasured because the user LIST is paginated.
+                        GET /api/admin/roles already counts active users per
+                        role across the whole tenant, so the census comes from
+                        there rather than from one page of users. */}
+                    <RoleCensus query={rolesQuery} rows={rolesInUse} />
                   </CardContent>
                 </Card>
               </div>
@@ -283,9 +420,7 @@ export default function UserManagement() {
               <Card>
                 <CardHeader>
                   <CardTitle>All Users</CardTitle>
-                  <CardDescription>
-                    Complete list of users across all tenant organizations
-                  </CardDescription>
+                  <CardDescription>Users in your organization</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
@@ -316,7 +451,7 @@ export default function UserManagement() {
                       <div className="grid grid-cols-7 gap-4 p-4 border-b bg-gray-50 font-medium">
                         <div>User</div>
                         <div>Email</div>
-                        <div>Tenant</div>
+                        <div>Team</div>
                         <div>Role</div>
                         <div>Status</div>
                         <div>Last Login</div>
@@ -344,24 +479,55 @@ export default function UserManagement() {
                               </div>
                             </div>
                             <div className="text-sm">{user.email}</div>
-                            <div className="text-sm">{user.tenant}</div>
-                            <div className="text-sm">{user.role}</div>
+                            <div className="text-sm">{user.teamName ?? '—'}</div>
+                            <div className="text-sm">{user.roleName ?? '—'}</div>
                             <div>
-                              <Badge variant={user.status === 'active' ? 'default' : 'destructive'}>
-                                {user.status}
+                              <Badge variant={user.isActive ? 'default' : 'destructive'}>
+                                {user.isActive ? 'Active' : 'Inactive'}
                               </Badge>
                             </div>
-                            <div className="text-sm">{user.lastLogin}</div>
+                            <div className="text-sm">
+                              {user.lastLoginAt
+                                ? new Date(user.lastLoginAt).toLocaleString()
+                                : 'Never'}
+                            </div>
                             <div className="flex gap-2">
-                              <Button aria-label="View details" size="sm" variant="outline">
-                                <Eye className="h-3 w-3" />
-                              </Button>
-                              <Button aria-label="Edit" size="sm" variant="outline">
+                              {/* Round 188. View details had nowhere to go - the
+                                  row already shows everything the endpoint
+                                  returns - so it is gone. Edit changes the role
+                                  (PUT /admin/users/:id) and Deactivate is the
+                                  function's soft delete; both are refused by the
+                                  server for a user who outranks the caller. */}
+                              <Button
+                                aria-label={`Change role for ${user.email}`}
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setEditing(user);
+                                  setEditRoleId(user.roleId ?? '');
+                                }}
+                              >
                                 <Edit className="h-3 w-3" />
                               </Button>
-                              <Button aria-label="Delete" size="sm" variant="outline">
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
+                              {user.isActive && (
+                                <Button
+                                  aria-label={`Deactivate ${user.email}`}
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={deactivateMutation.isPending}
+                                  onClick={async () => {
+                                    const ok = await confirm({
+                                      title: `Deactivate ${user.email}?`,
+                                      description:
+                                        'They can no longer sign in. Their records stay in place.',
+                                      confirmLabel: 'Deactivate',
+                                    });
+                                    if (ok) deactivateMutation.mutate(user.id);
+                                  }}
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              )}
                             </div>
                           </div>
                         ))
@@ -384,73 +550,23 @@ export default function UserManagement() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-4">
-                        <h4 className="font-semibold">Platform Roles</h4>
-                        <div className="space-y-2">
-                          <div className="flex justify-between items-center p-3 border rounded-lg">
-                            <div>
-                              <p className="font-medium">Root Administrator</p>
-                              <p className="text-sm text-gray-500">Ultimate system access</p>
-                            </div>
-                            <Badge>1 user</Badge>
-                          </div>
-                          <div className="flex justify-between items-center p-3 border rounded-lg">
-                            <div>
-                              <p className="font-medium">Platform Admin</p>
-                              <p className="text-sm text-gray-500">Platform-wide administration</p>
-                            </div>
-                            <Badge>5 users</Badge>
-                          </div>
-                          <div className="flex justify-between items-center p-3 border rounded-lg">
-                            <div>
-                              <p className="font-medium">System Admin</p>
-                              <p className="text-sm text-gray-500">System-level operations</p>
-                            </div>
-                            <Badge>12 users</Badge>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="space-y-4">
-                        <h4 className="font-semibold">Tenant Roles</h4>
-                        <div className="space-y-2">
-                          <div className="flex justify-between items-center p-3 border rounded-lg">
-                            <div>
-                              <p className="font-medium">Company Admin</p>
-                              <p className="text-sm text-gray-500">Company-wide management</p>
-                            </div>
-                            <Badge>89 users</Badge>
-                          </div>
-                          <div className="flex justify-between items-center p-3 border rounded-lg">
-                            <div>
-                              <p className="font-medium">Regional Manager</p>
-                              <p className="text-sm text-gray-500">Regional operations</p>
-                            </div>
-                            <Badge>423 users</Badge>
-                          </div>
-                          <div className="flex justify-between items-center p-3 border rounded-lg">
-                            <div>
-                              <p className="font-medium">Location Manager</p>
-                              <p className="text-sm text-gray-500">Location-specific management</p>
-                            </div>
-                            <Badge>789 users</Badge>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3">
-                      <Button className="w-full" variant="outline">
-                        Create Custom Role
-                      </Button>
-                      <Button className="w-full" variant="outline">
-                        Import Role Template
-                      </Button>
-                      <Button className="w-full" variant="outline">
-                        Export Role Configuration
-                      </Button>
-                    </div>
+                    {/* Round 187: this tab listed six roles with typed-in
+                        counts (1, 5, 12, 89, 423, 789 users) and three buttons
+                        with no handler. Create Custom Role and Import Role
+                        Template are gone: POST /admin/roles refuses on purpose,
+                        because `roles` is a global catalogue and a tenant edit
+                        would change every other tenant's roles. */}
+                    <RoleCensus query={rolesQuery} rows={rolesInUse} />
+                    <Button
+                      className="w-full"
+                      variant="outline"
+                      disabled={roles.length === 0}
+                      onClick={() =>
+                        exportToCSV(roles, ROLE_EXPORT_COLUMNS, { filename: 'role-configuration' })
+                      }
+                    >
+                      Export Role Configuration
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -483,5 +599,38 @@ export default function UserManagement() {
         </QueryStates>
       </div>
     </MainLayout>
+  );
+}
+
+function RoleCensus({
+  query,
+  rows,
+}: {
+  query: { isLoading: boolean; isError: boolean };
+  rows: RoleRow[];
+}) {
+  if (query.isLoading) return <p className="text-sm text-muted-foreground">Loading roles...</p>;
+  if (query.isError) {
+    return <p className="text-sm text-destructive">Role counts could not be loaded.</p>;
+  }
+  if (rows.length === 0) {
+    return <p className="text-sm text-muted-foreground">No active user holds a role yet.</p>;
+  }
+  return (
+    <div className="space-y-2">
+      {[...rows]
+        .sort((a, b) => b.userCount - a.userCount)
+        .map((r) => (
+          <div key={r.id} className="flex justify-between items-center p-3 border rounded-lg">
+            <div>
+              <p className="font-medium">{r.name}</p>
+              {r.description && <p className="text-sm text-gray-500">{r.description}</p>}
+            </div>
+            <Badge>
+              {r.userCount} active user{r.userCount === 1 ? '' : 's'}
+            </Badge>
+          </div>
+        ))}
+    </div>
   );
 }

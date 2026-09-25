@@ -118,13 +118,11 @@ describe('the Express duplicates are gone', () => {
   it.each([
     'server/routes-crm-core.ts',
     'server/routes-business-records.ts',
-    'server/routes-enhanced-service.ts',
     'server/routes-workflow-mobile.ts',
     'server/routes-client-monitoring.ts',
   ])('%s registers no /api/customers route', (file) => {
     const src = read(file);
     expect(src).not.toMatch(/['"`]\/api\/customers/);
-    // routes-enhanced-service mounts at the /api root, so its paths are bare.
     expect(src).not.toMatch(/router\.(get|post|put|patch|delete)\(\s*'\/customers/);
   });
 });

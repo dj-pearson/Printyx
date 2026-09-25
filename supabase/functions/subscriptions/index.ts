@@ -13,6 +13,7 @@ import {
 import { buildCancellationEmail } from '../_shared/cancellation-email.ts';
 import { sendEmail } from '../email-marketing/_sendgrid.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { toCamelShallow } from '../_shared/case.ts';
 import {
   StripeError,
   clientBaseUrl,
@@ -154,7 +155,22 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to fetch subscription features' }, 500, req);
       }
 
-      return createCorsResponse({ plans: plans || [], features: features || [] }, 200, req);
+      // Round 168: both lists were answered as raw PostgREST rows, while the
+      // one consumer (Pricing.tsx via useSubscriptionPlans) reads the
+      // camelCase keys Drizzle hands Express - monthlyPrice, annualPrice,
+      // isPopular, maxUsers, trialEnabled. So in production every plan card
+      // priced at $NaN, none was marked Most Popular, the limits were blank and
+      // no trial was offered, while dev looked right. Shallow on purpose:
+      // `features` and `metadata` are jsonb and their contents are not ours
+      // to rename.
+      return createCorsResponse(
+        {
+          plans: (plans || []).map((p) => toCamelShallow(p)),
+          features: (features || []).map((f) => toCamelShallow(f)),
+        },
+        200,
+        req,
+      );
     }
 
     // ========================================================================

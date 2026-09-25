@@ -59,7 +59,6 @@ import { getTenantId, getUserId } from './utils/auth-helpers';
 import { createModuleLogger } from './lib/logger';
 import ClaudeAIService from './services/claude-ai-service';
 import {
-  chatbotConnections,
   chatbotUserLinks,
   chatbotQueryLog,
   businessRecords,
@@ -72,13 +71,6 @@ import {
   CHATBOT_PLATFORMS,
 } from '@shared/schema';
 import { crisisResponse, detectsCrisis } from './lib/crisis-response';
-
-import {
-  obfuscateCredential,
-  projectConnection,
-  projectQueryLogRow,
-  projectUserLink,
-} from './lib/chatbot-projection';
 
 const log = createModuleLogger('routes-chatbot');
 
@@ -778,23 +770,6 @@ const querySchema = z.object({
   channel: z.string().optional(),
 });
 
-const connectSchema = z.object({
-  platform: z.enum(CHATBOT_PLATFORMS),
-  teamId: z.string().min(1),
-  teamName: z.string().optional(),
-  botToken: z.string().min(1).optional(),
-});
-
-const toggleSchema = z.object({
-  enabled: z.boolean(),
-});
-
-const linkSchema = z.object({
-  platform: z.enum(CHATBOT_PLATFORMS),
-  platformUserId: z.string().min(1),
-  email: z.string().email(),
-});
-
 // ---------------------------------------------------------------------------
 // Routes
 // ---------------------------------------------------------------------------
@@ -840,6 +815,19 @@ export function registerChatbotRoutes(app: Express) {
           ),
         });
         printyxUserId = link?.printyxUserId ?? null;
+        // Round 153. This endpoint authenticates the CALLER, and platformUserId
+        // came from the caller's own request body - so any member of the tenant
+        // could name a manager's Slack id and have every read-only tool run as
+        // that manager, over that manager's scope. There is no bot relay in the
+        // tree yet (postReply is a stub), so the only honest rule is that a
+        // mapped identity must be the caller's own. A relay, when it exists,
+        // needs a service credential, not a user JWT.
+        if (printyxUserId && printyxUserId !== getUserId(req)) {
+          return res.status(403).json({
+            message: 'That chat account is linked to a different Printyx user.',
+            code: 'PLATFORM_USER_NOT_CALLER',
+          });
+        }
       } else {
         // In-app "try it" path: use the authenticated caller.
         printyxUserId = getUserId(req) ?? null;
@@ -930,262 +918,11 @@ export function registerChatbotRoutes(app: Express) {
     }
   });
 
-  /** GET /api/chatbot/connections — workspace installs (tokens write-only). */
-  app.get('/api/chatbot/connections', requireAuth, resolveTenant, async (req: any, res) => {
-    try {
-      const tenantId = getTenantId(req);
-      if (!tenantId) return res.status(400).json({ message: 'Tenant ID is required' });
-
-      const rows = await db
-        .select()
-        .from(chatbotConnections)
-        .where(eq(chatbotConnections.tenantId, tenantId))
-        .orderBy(desc(chatbotConnections.createdAt));
-      const data = rows.map(projectConnection);
-      res.json({ data, total: data.length });
-    } catch (error: any) {
-      log.error('Failed to list connections:', error);
-      res.status(500).json({ message: 'Failed to list connections', error: error?.message });
-    }
-  });
-
-  /**
-   * POST /api/chatbot/connect
-   * Install a Slack/Teams workspace. There is NO real OAuth here — a pasted bot
-   * token is obfuscated into encryptedTokens (never echoed). Upserts on the
-   * unique (tenant, platform, team). Returns a sanitized projection.
-   */
-  app.post('/api/chatbot/connect', requireAuth, resolveTenant, async (req: any, res) => {
-    try {
-      const tenantId = getTenantId(req);
-      const userId = getUserId(req);
-      if (!tenantId) return res.status(400).json({ message: 'Tenant ID is required' });
-
-      const parsed = connectSchema.safeParse(req.body ?? {});
-      if (!parsed.success) {
-        return res.status(400).json({ message: 'Invalid input', errors: parsed.error.flatten() });
-      }
-      const { platform, teamId, teamName, botToken } = parsed.data;
-
-      // TODO: real Slack/Teams OAuth install. For now we accept a pasted bot token.
-      const existing = await db.query.chatbotConnections.findFirst({
-        where: and(
-          eq(chatbotConnections.tenantId, tenantId),
-          eq(chatbotConnections.platform, platform),
-          eq(chatbotConnections.teamId, teamId),
-        ),
-      });
-
-      const tokens: Record<string, unknown> = {
-        ...((existing?.encryptedTokens ?? {}) as Record<string, unknown>),
-      };
-      if (botToken !== undefined) tokens.botToken = obfuscateCredential(botToken);
-
-      let row;
-      if (existing) {
-        [row] = await db
-          .update(chatbotConnections)
-          .set({
-            teamName: teamName ?? existing.teamName,
-            encryptedTokens: tokens,
-            updatedAt: new Date(),
-          })
-          .where(eq(chatbotConnections.id, existing.id))
-          .returning();
-      } else {
-        [row] = await db
-          .insert(chatbotConnections)
-          .values({
-            tenantId,
-            platform,
-            teamId,
-            teamName: teamName ?? null,
-            encryptedTokens: tokens,
-            installedByUserId: userId ?? null,
-          })
-          .returning();
-      }
-
-      audit('CONNECT', {
-        tenantId,
-        userId,
-        extra: { platform, teamId, tokenSet: botToken !== undefined },
-      });
-
-      const projected = projectConnection(row);
-      res.json({
-        connected: true,
-        platform: projected.platform,
-        teamId: projected.teamId,
-        tokensSet: projected.tokensSet,
-      });
-    } catch (error: any) {
-      log.error('Failed to connect workspace:', error);
-      res.status(500).json({ message: 'Failed to connect workspace', error: error?.message });
-    }
-  });
-
-  /** PUT /api/chatbot/connections/:id — enable/disable toggle. */
-  app.put('/api/chatbot/connections/:id', requireAuth, resolveTenant, async (req: any, res) => {
-    try {
-      const tenantId = getTenantId(req);
-      const userId = getUserId(req);
-      if (!tenantId) return res.status(400).json({ message: 'Tenant ID is required' });
-
-      const parsed = toggleSchema.safeParse(req.body ?? {});
-      if (!parsed.success) {
-        return res.status(400).json({ message: 'Invalid input', errors: parsed.error.flatten() });
-      }
-
-      const [updated] = await db
-        .update(chatbotConnections)
-        .set({ enabled: parsed.data.enabled, updatedAt: new Date() })
-        .where(
-          and(eq(chatbotConnections.id, req.params.id), eq(chatbotConnections.tenantId, tenantId)),
-        )
-        .returning();
-      if (!updated) return res.status(404).json({ message: 'Connection not found' });
-
-      audit('CONNECTION_TOGGLE', {
-        tenantId,
-        userId,
-        extra: { id: req.params.id, enabled: parsed.data.enabled },
-      });
-      res.json(projectConnection(updated));
-    } catch (error: any) {
-      log.error('Failed to update connection:', error);
-      res.status(500).json({ message: 'Failed to update connection', error: error?.message });
-    }
-  });
-
-  /** DELETE /api/chatbot/connections/:id */
-  app.delete('/api/chatbot/connections/:id', requireAuth, resolveTenant, async (req: any, res) => {
-    try {
-      const tenantId = getTenantId(req);
-      const userId = getUserId(req);
-      if (!tenantId) return res.status(400).json({ message: 'Tenant ID is required' });
-
-      await db
-        .delete(chatbotConnections)
-        .where(
-          and(eq(chatbotConnections.id, req.params.id), eq(chatbotConnections.tenantId, tenantId)),
-        );
-      audit('CONNECTION_REMOVE', { tenantId, userId, extra: { id: req.params.id } });
-      res.json({ success: true });
-    } catch (error: any) {
-      log.error('Failed to remove connection:', error);
-      res.status(500).json({ message: 'Failed to remove connection', error: error?.message });
-    }
-  });
-
-  /** GET /api/chatbot/links — Slack/Teams user → Printyx user mappings. */
-  app.get('/api/chatbot/links', requireAuth, resolveTenant, async (req: any, res) => {
-    try {
-      const tenantId = getTenantId(req);
-      if (!tenantId) return res.status(400).json({ message: 'Tenant ID is required' });
-
-      const rows = await db
-        .select()
-        .from(chatbotUserLinks)
-        .where(eq(chatbotUserLinks.tenantId, tenantId))
-        .orderBy(desc(chatbotUserLinks.createdAt));
-      const data = rows.map(projectUserLink);
-      res.json({ data, total: data.length });
-    } catch (error: any) {
-      log.error('Failed to list links:', error);
-      res.status(500).json({ message: 'Failed to list links', error: error?.message });
-    }
-  });
-
-  /**
-   * POST /api/chatbot/links
-   * Map a Slack/Teams user to a Printyx user by email. The email is resolved
-   * against tenant-scoped users; verified = (a matching user was found). Upserts
-   * on the unique (tenant, platform, platformUserId).
-   */
-  app.post('/api/chatbot/links', requireAuth, resolveTenant, async (req: any, res) => {
-    try {
-      const tenantId = getTenantId(req);
-      const userId = getUserId(req);
-      if (!tenantId) return res.status(400).json({ message: 'Tenant ID is required' });
-
-      const parsed = linkSchema.safeParse(req.body ?? {});
-      if (!parsed.success) {
-        return res.status(400).json({ message: 'Invalid input', errors: parsed.error.flatten() });
-      }
-      const { platform, platformUserId, email } = parsed.data;
-
-      // Resolve email → Printyx user (tenant-scoped); verified iff a match exists.
-      const matched = await db
-        .select({ id: users.id })
-        .from(users)
-        .where(and(eq(users.tenantId, tenantId), eq(users.email, email)))
-        .limit(1);
-      const printyxUserId = matched[0]?.id ?? null;
-      const verified = !!printyxUserId;
-
-      const [row] = await db
-        .insert(chatbotUserLinks)
-        .values({ tenantId, platform, platformUserId, email, printyxUserId, verified })
-        .onConflictDoUpdate({
-          target: [
-            chatbotUserLinks.tenantId,
-            chatbotUserLinks.platform,
-            chatbotUserLinks.platformUserId,
-          ],
-          set: { email, printyxUserId, verified },
-        })
-        .returning();
-
-      audit('LINK_UPSERT', {
-        tenantId,
-        userId,
-        extra: { platform, platformUserId, verified },
-      });
-      res.status(201).json(projectUserLink(row));
-    } catch (error: any) {
-      log.error('Failed to create link:', error);
-      res.status(500).json({ message: 'Failed to create link', error: error?.message });
-    }
-  });
-
-  /** DELETE /api/chatbot/links/:id */
-  app.delete('/api/chatbot/links/:id', requireAuth, resolveTenant, async (req: any, res) => {
-    try {
-      const tenantId = getTenantId(req);
-      const userId = getUserId(req);
-      if (!tenantId) return res.status(400).json({ message: 'Tenant ID is required' });
-
-      await db
-        .delete(chatbotUserLinks)
-        .where(
-          and(eq(chatbotUserLinks.id, req.params.id), eq(chatbotUserLinks.tenantId, tenantId)),
-        );
-      audit('LINK_REMOVE', { tenantId, userId, extra: { id: req.params.id } });
-      res.json({ success: true });
-    } catch (error: any) {
-      log.error('Failed to remove link:', error);
-      res.status(500).json({ message: 'Failed to remove link', error: error?.message });
-    }
-  });
-
-  /** GET /api/chatbot/query-log — append-only audit list, newest first. */
-  app.get('/api/chatbot/query-log', requireAuth, resolveTenant, async (req: any, res) => {
-    try {
-      const tenantId = getTenantId(req);
-      if (!tenantId) return res.status(400).json({ message: 'Tenant ID is required' });
-
-      const rows = await db
-        .select()
-        .from(chatbotQueryLog)
-        .where(eq(chatbotQueryLog.tenantId, tenantId))
-        .orderBy(desc(chatbotQueryLog.createdAt))
-        .limit(200);
-      const data = rows.map(projectQueryLogRow);
-      res.json({ data, total: data.length });
-    } catch (error: any) {
-      log.error('Failed to list query log:', error);
-      res.status(500).json({ message: 'Failed to list query log', error: error?.message });
-    }
-  });
+  // Round 153: the connection, link and query-log handlers that followed here
+  // were deleted. They carried no role check at all, while the edge function
+  // production runs needs a MANAGER to change a workspace install or a
+  // chat-to-user mapping (SEC-EDGE-001). Those six paths are proxied to
+  // supabase/functions/chatbot/ with scoped crmProxies entries, so dev runs the
+  // gated copy. POST /query stays here because the edge function answers it
+  // with a deliberate 501 (CHATBOT_QUERY_NOT_PORTED).
 }

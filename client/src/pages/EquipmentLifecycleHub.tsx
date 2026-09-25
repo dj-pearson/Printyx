@@ -17,7 +17,6 @@ import {
   Warehouse,
   ShoppingCart,
   Camera,
-  Shield,
   BarChart3,
   Activity,
   Star,
@@ -72,6 +71,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { TableSkeleton, ListSkeleton, LoadingSpinner } from '@/components/ui/skeletons';
 import { useActionParam } from '@/hooks/use-action-param';
 import { useToast } from '@/hooks/use-toast';
+import { assetLabel, assetLabelsHtml } from '@/lib/asset-labels';
 
 // WF-L-02: these types are the shape the edge function returns, which is the
 // shape the real tables have. They used to name fields that exist on no table -
@@ -313,6 +313,7 @@ export default function EquipmentLifecycleHub() {
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [generatingLabels, setGeneratingLabels] = useState(false);
 
   // Fetch lifecycle metrics
   const { data: metrics } = useQuery<LifecycleMetrics>({
@@ -370,6 +371,43 @@ export default function EquipmentLifecycleHub() {
       return await apiRequest('/api/equipment-lifecycle/assets', 'GET');
     },
   });
+
+  // Round 227: builds one printable QR label per tracked asset, in the
+  // browser, and opens it in a new tab to print. See lib/asset-labels.ts.
+  const handleGenerateLabels = async () => {
+    if (assets.length === 0) {
+      toast({ title: 'No assets to label', description: 'No equipment is being tracked yet.' });
+      return;
+    }
+    setGeneratingLabels(true);
+    try {
+      const qrcode = await import('qrcode');
+      const qrById: Record<string, string> = {};
+      for (const a of assets) {
+        qrById[a.id] = await qrcode.default.toDataURL(a.id, { margin: 1, width: 192 });
+      }
+      const html = assetLabelsHtml(assets.map(assetLabel), qrById);
+      const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+      const win = window.open(url, '_blank', 'noopener');
+      // The page holds the URL only while it loads; a minute is ample.
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      if (!win) {
+        toast({
+          title: 'Allow pop-ups to print labels',
+          description: 'The browser blocked the new tab holding the labels.',
+          variant: 'destructive',
+        });
+      }
+    } catch (err) {
+      toast({
+        title: 'Could not build the labels',
+        description: err instanceof Error ? err.message : undefined,
+        variant: 'destructive',
+      });
+    } finally {
+      setGeneratingLabels(false);
+    }
+  };
 
   // Fetch technicians and customers for dropdowns
   const { data: technicians = [] } = useQuery<any[]>({
@@ -1395,14 +1433,19 @@ export default function EquipmentLifecycleHub() {
                       <Wrench className="h-4 w-4 mr-2" />
                       Schedule Installation
                     </Button>
-                    <Button variant="outline" size="sm" className="w-full justify-start">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full justify-start"
+                      disabled={generatingLabels}
+                      onClick={handleGenerateLabels}
+                    >
                       <Camera className="h-4 w-4 mr-2" />
-                      Generate QR Codes
+                      {generatingLabels ? 'Preparing labels...' : 'Generate QR Codes'}
                     </Button>
-                    <Button variant="outline" size="sm" className="w-full justify-start">
-                      <Shield className="h-4 w-4 mr-2" />
-                      Warranty Registration
-                    </Button>
+                    {/* Round 227: "Warranty Registration" had no handler and
+                        nothing in the tree registers a warranty - no endpoint,
+                        no table - so it is gone rather than wired to nothing. */}
                     <Button variant="outline" size="sm" className="w-full justify-start">
                       <BarChart3 className="h-4 w-4 mr-2" />
                       View Reports

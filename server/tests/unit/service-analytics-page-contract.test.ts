@@ -61,15 +61,26 @@ describe('service-analytics endpoint', () => {
     // Was `customerSatisfaction: 85, // Placeholder`. service_tickets has no
     // CSAT column and no survey is joined here.
     expect(fn).not.toMatch(/customerSatisfaction:\s*\d/);
-    expect(fn).toContain('customerSatisfaction: null');
+    // Round 181 (CSAT-PRODUCER-001): it is measured now, from completed
+    // surveys, and still starts null so an unanswered tenant reads as
+    // unmeasured rather than as 0.
+    expect(fn).toContain('let customerSatisfaction: number | null = null;');
+    expect(fn).toMatch(
+      /customerSatisfaction = summariseSatisfaction\(surveys\)\.overallSatisfaction/,
+    );
   });
 
   it('names what it cannot answer instead of zeroing it', () => {
     expect(fn).toMatch(/unbacked:\s*\[/);
   });
 
-  it('returns a null average when nothing has resolved', () => {
-    expect(fn).toContain('resolvedTickets.length > 0 ? avgResolutionTime : null');
+  it('returns a null average when nothing has resolved', async () => {
+    // Round 146 moved the counting into shared/service-analytics-summary.ts, so
+    // this asserts the behaviour and that the overview comes from it, rather
+    // than pinning the inline ternary it used to be.
+    const { summariseServiceTickets } = await import('../../../shared/service-analytics-summary');
+    expect(summariseServiceTickets([]).overview.avgResolutionTime).toBeNull();
+    expect(fn).toMatch(/overview:\s*\{\s*\.\.\.summary\.overview/);
   });
 
   it('sends the trend as a series, not as raw rows lengthed under the row cap', () => {

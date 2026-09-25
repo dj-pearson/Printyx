@@ -57,7 +57,7 @@ export const INTEGRATION_CATEGORIES = [
   { value: 'other', label: 'Other' },
 ] as const;
 
-const KNOWN_CATEGORIES = new Set(INTEGRATION_CATEGORIES.map((c) => c.value));
+const KNOWN_CATEGORIES = new Set<string>(INTEGRATION_CATEGORIES.map((c) => c.value));
 
 export function normalizeCategory(raw: string | null | undefined): string {
   const value = String(raw ?? '').toLowerCase();

@@ -227,7 +227,10 @@ describe('WF-C-04: the guardrail reads the stamp, not the caller', () => {
   });
 
   it('gets its who-needs-approval answer from the pure module', () => {
-    expect(code).toMatch(/needsPricingApproval\(\(ctx as any\)\?\.supabaseUser\)/);
+    // Round 148: the caller resolves roles.level for a token with no claim and
+    // hands it to the pure decision, rather than the decision guessing.
+    expect(code).toMatch(/resolveRoleLevel\(getDb\(\), user\)/);
+    expect(code).toMatch(/needsPricingApproval\(user, resolved\)/);
     expect(code).toMatch(/from '\.\/_send-gate\.ts'/);
   });
 });
@@ -300,7 +303,32 @@ describe('WF-C-04: who the gate applies to, and when it lifts (AC2, AC3)', () =>
     expect(needsPricingApproval({ app_metadata: { role: 'SALES_REP' } })).toBe(true);
     expect(needsPricingApproval({ app_metadata: { role: 'SENIOR_SALES_REP' } })).toBe(true);
     expect(needsPricingApproval({ app_metadata: { role: 'SALES_MANAGER' } })).toBe(false);
-    expect(needsPricingApproval(null)).toBe(false);
+  });
+
+  it('fails CLOSED for a caller it cannot place (round 148)', () => {
+    // It used to answer false here, so a user with no role claim at all
+    // skipped the margin floor and the discount ceiling.
+    expect(needsPricingApproval(null)).toBe(true);
+    expect(needsPricingApproval({ app_metadata: {} })).toBe(true);
+  });
+
+  it('never reads user_metadata, which the caller writes (round 148)', () => {
+    expect(
+      needsPricingApproval({ app_metadata: {}, user_metadata: { role: 'SALES_MANAGER' } }),
+    ).toBe(true);
+    expect(
+      needsPricingApproval({
+        app_metadata: { role: 'SALES_REP' },
+        user_metadata: { roleLevel: 8 },
+      }),
+    ).toBe(true);
+  });
+
+  it('prefers the claim, then the resolved level, then the role string', () => {
+    expect(needsPricingApproval({ app_metadata: { roleLevel: 5 } }, 1)).toBe(false);
+    expect(needsPricingApproval({ app_metadata: { role: 'SALES_REP' } }, 6)).toBe(false);
+    expect(needsPricingApproval({ app_metadata: { role: 'SALES_MANAGER' } }, 1)).toBe(true);
+    expect(pricingGateApplies({ app_metadata: {} }, { pricing_approval_id: null }, 7)).toBe(false);
   });
 
   it('lifts for a stamped proposal and not for an unstamped one (AC3)', () => {

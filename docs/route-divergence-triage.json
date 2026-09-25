@@ -1,41 +1,17 @@
 {
   "note": "A verdict and a reason for every ambiguous-ownership domain in docs/route-ownership-baseline.json's bothDivergent list: Express registers handlers for it, an edge function serves it, and nothing proxies between them, so dev and production run different code for the same path. 'unexamined' is a permitted verdict and is the point - it is what stops a guess from being written down as a finding, and this file exists because two priority-1 stories (LAUNCH-013, LEGAL-004) sat inside the flat list indistinguishable from the entries where the divergence is harmless. VERDICTS: parity (both hosts checked, same behaviour); divergent (a named behavioural difference that matters in production); resolved (was divergent, ported, with the round named); express-only-capability (Express does something the edge does not and that is a recorded gap); unexamined (nobody has compared them). Added round 124. A domain that stops being ambiguous - usually because the prefix was proxied - LEAVES this file, so the 'resolved' count is not a history of everything ever fixed; it is the domains that were ported while the divergence itself remains. Round 134 dropped catalog and enabled-products on porting them, and dropped mobile (round 113) and onboarding (round 133), whose scoped proxy entries had made them unambiguous without anyone tightening docs/route-ownership-baseline.json - a stale entry here is pre-forgiveness for whatever lands under that name next.",
   "entries": {
-    "analytics": {
+    "address-books": {
       "verdict": "unexamined",
-      "reason": "server/analytics-routes.ts was DELETED by PA-040 (184 lines, four handlers, no database import). Whatever Express still registers under this domain has not been compared to the edge function."
-    },
-    "audit-logs": {
-      "verdict": "unexamined",
-      "reason": "Both hosts write audit_logs. _shared/audit-log.ts is the one edge writer; the Express side has not been compared to it."
-    },
-    "auto-supply-replenishment": {
-      "verdict": "unexamined",
-      "reason": "AUDIT-032 records all three of this feature's input tables as unwritable until migration 0062. Which host serves what has not been compared."
+      "reason": "Surfaced in round 238, when route-parity learned the registry's tuple mounts (['/api/address-books', './routes-address-books']) and stopped missing it. Live callers: client/src/components/address-book/{EntryFormDialog,ExportModal,ImportWizard}.tsx. Dev runs server/routes-address-books.ts (13 handlers); production runs supabase/functions/address-books/ (index.ts + _import-export.ts). Compare the two path by path, especially POST /:id/export and the import branch, before proxying."
     },
     "chatbot": {
-      "verdict": "unexamined",
-      "reason": "The edge function is minLevel 1 by design (a rep reads the console). The Express twin has not been compared."
-    },
-    "content-gap-analysis": {
-      "verdict": "unexamined",
-      "reason": "Express registers it from routes-registry.ts directly; supabase/functions/content-gap-analysis/ serves it in production. Neither side has been read, so it is unknown whether the shapes or the gating agree."
-    },
-    "contract-renewal": {
-      "verdict": "unexamined",
-      "reason": "AUDIT-026 holds the renewal model question open - a complete feature over four real tables, never wired to a screen, beside a different renewal model that was. Which host serves which has not been settled."
-    },
-    "dashboards": {
-      "verdict": "unexamined",
-      "reason": "Round 105 rewrote the edge /today branch for per-user scoping. server/routes-today-dashboard.ts has not been compared to it."
+      "verdict": "express-only-capability",
+      "reason": "Round 153 read both. The six console paths (connections, connect, links, query-log) ran on an Express copy with no role check while the edge function needs a MANAGER to change an install or a mapping; they are proxied with scoped entries and the Express handlers deleted. POST /query stays Express-only on purpose - the edge function answers 501 CHATBOT_QUERY_NOT_PORTED because the tool registry needs CLAUDE_API_KEY at the edge - and its caller-supplied platformUserId could resolve to another user's scope, now refused unless the link is the caller's own."
     },
     "database-updater": {
-      "verdict": "unexamined",
-      "reason": "database-updater/seeders/ STORE SQL for report definitions to run later rather than executing it (check:sql-string-tables baselines 78 of them). Not examined as a routing question."
-    },
-    "deal-desk-copilot": {
-      "verdict": "unexamined",
-      "reason": "SEC-EDGE-001 gated PUT /settings (the gp_floor_pct guardrail) edge-side. server/routes-deal-desk-copilot.ts carries a TODO(rbac) comment and no gate; the two have not been compared."
+      "verdict": "express-only-capability",
+      "reason": "Round 166 read both. Express mounts server/database-updater/api/updater-routes.ts behind platformAdminRoute and drives DatabaseUpdaterManager, an in-process Node scheduler whose registry, cron timers and config live in memory - real on a developer machine. The edge function could not run it and answered 200 success:true to all seven controls the two admin pages call (start, stop, execute, enable, disable, dry-run, plus config) while doing nothing, and status said isRunning:false, which both pages render as a STOPPED system with a working Start button. Now status answers available:false with code UPDATER_NOT_ON_EDGE and every control answers 501 with that code; DatabaseManagement and DatabaseUpdaterPage show the reason and disable Start. NOT proxied on purpose: proxying would take the only working host away from dev. Two things left open: DatabaseUpdaterPage reads totalJobs/runningJobs/jobs/systemHealth, which getStatus() has never returned on either host (it answers isRunning/updaters/nextExecutions/config inside a {success,data} envelope), so that page renders zeroes even in dev; and the edge gate admits level 7 or can_access_all_tenants while Express requires platform admin."
     },
     "deal-stages": {
       "verdict": "express-only-capability",
@@ -45,53 +21,37 @@
       "verdict": "parity",
       "reason": "Round 131. Every path a client tree calls - GET /api/equipment, /:id, /:id/meter-readings, /:id/service-history - has a branch in supabase/functions/equipment/. The Express extras have NO caller anywhere: routes-equipment-qr.ts (/:id/qr-code, /:id/asset-label, POST /bulk-qr-codes) mounted at routes-registry:820, routes-bulk-operations.ts (/bulk-update, /bulk-delete), routes-warehouse.ts (/:id/lifecycle) and routes-workflow-mobile.ts (/:id/trigger-service) - grepped across all seven client trees plus ios. The edge function already refuses an unknown sub-resource with a 404 above its /:id branch (round 115), so a POST to any of those Express-only paths cannot fall into the CREATE branch and write a junk equipment row, which was the first thing checked."
     },
-    "equipment-lifecycle": {
-      "verdict": "unexamined",
-      "reason": "WF-L-01 fixed a duplicate declaration that stopped the edge function loading in production. The Express side has not been compared since."
-    },
     "gdpr": {
       "verdict": "resolved",
       "reason": "Round 123. The Express service erased a data subject's uploaded objects across six buckets with Art. 17(3) exemptions named per bucket; the edge function anonymised two tables of rows, touched no storage, and answered 'User data has been anonymized'. The core is shared/gdpr-storage-erasure.ts now and both hosts import it."
     },
     "import": {
-      "verdict": "divergent",
-      "reason": "LAUNCH-013. requireFeature('ai_csv_import') gates /api/import/ai/map-columns and /ai-process on Express only; supabase/functions/import/ has role checks but no feature or plan check, so the AI import paths are open to any tenant regardless of plan in production. OPEN GAP."
+      "verdict": "express-only-capability",
+      "reason": "CORRECTED round 170. This entry used to say requireFeature('ai_csv_import') gated the AI import paths on Express only, leaving them open to any tenant regardless of plan in production. Reading supabase/functions/import/ says otherwise: it has no AI client at all. GET /ai/status answers available:false, POST /ai/map-columns answers 503 'AI refinement is not available on this deployment', and /jobs/:id/ai-process has no branch, so there is nothing a plan flag would gate. The real difference is capability, not policy: Express can run AI column mapping for a plan that has ai_csv_import, and production cannot run it for anyone. import-ai-plan-gate.test.ts fails the day the edge function gains an AI branch without a feature or plan check, which is when this becomes a policy gap."
     },
     "integrations": {
-      "verdict": "divergent",
-      "reason": "Round 128 read all three Express files and the edge function. The phantom-`config` class this entry guessed at is NOT here: QUALITY-002's defect was on `system_integrations`, and the edge function reads `platform_integrations`, which really does have `config`. What is real: TWO of the three Express routers are mounted (routes-integrations.ts at routes-registry:386, integrations/routes.ts at :387) and the third, routes-integrations-real.ts - 320 lines, named 'real' - has no importer at all and sits in docs/server-orphans-baseline.json. MOUNT ORDER DECIDES A WINNER: routes-integrations.ts registers GET /api/integrations/:id first, so GET /api/integrations/marketplace is served by the :id handler with id='marketplace' rather than by integrations/routes.ts's marketplace catalogue - proven by mounting both in that order and issuing the request, not by reading. POST /oauth/init survives only because the shadowing handler is a GET. Nothing in client/src calls /marketplace, so the shadowing is latent. LIVE GAPS, each unserved in production: POST /integrations/oauth/init (IntegrationHub's Connect button - no edge branch, and it was a raw fetch, so it never left the static origin either), and the whole of useExternalIntegrations (GET /status and /bulk-sync resolve to the by-id branch and 404; PATCH /{provider}/config has no branch, the edge function takes POST) - though that hook's only consumer, ExternalIntegrationsDashboard.tsx, is itself an orphan, so it is COP-B03's setup rather than a live break. The /api/integrations/calendar/* half of the routes-registry.ts note is STALE: PA-052 repointed CalendarProvider at /api/meetings/calendar/*. ROUND 129 CLOSED THE OAUTH HALF, and found a security defect on the way. GET /api/integrations/:provider/callback is necessarily unauthenticated, and it took the tenant a connection is stored against from `state.split('-')[0]` - a query parameter - while never comparing the state to the one POST /oauth/init had written into req.session. Its only check, `provider !== state.split('-')[1]`, could not pass: a tenant id is a uuid, so that group is four hex characters and never a provider name, verified by running it. So the feature had never completed a connection, and the tautological check was the only thing keeping the unauthenticated write unreachable. shared/oauth-state.ts issues 32 random bytes that carry nothing, the callback verifies in constant time against the stored record and reads tenant, user and provider from THERE, the record is single use and expires in ten minutes. The edge function answers 501 OAUTH_STATE_IS_SESSION_BOUND on both halves rather than 404ing, and the page's raw fetch is apiRequest now, so production says why instead of parsing the SPA shell."
+      "verdict": "express-only-capability",
+      "reason": "Round 176 CORRECTED this entry and closed its dev half. The note said routes-integrations.ts registers GET /api/integrations/:id and so shadows /marketplace; it has no such handler (stale). What it DID register, mounted ahead of integrations/routes.ts, was GET /api/integrations, PUT /:id and POST /:id/test, and it won all three - so PA-053's honest handlers over platform_integrations never ran in dev. Dev listed system_integrations instead (a different table from the one production reads), and the test route wrote status 'connected' - not in that column's active|inactive|error|pending vocabulary - and answered 'Connection test successful' without testing anything. routes-integrations.ts is deleted, as is the importer-less routes-integrations-real.ts, and integrations-one-express-router.test.ts asserts one Express registrant per path. WHAT REMAINS is the capability gap round 129 recorded: the OAuth connect flow completes on Express (session-bound state and tokens) and the edge function answers 501 OAUTH_STATE_IS_SESSION_BOUND. useExternalIntegrations' paths are still unserved on the edge, but its only consumer is an orphan page."
     },
     "inventory": {
       "verdict": "parity",
       "reason": "SEC-EDGE-001's catalogue family. The Express twin in routes-products-crud.ts / routes-product-models.ts checks a permission nobody reaches; the edge function carries the equivalent gate on operations.inventory.manage. Verified round 121 by counting gate calls in each function. The Express handlers are redundant rather than load-bearing."
     },
-    "invoices": {
-      "verdict": "divergent",
-      "reason": "Round 132. The Invoices page LISTS from /api/billing/invoices (proxied, so one host) but bulk-mutates through /api/invoices/bulk-update and /bulk-delete, which are NOT proxied - so dev runs server/routes-bulk-operations.ts and production runs supabase/functions/invoices/. Express registers only those two bulk POSTs, so GET /api/invoices, /:id, POST, PATCH and DELETE reach no dev handler at all while working in production: the split running backwards, which nobody files because production is fine. Both bulk implementations reported deletedCount: ids.length - the request, not the result - and that is fixed on both hosts through shared/bulk-result.ts, so the remaining divergence is which host serves them rather than what they answer. Converging needs either a crmProxies entry (safe only once the two bulk shapes are confirmed identical against a deploy) or Express list handlers; neither is free, so this stays divergent rather than resolved."
-    },
     "leads": {
-      "verdict": "divergent",
-      "reason": "LAUNCH-013. enforceUsageLimits is mounted on POST /api/leads and decides nothing in production: supabase/functions/leads/ serves that path and carries no subscription, plan or usage check. Also round 109: the activities sub-resource diverged on both hosts for different reasons. OPEN GAP."
+      "verdict": "resolved",
+      "reason": "Resolved round 171. LAUNCH-013's gap: enforceUsageLimits is mounted on POST /api/leads on Express and decided nothing in production, where supabase/functions/leads/ served the path with no subscription, plan or usage check, so a tenant over its plan limits could keep creating records. The create branch now calls usageLimitRefusal from supabase/functions/_shared/usage-limit.ts before the insert: same rule (no subscription or an admin-granted free one allows; any overage refuses 403 USAGE_LIMIT_EXCEEDED with the same body), same arithmetic as the subscription banner (_shared/subscription-status.ts), and it fails open on a read error exactly as the Express copy does. The round 109 activities divergence was fixed in that round. What still differs: the edge function carries no requireFeature-style plan-feature check, and none is mounted on this path on Express either."
     },
     "managed-services": {
       "verdict": "parity",
       "reason": "SEC-EDGE-001's catalogue family. The Express twin in routes-products-crud.ts / routes-product-models.ts checks a permission nobody reaches; the edge function carries the equivalent gate on operations.inventory.manage. Verified round 121 by counting gate calls in each function. The Express handlers are redundant rather than load-bearing."
     },
-    "manufacturer-integrations": {
-      "verdict": "unexamined",
-      "reason": "Round 74 added redaction and a role gate to the edge function's credential reads. server/routes-manufacturer-integration.ts has not been checked for the same exposure."
-    },
     "meter-readings": {
       "verdict": "resolved",
       "reason": "Round 122. The edge function had zero role checks while routes-products-crud.ts guarded a permission nobody reaches, and its PATCH field map named five columns that do not exist. PATCH and DELETE now require a supervisor and the write goes through _shared/meter-reading-write.ts."
     },
-    "parts-orders": {
-      "verdict": "divergent",
-      "reason": "Round 138. One live path: ServiceTicketAnalysis.tsx POSTs /api/parts-orders/:id/items, and COP-M01 already fixed the edge function's column map for it (part_number/part_name, part_description, quantity_ordered, unit_price, line_total - the flat part_id/description/quantity/unit_cost/total_cost names do not exist) and set tenant_id, which Express's insert does too. THE NAMED DIFFERENCE IS LATENT: GET /api/parts-orders/:id/items returns raw snake_case from the edge function and camelCase Drizzle rows from Express, so a component reading camelCase would render blank cells in production only - nothing calls that GET on either host today, so it is a trap for whoever wires the first caller rather than a live defect. PATCH /api/parts-orders/:orderId is Express-only and also uncalled. The edge function's ownedOrder() check is the half that matters and is present: parts_order_items is reached only through its parent, so an unscoped :id would let one tenant read another's line items."
-    },
-    "pricing": {
+    "oid-mappings": {
       "verdict": "unexamined",
-      "reason": "server/routes-product-pricing.ts and a routes-registry.ts mount register here; supabase/functions/pricing/ serves it in production. Pricing decides what a customer is charged, so this one is worth reading before the ones above it - nobody has."
+      "reason": "Surfaced in round 238, when route-parity learned the registry's tuple mounts. Live caller: client/src/pages/OidManagement.tsx. Dev runs server/routes-oid-mappings.ts (7 handlers including POST /:id/test and POST /import); production runs supabase/functions/oid-mappings/index.ts. oid_mappings has no tenant_id (round 76), so check that both hosts gate writes the same way before proxying."
     },
     "product-accessories": {
       "verdict": "parity",
@@ -105,10 +65,6 @@
       "verdict": "parity",
       "reason": "SEC-EDGE-001's catalogue family. The Express twin in routes-products-crud.ts / routes-product-models.ts checks a permission nobody reaches; the edge function carries the equivalent gate on operations.inventory.manage. Verified round 121 by counting gate calls in each function. The Express handlers are redundant rather than load-bearing."
     },
-    "projects": {
-      "verdict": "unexamined",
-      "reason": "SEC-EDGE-001 batch 16 deleted projects-enhanced as a subset of the reachable projects function. routes-tasks.ts and routes-templates.ts register here and are not examined."
-    },
     "quickbooks": {
       "verdict": "express-only-capability",
       "reason": "Round 126 read both. Express runs the real Intuit OAuth flow and holds the access token, refresh token and company id in req.session, under its own comment 'in a real app, save to database' - so it works on a developer machine and writes no row. The edge function read `integrations` and `quickbooks_mappings`, both phantom, DISCARDED the error on GET /status and answered connected:false at 200, so every dealer in production was told they had not connected QuickBooks whether or not they had. Both hosts also reported a sync that persists nothing: the edge branches never called Intuit ('in production, this would call the QuickBooks API') and Express called it, transformed the result and dropped it ('in a real implementation, save to database here') while answering 'Successfully synced N customers'. All sync paths on BOTH hosts now answer 501 SYNC_NOT_IMPLEMENTED from shared/quickbooks-availability.ts, and the edge status answers connected:null with CONNECTION_NOT_STORED. WHAT REMAINS IS THE CAPABILITY GAP: Express can start and complete the OAuth flow and production cannot, because the state and the tokens are session-bound - GET /quickbooks/connect has 501'd with OAUTH_STATE_IS_SESSION_BOUND since EDGE-002h for that reason. Closing it means a credential store plus moving OAuth state into a table, which is a redesign rather than a port."
@@ -118,48 +74,28 @@
       "reason": "Round 127 read both. PROD-013's two recorded defects were already fixed - the roles branch answers {roles, pagination} off tenant-scoped enhanced_roles and permissions answers {permissions, groupedPermissions, totalCount} - so that half of this entry was stale. The live finding was larger: ROLE MANAGEMENT HAS NEVER BEEN INITIALIZABLE ON ANY HOST. GET /rbac/status gates the page on enhanced_roles holding a row, the only writer is POST /rbac/seed, and that 501'd on the edge function while dying on its first INSERT on Express - it omitted lft/rght/depth, organizational_tier and created_by (all NOT NULL, no default), wrote 'COMPANY'/'INDIVIDUAL' into role_hierarchy_level (level_1..level_8) and 'COMPANY' into organizational_tier (lowercase), and named four role codes migration 0072's catalogue does not carry. shared/rbac-seed.ts now builds the rows for both hosts, deriving every level from the catalogue and computing the nested set, and the edge seed is gated on the global roles level (gating on enhanced_roles would be circular on a tenant that has none). Also rebound: rbac_audit_log was phantom on BOTH the assign-role write (whose result was never destructured) and the audit-logs read (which discarded its error and answered [] - 'nobody has changed anyone's access' on a security screen); both use audit_logs through _shared/audit-log.ts now, ordered by `timestamp` rather than created_at. The phantom-tables baseline is one entry shorter."
     },
     "root-admin": {
-      "verdict": "unexamined",
-      "reason": "Platform-admin surface; the edge function is gated (check:edge-rbac reports platform-admin). The Express side is not examined."
+      "verdict": "express-only-capability",
+      "reason": "Round 167 read both for the twelve paths client/src calls. Five - signups, signups-analytics, trial-funnel, high-value-signups, pending-tasks - were served ONLY by the edge function: routes-signup-crm.ts is mounted at /api/root-admin/crm, which nothing calls, and routes-root-admin.ts registers none of them, so the signups CRM and the command centre's pending-task list 404'd in dev while working in production. They are scoped crmProxies entries now. system-resources, database-tables and execute-query stay Express-only on purpose: the edge function refuses them with REQUIRES_DIRECT_SQL because they introspect Postgres and execute-query depends on SET TRANSACTION READ ONLY. Separately, Express GET /security/locked-accounts and POST /security/unlock-account had no requireRootAdmin, so any authenticated member of any tenant could list every locked account and clear any brute-force lockout (login_attempts has no tenant_id); both are gated and a test asserts every handler in that file is. ROUND 178 closed the comparison gap by construction: overview, tenants, security-alerts and audit-logs - served by both hosts and never compared - are scoped crmProxies entries now and their Express copies are deleted, so dev runs production's code for all of them. The /crm router's signups/:id, PATCH, log-activity and send-email have no caller in any client tree."
     },
     "seo": {
-      "verdict": "unexamined",
-      "reason": "SEO-004/008 and round 94 rewrote the edge analysers and deleted the fabricated fallbacks. routes-seo.ts and routes-seo-core.ts still register here; routes-seo-core.ts deliberately serves the three committed build artifacts from disk (SEO-006), which is NOT a divergence. The rest is not examined."
-    },
-    "service-analysis": {
-      "verdict": "unexamined",
-      "reason": "server/routes-service-analysis.ts registers both this and /api/parts-orders; supabase/functions/service-analysis/ serves it in production. Not read on either side."
-    },
-    "service-analytics": {
-      "verdict": "unexamined",
-      "reason": "server/routes-misc-stubs.ts registers it - the filename says what to expect - and supabase/functions/service-analytics/ serves it in production. Whether the stub is shadowing something real has not been checked."
-    },
-    "social-media": {
-      "verdict": "unexamined",
-      "reason": "SEC-EDGE-001 gated POST /posts/:id/publish edge-side while leaving generation open. server/routes-social-media.ts is not examined."
-    },
-    "software-products": {
-      "verdict": "unexamined",
-      "reason": "Round 85 gated this edge function's writes after it survived two family sweeps ungated. The Express twin is not examined."
+      "verdict": "parity",
+      "reason": "Round 177 finished what round 169 started. The list endpoints were already at parity: both hosts project every row through the same module (server/lib/seo-projection.ts and its Deno twin, locked by seo-projection-parity.test.ts), and the action endpoints run shared/seo-checks.ts, seo-page-facts.ts and seo-audit.ts on both (rounds 94, 135, 136). Settings were not. The edge PUT kept only snake_case keys while every caller sends camelCase, so a save stored nothing but updated_at and answered 200 with 'Settings saved'; POST, which RootAdminSEO uses, had no edge branch and 404'd; and GET answered the raw snake row (or {}) to pages reading camelCase, so every field rendered blank in production. The edge function now plans writes through shared/seo-settings-write.ts (either spelling, 400 NO_WRITABLE_FIELDS on an empty plan), serves POST as the same upsert, and answers GET camelCase or null as Express does. RootAdminSEO also seeded its form from a query that had not resolved, so Save posted blanks over the stored settings on both hosts; it hydrates once from the first row now and will not save before the settings load."
     },
     "subscriptions": {
-      "verdict": "unexamined",
-      "reason": "LAUNCH-013. supabase/functions/subscriptions/ is the management surface and reads tenant_subscriptions and usage_metrics; routes-subscriptions.ts mounts twelve gates that cannot run in production. The gates are recorded in docs/dead-policy-gates-baseline.json; the read/write surfaces themselves are not compared."
+      "verdict": "resolved",
+      "reason": "Round 168 compared the sixteen paths client/src calls; all live in one hook, useSubscription.ts, and both hosts serve all sixteen. Status, create, upgrade, cancel, convert-trial and notifications were already locked by the subscription-*-shape and subscription-status-parity tests. GET /plans was not and was divergent: the edge function answered raw snake_case rows while Pricing.tsx, the one consumer, reads the camelCase keys Drizzle gives Express, so production priced every plan at $NaN, never showed Most Popular, left every limit blank and offered no trial. Both lists are camelised now and subscription-plans-shape.test.ts derives the expected keys from the table declaration. /usage (useUsageStats) has no consumer, so its shape was not compared. The Stripe paths (checkout, addon, session, portal, setup-intent, preview-upgrade, stripe/config) were matched key for key in PROD-STRIPE-001 and not re-read. The twelve Express gates LAUNCH-013 recorded remain dead in production and are tracked in docs/dead-policy-gates-baseline.json; the Stripe webhook at /subscriptions/webhooks/stripe is why the prefix cannot simply be proxied."
     },
     "supplies": {
       "verdict": "parity",
       "reason": "SEC-EDGE-001's catalogue family. The Express twin in routes-products-crud.ts / routes-product-models.ts checks a permission nobody reaches; the edge function carries the equivalent gate on operations.inventory.manage. Verified round 121 by counting gate calls in each function. The Express handlers are redundant rather than load-bearing."
     },
     "task-workflows": {
-      "verdict": "divergent",
-      "reason": "Round 138. Four routed pages (WorkflowsListPage, WorkflowBuilderPage, WorkflowDetailPage, WorkflowStepPage) drive 11 paths; supabase/functions/task-workflows/ serves ten of them and server/routes-task-workflows.ts serves all eleven. THE NAMED DIFFERENCE IS POST /parse: uploading an image/CSV/XLSX and having it parsed into a draft needs multipart plus exceljs and the Anthropic SDK, so it is deliberately Express-only and the edge function answers 501 - which is why the prefix is not proxied (an entry would take /parse from working-in-dev to 404-in-dev). Round 138 made that refusal readable: the page toasted the server's sentence wrapped in the JSON it arrived in, titled 'Parse failed' in red, so a backend that does not do this read as a broken feature; it now says 'Upload not available here' with the reason, via client/src/lib/api-error.ts. THE STATE MACHINE WAS THE REAL RISK AND IS CLOSED: the edge function carried a 40-line replica of shared/task-workflow-state.ts under a note claiming Deno could not import from shared/ (it can), while the engine imported three of ten exports and hand-inlined the rest - so three implementations of the advance/regress/completion math existed and server/tests/unit/task-workflow-state.test.ts pinned the one neither host ran. Both hosts now import and call the one module, and server/tests/unit/task-workflow-shared-state.test.ts fails if either grows its own copy. Everything else was compared and agrees: routing, the notification pair (email + user_notifications; the Node WebSocket broadcast has no prod consumer per PA-030), and the task_workflow_event_type vocabulary, whose 12 values are all in migration 0009's CREATE TYPE."
+      "verdict": "express-only-capability",
+      "reason": "Round 177 re-labelled; the finding is round 138's. Round 138. Four routed pages (WorkflowsListPage, WorkflowBuilderPage, WorkflowDetailPage, WorkflowStepPage) drive 11 paths; supabase/functions/task-workflows/ serves ten of them and server/routes-task-workflows.ts serves all eleven. THE NAMED DIFFERENCE IS POST /parse: uploading an image/CSV/XLSX and having it parsed into a draft needs multipart plus exceljs and the Anthropic SDK, so it is deliberately Express-only and the edge function answers 501 - which is why the prefix is not proxied (an entry would take /parse from working-in-dev to 404-in-dev). Round 138 made that refusal readable: the page toasted the server's sentence wrapped in the JSON it arrived in, titled 'Parse failed' in red, so a backend that does not do this read as a broken feature; it now says 'Upload not available here' with the reason, via client/src/lib/api-error.ts. THE STATE MACHINE WAS THE REAL RISK AND IS CLOSED: the edge function carried a 40-line replica of shared/task-workflow-state.ts under a note claiming Deno could not import from shared/ (it can), while the engine imported three of ten exports and hand-inlined the rest - so three implementations of the advance/regress/completion math existed and server/tests/unit/task-workflow-state.test.ts pinned the one neither host ran. Both hosts now import and call the one module, and server/tests/unit/task-workflow-shared-state.test.ts fails if either grows its own copy. Everything else was compared and agrees: routing, the notification pair (email + user_notifications; the Node WebSocket broadcast has no prod consumer per PA-030), and the task_workflow_event_type vocabulary, whose 12 values are all in migration 0009's CREATE TYPE."
     },
     "technician-management": {
       "verdict": "resolved",
       "reason": "Round 92. All five edge writes were ungated while the Express twin checked SERVICE.TECHNICIAN.MANAGE - dev was the safe host and production the open one. The edge function carries eight gate calls now."
-    },
-    "templates": {
-      "verdict": "unexamined",
-      "reason": "AUDIT-037 found routes-templates.ts writing `dependencies: task.dependencies || []`, always the empty branch, so every generated template asserted its tasks were independent. The edge side is not examined."
     }
   }
 }

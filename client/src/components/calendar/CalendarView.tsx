@@ -1,18 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import {
-  Calendar,
-  ChevronLeft,
-  ChevronRight,
-  Clock,
-  MapPin,
-  Users,
-  Brain,
-  Plus,
-  Settings,
-} from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, Clock, MapPin, Users, Brain } from 'lucide-react';
 import {
   format,
   startOfMonth,
@@ -22,25 +13,11 @@ import {
   isSameDay,
   addMonths,
   subMonths,
+  getDay,
 } from 'date-fns';
 import { clickableProps } from '@/lib/accessibility';
-
-interface CalendarEvent {
-  id: string;
-  title: string;
-  description?: string;
-  startTime: string;
-  endTime: string;
-  isAllDay: boolean;
-  location?: string;
-  attendees?: string[];
-  status: 'confirmed' | 'tentative' | 'cancelled';
-  eventType: 'meeting' | 'task' | 'focus_time' | 'reminder';
-  isAiGenerated: boolean;
-  aiConfidence?: number;
-  relatedEntityType?: string;
-  relatedEntityId?: string;
-}
+import { InlineQueryError } from '@/components/ui/inline-query-error';
+import { calendarEventFromRow, monthEventsUrl, type CalendarEvent } from '@/lib/calendar-events';
 
 interface CalendarViewProps {
   className?: string;
@@ -49,72 +26,11 @@ interface CalendarViewProps {
 export default function CalendarView({ className }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<'month' | 'week' | 'day'>('month');
-
-  // Mock events data
-  useEffect(() => {
-    const mockEvents: CalendarEvent[] = [
-      {
-        id: 'event-1',
-        title: 'Team Meeting',
-        description: 'Weekly team sync',
-        startTime: '2025-09-26T10:00:00Z',
-        endTime: '2025-09-26T11:00:00Z',
-        isAllDay: false,
-        location: 'Conference Room A',
-        attendees: ['user1@company.com', 'user2@company.com'],
-        status: 'confirmed',
-        eventType: 'meeting',
-        isAiGenerated: false,
-      },
-      {
-        id: 'event-2',
-        status: 'confirmed',
-        title: 'Follow up with ABC Corp',
-        description: 'AI-scheduled follow-up call',
-        startTime: '2025-09-26T14:00:00Z',
-        endTime: '2025-09-26T14:30:00Z',
-        isAllDay: false,
-        eventType: 'task',
-        isAiGenerated: true,
-        aiConfidence: 0.85,
-        relatedEntityType: 'lead',
-        relatedEntityId: 'lead-123',
-      },
-      {
-        id: 'event-3',
-        status: 'confirmed',
-        title: 'Focus Time: Proposal Writing',
-        description: 'AI-blocked time for deep work',
-        startTime: '2025-09-26T15:00:00Z',
-        endTime: '2025-09-26T17:00:00Z',
-        isAllDay: false,
-        eventType: 'focus_time',
-        isAiGenerated: true,
-        aiConfidence: 0.92,
-      },
-      {
-        id: 'event-4',
-        status: 'confirmed',
-        title: 'Service Call - XYZ Manufacturing',
-        description: 'Copier maintenance and inspection',
-        startTime: '2025-09-27T09:00:00Z',
-        endTime: '2025-09-27T11:00:00Z',
-        isAllDay: false,
-        location: '123 Industrial Blvd',
-        eventType: 'task',
-        isAiGenerated: true,
-        aiConfidence: 0.78,
-        relatedEntityType: 'service_call',
-        relatedEntityId: 'service-456',
-      },
-    ];
-
-    setEvents(mockEvents);
-    setLoading(false);
-  }, []);
+  const eventsQuery = useQuery<Record<string, unknown>[]>({
+    queryKey: [monthEventsUrl(currentDate)],
+  });
+  const events: CalendarEvent[] = (eventsQuery.data ?? []).map(calendarEventFromRow);
+  const loading = eventsQuery.isLoading;
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
@@ -178,17 +94,8 @@ export default function CalendarView({ className }: CalendarViewProps) {
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center">
             <Calendar className="mr-2 h-6 w-6" />
-            Motion AI Calendar
+            Calendar
           </CardTitle>
-          <div className="flex items-center space-x-2">
-            <Button variant="outline" size="sm">
-              <Plus className="h-4 w-4 mr-1" />
-              New Event
-            </Button>
-            <Button aria-label="Settings" variant="outline" size="sm">
-              <Settings className="h-4 w-4" />
-            </Button>
-          </div>
         </div>
 
         {/* Calendar Navigation */}
@@ -202,76 +109,68 @@ export default function CalendarView({ className }: CalendarViewProps) {
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
-
-          <div className="flex space-x-1">
-            {(['month', 'week', 'day'] as const).map((viewType) => (
-              <Button
-                key={viewType}
-                variant={view === viewType ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setView(viewType)}
-              >
-                {viewType.charAt(0).toUpperCase() + viewType.slice(1)}
-              </Button>
-            ))}
-          </div>
         </div>
       </CardHeader>
 
       <CardContent>
-        {view === 'month' && (
-          <div className="grid grid-cols-7 gap-1">
-            {/* Day headers */}
-            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-              <div key={day} className="p-2 text-center text-sm font-medium text-gray-500">
-                {day}
-              </div>
-            ))}
+        {eventsQuery.isError && (
+          <InlineQueryError label="events for this month" onRetry={() => eventsQuery.refetch()} />
+        )}
+        <div className="grid grid-cols-7 gap-1">
+          {/* Day headers */}
+          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+            <div key={day} className="p-2 text-center text-sm font-medium text-gray-500">
+              {day}
+            </div>
+          ))}
 
-            {/* Calendar days */}
-            {calendarDays.map((date, index) => {
-              const dayEvents = getEventsForDate(date);
-              const isSelected = isSameDay(date, selectedDate);
-              const isCurrentMonth = isSameMonth(date, currentDate);
+          {/* The grid is Sunday-first, so the 1st sits under its own weekday. */}
+          {Array.from({ length: getDay(monthStart) }, (_, i) => (
+            <div key={`pad-${i}`} aria-hidden="true" />
+          ))}
 
-              return (
-                <div
-                  key={index}
-                  className={`
+          {/* Calendar days */}
+          {calendarDays.map((date, index) => {
+            const dayEvents = getEventsForDate(date);
+            const isSelected = isSameDay(date, selectedDate);
+            const isCurrentMonth = isSameMonth(date, currentDate);
+
+            return (
+              <div
+                key={index}
+                className={`
                     min-h-[100px] p-1 border border-gray-200 cursor-pointer transition-colors
                     ${isSelected ? 'bg-blue-50 border-blue-300' : 'hover:bg-gray-50'}
                     ${!isCurrentMonth ? 'text-gray-400 bg-gray-50' : ''}
                   `}
-                  {...clickableProps(() => setSelectedDate(date))}
-                >
-                  <div className="text-sm font-medium mb-1">{format(date, 'd')}</div>
+                {...clickableProps(() => setSelectedDate(date))}
+              >
+                <div className="text-sm font-medium mb-1">{format(date, 'd')}</div>
 
-                  <div className="space-y-1">
-                    {dayEvents.slice(0, 2).map((event) => (
-                      <div
-                        key={event.id}
-                        className={`
+                <div className="space-y-1">
+                  {dayEvents.slice(0, 2).map((event) => (
+                    <div
+                      key={event.id}
+                      className={`
                           text-xs p-1 rounded border truncate
                           ${getEventTypeColor(event.eventType, event.isAiGenerated)}
                         `}
-                        title={`${event.title} - ${formatEventTime(event.startTime, event.endTime, event.isAllDay)}`}
-                      >
-                        <div className="flex items-center">
-                          {event.isAiGenerated && <Brain className="h-2 w-2 mr-1 flex-shrink-0" />}
-                          <span className="truncate">{event.title}</span>
-                        </div>
+                      title={`${event.title} - ${formatEventTime(event.startTime, event.endTime, event.isAllDay)}`}
+                    >
+                      <div className="flex items-center">
+                        {event.isAiGenerated && <Brain className="h-2 w-2 mr-1 flex-shrink-0" />}
+                        <span className="truncate">{event.title}</span>
                       </div>
-                    ))}
-                    {dayEvents.length > 2 && (
-                      <div className="text-xs text-gray-500 pl-1">+{dayEvents.length - 2} more</div>
-                    )}
-                  </div>
+                    </div>
+                  ))}
+                  {dayEvents.length > 2 && (
+                    <div className="text-xs text-gray-500 pl-1">+{dayEvents.length - 2} more</div>
+                  )}
                 </div>
-              );
-            })}
-          </div>
-        )}
-
+              </div>
+            );
+          })}
+        </div>
         {/* Event Details Sidebar */}
         {selectedDate && (
           <div className="mt-6 border-t pt-4">
@@ -279,7 +178,9 @@ export default function CalendarView({ className }: CalendarViewProps) {
               Events for {format(selectedDate, 'EEEE, MMMM d, yyyy')}
             </h4>
 
-            {getEventsForDate(selectedDate).length === 0 ? (
+            {eventsQuery.isError ? (
+              <p className="text-gray-500 text-sm">Events could not be loaded.</p>
+            ) : getEventsForDate(selectedDate).length === 0 ? (
               <p className="text-gray-500 text-sm">No events scheduled</p>
             ) : (
               <div className="space-y-3">

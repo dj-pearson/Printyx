@@ -375,3 +375,32 @@ describe('what LAUNCH-010 cannot close from this repository', () => {
     expect(before).toMatch(/rateLimit\(/);
   });
 });
+
+describe('round 231: the page reaches the signup that works', () => {
+  // LAUNCH-008 checked both halves - the page assembles the metadata, the hook
+  // posts to /api/signup - and nothing checked the call between them. The page
+  // takes signup from useAuthContext, whose provider carried a SECOND
+  // implementation with a one-object signature, so the page's
+  // signup(email, password, metadata) posted an undefined email and password.
+  const provider = stripComments(read('client/src/providers/AuthProvider.tsx'));
+  const page = stripComments(read('client/src/pages/Signup.tsx'));
+
+  it('the page takes signup from the auth context', () => {
+    expect(page).toMatch(/const \{ signup \} = useAuthContext\(\)/);
+    expect(page).toMatch(/await signup\(data\.email, data\.password, metadata\)/);
+  });
+
+  it('the context passes the hook signup through rather than defining its own', () => {
+    expect(provider).toMatch(/const signup = supabaseAuth\.signup;/);
+    expect(provider).not.toMatch(/fetch\(/);
+    expect(provider).toMatch(
+      /signup: \(email: string, password: string, metadata\?: Record<string, unknown>\) =>/,
+    );
+  });
+
+  it('the hook it passes through takes the same three arguments', () => {
+    expect(stripComments(AUTH_HOOK)).toMatch(
+      /async \(email: string, password: string, metadata\?: Record<string, any>\) =>/,
+    );
+  });
+});

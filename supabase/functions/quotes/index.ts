@@ -9,6 +9,7 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { applyUserScope, resolveScope } from '../_shared/scope.ts';
+import { ilikeAnyFilter } from '../_shared/postgrest-or.ts';
 
 /**
  * The company's primary contact, or its first, from an embedded
@@ -135,7 +136,7 @@ export default async function handler(req: Request) {
       }
 
       if (search) {
-        query = query.or(`quote_number.ilike.%${search}%,title.ilike.%${search}%`);
+        query = query.or(ilikeAnyFilter(['quote_number', 'title'], search));
       }
 
       const { data: quotes, error, count } = await query;

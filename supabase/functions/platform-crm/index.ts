@@ -7,10 +7,16 @@ import {
   MAX_BULK_ASSIGN,
   buildBulkAssignPlan,
 } from '../../../shared/platform-record-assignment.ts';
+import {
+  describeDependents,
+  planRecordDeletion,
+  type DeletionPlan,
+} from '../../../shared/platform-record-deletion.ts';
 import { cachedRoleLookup } from '../_shared/auth-cache.ts';
 import { getCorsHeaders } from '../_shared/cors.ts';
 import { fetchAllRows } from '../_shared/paged-select.ts';
 import { toCsv } from '../_shared/csv.ts';
+import { ilikeAnyFilter } from '../_shared/postgrest-or.ts';
 
 type Row = Record<string, any>;
 
@@ -391,8 +397,7 @@ export default async function handler(req: Request) {
       if (status) countQuery.eq('status', status);
       if (recordType) countQuery.eq('record_type', recordType);
       if (leadTier) countQuery.eq('lead_tier', leadTier);
-      if (search)
-        countQuery.or(`company_name.ilike.%${search}%,primary_contact_email.ilike.%${search}%`);
+      if (search) countQuery.or(ilikeAnyFilter(['company_name', 'primary_contact_email'], search));
 
       // Bounded, and it REFUSES rather than truncating (PA-028). A spreadsheet
       // silently missing its tail is worse than no spreadsheet: nothing about
@@ -429,8 +434,7 @@ export default async function handler(req: Request) {
           if (status) q.eq('status', status);
           if (recordType) q.eq('record_type', recordType);
           if (leadTier) q.eq('lead_tier', leadTier);
-          if (search)
-            q.or(`company_name.ilike.%${search}%,primary_contact_email.ilike.%${search}%`);
+          if (search) q.or(ilikeAnyFilter(['company_name', 'primary_contact_email'], search));
           return q as unknown as { range: (a: number, b: number) => Promise<any> };
         });
       } catch (err) {
@@ -486,7 +490,7 @@ export default async function handler(req: Request) {
       if (recordType) query = query.eq('record_type', recordType);
       if (leadTier) query = query.eq('lead_tier', leadTier);
       if (search)
-        query = query.or(`company_name.ilike.%${search}%,primary_contact_email.ilike.%${search}%`);
+        query = query.or(ilikeAnyFilter(['company_name', 'primary_contact_email'], search));
 
       const { data: records, error, count } = await query;
 
@@ -509,6 +513,46 @@ export default async function handler(req: Request) {
         req,
       );
     }
+
+    /** Reads what a deletion needs and decides it (shared/platform-record-deletion.ts). */
+    const planDeletion = async (recordIds: unknown): Promise<DeletionPlan> => {
+      const ids = Array.isArray(recordIds)
+        ? recordIds.filter((v): v is string => typeof v === 'string' && v.length > 0).slice(0, 201)
+        : [];
+      if (ids.length === 0 || ids.length > 200) {
+        return planRecordDeletion({
+          recordIds: ids,
+          found: [],
+          dependents: { deals: [], contacts: [], activities: [] },
+        });
+      }
+      const [found, deals, contacts, activities] = await Promise.all([
+        fetchAllRows<Row>(() =>
+          admin.from('platform_business_records').select('id, company_name').in('id', ids),
+        ),
+        fetchAllRows<Row>(() =>
+          admin.from('platform_deals').select('business_record_id').in('business_record_id', ids),
+        ),
+        fetchAllRows<Row>(() =>
+          admin
+            .from('platform_contacts')
+            .select('business_record_id')
+            .in('business_record_id', ids),
+        ),
+        fetchAllRows<Row>(() =>
+          admin
+            .from('platform_activities')
+            .select('business_record_id')
+            .in('business_record_id', ids),
+        ),
+      ]);
+      const col = (rows: Row[]) => rows.map((r) => String(r.business_record_id));
+      return planRecordDeletion({
+        recordIds: ids,
+        found: found as { id: string; company_name?: string | null }[],
+        dependents: { deals: col(deals), contacts: col(contacts), activities: col(activities) },
+      });
+    };
 
     /**
      * POST /platform-crm/business-records/bulk/assign
@@ -604,6 +648,50 @@ export default async function handler(req: Request) {
       );
     }
 
+    /**
+     * POST /platform-crm/business-records/bulk/delete (round 212)
+     *
+     * Same rule as the single delete: a record with deals, contacts or
+     * activities is kept and named, the rest are deleted, and the response
+     * counts what the delete RETURNED. Above the /:id branches for the same
+     * reason as bulk/assign.
+     */
+    if (
+      req.method === 'POST' &&
+      endpoint === 'business-records' &&
+      resourceId === 'bulk' &&
+      parts[2] === 'delete'
+    ) {
+      const body = (await req.json().catch(() => ({}))) as Row;
+      const plan = await planDeletion(body.recordIds);
+      if (plan.error) {
+        return createCorsResponse({ error: plan.error, code: 'INVALID_BULK_DELETE' }, 400, req);
+      }
+      let deleted: string[] = [];
+      if (plan.deletable.length > 0) {
+        const { data: gone, error } = await admin
+          .from('platform_business_records')
+          .delete()
+          .in('id', plan.deletable)
+          .select('id');
+        if (error) {
+          console.error('Error bulk deleting platform business records:', error);
+          return createCorsResponse({ error: 'Failed to delete records' }, 500, req);
+        }
+        deleted = (gone ?? []).map((r: Row) => String(r.id));
+      }
+      return createCorsResponse(
+        {
+          deleted,
+          blocked: plan.blocked,
+          // A record that vanished between the plan and the delete is missing too.
+          missing: [...plan.missing, ...plan.deletable.filter((id) => !deleted.includes(id))],
+        },
+        200,
+        req,
+      );
+    }
+
     // GET /platform-crm/business-records/:id - Single record (PlatformBusinessRecordDetail)
     if (req.method === 'GET' && endpoint === 'business-records' && resourceId && !parts[2]) {
       const { data: record, error } = await admin
@@ -643,6 +731,63 @@ export default async function handler(req: Request) {
       return createCorsResponse(camelRows(contacts as Row[]), 200, req);
     }
 
+    // POST /platform-crm/business-records/:id/contacts
+    //
+    // Round 198: the record page's Add Contact button had nothing to call.
+    // first_name, last_name, full_name and email are NOT NULL; full_name is
+    // derived rather than asked for twice. The parent record is checked first
+    // so a stale id answers 404 rather than an FK violation.
+    if (
+      req.method === 'POST' &&
+      endpoint === 'business-records' &&
+      resourceId &&
+      parts[2] === 'contacts'
+    ) {
+      const body = ((await req.json().catch(() => ({}))) ?? {}) as Row;
+      const firstName = String(body.firstName ?? '').trim();
+      const lastName = String(body.lastName ?? '').trim();
+      const email = String(body.email ?? '').trim();
+      if (!firstName || !lastName || !email) {
+        return createCorsResponse(
+          { error: 'firstName, lastName and email are required' },
+          400,
+          req,
+        );
+      }
+      const { data: parent } = await admin
+        .from('platform_business_records')
+        .select('id')
+        .eq('id', resourceId)
+        .maybeSingle();
+      if (!parent) {
+        return createCorsResponse({ error: 'Business record not found' }, 404, req);
+      }
+      const optional = (v: unknown) => {
+        const t = typeof v === 'string' ? v.trim() : '';
+        return t ? t : null;
+      };
+      const { data: contact, error } = await admin
+        .from('platform_contacts')
+        .insert({
+          business_record_id: resourceId,
+          first_name: firstName,
+          last_name: lastName,
+          full_name: `${firstName} ${lastName}`,
+          email,
+          phone: optional(body.phone),
+          title: optional(body.title),
+          is_primary_contact: body.isPrimaryContact === true,
+          is_decision_maker: body.isDecisionMaker === true,
+        })
+        .select()
+        .single();
+      if (error) {
+        console.error('Error creating platform contact:', error);
+        return createCorsResponse({ error: 'Failed to create contact' }, 500, req);
+      }
+      return createCorsResponse(camelRow(contact as Row), 201, req);
+    }
+
     // PATCH /platform-crm/business-records/:id
     if (req.method === 'PATCH' && endpoint === 'business-records' && resourceId && !parts[2]) {
       const body = (await req.json()) as Row;
@@ -666,12 +811,37 @@ export default async function handler(req: Request) {
     }
 
     // DELETE /platform-crm/business-records/:id
+    // Round 212: every child table cascades, so this used to delete the
+    // account's deals, contacts and activities with it, and answered success
+    // for an id that matched nothing. See shared/platform-record-deletion.ts.
     if (req.method === 'DELETE' && endpoint === 'business-records' && resourceId && !parts[2]) {
-      const { error } = await admin.from('platform_business_records').delete().eq('id', resourceId);
-
+      const plan = await planDeletion([resourceId]);
+      if (plan.missing.length) {
+        return createCorsResponse({ error: 'Record not found' }, 404, req);
+      }
+      if (plan.blocked.length) {
+        const b = plan.blocked[0];
+        return createCorsResponse(
+          {
+            message: `${b.name} still has ${describeDependents(b)}. Move or delete those first; deleting the record would delete them too.`,
+            code: 'HAS_DEPENDENTS',
+            details: { deals: b.deals, contacts: b.contacts, activities: b.activities },
+          },
+          409,
+          req,
+        );
+      }
+      const { data: gone, error } = await admin
+        .from('platform_business_records')
+        .delete()
+        .eq('id', resourceId)
+        .select('id');
       if (error) {
         console.error('Error deleting platform business record:', error);
         return createCorsResponse({ error: 'Failed to delete record' }, 500, req);
+      }
+      if (!gone || gone.length === 0) {
+        return createCorsResponse({ error: 'Record not found' }, 404, req);
       }
       // The list page reads response.json() on success, so answer with a body.
       return createCorsResponse({ success: true, id: resourceId }, 200, req);

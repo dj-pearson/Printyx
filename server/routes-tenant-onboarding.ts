@@ -634,34 +634,14 @@ router.get('/:tenantId/health', async (req, res) => {
  * POST /api/tenants/:tenantId/clone
  * Clone tenant configuration
  */
-router.post('/:tenantId/clone', async (req, res) => {
-  try {
-    const { cloneSettings, modifications, initiatedBy } = req.body;
-
-    if (!cloneSettings || !initiatedBy) {
-      return res.status(400).json({
-        error: 'Missing required fields: cloneSettings, initiatedBy',
-      });
-    }
-
-    const result = await TenantOnboardingService.cloneTenant({
-      sourceTenantId: req.params.tenantId,
-      cloneSettings,
-      modifications: modifications || [],
-      initiatedBy,
-    });
-
-    res.status(201).json({
-      success: true,
-      ...result,
-    });
-  } catch (error) {
-    log.error('Failed to clone tenant:', error);
-    res.status(500).json({
-      error: 'Failed to clone tenant',
-      message: error instanceof Error ? error.message : 'Unknown error',
-    });
-  }
+router.post('/:tenantId/clone', (_req, res) => {
+  // Tenant cloning is not implemented. This used to answer 201 success over a
+  // service method that copied nothing and recorded the clone as completed
+  // (round 256).
+  res.status(501).json({
+    message: 'Tenant cloning is not implemented',
+    code: 'CLONE_NOT_IMPLEMENTED',
+  });
 });
 
 /**

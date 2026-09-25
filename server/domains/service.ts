@@ -2,10 +2,12 @@
  * Service & Field Operations Domain
  * Service dispatch, maintenance, equipment lifecycle, technician management
  */
-export { registerServiceAnalysisRoutes } from '../routes-service-analysis';
+// Round 174: registerServiceAnalysisRoutes retired with routes-service-analysis.ts;
+// /api/parts-orders is proxied whole to supabase/functions/parts-orders/.
 export { registerTechnicianManagementRoutes } from '../routes-technician-management';
 export { serviceDispatchRouter } from '../routes-service-dispatch';
-export { default as equipmentLifecycleStateMachineRoutes } from '../routes-equipment-lifecycle-state-machine';
+// Round 158: equipmentLifecycleStateMachineRoutes retired; /api/equipment-lifecycle
+// is proxied whole to supabase/functions/equipment-lifecycle/.
 export { default as equipmentDisposalRoutes } from '../routes-equipment-disposal';
-export { default as equipmentQRRoutes } from '../routes-equipment-qr';
-export { default as enhancedServiceRoutes } from '../routes-enhanced-service';
+// equipmentQRRoutes: deleted in round 228 (routes-equipment-qr.ts); see routes-registry.
+// enhancedServiceRoutes (routes-enhanced-service.ts) retired in round 248: no caller.

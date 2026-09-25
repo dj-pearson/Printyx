@@ -69,7 +69,7 @@ export async function handleBant(req: Request, ctx: HandlerCtx): Promise<Respons
 
   // GET /bant-analytics (admin|manager)
   if (method === 'GET' && first === 'bant-analytics') {
-    if (!isAdminOrManager(auth)) {
+    if (!(await isAdminOrManager(auth))) {
       return errorResponse(403, 'Admin or manager role required', req, {
         code: 'FORBIDDEN',
         requestId,

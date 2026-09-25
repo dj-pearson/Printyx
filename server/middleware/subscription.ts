@@ -29,6 +29,12 @@ const log = createModuleLogger('subscription');
  * false in production on both halves: the gate is not there, and the copy that
  * exists cannot run.
  *
+ * CORRECTED round 171: the `leads` half is closed. POST /leads in
+ * supabase/functions/leads/ now calls usageLimitRefusal from
+ * supabase/functions/_shared/usage-limit.ts, which is enforceUsageLimits'
+ * rule edge-side. The AI import flag turned out to gate nothing in production
+ * (round 170: that function serves no AI path). `billing` is still open.
+ *
  * DO NOT "FIX" THIS BY MOUNTING MORE OF IT ON EXPRESS. The enforcement point
  * has to be edge-side, next to the write it is gating. `npm run
  * check:dead-policy-gates` holds the inventory, and

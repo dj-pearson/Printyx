@@ -263,12 +263,12 @@ describe('the losing model is gone', () => {
 
 describe('both hosts answer the same shape', () => {
   const edge = strip(readFileSync(join(repo, 'supabase/functions/projects/index.ts'), 'utf8'));
-  const express = strip(readFileSync(join(repo, 'server/routes-tasks.ts'), 'utf8'));
 
   it('shares the row builder rather than each writing its own', () => {
-    // /api/projects is not proxied, so Express serves dev and the edge function
-    // serves production. Two hand-written mappers is how the two drift.
-    for (const source of [edge, express]) {
+    // Round 160: the Express copy is gone and /api/projects is proxied, so the
+    // edge function serves both hosts; it still builds rows through the
+    // shared module rather than inline.
+    for (const source of [edge]) {
       expect(source).toMatch(/projectRow/);
       expect(source).toMatch(/mapProject/);
       expect(source).toMatch(/serialsForProject/);
@@ -281,8 +281,8 @@ describe('both hosts answer the same shape', () => {
     expect(edge).not.toMatch(/pathParts\[pathParts\.length - 1\]/);
   });
 
-  it('offers the same filters on both', () => {
-    for (const source of [edge, express]) {
+  it('offers the filters the pages send', () => {
+    for (const source of [edge]) {
       for (const filter of ['handoffId', 'contractId', 'customerId']) {
         expect(source, filter).toContain(filter);
       }

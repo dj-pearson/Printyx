@@ -51,7 +51,7 @@
       "why": "One classifyIntent model call per keyword. The model is the wall clock."
     },
     {
-      "loop": "catalog/index.ts:288",
+      "loop": "catalog/index.ts:289",
       "table": "enabled_products",
       "verdict": "bounded",
       "why": "One UPDATE per master product the tenant had ALREADY enabled, on a bulk enable. The new rows go in one batched insert beside it; only the re-enable case loops, because each row is addressed by its own primary key and there is nothing to upsert against - enabled_products carries an INDEX on (tenant_id, master_product_id) and no unique constraint, so PostgREST's on_conflict has no target. Bounded by what one person ticked on one screen, and it is the uncommon half of that."
@@ -75,7 +75,7 @@
       "why": "Three fields - company code, tax id, external id - checked for uniqueness. A literal tuple list."
     },
     {
-      "loop": "contract-renewal/index.ts:494",
+      "loop": "contract-renewal/index.ts:500",
       "table": "contract_renewal_tracking",
       "verdict": "scales-dominated",
       "why": "One generateCompletion per expiring contract. The model call is the wall clock."
@@ -105,7 +105,7 @@
       "why": "One ilike duplicate search per CSV row, so a 5,000-row import is 5,000 round trips before a single record lands. The largest remaining one. Convertible by reading the tenant company names once and matching a normalised Map - ilike here is case-insensitive equality with no wildcard - but a large tenant makes that read big, so it wants a measurement rather than an assumption."
     },
     {
-      "loop": "manufacturer-integrations/index.ts:631",
+      "loop": "manufacturer-integrations/index.ts:695",
       "table": "device_registrations",
       "verdict": "deliberate",
       "why": "The INSERT half is already collected into one statement; what loops is the UPDATE half, and each discovered device updates different columns on a different row. One statement cannot express that."
@@ -129,7 +129,7 @@
       "why": "What remains is the SESSION loop, which is an update-or-insert per row keyed on whether the client sent an id. The three pure-insert loops beside it (photos, time entries, location history) are batched now."
     },
     {
-      "loop": "oid-mappings/index.ts:428",
+      "loop": "oid-mappings/index.ts:427",
       "table": "oid_mappings",
       "verdict": "bounded",
       "why": "A delete per row only under ?overwrite, matched on (manufacturer, mapping_name) - a two-column match that .in() cannot express - and bounded by the preset file being imported."
@@ -141,22 +141,22 @@
       "why": "Capped at 50 by its own select, and each row is a different action with its own outcome written back. Annotated in place. (Key moved 1165 -> 1244 on 2026-09-20: SEC-EDGE-001 inserted the branch-gate helpers above it. The loop is unchanged - a line-keyed baseline drifts when code is added above, and the fix is to move the key, not to silence the guard.)"
     },
     {
-      "loop": "predictive-failure/index.ts:485",
-      "table": "service_tickets",
+      "loop": "predictive-failure/index.ts:488",
+      "table": "equipment_failure_predictions",
       "verdict": "scales-open",
-      "why": "A draft service ticket per high-confidence prediction. Only the machines over the threshold reach the insert, so the count is normally small, but a fleet-wide degradation would make it large. Batchable."
+      "why": "One prediction row inserted per scored machine. Round 207 moved the service-ticket insert out of this loop (tickets are created on approval, since the old draft status was refused by the CHECK constraint), so the key moved 485 -> 488 and the table is now the prediction row; the loop is still a per-machine insert over the whole active fleet and batchable as one multi-row insert."
     },
     {
-      "loop": "pricing/index.ts:598",
+      "loop": "pricing/index.ts:667",
       "table": "product_pricing",
       "verdict": "deliberate",
       "why": "A bulk price update where every row sets DIFFERENT columns to different values. One statement cannot express that, and the response reports per row."
     },
     {
-      "loop": "purchase-orders/index.ts:1067",
+      "loop": "purchase-orders/index.ts:1071",
       "table": "inventory_items",
       "verdict": "deliberate",
-      "why": "The inventory levels are read once for the whole receipt already. What loops is the write, and each one is quantity_on_hand + this movement - arithmetic PostgREST cannot express across rows."
+      "why": "The inventory levels are read once for the whole receipt already. What loops is the write, and each one is quantity_on_hand + this movement - arithmetic PostgREST cannot express across rows. (Key moved 1068 -> 1071 in round 210: the line-items read gained a scope check above it. The loop is unchanged.)"
     },
     {
       "loop": "qbr/index.ts:480",
@@ -171,13 +171,13 @@
       "why": "One execution insert and one schedule update per DUE schedule in the fifteen-minute sweep. Deliberately sequential and deliberately per-row: the set is only the schedules whose next_run has passed since the last tick, so it is normally empty and at worst a handful; a failure must be recorded against its own schedule and stepped over rather than aborting the rest; and each update carries that row's own tenant_id, so batching them into one statement would either lose the per-row tenant scope or need a CASE per row. A bulk insert of the executions alone is possible and would not help - the update is the other half and cannot batch."
     },
     {
-      "loop": "saved-views/index.ts:489",
+      "loop": "saved-views/index.ts:490",
       "table": "saved_view_pins",
       "verdict": "bounded",
       "why": "One update per pinned view in a drag-reorder, each with its own sort_order, bounded by what one user has pinned."
     },
     {
-      "loop": "service-tickets/index.ts:674",
+      "loop": "service-tickets/index.ts:760",
       "table": "service_ticket_updates",
       "verdict": "bounded",
       "why": "At most three writes - the loop is over changed fields and only status, assigned technician and priority produce a row."

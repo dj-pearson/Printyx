@@ -5,6 +5,7 @@ import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { toNumber } from '../_shared/quote-math.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { toCamel } from '../_shared/case.ts';
+import { DISPUTE_TYPES, decideDisputeTransition } from '../../../shared/commission-dispute.ts';
 import { applyUserScope, resolveScope, scopeRoleLevel } from '../_shared/scope.ts';
 import { fetchAllRows } from '../_shared/paged-select.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
@@ -286,11 +287,25 @@ export default async function handler(req: Request) {
     // tenantid and createdat, neither of which is a column. The table itself is
     // real, so this is a rewrite against tenant_id / created_at.
     if (req.method === 'GET' && endpoint === 'disputes' && !resourceId) {
-      const { data: disputes, error } = await admin
-        .from('commission_disputes')
-        .select('*')
-        .eq('tenant_id', tenantId)
-        .order('created_at', { ascending: false });
+      // Round 197: scoped like the calculations list above. A dispute is
+      // about somebody's pay, and every member of the tenant could list every
+      // colleague's.
+      const disputeScope = await resolveScope(admin, {
+        userId: user.id,
+        tenantId,
+        appMetadata: user.app_metadata,
+        requestedScope: url.searchParams.get('scope'),
+      });
+      const { data: disputes, error } = await applyUserScope(
+        admin
+          .from('commission_disputes')
+          .select('*')
+          .eq('tenant_id', tenantId)
+          .order('created_at', { ascending: false }),
+        'employee_id',
+        disputeScope,
+        { includeUnowned: false },
+      );
 
       if (error) {
         console.error('Error fetching commission disputes:', error);
@@ -298,7 +313,9 @@ export default async function handler(req: Request) {
       }
 
       const rows = disputes ?? [];
-      const employeeIds = [...new Set(rows.map((d: any) => d.employee_id).filter(Boolean))];
+      const employeeIds = [
+        ...new Set(rows.flatMap((d: any) => [d.employee_id, d.assigned_to]).filter(Boolean)),
+      ];
       const calculationIds = [...new Set(rows.map((d: any) => d.calculation_id).filter(Boolean))];
 
       const employeeNames = new Map<string, string>();
@@ -332,12 +349,109 @@ export default async function handler(req: Request) {
           ...toCamel(d),
           employeeName: employeeNames.get(d.employee_id) ?? null,
           calculationPeriod: periodNames.get(d.calculation_id) ?? null,
-          disputeDetails: d.description,
-          resolution: d.resolution_notes,
+          // Round 197: this sent disputeDetails as the description STRING and
+          // the page reads disputeDetails.type / .difference / .disputedAmount,
+          // so the first dispute threw on `.toLocaleString()` of undefined.
+          disputeDetails: {
+            type: d.dispute_type,
+            description: d.description,
+            disputedAmount: toNumber(d.disputed_amount),
+            expectedAmount: toNumber(d.expected_amount),
+            difference: toNumber(d.difference),
+          },
+          resolution:
+            d.assigned_to || d.estimated_resolution || d.resolution_notes || d.resolved_by
+              ? {
+                  assignedToName: d.assigned_to ? (employeeNames.get(d.assigned_to) ?? null) : null,
+                  estimatedResolution: d.estimated_resolution ?? null,
+                  notes: d.resolution_notes ?? null,
+                  adjustmentAmount:
+                    d.adjustment_amount === null ? null : toNumber(d.adjustment_amount),
+                }
+              : null,
         })),
         200,
         req,
       );
+    }
+
+    // PATCH /commission/disputes/:id - move a dispute through review.
+    //
+    // Round 197: nothing could change a dispute's status, so the page's Update
+    // Status and Resolve Dispute buttons had nothing to call. The rule is in
+    // shared/commission-dispute.ts: a manager, who is neither the employee the
+    // dispute is about nor the person who submitted it.
+    if (req.method === 'PATCH' && endpoint === 'disputes' && resourceId) {
+      const body = await req.json().catch(() => ({}) as Record<string, unknown>);
+      const { data: existing } = await admin
+        .from('commission_disputes')
+        .select('id, employee_id, submitted_by, status')
+        .eq('id', resourceId)
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+      if (!existing) {
+        return createCorsResponse({ error: 'Dispute not found' }, 404, req);
+      }
+
+      const decision = decideDisputeTransition({
+        actorId: user.id,
+        actorLevel: scopeRoleLevel(user.app_metadata),
+        dispute: {
+          employeeId: existing.employee_id,
+          submittedBy: existing.submitted_by,
+          status: existing.status,
+        },
+        nextStatus: String(body.status ?? ''),
+      });
+      if (!decision.ok) {
+        const status =
+          decision.code === 'INSUFFICIENT_ROLE' || decision.code === 'SELF_REVIEW' ? 403 : 400;
+        return createCorsResponse({ error: decision.reason, code: decision.code }, status, req);
+      }
+
+      const now = new Date().toISOString();
+      const patch: Record<string, unknown> = {
+        status: body.status,
+        last_updated: now,
+        updated_at: now,
+      };
+      if (typeof body.notes === 'string' && body.notes.trim()) {
+        patch.resolution_notes = body.notes.trim();
+      }
+      if (decision.terminal) {
+        patch.resolved_by = user.id;
+        patch.actual_resolution = now;
+        patch.resolution_type = body.status;
+        if (
+          body.adjustmentAmount !== undefined &&
+          body.adjustmentAmount !== null &&
+          body.adjustmentAmount !== ''
+        ) {
+          const amount = Number(body.adjustmentAmount);
+          if (!Number.isFinite(amount)) {
+            return createCorsResponse({ error: 'adjustmentAmount must be a number' }, 400, req);
+          }
+          patch.adjustment_amount = amount;
+        }
+      } else if (!existing.status || existing.status === 'submitted') {
+        patch.assigned_to = user.id;
+      }
+
+      const { data: updated, error: updateError } = await admin
+        .from('commission_disputes')
+        .update(patch)
+        .eq('id', resourceId)
+        .eq('tenant_id', tenantId)
+        .select()
+        .single();
+      if (updateError) {
+        return createCorsResponse(
+          { error: 'Failed to update dispute', details: updateError.message },
+          500,
+          req,
+        );
+      }
+      return createCorsResponse(toCamel(updated), 200, req);
     }
 
     // POST /commission/disputes
@@ -353,6 +467,31 @@ export default async function handler(req: Request) {
           ? Number(expected) - Number(disputed)
           : null;
 
+      // Round 197: calculation, employee, description and all three amounts
+      // are NOT NULL, and the old default type 'calculation' is not a member
+      // of dispute_type, so every insert failed. Refuse up front instead.
+      const disputeType = String(body.disputeType ?? body.dispute_type ?? 'calculation_error');
+      const calculationId = body.calculationId ?? body.commission_calculation_id;
+      const employeeId = body.employeeId ?? body.employee_id;
+      if (
+        !calculationId ||
+        !employeeId ||
+        !body.description ||
+        difference === null ||
+        !Number.isFinite(difference) ||
+        !(DISPUTE_TYPES as readonly string[]).includes(disputeType)
+      ) {
+        return createCorsResponse(
+          {
+            error:
+              'calculationId, employeeId, description, disputedAmount, expectedAmount and a valid disputeType are required',
+            validTypes: DISPUTE_TYPES,
+          },
+          400,
+          req,
+        );
+      }
+
       const { data: dispute, error } = await admin
         .from('commission_disputes')
         .insert({
@@ -362,7 +501,7 @@ export default async function handler(req: Request) {
             | string
             | null,
           employee_id: (body.employeeId ?? body.employee_id ?? null) as string | null,
-          dispute_type: (body.disputeType ?? body.dispute_type ?? 'calculation') as string,
+          dispute_type: disputeType,
           status: 'submitted',
           priority: (body.priority ?? 'medium') as string,
           disputed_amount: disputed ?? null,

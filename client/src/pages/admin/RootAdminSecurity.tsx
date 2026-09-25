@@ -1,3 +1,22 @@
+/**
+ * Root Admin Security (round 218).
+ *
+ * This page read three endpoints none of which production served -
+ * /api/admin/security/metrics, /api/admin/audit-logs and
+ * /api/admin/security/threats all resolve to the `admin` edge function,
+ * which has none of them - so it rendered its error state on every deployed
+ * host. Behind that, what it would have shown was invented: a "Security
+ * Score" from hand-picked weights, a threat level derived from it, and a
+ * Threat Detection tab asserting a brute-force attack from 192.168.1.100 and
+ * unusual API activity from tenant 1234 under an "AI-powered" caption, above
+ * three buttons (Block Suspicious IP Addresses, Generate Security Report,
+ * Configure Threat Rules) with no handler. Nothing blocks IPs (AUDIT-034).
+ *
+ * It now reads the root-admin function, which is platform-wide and root
+ * gated: /overview for tenant and user counts, /security-alerts for the
+ * security, authentication and authorization events audit_logs holds, and
+ * /audit-logs for the trail. What nothing measures is said, not scored.
+ */
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { QueryStates } from '@/components/ui/query-state';
@@ -7,44 +26,78 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Shield, AlertTriangle, Lock, Key, Activity, Users, Database, Globe } from 'lucide-react';
+import { Shield } from 'lucide-react';
 import { MainLayout } from '@/components/layout/main-layout';
+import { exportToCSV, type ExportColumn } from '@/lib/export-utils';
 
-interface SecurityMetrics {
-  securityScore?: string | number;
-  securityStatus?: string;
-  threatLevel?: string;
-  failedLogins?: string | number;
-  activeApiKeys?: string | number;
-  totalTenants?: string | number;
-  activeUsers?: string | number;
-  adminUsers?: string | number;
-  apiRequests24h?: string | number;
+interface Overview {
+  totalTenants: number;
+  activeTenants: number;
+  totalUsers: number;
+  activeUsers: number;
+  criticalAlerts: number | null;
 }
+
+export interface SecurityEvent {
+  id: string;
+  type: string;
+  severity: string | null;
+  tenant: string;
+  message: string;
+  timestamp: string;
+}
+
+interface AuditRow {
+  id: string;
+  action: string;
+  tableName: string | null;
+  recordId: string | null;
+  timestamp: string;
+  userName: string | null;
+}
+
+/** How many of the events returned carry each severity; unknown kept, not dropped. */
+export function severityCounts(events: readonly SecurityEvent[]): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const e of events) {
+    const k = (e.severity ?? 'unspecified').toLowerCase();
+    out[k] = (out[k] ?? 0) + 1;
+  }
+  return out;
+}
+
+export const SECURITY_EVENT_COLUMNS: ExportColumn<SecurityEvent>[] = [
+  { key: 'timestamp', label: 'When' },
+  { key: 'tenant', label: 'Tenant' },
+  { key: 'type', label: 'Type' },
+  { key: 'severity', label: 'Severity' },
+  { key: 'message', label: 'Event' },
+];
+
+export const NOT_MEASURED = [
+  'Security score and threat level: nothing computes a platform risk score.',
+  'Active threats: no threat detection runs; the events below are what audit_logs recorded.',
+  'IP blocking: the product has no IP block list to add to.',
+  'API key and API request counts: not aggregated across tenants.',
+];
+
+const stamp = (t: string) => {
+  const d = new Date(t);
+  return Number.isNaN(d.getTime()) ? '-' : d.toLocaleString();
+};
 
 export default function RootAdminSecurity() {
   const [activeTab, setActiveTab] = useState('overview');
 
-  const metricsQuery = useQuery<SecurityMetrics>({
-    queryKey: ['/api/admin/security/metrics'],
-    refetchInterval: 30000, // Refresh every 30 seconds
-  });
+  const overviewQuery = useQuery<Overview>({ queryKey: ['/api/root-admin/overview'] });
+  const eventsQuery = useQuery<SecurityEvent[]>({ queryKey: ['/api/root-admin/security-alerts'] });
+  const auditQuery = useQuery<AuditRow[]>({ queryKey: ['/api/root-admin/audit-logs'] });
 
-  const auditQuery = useQuery<any[]>({
-    queryKey: ['/api/admin/audit-logs'],
-  });
-
-  const threatsQuery = useQuery<any[]>({
-    queryKey: ['/api/admin/security/threats'],
-  });
-
-  // CR-033: all three kept only `.data`, and the metrics query polls every 30s.
-  // A failed poll rendered zero active threats and an empty audit log — an
-  // all-clear rather than an outage, on the page an operator checks precisely to
-  // find out whether anything is wrong.
-  const securityMetrics = metricsQuery.data;
-  const auditLogs = auditQuery.data;
-  const activeThreats = threatsQuery.data;
+  const overview = overviewQuery.data;
+  const events = eventsQuery.data ?? [];
+  const audit = auditQuery.data ?? [];
+  const bySeverity = severityCounts(events);
+  const high = (bySeverity.critical ?? 0) + (bySeverity.high ?? 0);
 
   return (
     <MainLayout>
@@ -52,190 +105,122 @@ export default function RootAdminSecurity() {
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Root Admin Security</h1>
           <p className="text-gray-600 mt-2">
-            Comprehensive security monitoring and management for the entire Printyx platform
+            Security events and the audit trail across every tenant on the platform
           </p>
         </div>
 
-        {/* CR-033: heading is static; everything below is derived. */}
         <QueryStates
-          queries={[metricsQuery, auditQuery, threatsQuery]}
+          queries={[overviewQuery, eventsQuery, auditQuery]}
           loading={<DashboardSkeleton />}
           errorTitle="Could not load security status"
           className="py-6"
         >
-          {/* Security Status Overview */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Security Score</CardTitle>
-                <Shield className="h-4 w-4 text-green-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600">
-                  {securityMetrics?.securityScore || 'Loading...'}
-                </div>
-                <Badge variant="outline" className="mt-2 text-green-600 border-green-200">
-                  {securityMetrics?.securityStatus || 'Loading...'}
-                </Badge>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Active Threats</CardTitle>
-                <AlertTriangle className="h-4 w-4 text-orange-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-orange-600">
-                  {activeThreats?.length || '0'}
-                </div>
-                <Badge variant="outline" className="mt-2 text-orange-600 border-orange-200">
-                  {securityMetrics?.threatLevel || 'Loading...'}
-                </Badge>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Failed Logins</CardTitle>
-                <Lock className="h-4 w-4 text-red-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{securityMetrics?.failedLogins || '0'}</div>
-                <p className="text-xs text-gray-500 mt-2">Last 24 hours</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">API Keys</CardTitle>
-                <Key className="h-4 w-4 text-blue-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{securityMetrics?.activeApiKeys || '0'}</div>
-                <p className="text-xs text-gray-500 mt-2">Active across platform</p>
-              </CardContent>
-            </Card>
+            {[
+              {
+                label: 'Tenants',
+                value: overview?.totalTenants,
+                note: `${overview?.activeTenants ?? '-'} active`,
+              },
+              {
+                label: 'Users',
+                value: overview?.totalUsers,
+                note: `${overview?.activeUsers ?? '-'} active`,
+              },
+              { label: 'Security events', value: events.length, note: 'Most recent, up to 50' },
+              { label: 'High or critical', value: high, note: 'Among those events' },
+            ].map((c) => (
+              <Card key={c.label}>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium">{c.label}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{c.value ?? '-'}</div>
+                  <p className="text-xs text-muted-foreground mt-2">{c.note}</p>
+                </CardContent>
+              </Card>
+            ))}
           </div>
 
-          {/* Security Alerts */}
-          {activeThreats && activeThreats.length > 0 && (
-            <Alert>
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>
-                <strong>Security Notice:</strong> {activeThreats.length} security threat(s)
-                detected. Review required.
-              </AlertDescription>
-            </Alert>
-          )}
-
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-5">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="overview">Security Events</TabsTrigger>
               <TabsTrigger value="authentication">Authentication</TabsTrigger>
               <TabsTrigger value="permissions">Permissions</TabsTrigger>
               <TabsTrigger value="audit">Audit Logs</TabsTrigger>
-              <TabsTrigger value="threats">Threat Detection</TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview" className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Activity className="h-5 w-5" />
-                      Recent Security Events
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {auditLogs && auditLogs.length > 0 ? (
-                        auditLogs.slice(0, 5).map((log: any, index: number) => (
-                          <div
-                            key={index}
-                            className="flex items-center justify-between py-2 border-b"
-                          >
-                            <div>
-                              <p className="font-medium">{log.action}</p>
-                              <p className="text-sm text-gray-500">{log.details}</p>
-                            </div>
-                            <Badge
-                              variant={
-                                log.severity === 'high'
-                                  ? 'destructive'
-                                  : log.severity === 'medium'
-                                    ? 'secondary'
-                                    : 'outline'
-                              }
-                            >
-                              {log.severity}
-                            </Badge>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle>Security events</CardTitle>
+                    <CardDescription>
+                      Security, authentication and authorization entries in the audit log
+                    </CardDescription>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={events.length === 0}
+                    onClick={() =>
+                      exportToCSV(events, SECURITY_EVENT_COLUMNS, {
+                        filename: 'platform-security-events',
+                      })
+                    }
+                  >
+                    Export
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  {events.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No security events recorded.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {events.map((e) => (
+                        <div key={e.id} className="flex items-center justify-between py-2 border-b">
+                          <div>
+                            <p className="font-medium">{e.message}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {e.tenant} · {stamp(e.timestamp)}
+                            </p>
                           </div>
-                        ))
-                      ) : (
-                        <p className="text-gray-500">No recent security events</p>
-                      )}
+                          <Badge
+                            variant={
+                              e.severity === 'critical' || e.severity === 'high'
+                                ? 'destructive'
+                                : 'outline'
+                            }
+                          >
+                            {e.severity ?? 'unspecified'}
+                          </Badge>
+                        </div>
+                      ))}
                     </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Users className="h-5 w-5" />
-                      Platform Statistics
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex justify-between items-center">
-                        <span>Total Tenants</span>
-                        <span className="font-semibold">
-                          {securityMetrics?.totalTenants || 'Loading...'}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span>Active Users</span>
-                        <span className="font-semibold">
-                          {securityMetrics?.activeUsers || 'Loading...'}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span>Admin Users</span>
-                        <span className="font-semibold">
-                          {securityMetrics?.adminUsers || 'Loading...'}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span>API Requests (24h)</span>
-                        <span className="font-semibold">
-                          {securityMetrics?.apiRequests24h || 'Loading...'}
-                        </span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
+                  )}
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Not measured here</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ul className="list-disc pl-5 text-sm text-muted-foreground space-y-1">
+                    {NOT_MEASURED.map((n) => (
+                      <li key={n}>{n}</li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
             </TabsContent>
 
             <TabsContent value="authentication" className="space-y-6">
               <Card>
                 <CardHeader>
                   <CardTitle>Authentication Security</CardTitle>
-                  <CardDescription>
-                    Monitor and manage authentication security across the platform
-                  </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {/* AUDIT-019: this tab showed "99.2% Successful Logins",
-                      "847 Active Sessions" and "12 Blocked IPs", none of which
-                      came from a query, above three buttons - Force Logout All
-                      Sessions, Reset Failed Login Counters, Update Password
-                      Policies - with no handler behind any of them. A root
-                      admin could read the numbers as the platform's real login
-                      health and press a control that did nothing. Nothing
-                      aggregates authentication across tenants today, so the
-                      page says so instead. */}
+                  {/* AUDIT-019 removed invented login figures and dead controls here. */}
                   <p className="text-sm text-muted-foreground">
                     Platform-wide authentication counters are not collected. Per-tenant session and
                     failed-login figures are on the tenant System Security page, which reads them
@@ -249,31 +234,19 @@ export default function RootAdminSecurity() {
               <Card>
                 <CardHeader>
                   <CardTitle>Permission Management</CardTitle>
-                  <CardDescription>
-                    Review and manage role-based access control across all tenants
-                  </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <Alert>
-                      <Shield className="h-4 w-4" />
-                      <AlertDescription>
-                        You have root-level access to modify permissions for all tenants and users.
-                      </AlertDescription>
-                    </Alert>
-
-                    {/* AUDIT-019: a role census - 1 Root Administrator, 5
-                        Platform Admins, 12 System Admins, 156 Company Admins,
-                        423 Regional Managers, 789 Location Managers - written
-                        as literals. Nothing counted anything. Read as real it
-                        tells a root admin exactly how many privileged accounts
-                        exist on the platform, which is the one number on this
-                        page worth getting right. */}
-                    <p className="text-sm text-muted-foreground">
-                      Role assignment counts are not aggregated across tenants. Use the tenant user
-                      administration screens for the accounts held under each role.
-                    </p>
-                  </div>
+                <CardContent className="space-y-4">
+                  <Alert>
+                    <Shield className="h-4 w-4" />
+                    <AlertDescription>
+                      You have root-level access to modify permissions for all tenants and users.
+                    </AlertDescription>
+                  </Alert>
+                  {/* AUDIT-019 removed an invented role census here. */}
+                  <p className="text-sm text-muted-foreground">
+                    Role assignment counts are not aggregated across tenants. Use the tenant user
+                    administration screens for the accounts held under each role.
+                  </p>
                 </CardContent>
               </Card>
             </TabsContent>
@@ -282,90 +255,28 @@ export default function RootAdminSecurity() {
               <Card>
                 <CardHeader>
                   <CardTitle>Audit Logs</CardTitle>
-                  <CardDescription>
-                    Comprehensive audit trail of all platform activities
-                  </CardDescription>
+                  <CardDescription>The most recent 100 entries across all tenants</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm">
-                        Today
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        This Week
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        This Month
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        Custom Range
-                      </Button>
-                    </div>
-
+                  {audit.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No audit entries recorded.</p>
+                  ) : (
                     <div className="space-y-2">
-                      {[1, 2, 3, 4, 5].map((i) => (
-                        <div key={i} className="p-3 border rounded-lg">
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <p className="font-medium">User login successful</p>
-                              <p className="text-sm text-gray-500">
-                                User: john.doe@example.com | Tenant: Acme Corp
-                              </p>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-sm">2024-01-15</p>
-                              <p className="text-xs text-gray-500">10:30 AM</p>
-                            </div>
+                      {audit.map((a) => (
+                        <div key={a.id} className="flex items-center justify-between py-2 border-b">
+                          <div>
+                            <p className="font-medium">
+                              {a.action}
+                              {a.tableName ? ` on ${a.tableName}` : ''}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {a.userName ?? 'Unknown user'} · {stamp(a.timestamp)}
+                            </p>
                           </div>
                         </div>
                       ))}
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="threats" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Threat Detection</CardTitle>
-                  <CardDescription>AI-powered threat detection and response system</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <Alert>
-                        <AlertTriangle className="h-4 w-4" />
-                        <AlertDescription>
-                          <strong>Brute Force Attack Detected</strong>
-                          <br />
-                          Multiple failed login attempts from IP 192.168.1.100
-                        </AlertDescription>
-                      </Alert>
-
-                      <Alert>
-                        <AlertTriangle className="h-4 w-4" />
-                        <AlertDescription>
-                          <strong>Unusual API Activity</strong>
-                          <br />
-                          High request volume detected from tenant ID 1234
-                        </AlertDescription>
-                      </Alert>
-                    </div>
-
-                    <div className="space-y-3">
-                      <Button className="w-full" variant="destructive">
-                        Block Suspicious IP Addresses
-                      </Button>
-                      <Button className="w-full" variant="outline">
-                        Generate Security Report
-                      </Button>
-                      <Button className="w-full" variant="outline">
-                        Configure Threat Rules
-                      </Button>
-                    </div>
-                  </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>

@@ -27,6 +27,7 @@ import {
   buildUserUnitMap,
   type Unit,
 } from '../_queries/scoped.ts';
+import { ticketBucket } from '../_ticket-buckets.ts';
 
 const TTL_SECONDS = 300;
 
@@ -132,11 +133,10 @@ async function cachedServiceCalls(req: Request, ctx: HandlerCtx, unit: Unit): Pr
         if (!stats) continue;
         stats.total += 1;
         stats.technicians.add(t.assigned_technician_id);
-        if (t.status === 'completed') stats.completed += 1;
-        else if (t.status === 'in-progress') stats.inProgress += 1;
-        else if (t.status === 'open' || t.status === 'assigned' || t.status === 'scheduled') {
-          stats.open += 1;
-        }
+        const bucket = ticketBucket(t.status);
+        if (bucket === 'completed') stats.completed += 1;
+        else if (bucket === 'inProgress') stats.inProgress += 1;
+        else if (bucket === 'open') stats.open += 1;
       }
 
       const regions = units.map((u) => {

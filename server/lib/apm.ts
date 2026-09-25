@@ -197,13 +197,12 @@ async function initSentry(config: APMConfig): Promise<APMInstance> {
       tracesSampleRate: config.enableTracing ? config.tracesSampleRate : 0,
       profilesSampleRate: config.profilesSampleRate,
       integrations: integrations.length > 0 ? integrations : undefined,
-      // Enable distributed tracing for database, http, etc.
-      enableTracing: config.enableTracing,
-      // Capture unhandled promise rejections
-      autoSessionTracking: true,
-      // Set sample rate for session replay (if enabled)
-      replaysSessionSampleRate: 0,
-      replaysOnErrorSampleRate: 1.0,
+      // Sentry v8 removed `enableTracing`; tracing is on exactly when
+      // tracesSampleRate is above zero, which the line above already decides.
+      // autoSessionTracking was removed in Sentry v8 as well; release-health
+      // sessions are recorded by default there.
+      // Session replay is a browser SDK feature; the replay sample rates never
+      // applied to @sentry/node and are not NodeOptions.
       // Filter out sensitive data
       beforeSend(event) {
         // Scrub sensitive request data

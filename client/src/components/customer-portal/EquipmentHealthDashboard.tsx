@@ -73,11 +73,18 @@ interface EquipmentHealth {
 interface EquipmentHealthDashboardProps {
   tenantId?: string;
   customerId?: string;
+  /**
+   * Round 224: "Schedule Service" had no handler. The portal owns the
+   * maintenance-scheduling tab, so it passes this and the button hands over
+   * the machine being looked at; without it the button is not offered.
+   */
+  onScheduleService?: (equipmentId: string) => void;
 }
 
 export const EquipmentHealthDashboard = memo(function EquipmentHealthDashboard({
   tenantId,
   customerId,
+  onScheduleService,
 }: EquipmentHealthDashboardProps) {
   const [selectedEquipment, setSelectedEquipment] = useState<string | null>(null);
   const [timeRange, setTimeRange] = useState('30d');
@@ -410,10 +417,16 @@ export const EquipmentHealthDashboard = memo(function EquipmentHealthDashboard({
                       </span>
                     </div>
                   </div>
-                  <Button className="w-full" data-testid="button-schedule-service">
-                    <Calendar className="mr-2 h-4 w-4" />
-                    Schedule Service
-                  </Button>
+                  {onScheduleService && (
+                    <Button
+                      className="w-full"
+                      data-testid="button-schedule-service"
+                      onClick={() => onScheduleService(selectedEquipmentData.id)}
+                    >
+                      <Calendar className="mr-2 h-4 w-4" />
+                      Schedule Service
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
             </div>

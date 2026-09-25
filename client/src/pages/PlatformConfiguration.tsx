@@ -23,6 +23,19 @@
  * `metadata`, not a `settings` column, which is a trap recorded there). That is
  * tenant settings, though - a genuine PLATFORM configuration surface would need
  * a store that does not exist yet.
+ *
+ * DECISION (round 179, closing PLATFORM-CONFIG-001): platform-level settings
+ * stay in environment variables and deployment config (Coolify / k8s), and no
+ * database store is created for them. The values that matter at platform scope
+ * - SMTP credentials, rate-limit budgets, feature kill switches, retention
+ * windows - are read at process start and are secrets or operational knobs; a
+ * screen that edits them would need a store the running functions re-read, an
+ * audit trail, and a platform-admin gate stronger than a UI toggle, all to
+ * move values that change a handful of times a year out of the place operators
+ * already change them. Tenant-level settings keep their real home:
+ * tenants.metadata via /api/admin/settings. If a genuinely platform-scoped,
+ * runtime-editable setting is ever needed, it gets its own table and endpoint
+ * named for what it is, not this general-purpose screen.
  */
 
 import MainLayout from '@/components/layout/main-layout';

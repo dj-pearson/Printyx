@@ -11,11 +11,9 @@
 // or /metrics. The legacy root GET (`{ ready, checks }`) is kept for any caller
 // that still hits the bare function path.
 //
-// The page ships static mock fallbacks, so a 404 was non-fatal — but it meant the
-// readiness board never reflected real tenant state. These handlers derive the
-// checks from live tenant signals (DB connectivity, tenant config, integrations,
-// users) and return the exact ReadinessCheck[] / DeploymentMetrics shapes the page
-// types, so the board renders real data instead of placeholder rows.
+// Every check is something this request actually looked at; the rules are in
+// shared/deployment-readiness.ts. The page used to fall back to eighteen typed-in
+// checks and a hardcoded 78% whenever this answered anything but 200.
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
@@ -23,27 +21,11 @@ import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 import { ROLE_LEVEL, RbacError, requireRoleLevel } from '../_shared/rbac.ts';
 import type { AuthContext } from '../_shared/auth.ts';
 
-type CheckStatus = 'complete' | 'incomplete' | 'warning' | 'in-progress';
-type Priority = 'high' | 'medium' | 'low';
-
-interface ReadinessCheck {
-  id: string;
-  category: string;
-  name: string;
-  description: string;
-  status: CheckStatus;
-  priority: Priority;
-  lastChecked: string;
-  details?: string;
-}
-
-interface DeploymentMetrics {
-  overallReadiness: number;
-  criticalIssues: number;
-  completedChecks: number;
-  totalChecks: number;
-  estimatedLaunchDate: string;
-}
+import {
+  countCheck,
+  deriveReadinessMetrics,
+  type ReadinessCheck,
+} from '../../../shared/deployment-readiness.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -113,7 +95,7 @@ export default async function handler(req: Request) {
 
     // GET /deployment/metrics — rolled-up readiness score
     if (sub === 'metrics') {
-      return createCorsResponse(deriveMetrics(checks), 200, req);
+      return createCorsResponse(deriveReadinessMetrics(checks), 200, req);
     }
 
     // Legacy bare-function root: simple ready/checks summary (backward compat).
@@ -122,7 +104,7 @@ export default async function handler(req: Request) {
       {
         ready: allOk,
         checks: checks.map((c) => ({ name: c.name, status: c.status, message: c.details || '' })),
-        metrics: deriveMetrics(checks),
+        metrics: deriveReadinessMetrics(checks),
         timestamp: new Date().toISOString(),
       },
       200,
@@ -138,9 +120,9 @@ export default async function handler(req: Request) {
   }
 }
 
-// Build the readiness board from live tenant signals plus a baseline of
-// platform-level infrastructure/security checks. Dynamic checks reflect what the
-// tenant has actually configured; static checks document the launch baseline.
+// Build the readiness board from what this request actually looked at. See
+// shared/deployment-readiness.ts for why the static "always complete" platform
+// rows and the launch-date estimate are gone.
 async function buildChecks(
   admin: ReturnType<typeof createSupabaseServiceClient>,
   tenantId: string,
@@ -149,147 +131,84 @@ async function buildChecks(
   const checks: ReadinessCheck[] = [];
 
   // --- Infrastructure: database connectivity ---
-  let dbOk = true;
+  let dbError: string | undefined;
   try {
     const { error } = await admin.from('tenants').select('id').limit(1);
-    dbOk = !error;
-  } catch {
-    dbOk = false;
+    if (error) dbError = error.message;
+  } catch (err) {
+    dbError = err instanceof Error ? err.message : 'unreachable';
   }
   checks.push({
     id: 'db-connectivity',
     category: 'Infrastructure',
     name: 'Database Connectivity',
     description: 'Primary Postgres database is reachable and responding to queries',
-    status: dbOk ? 'complete' : 'incomplete',
+    status: dbError ? 'incomplete' : 'complete',
     priority: 'high',
     lastChecked: now,
-    details: dbOk ? 'Connected' : 'Connection failed',
+    details: dbError ? `Connection failed: ${dbError}` : 'Connected',
   });
 
   // --- Infrastructure: tenant configuration ---
-  let tenantConfigured = false;
-  try {
-    const { data: tenant } = await admin
-      .from('tenants')
-      .select('id')
-      .eq('id', tenantId)
-      .maybeSingle();
-    tenantConfigured = !!tenant;
-  } catch {
-    tenantConfigured = false;
-  }
-  checks.push({
-    id: 'tenant-config',
-    category: 'Infrastructure',
-    name: 'Tenant Configuration',
-    description: 'This tenant exists and is provisioned in the platform',
-    status: tenantConfigured ? 'complete' : 'warning',
-    priority: 'high',
-    lastChecked: now,
-    details: tenantConfigured ? 'Provisioned' : 'Tenant record not found',
-  });
+  const tenantRead = await admin.from('tenants').select('id').eq('id', tenantId).maybeSingle();
+  checks.push(
+    countCheck({
+      id: 'tenant-config',
+      category: 'Infrastructure',
+      name: 'Tenant Configuration',
+      description: 'This tenant exists and is provisioned in the platform',
+      priority: 'high',
+      count: tenantRead.error ? null : tenantRead.data ? 1 : 0,
+      noun: 'tenant record',
+      emptyStatus: 'warning',
+      now,
+      error: tenantRead.error?.message,
+    }),
+  );
 
   // --- Setup: users ---
-  let userCount = 0;
-  try {
-    const { count } = await admin
-      .from('users')
-      .select('*', { count: 'exact', head: true })
-      .eq('tenant_id', tenantId);
-    userCount = count || 0;
-  } catch {
-    userCount = 0;
-  }
-  checks.push({
-    id: 'users-configured',
-    category: 'Setup',
-    name: 'User Accounts',
-    description: 'At least one user account is configured for this tenant',
-    status: userCount > 0 ? 'complete' : 'warning',
-    priority: 'medium',
-    lastChecked: now,
-    details: `${userCount} user${userCount === 1 ? '' : 's'} configured`,
-  });
+  const usersRead = await admin
+    .from('users')
+    .select('id', { count: 'exact', head: true })
+    .eq('tenant_id', tenantId);
+  checks.push(
+    countCheck({
+      id: 'users-configured',
+      category: 'Setup',
+      name: 'User Accounts',
+      description: 'At least one user account is configured for this tenant',
+      priority: 'medium',
+      count: usersRead.error ? null : (usersRead.count ?? 0),
+      noun: 'user',
+      emptyStatus: 'warning',
+      now,
+      error: usersRead.error?.message,
+    }),
+  );
 
   // --- Integrations ---
-  let activeIntegrations = 0;
-  try {
-    const { data } = await admin
-      .from('integrations')
-      .select('id, status')
-      .eq('tenant_id', tenantId);
-    activeIntegrations = (data || []).filter((i: any) => i.status === 'active').length;
-  } catch {
-    activeIntegrations = 0;
-  }
-  checks.push({
-    id: 'integrations',
-    category: 'Integrations',
-    name: 'Third-Party Integrations',
-    description: 'External integrations (ERP, accounting, calendar) are connected',
-    status: activeIntegrations > 0 ? 'complete' : 'in-progress',
-    priority: 'low',
-    lastChecked: now,
-    details: `${activeIntegrations} active integration${activeIntegrations === 1 ? '' : 's'}`,
-  });
-
-  // --- Baseline platform checks (true for every tenant on this platform) ---
+  // system_integrations is the table integrations are stored in. This used to
+  // read `integrations`, which exists in no schema, and discarded the error,
+  // so every tenant was permanently "0 active integrations".
+  const integrationsRead = await admin
+    .from('system_integrations')
+    .select('id', { count: 'exact', head: true })
+    .eq('tenant_id', tenantId)
+    .eq('status', 'active');
   checks.push(
-    {
-      id: 'ssl',
-      category: 'Security',
-      name: 'TLS / SSL Encryption',
-      description: 'All traffic is served over HTTPS with valid certificates',
-      status: 'complete',
-      priority: 'high',
-      lastChecked: now,
-      details: 'Enforced platform-wide',
-    },
-    {
-      id: 'rbac',
-      category: 'Security',
-      name: 'Role-Based Access Control',
-      description: 'Multi-tenant isolation and RBAC permissions are enforced',
-      status: 'complete',
-      priority: 'high',
-      lastChecked: now,
-      details: '8-level role hierarchy active',
-    },
-    {
-      id: 'backups',
-      category: 'Infrastructure',
-      name: 'Automated Backups',
-      description: 'Daily database backups with retention are scheduled',
-      status: 'complete',
-      priority: 'high',
-      lastChecked: now,
-      details: 'Daily 02:00 UTC, 7d/4w/12m retention',
-    },
+    countCheck({
+      id: 'integrations',
+      category: 'Integrations',
+      name: 'Third-Party Integrations',
+      description: 'External integrations (ERP, accounting, calendar) are connected',
+      priority: 'low',
+      count: integrationsRead.error ? null : (integrationsRead.count ?? 0),
+      noun: 'active integration',
+      emptyStatus: 'in-progress',
+      now,
+      error: integrationsRead.error?.message,
+    }),
   );
 
   return checks;
-}
-
-function deriveMetrics(checks: ReadinessCheck[]): DeploymentMetrics {
-  const totalChecks = checks.length;
-  const completedChecks = checks.filter((c) => c.status === 'complete').length;
-  const criticalIssues = checks.filter(
-    (c) => c.priority === 'high' && c.status !== 'complete',
-  ).length;
-  const overallReadiness = totalChecks > 0 ? Math.round((completedChecks / totalChecks) * 100) : 0;
-
-  // Estimate launch date: ready now if no critical issues, otherwise add a small
-  // buffer scaled by the number of incomplete checks.
-  const incomplete = totalChecks - completedChecks;
-  const launch = new Date();
-  launch.setDate(launch.getDate() + (criticalIssues > 0 ? 7 + incomplete * 2 : incomplete));
-
-  return {
-    overallReadiness,
-    criticalIssues,
-    completedChecks,
-    totalChecks,
-    estimatedLaunchDate: launch.toISOString(),
-  };
 }

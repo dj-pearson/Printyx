@@ -51,6 +51,15 @@ import {
 import { format } from 'date-fns';
 import MainLayout from '@/components/layout/main-layout';
 import { apiRequest } from '@/lib/queryClient';
+import { useRefreshQueries } from '@/hooks/use-refresh-queries';
+
+/** Every endpoint this page reads; its Refresh button refetches these. */
+const REFRESH_PATHS = [
+  '/api/root-admin/system-resources',
+  '/api/root-admin/database-tables',
+  '/api/root-admin/audit-logs',
+  '/api/database-updater/status',
+] as const;
 
 interface DatabaseStats {
   totalSize: string;
@@ -94,7 +103,13 @@ interface QueryLog {
 
 interface DatabaseUpdaterApiResponse {
   success: boolean;
-  data: {
+  /**
+   * false on the functions host: the updater is an in-process Node scheduler
+   * and nothing there can run it (round 166). Absent on Express, where it runs.
+   */
+  available?: boolean;
+  reason?: string;
+  data: null | {
     isRunning: boolean;
     updaters: Array<{
       name: string;
@@ -110,6 +125,8 @@ interface DatabaseUpdaterApiResponse {
 
 export default function DatabaseManagement() {
   const { toast } = useToast();
+  // UI-DEAD-BUTTONS-001: the Refresh button had no handler.
+  const { refresh: refreshPage, refreshing } = useRefreshQueries(REFRESH_PATHS);
   const queryClient = useQueryClient();
   const [selectedTab, setSelectedTab] = useState('overview');
   const [sqlQuery, setSqlQuery] = useState('');
@@ -139,6 +156,10 @@ export default function DatabaseManagement() {
     queryKey: ['/api/database-updater/status'],
     refetchInterval: 10000,
   });
+  // Round 166: the functions host answers available:false rather than a
+  // stopped system, so the controls are disabled instead of reporting a start
+  // that never happened.
+  const updaterUnavailable = updaterStatus?.available === false;
 
   // Execute SQL Query mutation
   const executeQueryMutation = useMutation({
@@ -419,8 +440,13 @@ export default function DatabaseManagement() {
               <CheckCircle className="w-4 h-4 mr-1" />
               Database Online
             </Badge>
-            <Button size="sm" variant="outline">
-              <RefreshCw className="w-4 h-4 mr-2" />
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => void refreshPage()}
+              disabled={refreshing}
+            >
+              <RefreshCw className={`${refreshing ? 'animate-spin ' : ''}w-4 h-4 mr-2`} />
               Refresh
             </Button>
           </div>
@@ -707,6 +733,17 @@ export default function DatabaseManagement() {
 
           {/* Database Updater */}
           <TabsContent value="updater" className="space-y-6">
+            {updaterUnavailable && (
+              <div
+                role="status"
+                className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900"
+              >
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>
+                  The database updater is not available on this deployment. {updaterStatus?.reason}
+                </span>
+              </div>
+            )}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* System Status */}
               <Card>
@@ -778,7 +815,11 @@ export default function DatabaseManagement() {
                   <Button
                     className="w-full"
                     onClick={() => startUpdaterMutation.mutate()}
-                    disabled={startUpdaterMutation.isPending || updaterStatus?.data?.isRunning}
+                    disabled={
+                      updaterUnavailable ||
+                      startUpdaterMutation.isPending ||
+                      updaterStatus?.data?.isRunning
+                    }
                   >
                     {startUpdaterMutation.isPending ? (
                       <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
@@ -791,7 +832,7 @@ export default function DatabaseManagement() {
                     className="w-full"
                     variant="outline"
                     onClick={() => stopUpdaterMutation.mutate()}
-                    disabled={stopUpdaterMutation.isPending}
+                    disabled={updaterUnavailable || stopUpdaterMutation.isPending}
                   >
                     {stopUpdaterMutation.isPending ? (
                       <RefreshCw className="w-4 h-4 mr-2 animate-spin" />

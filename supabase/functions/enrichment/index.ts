@@ -11,6 +11,20 @@ import {
 } from '../_shared/enriched-contact.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 import { fetchAllRows } from '../_shared/paged-select.ts';
+import { ilikeAnyFilter } from '../_shared/postgrest-or.ts';
+
+const MAX_PAGE_SIZE = 200;
+
+/** page/limit from the query string, clamped, as a PostgREST range. */
+function pageWindow(url: URL) {
+  const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10) || 1);
+  const limit = Math.min(
+    MAX_PAGE_SIZE,
+    Math.max(1, parseInt(url.searchParams.get('limit') || '50', 10) || 50),
+  );
+  const from = (page - 1) * limit;
+  return { page, limit, from, to: from + limit - 1 };
+}
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -48,24 +62,39 @@ export default async function handler(req: Request) {
 
     // GET /enrichment/contacts - List enriched contacts
     if (req.method === 'GET' && resource === 'contacts') {
-      const source = url.searchParams.get('source');
+      // Round 190. This answered a bare array of EVERY enriched contact and
+      // read only `source`, while DataEnrichment.tsx sends query /
+      // prospectingStatus / enrichmentSource / page / limit and reads
+      // `.contacts` off the response - so the Contacts tab showed "No contacts
+      // found" for every tenant, and its three filters did nothing.
+      const { page, limit, from, to } = pageWindow(url);
+      const q = url.searchParams.get('query');
+      const status = url.searchParams.get('prospectingStatus');
+      const source = url.searchParams.get('enrichmentSource') ?? url.searchParams.get('source');
 
       let query = admin
         .from('enriched_contacts')
-        .select('*')
+        .select('*', { count: 'exact' })
         .eq('tenant_id', tenantId)
-        .order('created_at', { ascending: false });
-
-      // enrichment_source, not source.
+        .order('created_at', { ascending: false })
+        .range(from, to);
+      if (q) {
+        query = query.or(
+          ilikeAnyFilter(['first_name', 'last_name', 'full_name', 'email', 'company_name'], q),
+        );
+      }
+      if (status) query = query.eq('prospecting_status', status);
       if (source) query = query.eq('enrichment_source', source);
 
-      const { data: contacts, error } = await query;
-
+      const { data: contacts, error, count } = await query;
       if (error) {
         return createCorsResponse({ error: 'Failed to fetch enriched contacts' }, 500, req);
       }
-
-      return createCorsResponse(contacts || [], 200, req);
+      return createCorsResponse(
+        { contacts: contacts || [], total: count ?? 0, page, limit },
+        200,
+        req,
+      );
     }
 
     // PUT /enrichment/contacts/:id - Update enriched contact
@@ -104,17 +133,30 @@ export default async function handler(req: Request) {
 
     // GET /enrichment/companies - List enriched companies
     if (req.method === 'GET' && resource === 'companies' && !resourceId) {
-      const { data: companies, error } = await admin
-        .from('enriched_companies')
-        .select('*')
-        .eq('tenant_id', tenantId)
-        .order('created_at', { ascending: false });
+      // Round 190: same shape defect as contacts - a bare array against a page
+      // reading `.companies`, so the Companies tab was always empty.
+      const { page, limit, from, to } = pageWindow(url);
+      const q = url.searchParams.get('query');
 
+      let query = admin
+        .from('enriched_companies')
+        .select('*', { count: 'exact' })
+        .eq('tenant_id', tenantId)
+        .order('created_at', { ascending: false })
+        .range(from, to);
+      if (q) {
+        query = query.or(ilikeAnyFilter(['company_name', 'website', 'primary_domain'], q));
+      }
+
+      const { data: companies, error, count } = await query;
       if (error) {
         return createCorsResponse({ error: 'Failed to fetch enriched companies' }, 500, req);
       }
-
-      return createCorsResponse(companies || [], 200, req);
+      return createCorsResponse(
+        { companies: companies || [], total: count ?? 0, page, limit },
+        200,
+        req,
+      );
     }
 
     // GET /enrichment/companies/:id

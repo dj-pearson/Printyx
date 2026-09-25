@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, memo, useCallback } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus,
   Search,
@@ -289,7 +289,9 @@ export const ServiceRequestsDashboard = memo(function ServiceRequestsDashboard()
     staleTime: 60 * 1000, // Consider data fresh for 1 minute
     refetchInterval: priorityRefreshInterval, // 2 minutes instead of 30 seconds
     refetchIntervalInBackground: false, // Don't refetch when tab is not visible
-    keepPreviousData: true, // Keep previous data while loading new page
+    // v5 spelling: keepPreviousData was removed, so the list blanked to its
+    // empty state on every page change (round 237).
+    placeholderData: keepPreviousData,
   });
 
   // Extract paginated data and metadata with defensive fallback for both old and new API formats

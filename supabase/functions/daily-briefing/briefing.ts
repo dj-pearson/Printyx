@@ -59,8 +59,38 @@ export function num(v: unknown): number {
 /** Map a user's system role onto one of the three briefing flavors. */
 export function deriveRole(role: string | null | undefined): BriefingRole {
   const r = (role ?? '').toLowerCase();
-  if (r.includes('owner') || r.includes('admin') || r.includes('exec')) return 'owner';
+  // `exec` alone matched ACCOUNT_EXECUTIVE, a level-3 individual contributor,
+  // and gave them the owner briefing. The name is only a default now; the
+  // level clamp below is what decides what they may receive.
+  const exec = r.includes('exec') && !r.includes('account');
+  if (r.includes('owner') || r.includes('admin') || exec) return 'owner';
   if (r.includes('service')) return 'service_manager';
+  return 'sales_rep';
+}
+
+/**
+ * The lowest role level allowed to RECEIVE each flavor (round 148).
+ *
+ * The owner flavor assembles tenant-wide figures - urgent tickets, at-risk
+ * customers, contracts ending, deals closing with their totals - and the
+ * service-manager flavor the whole ticket queue. The flavor is a preference a
+ * user sets for themselves through PUT /preferences, so without this any rep
+ * could ask for `owner` and be emailed the company's numbers every morning.
+ * Eligibility is re-evaluated on every generate against the live level, so a
+ * demotion takes effect on the next briefing (the My Day rule, COP-B01).
+ */
+export const BRIEFING_ROLE_MIN_LEVEL: Record<BriefingRole, number> = {
+  owner: 5,
+  service_manager: 4,
+  sales_rep: 1,
+};
+
+/** The flavor this user may receive: the requested one, or the next one down. */
+export function eligibleBriefingRole(requested: BriefingRole, level: number): BriefingRole {
+  if (level >= BRIEFING_ROLE_MIN_LEVEL[requested]) return requested;
+  if (requested === 'owner' && level >= BRIEFING_ROLE_MIN_LEVEL.service_manager) {
+    return 'service_manager';
+  }
   return 'sales_rep';
 }
 

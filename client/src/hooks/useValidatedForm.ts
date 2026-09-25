@@ -2,7 +2,7 @@
  * Custom hook for consistent form validation and error handling
  */
 
-import { useForm, UseFormProps, UseFormReturn, FieldValues } from 'react-hook-form';
+import { useForm, UseFormProps, UseFormReturn, FieldValues, Path } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from './use-toast';
@@ -66,15 +66,18 @@ export function useValidatedForm<T extends FieldValues>({
   const validateField = useCallback(
     (fieldName: keyof T, value: any): boolean => {
       try {
-        const fieldSchema = schema.shape?.[fieldName as string];
+        // Only an object schema has a shape; for any other schema there is no
+        // per-field validator and the whole-form trigger below is the check.
+        const shape = (schema as unknown as { shape?: Record<string, z.ZodTypeAny> }).shape;
+        const fieldSchema = shape?.[fieldName as string];
         if (fieldSchema) {
           fieldSchema.parse(value);
-          clearErrors(fieldName);
+          clearErrors(fieldName as Path<T>);
           return true;
         }
         return true;
       } catch {
-        trigger(fieldName);
+        trigger(fieldName as Path<T>);
         return false;
       }
     },

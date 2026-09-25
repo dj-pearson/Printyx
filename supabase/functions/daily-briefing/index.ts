@@ -51,6 +51,7 @@ import {
   buildFallback,
   buildPrompt,
   deriveRole,
+  eligibleBriefingRole,
   parseAiBriefing,
   wordCount,
   type BriefingRole,
@@ -58,6 +59,7 @@ import {
   type GeneratedBriefing,
 } from './briefing.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { resolveRoleLevel } from '../_shared/rbac.ts';
 import { resolveScope, type ResolvedScope } from '../_shared/scope.ts';
 
 /** _sendgrid requires an explicit `from`; same env-with-default idiom as public-booking. */
@@ -411,7 +413,14 @@ async function generateBriefingForUser(
     return { generated: false, skippedOff: true, emailed: false, inApp: false };
   }
 
-  const role = ((prefs.role as BriefingRole | null) ?? deriveRole(u.role)) as BriefingRole;
+  // Round 148: the requested flavor is a preference; whether this user may
+  // RECEIVE it is a permission, resolved against the live role level on every
+  // run. roleWithheld says when the two differed, so a downgraded briefing is
+  // explicable rather than silently thinner.
+  const requestedRole = ((prefs.role as BriefingRole | null) ?? deriveRole(u.role)) as BriefingRole;
+  const level = await resolveRoleLevel(admin, { id: u.id });
+  const role = eligibleBriefingRole(requestedRole, level);
+  const roleWithheld = role !== requestedRole ? requestedRole : null;
   const variant = ((prefs.ab_variant as BriefingVariant) ?? 'numbers') as BriefingVariant;
 
   const data = await assembleData(admin, tenantId, u.id, role);
@@ -419,6 +428,7 @@ async function generateBriefingForUser(
 
   const content = {
     role,
+    roleWithheld,
     variant,
     sections: data.sections,
     bullets: briefing.bullets,

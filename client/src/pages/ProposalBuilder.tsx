@@ -54,9 +54,7 @@ import {
   Layers,
 } from 'lucide-react';
 import MainLayout from '@/components/layout/main-layout';
-import ProposalVisualBuilder from '@/components/proposal-builder/ProposalVisualBuilder';
 import QuoteTransformer from '@/components/proposal-builder/QuoteTransformer';
-import BrandManager from '@/components/proposal-builder/BrandManager';
 import RichTextEditor from '@/components/proposal-builder/RichTextEditor';
 import DoDValidationBanner from '@/components/dod/DoDValidationBanner';
 import DoDEnforcementButton from '@/components/dod/DoDEnforcementButton';
@@ -64,6 +62,9 @@ import ProcessHelpBanner from '@/components/training/ProcessHelpBanner';
 import { apiRequest, extractRecords } from '@/lib/queryClient';
 import { downloadQuotePdf } from '@/lib/quote-pdf';
 import { useToast } from '@/hooks/use-toast';
+import { useConfirm } from '@/components/ui/confirm-dialog';
+import { describeApiError } from '@/lib/api-error';
+import { fetchQuotePdfBlob, triggerBlobDownload } from '@/lib/quote-pdf';
 
 interface ProposalTemplate {
   id: string;
@@ -240,10 +241,67 @@ export default function ProposalBuilder() {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'name' | 'customer' | 'amount' | 'date'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-  const [showBrandManager, setShowBrandManager] = useState(false);
-  const [showVisualBuilder, setShowVisualBuilder] = useState(false);
   const [showQuoteTransformer, setShowQuoteTransformer] = useState(false);
   const [transformedProposal, setTransformedProposal] = useState<any>(null);
+
+  // Round 201: Preview PDF and Send Proposal had no handlers. Both first
+  // generate the proposal's sections from the chosen template (the PDF renders
+  // proposal_sections), then Preview downloads that PDF and Send emails it
+  // through POST /proposals/:id/send - which carries the pricing-approval gate.
+  const confirm = useConfirm();
+  const [pdfBusy, setPdfBusy] = useState<'preview' | 'send' | null>(null);
+  const generateSections = () =>
+    apiRequest(`/api/proposals/${selectedQuote}/generate-from-template`, 'POST', {
+      templateId: selectedTemplate?.id,
+    });
+  const previewPdf = async () => {
+    if (!selectedQuote || !selectedTemplate) return;
+    setPdfBusy('preview');
+    try {
+      await generateSections();
+      const blob = await fetchQuotePdfBlob(selectedQuote);
+      triggerBlobDownload(blob, `Proposal-${selectedQuote}.pdf`);
+    } catch (err) {
+      toast({
+        title: 'Could not build the PDF',
+        description: describeApiError(err).message,
+        variant: 'destructive',
+      });
+    } finally {
+      setPdfBusy(null);
+    }
+  };
+  const sendProposal = async () => {
+    if (!selectedQuote || !selectedTemplate) return;
+    const ok = await confirm({
+      title: 'Email this proposal to the customer?',
+      description:
+        'It is built from the selected template and the quote. Text edited on this screen is not saved and will not be included.',
+      confirmLabel: 'Send',
+      destructive: false,
+    });
+    if (!ok) return;
+    setPdfBusy('send');
+    try {
+      await generateSections();
+      const result = (await apiRequest(`/api/proposals/${selectedQuote}/send`, 'POST', {})) as {
+        statusUpdated?: boolean;
+        warning?: string;
+      };
+      toast({
+        title: 'Proposal sent',
+        description: result?.statusUpdated === false ? result.warning : undefined,
+      });
+    } catch (err) {
+      toast({
+        title: 'Could not send proposal',
+        description: describeApiError(err).message,
+        variant: 'destructive',
+      });
+    } finally {
+      setPdfBusy(null);
+    }
+  };
   const [proposalContent, setProposalContent] = useState({
     coverLetter: '',
     executiveSummary: '',
@@ -358,24 +416,24 @@ export default function ProposalBuilder() {
     setActiveStep('visual');
   };
 
+  // Round 223. The brand manager and the visual builder opened here as
+  // dialogs whose save handlers only console.log'd and closed, so a rep could
+  // restyle the brand or rearrange a layout, press Save, and lose all of it.
+  // Both editors already persist on their own pages: /proposals/branding saves
+  // company_branding_profiles through profile-mapping, and the template editor
+  // saves template_content. The proposal is generated FROM the selected
+  // template (round 201), so editing that template is where a layout change
+  // has any effect.
   const handleOpenVisualBuilder = () => {
-    setShowVisualBuilder(true);
+    setLocation(
+      selectedTemplate?.id
+        ? `/proposal-templates/${selectedTemplate.id}/edit`
+        : '/proposal-templates',
+    );
   };
 
   const handleOpenBrandManager = () => {
-    setShowBrandManager(true);
-  };
-
-  const handleSaveBrand = (brandProfile: any) => {
-    console.log('Brand profile saved:', brandProfile);
-    setShowBrandManager(false);
-    // In a real implementation, save to backend
-  };
-
-  const handleSaveProposal = (proposalData: any) => {
-    console.log('Proposal saved:', proposalData);
-    setShowVisualBuilder(false);
-    // In a real implementation, save to backend and redirect
+    setLocation('/proposals/branding');
   };
 
   const handleCreateProposal = async () => {
@@ -583,7 +641,11 @@ export default function ProposalBuilder() {
             <span className="hidden sm:inline">Visual Builder</span>
             <span className="sm:hidden">Builder</span>
           </Button>
-          <Button variant="outline" className="touch-manipulation active:scale-[0.98] min-h-[44px]">
+          <Button
+            variant="outline"
+            onClick={() => setLocation('/proposal-templates')}
+            className="touch-manipulation active:scale-[0.98] min-h-[44px]"
+          >
             <Copy className="h-4 w-4 mr-2" />
             Templates
           </Button>
@@ -925,6 +987,7 @@ export default function ProposalBuilder() {
                 <Button
                   variant="outline"
                   className="gap-2 touch-manipulation active:scale-[0.98] min-h-[44px]"
+                  onClick={() => setLocation('/proposal-templates')}
                 >
                   <Plus className="h-4 w-4" />
                   Create Custom Template
@@ -1166,16 +1229,20 @@ export default function ProposalBuilder() {
                       variant="outline"
                       size="sm"
                       className="touch-manipulation active:scale-[0.98] min-h-[44px] flex-1 sm:flex-initial"
+                      disabled={pdfBusy !== null}
+                      onClick={() => void previewPdf()}
                     >
                       <Eye className="h-4 w-4 mr-2" />
-                      Preview PDF
+                      {pdfBusy === 'preview' ? 'Building...' : 'Preview PDF'}
                     </Button>
                     <Button
                       size="sm"
                       className="touch-manipulation active:scale-[0.98] min-h-[44px] flex-1 sm:flex-initial"
+                      disabled={pdfBusy !== null}
+                      onClick={() => void sendProposal()}
                     >
                       <Send className="h-4 w-4 mr-2" />
-                      Send Proposal
+                      {pdfBusy === 'send' ? 'Sending...' : 'Send Proposal'}
                     </Button>
                   </div>
                 </div>
@@ -1284,26 +1351,6 @@ export default function ProposalBuilder() {
           </div>
         )}
       </div>
-
-      {/* Brand Manager Dialog */}
-      <Dialog open={showBrandManager} onOpenChange={setShowBrandManager}>
-        <DialogContent className="max-w-full max-h-full w-full h-full sm:w-screen sm:h-screen p-0 m-0">
-          <BrandManager onSave={handleSaveBrand} onClose={() => setShowBrandManager(false)} />
-        </DialogContent>
-      </Dialog>
-
-      {/* Visual Builder Dialog */}
-      <Dialog open={showVisualBuilder} onOpenChange={setShowVisualBuilder}>
-        <DialogContent className="max-w-full max-h-full w-full h-full sm:w-screen sm:h-screen p-0 m-0">
-          <ProposalVisualBuilder
-            quoteData={
-              selectedQuote ? (quotes || []).find((q: any) => q.id === selectedQuote) : undefined
-            }
-            onSave={handleSaveProposal}
-            onPreview={() => console.log('Preview')}
-          />
-        </DialogContent>
-      </Dialog>
 
       {/* Quote Transformer Dialog */}
       <Dialog open={showQuoteTransformer} onOpenChange={setShowQuoteTransformer}>

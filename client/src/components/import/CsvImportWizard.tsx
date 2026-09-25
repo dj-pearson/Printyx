@@ -169,6 +169,11 @@ type WizardStep =
   | 'import'
   | 'complete';
 
+/** Poll a running import once a second; stop once it is anything else. */
+export function importJobPollInterval(status: string | undefined): number | false {
+  return status === 'processing' ? 1000 : false;
+}
+
 export function CsvImportWizard({
   open,
   onOpenChange,
@@ -221,10 +226,11 @@ export function CsvImportWizard({
       return await apiRequest(`/api/import/jobs/${importJobId}`);
     },
     enabled: !!importJobId,
-    refetchInterval: (data) => {
-      if (data?.status === 'processing') return 1000;
-      return false;
-    },
+    // Round 230: TanStack v5 hands refetchInterval the QUERY, not the data.
+    // This read `.status` off the query - pending/success/error, never
+    // 'processing' - so the wizard never polled and a running import sat on
+    // "processing" until something else refetched it.
+    refetchInterval: (query) => importJobPollInterval(query.state.data?.status),
   });
 
   // Fetch duplicates
@@ -916,7 +922,7 @@ export function CsvImportWizard({
                 <p className="text-muted-foreground">
                   {importJob?.validRows} records will be imported
                 </p>
-                <Button onClick={() => executeMutation.mutate()}>Start Import</Button>
+                <Button onClick={() => executeMutation.mutate({})}>Start Import</Button>
               </div>
             )}
           </div>

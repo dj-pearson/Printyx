@@ -17,6 +17,7 @@
 /** As much of the auth context as this decision reads. */
 export interface SendGateUser {
   app_metadata?: Record<string, unknown> | null;
+  /** Present on a real user; deliberately never read (the caller writes it). */
   user_metadata?: Record<string, unknown> | null;
 }
 
@@ -30,14 +31,30 @@ export interface SendGateUser {
  * skipped the guardrail entirely. Level 4 is where the approval ladder starts, the
  * same line purchase-orders draws for approving an order.
  */
-export function needsPricingApproval(user: SendGateUser | null | undefined): boolean {
+export function needsPricingApproval(
+  user: SendGateUser | null | undefined,
+  resolvedLevel?: number | null,
+): boolean {
   const meta = user?.app_metadata ?? {};
   const level = meta.roleLevel ?? meta.role_level;
   if (typeof level === 'number' && Number.isFinite(level)) {
     return level < 4;
   }
+  // Round 148: the caller can resolve the level from users -> roles.level when
+  // the token carries no claim, which is the answer that does not depend on
+  // anything the caller wrote.
+  if (typeof resolvedLevel === 'number' && Number.isFinite(resolvedLevel)) {
+    return resolvedLevel < 4;
+  }
 
-  const rawRole = String(meta.role ?? user?.user_metadata?.role ?? '').toLowerCase();
+  // Round 148: two holes closed. The fallback read `user_metadata.role`, which
+  // the session holder writes through supabase.auth.updateUser, so a rep could
+  // set any role that is not a sales name and skip the guardrail. And a caller
+  // with NO role anywhere matched no sales name and skipped it too - the gate
+  // failed open for exactly the users it knew least about. Only app_metadata is
+  // read now, and a caller the gate cannot place needs approval.
+  const rawRole = String(meta.role ?? '').toLowerCase();
+  if (!rawRole) return true;
   const salesOnly = ['sales_rep', 'salesperson', 'sales'];
   return salesOnly.some((r) => rawRole === r || rawRole.endsWith(r));
 }
@@ -60,6 +77,7 @@ export function hasPricingApproval(
 export function pricingGateApplies(
   user: SendGateUser | null | undefined,
   proposal: { pricing_approval_id?: unknown } | null | undefined,
+  resolvedLevel?: number | null,
 ): boolean {
-  return needsPricingApproval(user) && !hasPricingApproval(proposal);
+  return needsPricingApproval(user, resolvedLevel) && !hasPricingApproval(proposal);
 }

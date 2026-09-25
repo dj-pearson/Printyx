@@ -120,9 +120,15 @@ describe('the baseline is a worklist', () => {
     }
   });
 
-  it('records the two LAUNCH-013 gaps by name', () => {
-    expect(baseline.accepted['server/routes-crm-core.ts::enforceUsageLimits']).toMatch(/GAP/);
-    expect(baseline.accepted['server/routes-csv-import.ts::requireFeature']).toMatch(/GAP/);
+  it('records how both LAUNCH-013 findings were closed', () => {
+    // Round 171: ported to supabase/functions/leads/ via _shared/usage-limit.ts.
+    expect(baseline.accepted['server/routes-crm-core.ts::enforceUsageLimits']).toMatch(
+      /COVERED edge-side/,
+    );
+    // Not a gap: the edge function serves no AI path for the flag to gate.
+    expect(baseline.accepted['server/routes-csv-import.ts::requireFeature']).toMatch(
+      /COVERED BY ABSENCE/,
+    );
   });
 });
 
@@ -177,9 +183,14 @@ describe('the subscription middleware says it is dev-only (LAUNCH-013)', () => {
       }
     };
     walk(edgeRoot);
-    // The management surface and the Stripe helper. Anything else means an
-    // enforcement point has appeared and this story's note needs rewriting.
-    expect(readers.sort()).toEqual(['_shared/stripe.ts', 'subscriptions/index.ts']);
+    // The management surface, the Stripe helper, and (round 171) the one
+    // enforcement point, which the middleware header now names. Anything else
+    // means another has appeared and that header needs rewriting again.
+    expect(readers.sort()).toEqual([
+      '_shared/stripe.ts',
+      '_shared/usage-limit.ts',
+      'subscriptions/index.ts',
+    ]);
   });
 
   it('and the billing function still carries no plan check', () => {

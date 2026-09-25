@@ -265,19 +265,22 @@ program
         return;
       }
 
-      logs.forEach((log) => {
-        const timestamp = log.timestamp.toLocaleString();
+      // The parameter was named `log`, shadowing the module logger, so
+      // `log.info` called a LogEntry method that does not exist and the
+      // command threw on its first entry (round 244).
+      logs.forEach((entry) => {
+        const timestamp = entry.timestamp.toLocaleString();
         const levelIcon =
           {
             debug: '🔍',
             info: 'ℹ️',
             warn: '⚠️',
             error: '❌',
-          }[log.level] || 'ℹ️';
+          }[entry.level] || 'ℹ️';
 
-        log.info(`${levelIcon} [${timestamp}] ${log.level.toUpperCase()}: ${log.message}`);
-        if (log.data) {
-          log.info(`    Data: ${JSON.stringify(log.data, null, 2)}`);
+        log.info(`${levelIcon} [${timestamp}] ${entry.level.toUpperCase()}: ${entry.message}`);
+        if (entry.data) {
+          log.info(`    Data: ${JSON.stringify(entry.data, null, 2)}`);
         }
       });
     } catch (error) {

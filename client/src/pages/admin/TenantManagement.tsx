@@ -6,16 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
 import {
   Select,
   SelectContent,
@@ -23,56 +14,78 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import { Building2, Users, DollarSign, Activity, Plus, Edit, Trash2, Eye } from 'lucide-react';
+import { Building2, Users, Activity } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { MainLayout } from '@/components/layout/main-layout';
+import { Link } from 'wouter';
+import { apiRequest } from '@/lib/queryClient';
+import { describeApiError } from '@/lib/api-error';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
-interface TenantStats {
-  totalTenants?: string | number;
-  tenantGrowth?: string | number;
-  activeUsers?: string | number;
-  userGrowth?: string | number;
-  totalRevenue?: string | number;
-  revenueGrowth?: string | number;
-  conversionRate?: string | number;
-  conversionTrend?: string | number;
+/** GET /api/root-admin/overview */
+interface PlatformOverview {
+  totalTenants: number;
+  activeTenants: number;
+  totalUsers: number;
+  activeUsers: number;
+}
+
+/** GET /api/root-admin/tenants */
+interface TenantRow {
+  id: string;
+  name: string;
+  /** Billing status: trialing | active | past_due | canceled. Not a plan. */
+  subscription: string | null;
+  lastActivity: string | null;
+  userCount: number;
+  status: 'active' | 'suspended';
 }
 
 export default function TenantManagement() {
   const [activeTab, setActiveTab] = useState('overview');
-  const [selectedTenant, setSelectedTenant] = useState(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const tenantsQuery = useQuery<any[]>({
-    queryKey: ['/api/admin/tenants'],
-  });
-
-  const statsQuery = useQuery<TenantStats>({
-    queryKey: ['/api/admin/tenant-stats'],
-  });
-
-  // CR-033: both kept only `.data`, so a failed request rendered a platform
-  // with zero tenants and an empty list — indistinguishable from a brand-new
-  // install, on the page a platform admin uses to see who is on the system.
+  // Round 196. This read /api/admin/tenants and /api/admin/tenant-stats. The
+  // first had no handler on either host and the second was Express-only, and
+  // both sat in one QueryStates - so this page could only ever render "Could
+  // not load tenants". The root-admin function already serves both, and the
+  // root admin dashboard reads them.
+  const tenantsQuery = useQuery<TenantRow[]>({ queryKey: ['/api/root-admin/tenants'] });
+  const statsQuery = useQuery<PlatformOverview>({ queryKey: ['/api/root-admin/overview'] });
   const tenants = tenantsQuery.data;
   const tenantStats = statsQuery.data;
 
-  const createTenantMutation = useMutation({
-    mutationFn: async (tenantData: any) => {
-      const response = await fetch('/api/admin/tenants', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(tenantData),
-      });
-      if (!response.ok) throw new Error('Failed to create tenant');
-      return response.json();
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'suspended'>('all');
+  const visibleTenants = (tenants ?? []).filter(
+    (t) =>
+      (statusFilter === 'all' || t.status === statusFilter) &&
+      (!search.trim() || t.name?.toLowerCase().includes(search.trim().toLowerCase())),
+  );
+  const subscriptionMix = Object.entries(
+    (tenants ?? []).reduce<Record<string, number>>((acc, t) => {
+      const k = t.subscription || 'none recorded';
+      acc[k] = (acc[k] ?? 0) + 1;
+      return acc;
+    }, {}),
+  ).sort((a, b) => b[1] - a[1]);
+
+  const confirm = useConfirm();
+  const statusMutation = useMutation({
+    mutationFn: ({ id, action }: { id: string; action: 'suspend' | 'activate' }) =>
+      apiRequest(`/api/root-admin/tenants/${id}/${action}`, 'POST', {}),
+    onSuccess: (_d, { action }) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/root-admin/tenants'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/root-admin/overview'] });
+      toast({ title: action === 'suspend' ? 'Tenant suspended' : 'Tenant reactivated' });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/tenants'] });
-      toast({ title: 'Tenant created successfully' });
-    },
+    onError: (err) =>
+      toast({
+        title: 'Could not change tenant status',
+        description: describeApiError(err).message,
+        variant: 'destructive',
+      }),
   });
 
   return (
@@ -85,60 +98,25 @@ export default function TenantManagement() {
               Manage all tenant organizations and their configurations
             </p>
           </div>
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Create Tenant
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-md">
-              <DialogHeader>
-                <DialogTitle>Create New Tenant</DialogTitle>
-                <DialogDescription>
-                  Set up a new tenant organization with initial configuration
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="tenantName">Company Name</Label>
-                  <Input id="tenantName" placeholder="Enter company name" />
-                </div>
-                <div>
-                  <Label htmlFor="tenantDomain">Subdomain</Label>
-                  <Input id="tenantDomain" placeholder="company.printyx.com" />
-                </div>
-                <div>
-                  <Label htmlFor="tenantPlan">Plan</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select plan" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="starter">Starter</SelectItem>
-                      <SelectItem value="professional">Professional</SelectItem>
-                      <SelectItem value="enterprise">Enterprise</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="adminEmail">Admin Email</Label>
-                  <Input id="adminEmail" type="email" placeholder="admin@company.com" />
-                </div>
-                <Button className="w-full">Create Tenant</Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+          {/* Round 196: a Create Tenant dialog sat here with unbound fields,
+              a Select of three plan names, and a submit button with no handler.
+              Nothing lets a platform admin create a tenant: tenants are created
+              by self-service signup (supabase/functions/signup), which also
+              creates the admin user and their role. */}
+          <Button asChild variant="outline">
+            <Link href="/signup">Open signup</Link>
+          </Button>
         </div>
 
-        {/* CR-033: the heading and Create Tenant control above stay usable. */}
+        {/* CR-033: the heading above stays usable. */}
         <QueryStates
           queries={[tenantsQuery, statsQuery]}
           loading={<DashboardSkeleton />}
           errorTitle="Could not load tenants"
           className="py-6"
         >
-          {/* Tenant Statistics */}
+          {/* Revenue and conversion cards removed: nothing aggregates platform
+              revenue (see the Billing tab) and nothing records trial conversion. */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -146,55 +124,36 @@ export default function TenantManagement() {
                 <Building2 className="h-4 w-4 text-blue-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">
-                  {tenantStats?.totalTenants || 'Loading...'}
-                </div>
-                <p className="text-xs text-green-600 mt-2">
-                  {tenantStats?.tenantGrowth || 'Loading...'}
-                </p>
+                <div className="text-2xl font-bold">{tenantStats?.totalTenants ?? '—'}</div>
               </CardContent>
             </Card>
-
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Active Tenants</CardTitle>
+                <Activity className="h-4 w-4 text-orange-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{tenantStats?.activeTenants ?? '—'}</div>
+                <p className="text-xs text-muted-foreground mt-2">Activity in the last 30 days</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+                <Users className="h-4 w-4 text-green-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{tenantStats?.totalUsers ?? '—'}</div>
+              </CardContent>
+            </Card>
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Active Users</CardTitle>
                 <Users className="h-4 w-4 text-green-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{tenantStats?.activeUsers || 'Loading...'}</div>
-                <p className="text-xs text-green-600 mt-2">
-                  {tenantStats?.userGrowth || 'Loading...'}
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-                <DollarSign className="h-4 w-4 text-green-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {tenantStats?.totalRevenue || 'Loading...'}
-                </div>
-                <p className="text-xs text-green-600 mt-2">
-                  {tenantStats?.revenueGrowth || 'Loading...'}
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Trial Conversions</CardTitle>
-                <Activity className="h-4 w-4 text-orange-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {tenantStats?.conversionRate || 'Loading...'}
-                </div>
-                <p className="text-xs text-green-600 mt-2">
-                  {tenantStats?.conversionTrend || 'Loading...'}
-                </p>
+                <div className="text-2xl font-bold">{tenantStats?.activeUsers ?? '—'}</div>
+                <p className="text-xs text-muted-foreground mt-2">Signed in within 7 days</p>
               </CardContent>
             </Card>
           </div>
@@ -216,14 +175,16 @@ export default function TenantManagement() {
                   <CardContent>
                     <div className="space-y-4">
                       {tenants && tenants.length > 0 ? (
-                        tenants.slice(0, 5).map((tenant: any) => (
+                        tenants.slice(0, 5).map((tenant) => (
                           <div
                             key={tenant.id}
                             className="flex items-center justify-between py-2 border-b"
                           >
                             <div>
                               <p className="font-medium">{tenant.name}</p>
-                              <p className="text-sm text-gray-500">{tenant.domain}</p>
+                              <p className="text-sm text-gray-500">
+                                {tenant.userCount} user{tenant.userCount === 1 ? '' : 's'}
+                              </p>
                             </div>
                             <Badge variant={tenant.status === 'active' ? 'default' : 'secondary'}>
                               {tenant.status}
@@ -239,19 +200,20 @@ export default function TenantManagement() {
 
                 <Card>
                   <CardHeader>
-                    <CardTitle>Tenant Distribution</CardTitle>
+                    <CardTitle>Subscription Status</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {/* AUDIT-019: the plan mix was drawn as three bars at a
-                        fixed 65 / 25 / 10 percent, with the widths written into
-                        the style attribute. No tenant was ever counted. The
-                        page already loads the real tenant list, but nothing on
-                        it carries a plan, so there is nothing to derive this
-                        from yet. */}
-                    <p className="text-sm text-muted-foreground">
-                      Plan mix is not computed. The tenant records loaded by this page do not carry
-                      a subscription plan, so the split by plan cannot be derived here.
-                    </p>
+                    {/* AUDIT-019 removed a typed-in 65 / 25 / 10 plan mix. The
+                        rows carry `subscription` (a billing status, not a plan),
+                        so this counts that instead. */}
+                    <div className="space-y-2">
+                      {subscriptionMix.map(([status, count]) => (
+                        <div key={status} className="flex justify-between text-sm">
+                          <span className="capitalize">{status.replace('_', ' ')}</span>
+                          <span className="font-medium">{count}</span>
+                        </div>
+                      ))}
+                    </div>
                   </CardContent>
                 </Card>
               </div>
@@ -272,70 +234,92 @@ export default function TenantManagement() {
                         aria-label="Search tenants"
                         placeholder="Search tenants..."
                         className="max-w-sm"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
                       />
-                      <Select>
-                        <SelectTrigger className="w-32">
+                      {/* tenants.is_active is the only status; there is no trial
+                          state and no plan column to filter on. */}
+                      <Select
+                        value={statusFilter}
+                        onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}
+                      >
+                        <SelectTrigger className="w-36">
                           <SelectValue placeholder="Status" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">All</SelectItem>
                           <SelectItem value="active">Active</SelectItem>
-                          <SelectItem value="trial">Trial</SelectItem>
                           <SelectItem value="suspended">Suspended</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Select>
-                        <SelectTrigger className="w-32">
-                          <SelectValue placeholder="Plan" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Plans</SelectItem>
-                          <SelectItem value="enterprise">Enterprise</SelectItem>
-                          <SelectItem value="professional">Professional</SelectItem>
-                          <SelectItem value="starter">Starter</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
 
                     <div className="border rounded-lg">
-                      <div className="grid grid-cols-7 gap-4 p-4 border-b bg-gray-50 font-medium">
+                      <div className="grid grid-cols-6 gap-4 p-4 border-b bg-gray-50 font-medium">
                         <div>Company</div>
-                        <div>Domain</div>
                         <div>Status</div>
-                        <div>Plan</div>
+                        <div>Subscription</div>
                         <div>Users</div>
-                        <div>Revenue</div>
+                        <div>Last Activity</div>
                         <div>Actions</div>
                       </div>
-                      {tenants && tenants.length > 0 ? (
-                        tenants.map((tenant: any) => (
+                      {visibleTenants.length > 0 ? (
+                        visibleTenants.map((tenant) => (
                           <div
                             key={tenant.id}
-                            className="grid grid-cols-7 gap-4 p-4 border-b items-center"
+                            className="grid grid-cols-6 gap-4 p-4 border-b items-center"
                           >
                             <div>
                               <p className="font-medium">{tenant.name}</p>
                               <p className="text-sm text-gray-500">ID: {tenant.id}</p>
                             </div>
-                            <div className="text-sm">{tenant.domain}</div>
                             <div>
                               <Badge variant={tenant.status === 'active' ? 'default' : 'secondary'}>
                                 {tenant.status}
                               </Badge>
                             </div>
-                            <div className="capitalize">{tenant.plan}</div>
-                            <div>{tenant.users}</div>
-                            <div>${tenant.revenue?.toLocaleString() || 0}</div>
-                            <div className="flex gap-2">
-                              <Button aria-label="View details" size="sm" variant="outline">
-                                <Eye className="h-3 w-3" />
-                              </Button>
-                              <Button aria-label="Edit" size="sm" variant="outline">
-                                <Edit className="h-3 w-3" />
-                              </Button>
-                              <Button aria-label="Delete" size="sm" variant="outline">
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
+                            <div className="capitalize">
+                              {tenant.subscription?.replace('_', ' ') ?? '—'}
+                            </div>
+                            <div>{tenant.userCount}</div>
+                            <div className="text-sm">
+                              {tenant.lastActivity
+                                ? new Date(tenant.lastActivity).toLocaleDateString()
+                                : 'Never'}
+                            </div>
+                            <div>
+                              {tenant.status === 'active' ? (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  aria-label={`Suspend ${tenant.name}`}
+                                  disabled={statusMutation.isPending}
+                                  onClick={async () => {
+                                    const ok = await confirm({
+                                      title: `Suspend ${tenant.name}?`,
+                                      description:
+                                        'Its users lose access until the tenant is reactivated. No data is deleted.',
+                                      confirmLabel: 'Suspend',
+                                    });
+                                    if (ok)
+                                      statusMutation.mutate({ id: tenant.id, action: 'suspend' });
+                                  }}
+                                >
+                                  Suspend
+                                </Button>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  aria-label={`Reactivate ${tenant.name}`}
+                                  disabled={statusMutation.isPending}
+                                  onClick={() =>
+                                    statusMutation.mutate({ id: tenant.id, action: 'activate' })
+                                  }
+                                >
+                                  Reactivate
+                                </Button>
+                              )}
                             </div>
                           </div>
                         ))
@@ -383,51 +367,16 @@ export default function TenantManagement() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-6">
-                    <div className="space-y-4">
-                      <div>
-                        <Label htmlFor="defaultPlan">Default Plan for New Tenants</Label>
-                        <Select>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select default plan" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="starter">Starter (30-day trial)</SelectItem>
-                            <SelectItem value="professional">
-                              Professional (14-day trial)
-                            </SelectItem>
-                            <SelectItem value="enterprise">Enterprise (Custom)</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div>
-                        <Label htmlFor="maxUsers">Default Max Users per Tenant</Label>
-                        <Input id="maxUsers" type="number" defaultValue="100" />
-                      </div>
-
-                      <div>
-                        <Label htmlFor="trialDays">Trial Period (Days)</Label>
-                        <Input id="trialDays" type="number" defaultValue="30" />
-                      </div>
-
-                      <div>
-                        <Label htmlFor="welcomeMessage">Welcome Message for New Tenants</Label>
-                        <Textarea
-                          id="welcomeMessage"
-                          placeholder="Enter welcome message..."
-                          defaultValue="Welcome to Printyx! Your account has been successfully created."
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-3">
-                      <Button className="w-full">Save Settings</Button>
-                      <Button className="w-full" variant="outline">
-                        Reset to Defaults
-                      </Button>
-                    </div>
-                  </div>
+                  {/* Round 196: this tab offered a default plan, max users,
+                      trial length and welcome message, all uncontrolled, over a
+                      Save Settings and Reset to Defaults with no handlers. No
+                      table stores platform-wide defaults like these; trials are
+                      set by the Stripe products (scripts/setup-stripe-products.ts). */}
+                  <p className="text-sm text-muted-foreground">
+                    Platform-wide tenant defaults are not configurable here. Trial length and plans
+                    come from the Stripe products; nothing stores a default user limit or welcome
+                    message.
+                  </p>
                 </CardContent>
               </Card>
             </TabsContent>

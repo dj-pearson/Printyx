@@ -12,6 +12,7 @@ import { errorResponse, jsonResponse } from '../../_shared/http.ts';
 import type { HandlerCtx } from '../_context.ts';
 import { rangeFromQuery } from '../_date.ts';
 import { cached, paramKey } from '../_cache.ts';
+import { OPEN_TICKET_STATUSES } from '../../_shared/service-ticket-vocabulary.ts';
 import { fetchAllRows } from '../../_shared/paged-select.ts';
 
 const DASHBOARDS_TTL_SECONDS = 300; // 5 min
@@ -66,6 +67,11 @@ async function cachedReport(
   }
 }
 
+// Round 202: the open-ticket counts listed 'in-progress' (hyphenated), which
+// migration 0078 normalised away, so tickets that were scheduled, en route, on
+// site, in progress or on hold never counted as open. The canonical list is
+// _shared/service-ticket-vocabulary.ts.
+
 // ─── executive-summary ─────────────────────────────────────────────────────
 
 async function executiveSummary(ctx: HandlerCtx): Promise<unknown> {
@@ -116,8 +122,7 @@ async function executiveSummary(ctx: HandlerCtx): Promise<unknown> {
       activeQuotes: quotesData.filter((q) => q.status === 'sent').length,
       wonQuotes: quotesData.filter((q) => q.status === 'accepted').length,
       totalRevenue,
-      openTickets: ticketsData.filter((t) => ['open', 'assigned', 'in-progress'].includes(t.status))
-        .length,
+      openTickets: ticketsData.filter((t) => OPEN_TICKET_STATUSES.includes(t.status)).length,
       totalTickets: ticketsData.length,
     },
   };
@@ -191,9 +196,7 @@ async function kpiScorecards(ctx: HandlerCtx): Promise<unknown> {
         totalTickets: ticketsData.length,
         resolvedTickets,
         avgResolutionHours: Math.round(avgResolutionTime / (1000 * 60 * 60)),
-        openTickets: ticketsData.filter((t) =>
-          ['open', 'assigned', 'in-progress'].includes(t.status),
-        ).length,
+        openTickets: ticketsData.filter((t) => OPEN_TICKET_STATUSES.includes(t.status)).length,
       },
       customers: {
         newCustomers,
@@ -222,12 +225,12 @@ async function businessInsights(ctx: HandlerCtx): Promise<unknown> {
         .eq('status', 'accepted')
         .gte('accepted_date', startIso),
     ),
-    fetchAllRows<any>(() =>
-      db
-        .from('quote_line_items')
-        .select('description, quantity, total_price')
-        .eq('tenant_id', auth.tenantId),
-    ),
+    // Head count: this fetched every quote_line_items row the tenant ever
+    // wrote only to read .length.
+    db
+      .from('quote_line_items')
+      .select('id', { count: 'exact', head: true })
+      .eq('tenant_id', auth.tenantId),
     fetchAllRows<any>(() =>
       db
         .from('business_records')
@@ -260,7 +263,7 @@ async function businessInsights(ctx: HandlerCtx): Promise<unknown> {
   return {
     topCustomers: top5Customers,
     territoryDistribution: [...territories.entries()].map(([name, count]) => ({ name, count })),
-    totalProducts: productPerformance.length,
+    totalProducts: productPerformance.count ?? null,
   };
 }
 
@@ -319,7 +322,10 @@ async function competitiveMetrics(ctx: HandlerCtx): Promise<unknown> {
               (quotesData.filter((q) => q.status === 'accepted').length / quotesData.length) * 100,
             )
           : 0,
-      firstTimeFixRate:
+      // Round 202: was named firstTimeFixRate. It is completed / all tickets in
+      // the window; nothing records whether a ticket was fixed on the first
+      // visit, so the old name claimed a measurement nobody takes.
+      ticketCompletionRate:
         ticketsData.length > 0
           ? Math.round(
               (ticketsData.filter((t) => t.status === 'completed').length / ticketsData.length) *
@@ -358,10 +364,16 @@ async function territoryPerformance(ctx: HandlerCtx): Promise<unknown> {
     territoryId: t.id as string,
     territoryName: t.territory_name as string,
     customerCount: customersData.filter((c) => c.territory === t.territory_name).length,
-    revenue: 0, // Joining quotes by customer→territory left as a follow-up.
+    // Round 202: this was `revenue: 0` with a comment calling the join "a
+    // follow-up", so every territory reported no revenue. Nothing attributes
+    // revenue to a territory yet; the field is absent, not zero.
   }));
 
-  return { period: range.period, territories: territoryPerformance };
+  return {
+    period: range.period,
+    territories: territoryPerformance,
+    unbacked: ['territory revenue: nothing attributes won revenue to a territory yet'],
+  };
 }
 
 // ─── revenue-attribution ───────────────────────────────────────────────────

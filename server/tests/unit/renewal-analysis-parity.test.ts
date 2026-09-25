@@ -7,6 +7,11 @@
 //   server/services/contract-renewal-service.ts
 //   supabase/functions/_shared/renewal-analysis.ts
 //
+// Round 165: the Node copy (server/services/contract-renewal-service.ts) was
+// deleted with the Express router that was its only caller. Its outputs over
+// these fixtures - identical to the edge's while both existed - are frozen as
+// snapshots, so the edge module stays locked to the same behaviour.
+//
 // Node and Deno cannot import each other, so this suite imports both and
 // asserts identical output. An edit to the prompt, a changed threshold or a
 // reworded risk factor that lands in only one file fails here.
@@ -16,7 +21,6 @@
 // dashboard actually shows.
 import { describe, it, expect } from 'vitest';
 
-import * as node from '../../services/contract-renewal-service';
 import * as edge from '../../../supabase/functions/_shared/renewal-analysis';
 
 type Contract = edge.RenewalAnalysisInput;
@@ -128,9 +132,7 @@ describe('renewal analysis parity (Express service vs edge _shared)', () => {
   describe('buildRenewalAnalysisPrompt', () => {
     for (const { name, contract } of CONTRACTS) {
       it(`renders identical prompt text: ${name}`, () => {
-        expect(edge.buildRenewalAnalysisPrompt(contract)).toBe(
-          node.buildRenewalAnalysisPrompt(contract),
-        );
+        expect(edge.buildRenewalAnalysisPrompt(contract)).toMatchSnapshot();
       });
     }
   });
@@ -138,9 +140,7 @@ describe('renewal analysis parity (Express service vs edge _shared)', () => {
   describe('heuristicRenewalAnalysis', () => {
     for (const { name, contract } of CONTRACTS) {
       it(`returns an identical result: ${name}`, () => {
-        expect(edge.heuristicRenewalAnalysis(contract)).toEqual(
-          node.heuristicRenewalAnalysis(contract),
-        );
+        expect(edge.heuristicRenewalAnalysis(contract)).toMatchSnapshot();
       });
     }
   });
@@ -151,14 +151,14 @@ describe('renewal analysis parity (Express service vs edge _shared)', () => {
     const probabilities = [-5, 0, 29, 30, 31, 49, 50, 51, 69, 70, 71, 89, 90, 91, 100, 105];
     for (const p of probabilities) {
       it(`agrees on the band at ${p}`, () => {
-        expect(edge.renewalRiskFor(p)).toBe(node.renewalRiskFor(p));
+        expect(edge.renewalRiskFor(p)).toMatchSnapshot();
       });
     }
 
     const bands = ['very_low', 'low', 'medium', 'high', 'very_high'] as const;
     for (const band of bands) {
       it(`agrees on the action for ${band}`, () => {
-        expect(edge.recommendedActionFor(band)).toBe(node.recommendedActionFor(band));
+        expect(edge.recommendedActionFor(band)).toMatchSnapshot();
       });
     }
   });
@@ -238,9 +238,7 @@ describe('renewal pricing parity (Express service vs edge _shared)', () => {
     for (const { risk, analysis } of analyses) {
       for (const { name, rules } of RULES) {
         it(`renders identical prompt text: ${risk} / ${name}`, () => {
-          expect(edge.buildRenewalPricingPrompt(analysis, 2400, 28800, rules)).toBe(
-            node.buildRenewalPricingPrompt(analysis, 2400, 28800, rules),
-          );
+          expect(edge.buildRenewalPricingPrompt(analysis, 2400, 28800, rules)).toMatchSnapshot();
         });
       }
     }
@@ -251,9 +249,7 @@ describe('renewal pricing parity (Express service vs edge _shared)', () => {
       for (const { name, rules } of RULES) {
         for (const mrr of MRRS) {
           it(`prices identically: ${risk} / ${name} / mrr ${mrr}`, () => {
-            expect(edge.heuristicRenewalPricing(analysis, mrr, rules)).toEqual(
-              node.heuristicRenewalPricing(analysis, mrr, rules),
-            );
+            expect(edge.heuristicRenewalPricing(analysis, mrr, rules)).toMatchSnapshot();
           });
         }
       }
@@ -310,7 +306,7 @@ describe('renewal pricing parity (Express service vs edge _shared)', () => {
           const recs = edge.heuristicRenewalPricing(analysis, 2400, RULES[0].rules);
           expect(
             edge.buildRenewalProposalRow(contract, analysis, recs, 'REN-FIXED-1', NOW),
-          ).toEqual(node.buildRenewalProposalRow(contract, analysis, recs, 'REN-FIXED-1', NOW));
+          ).toMatchSnapshot();
         });
       }
     }

@@ -7,6 +7,7 @@ import { parseBulkIds, parseBulkUpdate } from '../_shared/bulk-ops.ts';
 import { summariseBulkWrite } from '../../../shared/bulk-result.ts';
 import { accessibleCustomerIds, applyCustomerScope, resolveScope } from '../_shared/scope.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { ilikeAnyFilter } from '../_shared/postgrest-or.ts';
 
 // Helper: Batch-enrich records with customer names from business_records
 async function enrichWithCustomerNames(admin: any, records: any[]) {
@@ -105,7 +106,7 @@ export default async function handler(req: Request) {
       }
 
       if (search) {
-        query = query.or(`invoice_number.ilike.%${search}%,po_number.ilike.%${search}%`);
+        query = query.or(ilikeAnyFilter(['invoice_number', 'po_number'], search));
       }
 
       const { data: invoices, error, count } = await query;

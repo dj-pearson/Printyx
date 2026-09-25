@@ -2,11 +2,13 @@ import { formatPercent, percentOf } from '@/lib/utils';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import MainLayout from '@/components/layout/main-layout';
+import { exportToCSV, type ExportColumn } from '@/lib/export-utils';
+import type { DeploymentMetrics, ReadinessCheck } from '@shared/deployment-readiness';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { InlineQueryError } from '@/components/ui/inline-query-error';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   CheckCircle,
@@ -20,35 +22,22 @@ import {
   Settings,
   Activity,
   FileText,
-  Globe,
-  Lock,
-  Zap,
-  Monitor,
 } from 'lucide-react';
 
-interface ReadinessCheck {
-  id: string;
-  category: string;
-  name: string;
-  description: string;
-  status: 'complete' | 'incomplete' | 'warning' | 'in-progress';
-  priority: 'high' | 'medium' | 'low';
-  lastChecked: string;
-  details?: string;
-}
-
-interface DeploymentMetrics {
-  overallReadiness: number;
-  criticalIssues: number;
-  completedChecks: number;
-  totalChecks: number;
-  estimatedLaunchDate: string;
-}
+const CHECKLIST_EXPORT_COLUMNS: ExportColumn<ReadinessCheck>[] = [
+  { key: 'category', label: 'Category' },
+  { key: 'name', label: 'Check' },
+  { key: 'description', label: 'Description' },
+  { key: 'status', label: 'Status' },
+  { key: 'priority', label: 'Priority' },
+  { key: 'details', label: 'Details' },
+  { key: 'lastChecked', label: 'Last Checked' },
+];
 
 export default function DeploymentReadiness() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
-  const { data: readinessChecks, isLoading } = useQuery<ReadinessCheck[]>({
+  const readinessQuery = useQuery<ReadinessCheck[]>({
     queryKey: ['/api/deployment/readiness'],
   });
 
@@ -56,191 +45,10 @@ export default function DeploymentReadiness() {
     queryKey: ['/api/deployment/metrics'],
   });
 
-  // Mock data for deployment readiness
-  const mockChecks: ReadinessCheck[] = readinessChecks || [
-    // Database & Infrastructure
-    {
-      id: '1',
-      category: 'Infrastructure',
-      name: 'Database Migration Scripts',
-      description: 'Production database schema and migration scripts ready',
-      status: 'complete',
-      priority: 'high',
-      lastChecked: '2025-01-01T10:00:00Z',
-      details: 'All migration scripts tested and validated',
-    },
-    {
-      id: '2',
-      category: 'Infrastructure',
-      name: 'Production Environment Setup',
-      description: 'Production servers configured and tested',
-      status: 'complete',
-      priority: 'high',
-      lastChecked: '2025-01-01T09:30:00Z',
-    },
-    {
-      id: '3',
-      category: 'Infrastructure',
-      name: 'SSL Certificates',
-      description: 'SSL certificates installed and configured',
-      status: 'complete',
-      priority: 'high',
-      lastChecked: '2025-01-01T08:45:00Z',
-    },
-    {
-      id: '4',
-      category: 'Infrastructure',
-      name: 'CDN Configuration',
-      description: 'Content delivery network setup for static assets',
-      status: 'in-progress',
-      priority: 'medium',
-      lastChecked: '2025-01-01T07:15:00Z',
-    },
-
-    // Security & Compliance
-    {
-      id: '5',
-      category: 'Security',
-      name: 'Security Audit',
-      description: 'Comprehensive security audit completed',
-      status: 'warning',
-      priority: 'high',
-      lastChecked: '2024-12-28T14:30:00Z',
-      details: 'Minor issues identified - patch scheduled',
-    },
-    {
-      id: '6',
-      category: 'Security',
-      name: 'Data Encryption',
-      description: 'All sensitive data encrypted at rest and in transit',
-      status: 'complete',
-      priority: 'high',
-      lastChecked: '2025-01-01T11:20:00Z',
-    },
-    {
-      id: '7',
-      category: 'Security',
-      name: 'Access Controls',
-      description: 'Role-based access control fully implemented',
-      status: 'complete',
-      priority: 'high',
-      lastChecked: '2025-01-01T10:45:00Z',
-    },
-    {
-      id: '8',
-      category: 'Security',
-      name: 'Backup & Recovery',
-      description: 'Automated backup and disaster recovery procedures',
-      status: 'complete',
-      priority: 'high',
-      lastChecked: '2025-01-01T09:00:00Z',
-    },
-
-    // Testing & Quality
-    {
-      id: '9',
-      category: 'Testing',
-      name: 'Load Testing',
-      description: 'System performance under expected load verified',
-      status: 'complete',
-      priority: 'high',
-      lastChecked: '2024-12-30T16:00:00Z',
-    },
-    {
-      id: '10',
-      category: 'Testing',
-      name: 'Integration Testing',
-      description: 'All third-party integrations tested',
-      status: 'incomplete',
-      priority: 'high',
-      lastChecked: '2024-12-29T13:45:00Z',
-      details: 'HP PrintOS integration pending final tests',
-    },
-    {
-      id: '11',
-      category: 'Testing',
-      name: 'User Acceptance Testing',
-      description: 'UAT completed with pilot customers',
-      status: 'in-progress',
-      priority: 'high',
-      lastChecked: '2025-01-01T08:30:00Z',
-    },
-    {
-      id: '12',
-      category: 'Testing',
-      name: 'Mobile Testing',
-      description: 'Mobile app tested across devices and platforms',
-      status: 'complete',
-      priority: 'medium',
-      lastChecked: '2024-12-31T12:00:00Z',
-    },
-
-    // Documentation & Training
-    {
-      id: '13',
-      category: 'Documentation',
-      name: 'User Documentation',
-      description: 'Complete user manuals and help documentation',
-      status: 'complete',
-      priority: 'medium',
-      lastChecked: '2025-01-01T07:30:00Z',
-    },
-    {
-      id: '14',
-      category: 'Documentation',
-      name: 'API Documentation',
-      description: 'Comprehensive API documentation for integrations',
-      status: 'complete',
-      priority: 'medium',
-      lastChecked: '2024-12-30T15:20:00Z',
-    },
-    {
-      id: '15',
-      category: 'Documentation',
-      name: 'Training Materials',
-      description: 'Training videos and materials for end users',
-      status: 'incomplete',
-      priority: 'medium',
-      lastChecked: '2024-12-28T10:15:00Z',
-    },
-
-    // Business Readiness
-    {
-      id: '16',
-      category: 'Business',
-      name: 'Pricing Strategy',
-      description: 'Final pricing tiers and billing system configured',
-      status: 'complete',
-      priority: 'high',
-      lastChecked: '2025-01-01T11:45:00Z',
-    },
-    {
-      id: '17',
-      category: 'Business',
-      name: 'Support Team Training',
-      description: 'Customer support team trained on new platform',
-      status: 'in-progress',
-      priority: 'high',
-      lastChecked: '2024-12-31T14:30:00Z',
-    },
-    {
-      id: '18',
-      category: 'Business',
-      name: 'Marketing Materials',
-      description: 'Launch marketing materials and campaigns ready',
-      status: 'complete',
-      priority: 'medium',
-      lastChecked: '2024-12-30T17:00:00Z',
-    },
-  ];
-
-  const mockMetrics: DeploymentMetrics = metrics || {
-    overallReadiness: 78,
-    criticalIssues: 2,
-    completedChecks: 14,
-    totalChecks: 18,
-    estimatedLaunchDate: '2025-01-15',
-  };
+  // No fallback: this page used to render eighteen typed-in checks and a 78%
+  // readiness score whenever the endpoint failed, which reads as a launch
+  // status nobody measured.
+  const checks = readinessQuery.data ?? [];
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -288,11 +96,11 @@ export default function DeploymentReadiness() {
     );
   };
 
-  const categories = ['all', ...Array.from(new Set(mockChecks.map((check) => check.category)))];
+  const categories = ['all', ...Array.from(new Set(checks.map((check) => check.category)))];
   const filteredChecks =
     selectedCategory === 'all'
-      ? mockChecks
-      : mockChecks.filter((check) => check.category === selectedCategory);
+      ? checks
+      : checks.filter((check) => check.category === selectedCategory);
 
   const categoryIcons = {
     Infrastructure: Database,
@@ -316,9 +124,11 @@ export default function DeploymentReadiness() {
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Overall Readiness</p>
                   <p className="text-2xl sm:text-3xl font-bold text-gray-900">
-                    {mockMetrics.overallReadiness}%
+                    {metrics?.overallReadiness != null ? `${metrics.overallReadiness}%` : '—'}
                   </p>
-                  <Progress value={mockMetrics.overallReadiness} className="mt-2 h-2" />
+                  {metrics?.overallReadiness != null && (
+                    <Progress value={metrics.overallReadiness} className="mt-2 h-2" />
+                  )}
                 </div>
                 <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-lg flex items-center justify-center">
                   <Rocket className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
@@ -333,7 +143,7 @@ export default function DeploymentReadiness() {
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Critical Issues</p>
                   <p className="text-2xl sm:text-3xl font-bold text-red-600">
-                    {mockMetrics.criticalIssues}
+                    {metrics ? metrics.criticalIssues : '—'}
                   </p>
                   <p className="text-xs text-gray-500">Require immediate attention</p>
                 </div>
@@ -350,12 +160,14 @@ export default function DeploymentReadiness() {
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Completed</p>
                   <p className="text-2xl sm:text-3xl font-bold text-gray-900">
-                    {mockMetrics.completedChecks}/{mockMetrics.totalChecks}
+                    {metrics ? `${metrics.completedChecks}/${metrics.totalChecks}` : '—'}
                   </p>
-                  <p className="text-xs text-green-600">
-                    {formatPercent(percentOf(mockMetrics.completedChecks, mockMetrics.totalChecks))}
-                    complete
-                  </p>
+                  {metrics && metrics.totalChecks > 0 && (
+                    <p className="text-xs text-green-600">
+                      {formatPercent(percentOf(metrics.completedChecks, metrics.totalChecks))}{' '}
+                      complete
+                    </p>
+                  )}
                 </div>
                 <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-100 rounded-lg flex items-center justify-center">
                   <CheckCircle className="h-5 w-5 sm:h-6 sm:w-6 text-green-600" />
@@ -366,30 +178,24 @@ export default function DeploymentReadiness() {
 
           <Card>
             <CardContent className="p-4 sm:p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs sm:text-sm font-medium text-gray-600">Est. Launch</p>
-                  <p className="text-lg sm:text-xl font-bold text-gray-900">
-                    {new Date(mockMetrics.estimatedLaunchDate).toLocaleDateString()}
-                  </p>
-                  <p className="text-xs text-gray-500">2 weeks remaining</p>
-                </div>
-                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                  <Globe className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600" />
-                </div>
-              </div>
+              <p className="text-xs sm:text-sm font-medium text-gray-600">Not measured here</p>
+              <ul className="mt-2 space-y-1 text-xs text-gray-500">
+                {(metrics?.unbacked ?? []).map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
             </CardContent>
           </Card>
         </div>
 
         {/* Critical Issues Alert */}
-        {mockMetrics.criticalIssues > 0 && (
+        {metrics && metrics.criticalIssues > 0 && (
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Critical Issues Require Attention</AlertTitle>
             <AlertDescription>
-              {mockMetrics.criticalIssues} critical issue{mockMetrics.criticalIssues > 1 ? 's' : ''}{' '}
-              must be resolved before deployment. Review the checklist below for details.
+              {metrics.criticalIssues} critical issue{metrics.criticalIssues > 1 ? 's' : ''} must be
+              resolved before deployment. Review the checklist below for details.
             </AlertDescription>
           </Alert>
         )}
@@ -417,6 +223,10 @@ export default function DeploymentReadiness() {
               ))}
             </div>
 
+            {readinessQuery.isLoading && <p className="text-sm text-gray-500">Running checks...</p>}
+            {readinessQuery.isError && (
+              <InlineQueryError label="readiness checks" onRetry={readinessQuery.refetch} />
+            )}
             <div className="space-y-4">
               {filteredChecks.map((check) => {
                 const IconComponent =
@@ -444,12 +254,7 @@ export default function DeploymentReadiness() {
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      {getStatusBadge(check.status)}
-                      <Button variant="outline" size="sm">
-                        View Details
-                      </Button>
-                    </div>
+                    <div className="flex items-center gap-3">{getStatusBadge(check.status)}</div>
                   </div>
                 );
               })}
@@ -457,41 +262,23 @@ export default function DeploymentReadiness() {
           </CardContent>
         </Card>
 
-        {/* Launch Actions */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Rocket className="h-5 w-5" />
-              Launch Actions
-            </CardTitle>
-            <CardDescription>Ready to deploy? Complete final pre-launch steps</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col sm:flex-row gap-4">
-              <Button size="lg" className="flex-1" disabled={mockMetrics.criticalIssues > 0}>
-                <Rocket className="h-4 w-4 mr-2" />
-                Deploy to Production
-              </Button>
-              <Button variant="outline" size="lg" className="flex-1">
-                <Monitor className="h-4 w-4 mr-2" />
-                Run Final Tests
-              </Button>
-              <Button variant="outline" size="lg" className="flex-1">
-                <FileText className="h-4 w-4 mr-2" />
-                Export Checklist
-              </Button>
-            </div>
-
-            {mockMetrics.criticalIssues > 0 && (
-              <Alert className="mt-4">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>
-                  Deployment is blocked until all critical issues are resolved.
-                </AlertDescription>
-              </Alert>
-            )}
-          </CardContent>
-        </Card>
+        {/* There is no deploy or test-run action behind this page, so the
+            Deploy to Production and Run Final Tests buttons it used to show
+            are gone rather than left as controls that do nothing. */}
+        <div className="flex justify-end">
+          <Button
+            variant="outline"
+            disabled={checks.length === 0}
+            onClick={() =>
+              exportToCSV(checks, CHECKLIST_EXPORT_COLUMNS, {
+                filename: 'deployment-readiness-checklist',
+              })
+            }
+          >
+            <FileText className="h-4 w-4 mr-2" />
+            Export Checklist
+          </Button>
+        </div>
       </div>
     </MainLayout>
   );

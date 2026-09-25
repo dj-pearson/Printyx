@@ -6,6 +6,8 @@ const log = createModuleLogger('rbac-middleware');
 // Enhanced authentication middleware with role-based access control
 export interface AuthenticatedRequest extends Express.Request {
   user: {
+    // Express.User requires id, and line 82 reads it as the JWT fallback.
+    id: string;
     claims: {
       sub: string;
       email?: string;

@@ -131,6 +131,12 @@ export default async function handler(req: Request) {
     // Rows go through toCamel because PostgREST returns snake_case while these
     // pages were written against Drizzle's camelCase output.
 
+    // renewal_automation_rules HAS NO WRITER (round 165). Its only writer was
+    // PUT /rules on the Express router, which no client ever called; that router
+    // is deleted. So every tenant runs on the defaults below (90-day window, the
+    // shared module's pricing bounds) and no screen can change them - a rules
+    // editor is the missing piece, and it would need a manager gate because
+    // these bounds set the price a customer is quoted.
     // GET /contract-renewal/dashboard - Metrics for the dashboard header
     if (req.method === 'GET' && endpoint === 'dashboard') {
       const { data: rules } = await admin

@@ -1293,13 +1293,15 @@ export function registerClientMonitoringRoutes(app: Express) {
       // Import OID mappings schema
       const { oidMappings } = await import('@shared/printyx-client-schema');
 
-      let query = db.select().from(oidMappings);
-
-      if (manufacturer) {
-        query = query.where(eq(oidMappings.manufacturer, manufacturer as string));
-      }
-
-      const mappings = await query.orderBy(desc(oidMappings.createdAt));
+      const mappings = await db
+        .select()
+        .from(oidMappings)
+        .where(
+          typeof manufacturer === 'string' && manufacturer
+            ? eq(oidMappings.manufacturer, manufacturer)
+            : undefined,
+        )
+        .orderBy(desc(oidMappings.createdAt));
 
       // Transform to client-friendly format
       const presets = mappings.map((mapping) => ({

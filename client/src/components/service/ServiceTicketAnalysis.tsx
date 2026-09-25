@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { apiRequest } from '@/lib/queryClient';
+import { describeApiError } from '@/lib/api-error';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -64,26 +65,44 @@ import type {
 import { z } from 'zod';
 import { format } from 'date-fns';
 
-const analysisFormSchema = insertServiceCallAnalysisSchema.extend({
-  callStartTime: z.string(),
-  callEndTime: z.string().optional(),
-  actualArrivalTime: z.string().optional(),
-  followUpDate: z.string().optional(),
-});
+// Round 163: the server supplies the tenant, the ticket (from the URL) and the
+// technician (the caller). The insert schema requires all three, so a form
+// built on it unmodified could never pass validation - Save did nothing and
+// said nothing.
+const analysisFormSchema = insertServiceCallAnalysisSchema
+  .omit({ tenantId: true, serviceTicketId: true, technicianId: true })
+  .extend({
+    callStartTime: z.string(),
+    callEndTime: z.string().optional(),
+    actualArrivalTime: z.string().optional(),
+    followUpDate: z.string().optional(),
+  });
 
-const partsOrderFormSchema = insertPartsOrderSchema.extend({
-  orderDate: z.string(),
-  expectedDeliveryDate: z.string().optional(),
-  items: z.array(
-    z.object({
-      partNumber: z.string(),
-      partName: z.string(),
-      partDescription: z.string().optional(),
-      quantityOrdered: z.number().min(1),
-      unitPrice: z.number().min(0),
-    }),
-  ),
-});
+// Same for the parts order: the server takes the tenant, the analysis (URL),
+// the ticket (from the analysis) and the order number, and the page computes
+// the totals from the line items when it submits.
+const partsOrderFormSchema = insertPartsOrderSchema
+  .omit({
+    tenantId: true,
+    analysisId: true,
+    serviceTicketId: true,
+    orderNumber: true,
+    subtotal: true,
+    total: true,
+  })
+  .extend({
+    orderDate: z.string(),
+    expectedDeliveryDate: z.string().optional(),
+    items: z.array(
+      z.object({
+        partNumber: z.string(),
+        partName: z.string(),
+        partDescription: z.string().optional(),
+        quantityOrdered: z.number().min(1),
+        unitPrice: z.number().min(0),
+      }),
+    ),
+  });
 
 type AnalysisFormInput = z.infer<typeof analysisFormSchema>;
 type PartsOrderFormInput = z.infer<typeof partsOrderFormSchema>;
@@ -205,6 +224,13 @@ export default function ServiceTicketAnalysis({
       analysisForm.reset();
       toast({ title: 'Analysis created successfully' });
     },
+    onError: (err) => {
+      toast({
+        title: 'Could not save the analysis',
+        description: describeApiError(err).message,
+        variant: 'destructive',
+      });
+    },
   });
 
   // Create parts order
@@ -221,21 +247,41 @@ export default function ServiceTicketAnalysis({
         subtotal: data.items.reduce((sum, item) => sum + item.quantityOrdered * item.unitPrice, 0),
       });
     },
-    onSuccess: (newOrder) => {
-      const addItemsPromise = apiRequest(`/api/parts-orders/${newOrder.id}/items`, 'POST', {
-        items: partsOrderForm.getValues('items').map((item) => ({
-          ...item,
-          lineTotal: item.quantityOrdered * item.unitPrice,
-        })),
-      });
-
-      Promise.resolve(addItemsPromise).then(() => {
+    onSuccess: async (newOrder) => {
+      // Round 174: this used to be Promise.resolve(...).then() with no catch,
+      // so when the line items failed the order stood saved with no lines,
+      // the dialog stayed open, and nothing said why.
+      // Built before the call: a .map inside the apiRequest statement reads to
+      // check:unwrapped-response as mapping the RESPONSE.
+      const items = partsOrderForm.getValues('items').map((item) => ({
+        ...item,
+        lineTotal: item.quantityOrdered * item.unitPrice,
+      }));
+      try {
+        await apiRequest(`/api/parts-orders/${newOrder.id}/items`, 'POST', { items });
+      } catch (err) {
         queryClient.invalidateQueries({
           queryKey: ['/api/service-analysis', selectedAnalysis?.id, 'parts-orders'],
         });
-        setShowPartsOrderDialog(false);
-        partsOrderForm.reset();
-        toast({ title: 'Parts order created successfully' });
+        toast({
+          title: 'Order created, but its parts were not saved',
+          description: describeApiError(err).message,
+          variant: 'destructive',
+        });
+        return;
+      }
+      queryClient.invalidateQueries({
+        queryKey: ['/api/service-analysis', selectedAnalysis?.id, 'parts-orders'],
+      });
+      setShowPartsOrderDialog(false);
+      partsOrderForm.reset();
+      toast({ title: 'Parts order created successfully' });
+    },
+    onError: (err) => {
+      toast({
+        title: 'Could not create the parts order',
+        description: describeApiError(err).message,
+        variant: 'destructive',
       });
     },
   });

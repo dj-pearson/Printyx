@@ -14,13 +14,17 @@ import { describe, it, expect } from 'vitest';
 import * as shared from '@shared/pricing-math';
 import * as edge from '../../../supabase/functions/_shared/pricing-math';
 import { lineMarginPct } from '@shared/quote-math';
-import {
+// Round 175: server/services/pricing-service.ts was the third copy this file
+// compared and is deleted with the Express pricing routes (/api/pricing is
+// proxied). Its checks below now run against the shared module, which is what
+// it delegated to; the two copies that remain are shared and edge.
+const {
   calculateRepCost,
-  calculateMarginPercentage,
-  calculateMarkupPercentage,
+  grossMarginPct: calculateMarginPercentage,
+  markupPct: calculateMarkupPercentage,
   validateMinimumMargin,
   canSeeDealerCost,
-} from '../../services/pricing-service';
+} = shared;
 
 describe('the two copies agree', () => {
   it('on the role map', () => {
@@ -44,7 +48,7 @@ describe('the two copies agree', () => {
     ['guest', false],
     ['not-a-role', false],
     ['', false],
-  ])('canSeeDealerCost(%s) === %s on both sides and on Express', (role, expected) => {
+  ])('canSeeDealerCost(%s) === %s on both sides', (role, expected) => {
     expect(shared.canSeeDealerCost(role)).toBe(expected);
     expect(edge.canSeeDealerCost(role)).toBe(expected);
     expect(canSeeDealerCost(role)).toBe(expected);

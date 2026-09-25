@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,13 +25,11 @@ import {
   AlertTriangle,
   Camera,
   FileText,
-  Package,
   ThumbsUp,
   ThumbsDown,
   Timer,
   Navigation,
   Phone,
-  Settings,
   Clipboard,
   Upload,
   Send,
@@ -44,6 +42,9 @@ import { z } from 'zod';
 import { useLocation } from 'wouter';
 import { apiRequest } from '@/lib/queryClient';
 import { type ServiceTicket } from '@shared/schema';
+import { describeApiError } from '@/lib/api-error';
+import { appendWorkOrderNote, base64FromDataUrl, telHref } from '@/lib/ticket-quick-actions';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface TechnicianTicketWorkflowProps {
   ticket: ServiceTicket;
@@ -177,6 +178,52 @@ export default function TechnicianTicketWorkflow({
   const [completedSteps, setCompletedSteps] = useState<string[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const { toast } = useToast();
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const [notesOpen, setNotesOpen] = useState(false);
+  const [noteDraft, setNoteDraft] = useState('');
+
+  const photoMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(new Error('Could not read the photo'));
+        reader.readAsDataURL(file);
+      });
+      const base64 = base64FromDataUrl(dataUrl);
+      if (!base64) throw new Error('Could not read the photo');
+      return apiRequest(`/api/service-tickets/${ticket.id}/attachments`, 'POST', {
+        base64,
+        filename: file.name,
+      });
+    },
+    onSuccess: () => {
+      toast({ title: 'Photo attached to the ticket' });
+    },
+    onError: (err) =>
+      toast({
+        title: 'Photo not attached',
+        description: describeApiError(err).message,
+        variant: 'destructive',
+      }),
+  });
+
+  const notesMutation = useMutation({
+    mutationFn: (workOrderNotes: string) =>
+      apiRequest(`/api/service-tickets/${ticket.id}`, 'PATCH', { workOrderNotes }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/service-tickets'] });
+      toast({ title: 'Note added' });
+      setNoteDraft('');
+      setNotesOpen(false);
+    },
+    onError: (err) =>
+      toast({
+        title: 'Note not saved',
+        description: describeApiError(err).message,
+        variant: 'destructive',
+      }),
+  });
   const queryClient = useQueryClient();
 
   // Get current session data
@@ -699,25 +746,47 @@ export default function TechnicianTicketWorkflow({
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm">
-              <Phone className="h-4 w-4 mr-2" />
-              Call Customer
-            </Button>
-            <Button variant="outline" size="sm">
+            {/* Round 215: none of these had a handler. Request Parts and
+                Equipment Info are removed - there is no parts-request flow
+                and no equipment detail route to send them to. */}
+            {telHref(ticket.customerPhone) ? (
+              <Button variant="outline" size="sm" asChild>
+                <a href={telHref(ticket.customerPhone)!}>
+                  <Phone className="h-4 w-4 mr-2" />
+                  Call Customer
+                </a>
+              </Button>
+            ) : (
+              <Button variant="outline" size="sm" disabled title="No phone number on this ticket">
+                <Phone className="h-4 w-4 mr-2" />
+                Call Customer
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={photoMutation.isPending}
+              onClick={() => photoInputRef.current?.click()}
+            >
               <Camera className="h-4 w-4 mr-2" />
-              Take Photo
+              {photoMutation.isPending ? 'Uploading...' : 'Take Photo'}
             </Button>
-            <Button variant="outline" size="sm">
-              <Package className="h-4 w-4 mr-2" />
-              Request Parts
-            </Button>
-            <Button variant="outline" size="sm">
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              aria-label="Photo to attach to this ticket"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                e.target.value = '';
+                if (file) photoMutation.mutate(file);
+              }}
+            />
+            <Button variant="outline" size="sm" onClick={() => setNotesOpen(true)}>
               <FileText className="h-4 w-4 mr-2" />
               Add Notes
-            </Button>
-            <Button variant="outline" size="sm">
-              <Settings className="h-4 w-4 mr-2" />
-              Equipment Info
             </Button>
             <Button
               size="sm"
@@ -728,6 +797,39 @@ export default function TechnicianTicketWorkflow({
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={notesOpen} onOpenChange={setNotesOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add a note to this ticket</DialogTitle>
+          </DialogHeader>
+          <form
+            className="space-y-3"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const next = appendWorkOrderNote(ticket.workOrderNotes, noteDraft, new Date());
+              if (next) notesMutation.mutate(next);
+            }}
+          >
+            <Textarea
+              aria-label="Note"
+              value={noteDraft}
+              onChange={(e) => setNoteDraft(e.target.value)}
+              rows={4}
+            />
+            <p className="text-xs text-muted-foreground">
+              Added to the work-order notes with the date; earlier notes are kept.
+            </p>
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={!noteDraft.trim() || notesMutation.isPending}
+            >
+              {notesMutation.isPending ? 'Saving...' : 'Add note'}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -132,7 +132,9 @@ describe('the rule separates a measured count from a fabricated one', () => {
 
 describe('every bulk write in the tree takes its count from the result', () => {
   const cases: [string, string][] = [
-    ['server/routes-bulk-operations.ts', 'returning({ id: invoices.id })'],
+    // Round 173 deleted the invoice pair here (/api/invoices is proxied); the
+    // equipment bulk writes in the same file carry the property now.
+    ['server/routes-bulk-operations.ts', 'returning({ id: equipment.id })'],
     ['server/routes-crm-bulk.ts', 'returning({ id: deals.id })'],
     ['supabase/functions/invoices/index.ts', "select('id')"],
     ['supabase/functions/deals/index.ts', "select('id')"],

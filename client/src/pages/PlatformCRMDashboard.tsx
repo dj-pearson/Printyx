@@ -20,6 +20,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { downloadAuthedFile } from '@/lib/authed-download';
+import { describeApiError } from '@/lib/api-error';
 import {
   Building2,
   Users,
@@ -674,7 +676,27 @@ export default function PlatformCRMDashboard() {
                 <LineChart className="w-6 h-6 mb-2" />
                 <span className="text-sm">View Analytics</span>
               </Button>
-              <Button variant="outline" className="h-24 flex-col">
+              {/* The records page's own export, unfiltered: every platform
+                  business record as CSV (the server refuses over 5,000 rows
+                  with a 413 rather than sending a partial file). */}
+              <Button
+                variant="outline"
+                className="h-24 flex-col"
+                onClick={async () => {
+                  try {
+                    await downloadAuthedFile(
+                      '/api/platform-crm/business-records/export',
+                      `platform-business-records-${new Date().toISOString().slice(0, 10)}.csv`,
+                    );
+                  } catch (error) {
+                    toast({
+                      title: 'Export failed',
+                      description: describeApiError(error).message,
+                      variant: 'destructive',
+                    });
+                  }
+                }}
+              >
                 <Download className="w-6 h-6 mb-2" />
                 <span className="text-sm">Export Data</span>
               </Button>

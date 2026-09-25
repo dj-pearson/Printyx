@@ -53,7 +53,6 @@ import {
   useWorkflowAutomation,
 } from '@/hooks/useCrossModuleIntegration';
 import { useMobileDetection } from '@/hooks/useExternalIntegrations';
-import { MobileServiceDispatch } from '@/components/mobile/MobileServiceDispatch';
 import { CustomerEquipmentProfile } from '@/components/CustomerEquipmentProfile';
 import { useActionParam } from '@/hooks/use-action-param';
 import {
@@ -787,7 +786,7 @@ export default function ServiceHub() {
                               size="sm"
                               variant="outline"
                               onClick={() => {
-                                setSelectedCustomerId(ticket.customerId || 'default-customer');
+                                setSelectedCustomerId(ticket.customerId || null);
                                 setShowEquipmentProfile(true);
                               }}
                               className="flex items-center gap-1"
@@ -957,7 +956,7 @@ export default function ServiceHub() {
 
         {/* Customer Equipment Profile Modal */}
         <CustomerEquipmentProfile
-          customerId={selectedCustomerId || ''}
+          customerId={selectedCustomerId}
           isOpen={showEquipmentProfile}
           onClose={() => {
             setShowEquipmentProfile(false);

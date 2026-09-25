@@ -127,19 +127,19 @@ const Interactive3DHero = () => {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-5">
+              {/* Round 216: had no handler. /signup is the same target the
+                  homepage's other trial link uses. A "Schedule Demo" button
+                  beside it did nothing and is removed until a public demo
+                  request destination exists. */}
               <Button
                 size="lg"
+                asChild
                 className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-4 text-base sm:px-8 sm:py-7 sm:text-lg rounded-xl shadow-[0_0_40px_-10px_rgba(37,99,235,0.5)] hover:shadow-[0_0_60px_-15px_rgba(37,99,235,0.6)] transition-all duration-300 group"
               >
-                Start Free Trial
-                <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
-              </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                className="border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white px-6 py-4 text-base sm:px-8 sm:py-7 sm:text-lg rounded-xl backdrop-blur-sm"
-              >
-                Schedule Demo
+                <a href="/signup">
+                  Start Free Trial
+                  <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                </a>
               </Button>
             </div>
 

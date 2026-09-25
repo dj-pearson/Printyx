@@ -17,6 +17,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { createSupabaseClient } from '../_shared/supabase.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { resolveRoleLevel } from '../_shared/rbac.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || 'https://api.printyx.net';
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
@@ -115,7 +116,14 @@ export default async function handler(req: Request): Promise<Response> {
       }
 
       const user = userData.user;
-      const roleLevel = user.app_metadata?.roleLevel || user.user_metadata?.roleLevel || 0;
+      // Round 148: this read user_metadata.roleLevel as a fallback, and the
+      // session holder writes user_metadata - so any member of any tenant could
+      // claim level 8 and run a destructive merge. app_metadata claim or
+      // roles.level only.
+      const roleLevel = await resolveRoleLevel(
+        createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY),
+        user,
+      );
 
       // Require platform admin (level 8) for this destructive operation
       if (roleLevel < 8) {

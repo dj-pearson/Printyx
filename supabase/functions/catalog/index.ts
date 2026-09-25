@@ -34,6 +34,7 @@ import type { AuthContext } from '../_shared/auth.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 import { fetchAllRows } from '../_shared/paged-select.ts';
 import { toCamelShallow } from '../_shared/case.ts';
+import { ilikeAnyFilter } from '../_shared/postgrest-or.ts';
 import {
   importRowKey,
   normalizeCategoryName,
@@ -452,8 +453,7 @@ export default async function handler(req: Request) {
         if (category && category !== 'all') q = q.eq('category', category);
         if (status && status !== 'all') q = q.eq('status', status);
         if (search) {
-          const term = search.replace(/[,()]/g, ' ');
-          q = q.or(`${nameColumn}.ilike.%${term}%,${codeColumn}.ilike.%${term}%`);
+          q = q.or(ilikeAnyFilter([nameColumn, codeColumn], search));
         }
         return q as T;
       };

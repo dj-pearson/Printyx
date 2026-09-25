@@ -10,6 +10,12 @@ function nowIsoOf(): string {
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 import { deriveOperationalAlerts } from '../_shared/operational-alerts.ts';
+import { fetchAllRows } from '../_shared/paged-select.ts';
+import {
+  latestMetrics,
+  metricValue,
+  MAX_HISTORY_DAYS,
+} from '../../../shared/performance-metrics.ts';
 
 // Export handler for use by the main server router
 export default async function handler(req: Request) {
@@ -56,57 +62,90 @@ export default async function handler(req: Request) {
       case 'metrics': {
         // Was a hardcoded object (responseTime 185, uptime 99.95, cpuUsage 45,
         // ...) with a comment saying a real version would read monitoring
-        // tables. performance_metrics IS that table: metric_type, value, unit,
-        // endpoint, timestamp. The latest value per type is returned, and a
-        // type with no rows is reported rather than given a plausible number.
-        const { data: rows } = await admin
+        // tables. performance_metrics IS that table. The latest value per type
+        // is returned; a type with no rows is NULL and named in `unreported`
+        // (round 235). It used to be 0, which KpiSummaryBar and the
+        // monitoring page rendered as 0ms response time and 0% uptime - a
+        // perfect score and an outage from the same absence.
+        const { data: rows, error } = await admin
           .from('performance_metrics')
-          .select('metric_type, value, timestamp')
+          .select('metric_type, value, unit, timestamp')
           .eq('tenant_id', tenantId)
           .order('timestamp', { ascending: false })
           .limit(500);
-
-        // Ordered newest first, so the first row seen per type is the latest.
-        const latest = new Map<string, number>();
-        for (const row of rows ?? []) {
-          const type = String((row as any).metric_type ?? '');
-          if (type && !latest.has(type)) latest.set(type, Number((row as any).value) || 0);
+        if (error) {
+          console.error('Error fetching performance metrics:', error);
+          return createCorsResponse({ error: 'Failed to fetch performance metrics' }, 500, req);
         }
 
-        // KpiSummaryBar reads responseTime/throughput/errorRate/uptime;
-        // PerformanceMonitoring additionally reads memory/cpu/diskUsage.
-        const KEYS: Array<[string, string]> = [
-          ['responseTime', 'response_time'],
-          ['throughput', 'throughput'],
-          ['errorRate', 'error_rate'],
-          ['uptime', 'uptime'],
-          ['memoryUsage', 'memory_usage'],
-          ['cpuUsage', 'cpu_usage'],
-          ['diskUsage', 'disk_usage'],
-          ['activeUsers', 'active_users'],
-        ];
-
-        const metrics: Record<string, number> = {};
-        const missing: string[] = [];
-        for (const [outKey, metricType] of KEYS) {
-          const value = latest.get(metricType) ?? latest.get(outKey);
-          if (value === undefined) {
-            metrics[outKey] = 0;
-            missing.push(outKey);
-          } else {
-            metrics[outKey] = value;
-          }
-        }
-
+        const { values, units, unreported } = latestMetrics(rows ?? []);
         return createCorsResponse(
-          missing.length > 0
-            ? {
-                ...metrics,
-                unreported: missing.map(
-                  (k) => `${k}: no performance_metrics row of that metric_type for this tenant`,
-                ),
-              }
-            : metrics,
+          {
+            ...values,
+            units,
+            unreported: unreported.map(
+              (k) => `${k}: no performance_metrics row of that metric_type for this tenant`,
+            ),
+          },
+          200,
+          req,
+        );
+      }
+
+      case 'history': {
+        // Round 235: the monitoring page's charts were sine waves drawn
+        // around the current value. This returns the stored readings in a
+        // window instead, paged rather than capped, so a chart is the rows.
+        // timestamp is an INSTANT column, so the bounds are instants too.
+        const now = new Date();
+        const toParam = url.searchParams.get('to');
+        const fromParam = url.searchParams.get('from');
+        const to = toParam ? new Date(toParam) : now;
+        const from = fromParam ? new Date(fromParam) : new Date(to.getTime() - 7 * 86_400_000);
+        if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime()) || from > to) {
+          return createCorsResponse(
+            { error: 'from and to must be dates with from before to', code: 'INVALID_RANGE' },
+            400,
+            req,
+          );
+        }
+        if (to.getTime() - from.getTime() > MAX_HISTORY_DAYS * 86_400_000) {
+          return createCorsResponse(
+            {
+              error: `A history window can span at most ${MAX_HISTORY_DAYS} days`,
+              code: 'RANGE_TOO_WIDE',
+            },
+            400,
+            req,
+          );
+        }
+        let rows: any[];
+        try {
+          rows = await fetchAllRows<any>(() =>
+            admin
+              .from('performance_metrics')
+              .select('metric_type, value, unit, endpoint, timestamp')
+              .eq('tenant_id', tenantId)
+              .gte('timestamp', from.toISOString())
+              .lte('timestamp', to.toISOString())
+              .order('timestamp', { ascending: true }),
+          );
+        } catch (err) {
+          console.error('Error fetching performance history:', err);
+          return createCorsResponse({ error: 'Failed to fetch performance history' }, 500, req);
+        }
+        return createCorsResponse(
+          {
+            from: from.toISOString(),
+            to: to.toISOString(),
+            rows: rows.map((r) => ({
+              metric_type: r.metric_type,
+              value: metricValue(r.value),
+              unit: r.unit ?? null,
+              endpoint: r.endpoint ?? null,
+              timestamp: r.timestamp ?? null,
+            })),
+          },
           200,
           req,
         );

@@ -114,7 +114,7 @@ export class WarehouseReportingService {
     dateRange?: DateRange,
   ): Promise<WarehouseTeamQuickStats> {
     // Generate cache key
-    const cacheKey = `warehouse-team-quick-stats:${userContext.userId}:${JSON.stringify(dateRange || {})}`;
+    const cacheKey = `warehouse-team-quick-stats:${userContext.id}:${JSON.stringify(dateRange || {})}`;
 
     // Check cache
     const cached = ReportCache.get<WarehouseTeamQuickStats>(cacheKey);
@@ -182,11 +182,17 @@ export class WarehouseReportingService {
     const techUsers =
       techIds.length > 0
         ? await db
-            .select({ id: users.id, name: users.name })
+            // users has first_name/last_name and no name column.
+            .select({ id: users.id, firstName: users.firstName, lastName: users.lastName })
             .from(users)
             .where(inArray(users.id, techIds))
         : [];
-    const techNameMap = new Map(techUsers.map((u) => [u.id, u.name || 'Unknown']));
+    const techNameMap = new Map(
+      techUsers.map((u) => [
+        u.id,
+        [u.firstName, u.lastName].filter(Boolean).join(' ') || 'Unknown',
+      ]),
+    );
 
     // Find top technician (highest FPY rate)
     const technicianStats = techIds.map((techId) => {

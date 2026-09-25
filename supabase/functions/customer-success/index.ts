@@ -28,6 +28,7 @@ import { handleChurnPredictions } from './handlers/churn-predictions.ts';
 import { handleInterventions } from './handlers/interventions.ts';
 import { handleJourneys } from './handlers/journeys.ts';
 import { handleRenewals } from './handlers/renewals.ts';
+import { handleSatisfactionTemplates } from './handlers/satisfaction-templates.ts';
 import {
   handleUsageAnalytics,
   handleSatisfaction,
@@ -85,6 +86,9 @@ export default async function handler(req: Request) {
         break;
       case 'satisfaction':
         result = await handleSatisfaction(req, ctx);
+        break;
+      case 'satisfaction-templates':
+        result = await handleSatisfactionTemplates(req, ctx);
         break;
       case 'calculate-health':
         result = await handleCalculateHealth(req, ctx);

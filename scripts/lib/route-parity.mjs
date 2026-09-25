@@ -357,6 +357,24 @@ export function computeParity(repo = repoDefault) {
         );
       }
     }
+
+    // (c) TUPLE MOUNTS: `['/api/x', './routes/x-routes']` entries in the
+    // registry's lazy and async mount tables, each mounted with
+    // `app.use(mountPath, mod.default)`. The router's own paths are relative
+    // to the mount, so neither (a) nor (b) can see them, and eleven domains -
+    // automated-billing, mileage, gps, extension and billing among them -
+    // were invisible to every guard built on this walk (round 238). The mount
+    // path IS the domain, so the tuple alone is enough; the module must still
+    // resolve, or a stale entry would invent an Express handler.
+    for (const t of registrySrc.matchAll(
+      /\[\s*['"`]\/api\/([a-z0-9-]+)['"`]\s*,\s*['"`](\.\.?\/[^'"`]+)['"`]/g,
+    )) {
+      const modPath = join(repo, 'server', t[2]);
+      const file = [`${modPath}.ts`, join(modPath, 'index.ts')].find(
+        (f) => existsSync(f) && statSync(f).isFile(),
+      );
+      if (file) expressServed.add(t[1]);
+    }
   }
 
   const domains = new Set([...frontendCalls, ...edgeFns, ...expressServed]);

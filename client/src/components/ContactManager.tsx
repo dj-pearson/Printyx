@@ -66,7 +66,28 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { apiRequest, extractRecords } from '@/lib/queryClient';
+import { exportToCSV, type ExportColumn } from '@/lib/export-utils';
 import { useConfirm } from '@/components/ui/confirm-dialog';
+
+/**
+ * UI-DEAD-BUTTONS-001 (round 184): the Export button had no handler. It
+ * exports the contacts the list is showing (after search and filters), which
+ * is what a user who pressed it next to that list expects.
+ */
+const CONTACT_EXPORT_COLUMNS: ExportColumn<Contact>[] = [
+  { key: 'firstName', label: 'First name' },
+  { key: 'lastName', label: 'Last name' },
+  { key: 'title', label: 'Title' },
+  { key: 'department', label: 'Department' },
+  { key: 'email', label: 'Email' },
+  { key: 'phone', label: 'Phone' },
+  { key: 'mobile', label: 'Mobile' },
+  { key: 'isPrimaryContact', label: 'Primary contact', format: (v) => (v ? 'Yes' : 'No') },
+  { key: 'leadStatus', label: 'Status' },
+  { key: 'ownerName', label: 'Owner' },
+  { key: 'lastContactDate', label: 'Last contact' },
+  { key: 'nextFollowUpDate', label: 'Next follow-up' },
+];
 
 interface Contact {
   id: string;
@@ -250,9 +271,12 @@ export function ContactManager({ companyId, companyName, className }: ContactMan
     }
   };
 
-  const formatDate = (date: string) => {
+  const formatDate = (date: string | null | undefined) => {
     if (!date) return 'Never';
-    return format(new Date(date), 'MMM dd, yyyy');
+    const d = new Date(date);
+    // date-fns throws "Invalid time value" on an unparseable date, which would
+    // take the whole contact table down over one bad row.
+    return Number.isNaN(d.getTime()) ? 'Never' : format(d, 'MMM dd, yyyy');
   };
 
   const getInitials = (firstName: string, lastName: string) => {
@@ -290,7 +314,16 @@ export function ContactManager({ companyId, companyName, className }: ContactMan
           </div>
         </div>
         <div className="flex items-center space-x-2">
-          <Button variant="outline" size="sm">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={filteredContacts.length === 0}
+            onClick={() =>
+              exportToCSV(filteredContacts, CONTACT_EXPORT_COLUMNS, {
+                filename: `${companyName || 'company'}-contacts`,
+              })
+            }
+          >
             <Download className="h-4 w-4 mr-2" />
             Export
           </Button>

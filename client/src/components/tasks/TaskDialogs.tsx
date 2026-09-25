@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -48,12 +48,15 @@ import { toDateInputValue } from '@/lib/date-utils';
  * customerId, dealId and handoffId replace them: what the task is ABOUT, which
  * is the thing tasks never recorded.
  */
+export type TaskStatus = 'todo' | 'in_progress' | 'review' | 'completed' | 'cancelled';
+export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
+
 interface Task {
   id: string;
   title: string;
   description?: string;
-  status: 'todo' | 'in_progress' | 'review' | 'completed' | 'cancelled';
-  priority: 'low' | 'medium' | 'high' | 'urgent';
+  status: TaskStatus;
+  priority: TaskPriority;
   assignedTo?: string;
   projectId?: string;
   customerId?: string;
@@ -61,7 +64,9 @@ interface Task {
   handoffId?: string;
   dueDate?: string;
   estimatedHours?: number;
-  tags: string[];
+  // Optional: the edit dialog reads `task.tags || []`, and MyTasksView's rows
+  // carry none.
+  tags?: string[];
 }
 
 /** A record a task can be about, for the related-record picker. */
@@ -87,6 +92,7 @@ export function CreateTaskDialog({
   customers = [],
   deals = [],
   relatedTo,
+  initialStatus,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -99,6 +105,8 @@ export function CreateTaskDialog({
   deals?: RelatedRecord[];
   /** Pre-linked when the dialog is opened from a record page. */
   relatedTo?: Pick<Task, 'customerId' | 'dealId' | 'handoffId'>;
+  /** Starting status, when opened from a board column (round 213). */
+  initialStatus?: string;
 }) {
   const EMPTY: Partial<Task> = {
     title: '',
@@ -115,6 +123,12 @@ export function CreateTaskDialog({
     tags: [],
   };
   const [formData, setFormData] = useState<Partial<Task>>(EMPTY);
+  // Opened from a board column: start in that column's status. It is only a
+  // starting value - the status select below still decides.
+  useEffect(() => {
+    if (open && initialStatus)
+      setFormData((prev) => ({ ...prev, status: initialStatus as Task['status'] }));
+  }, [open, initialStatus]);
 
   const [newTag, setNewTag] = useState('');
 

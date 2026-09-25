@@ -1,5 +1,7 @@
 // Service Tickets Edge Function
 // Handles service ticket CRUD and dispatch operations
+import { dispatchCompletionSurvey } from '../_shared/csat-dispatch.ts';
+import { isCompletionTransition } from '../../../shared/csat-survey.ts';
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
@@ -23,6 +25,9 @@ import {
   ticketVocabulary,
 } from '../_shared/service-ticket-vocabulary.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { toCamelShallow } from '../_shared/case.ts';
+import { buildAnalysisRow, ticketStatusForOutcome } from '../_shared/service-call-analysis.ts';
+import { ilikeAnyFilter } from '../_shared/postgrest-or.ts';
 
 // Helper: Batch-enrich records with customer names from business_records
 /**
@@ -248,9 +253,7 @@ export default async function handler(req: Request) {
       }
 
       if (search) {
-        query = query.or(
-          `ticket_number.ilike.%${search}%,title.ilike.%${search}%,description.ilike.%${search}%`,
-        );
+        query = query.or(ilikeAnyFilter(['ticket_number', 'title', 'description'], search));
       }
 
       const { data: tickets, error, count } = await query;
@@ -263,6 +266,89 @@ export default async function handler(req: Request) {
       // WF-V-01: the machine and the technician, not just the customer.
       const enriched = await enrichTickets(admin, tenantId, tickets || []);
       return createCorsResponse({ data: enriched, total: count || 0 }, 200, req);
+    }
+
+    // GET/POST /service-tickets/:id/analysis
+    //
+    // Round 163. ServiceTicketAnalysis.tsx lists and records visit analyses
+    // here and nothing served it on either host: this function had no
+    // `analysis` branch, and /api/service-tickets is proxied, so the Express
+    // handlers for this path never ran in dev either. The write plan and the
+    // ticket side effect live in _shared/service-call-analysis.ts. The ticket
+    // must exist and be in the caller's scope before either half runs.
+    if (ticketId && subResource === 'analysis' && (req.method === 'GET' || req.method === 'POST')) {
+      const { data: ticketRow, error: ticketError } = await admin
+        .from('service_tickets')
+        .select('id')
+        .eq('id', ticketId)
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+      if (ticketError) {
+        return createCorsResponse({ error: 'Failed to load ticket' }, 500, req);
+      }
+      if (!ticketRow) {
+        return createCorsResponse({ error: 'Service ticket not found' }, 404, req);
+      }
+      const denied = await denyIfTicketOutOfScope(ticketId);
+      if (denied) return denied;
+
+      if (req.method === 'GET') {
+        const { data: analyses, error } = await admin
+          .from('service_call_analysis')
+          .select('*')
+          .eq('tenant_id', tenantId)
+          .eq('service_ticket_id', ticketId)
+          .order('created_at', { ascending: false });
+        if (error) {
+          return createCorsResponse({ error: 'Failed to fetch service analysis' }, 500, req);
+        }
+        return createCorsResponse((analyses ?? []).map(toCamelShallow), 200, req);
+      }
+
+      const body = await req.json().catch(() => ({}));
+      const plan = buildAnalysisRow(body, { tenantId, ticketId, userId: user.id }, 'create');
+      if (plan.invalid.length > 0) {
+        return createCorsResponse(
+          { error: 'Invalid analysis', code: 'INVALID_ANALYSIS', invalid: plan.invalid },
+          400,
+          req,
+        );
+      }
+
+      const { data: analysis, error } = await admin
+        .from('service_call_analysis')
+        .insert(plan.row)
+        .select()
+        .single();
+      if (error) {
+        console.error('Error creating service analysis:', error);
+        return createCorsResponse({ error: 'Failed to create service analysis' }, 500, req);
+      }
+
+      // The analysis is stored; the ticket move is reported rather than
+      // allowed to fail the request, because the analysis is the record.
+      const nextStatus = ticketStatusForOutcome(plan.row.outcome);
+      let ticketStatusUpdated: boolean | null = null;
+      if (nextStatus) {
+        const { error: statusError } = await admin
+          .from('service_tickets')
+          .update({ status: nextStatus, updated_at: new Date().toISOString() })
+          .eq('id', ticketId)
+          .eq('tenant_id', tenantId);
+        ticketStatusUpdated = !statusError;
+        if (statusError) console.error('Error moving ticket after analysis:', statusError.message);
+      }
+
+      return createCorsResponse(
+        {
+          ...toCamelShallow(analysis),
+          ticketStatus: nextStatus,
+          ticketStatusUpdated,
+          ignoredFields: plan.ignoredFields,
+        },
+        201,
+        req,
+      );
     }
 
     // GET /service-tickets/:id/updates - Get ticket timeline/updates
@@ -704,6 +790,16 @@ export default async function handler(req: Request) {
           await admin.from('user_notifications').insert(notification);
         } catch (notifyError) {
           console.warn('Assignment notification not sent:', notifyError);
+        }
+      }
+
+      // CSAT-PRODUCER-001: a ticket moving into completed creates the
+      // satisfaction survey its customer answers in the portal. Never blocks the
+      // save - dispatchCompletionSurvey catches everything and reports it.
+      if (isCompletionTransition(currentTicket?.status, ticket?.status)) {
+        const outcome = await dispatchCompletionSurvey(admin, tenantId, ticket);
+        if (!outcome.created && outcome.reason !== 'already surveyed') {
+          console.warn(`CSAT survey not created for ticket ${ticketId}: ${outcome.reason}`);
         }
       }
 

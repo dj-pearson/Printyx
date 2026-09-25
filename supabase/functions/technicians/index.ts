@@ -6,6 +6,7 @@ import { normalizePath } from '../_shared/path.ts';
 import { applyUserScope, resolveScope } from '../_shared/scope.ts';
 import { fetchAllRows } from '../_shared/paged-select.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { ilikeAnyFilter } from '../_shared/postgrest-or.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -81,9 +82,7 @@ export default async function handler(req: Request) {
       }
 
       if (search) {
-        query = query.or(
-          `first_name.ilike.%${search}%,last_name.ilike.%${search}%,email.ilike.%${search}%`,
-        );
+        query = query.or(ilikeAnyFilter(['first_name', 'last_name', 'email'], search));
       }
 
       if (skillSet) {

@@ -301,7 +301,6 @@ const PreventiveMaintenanceAutomation = React.lazy(
 );
 const CustomerSuccessManagement = React.lazy(() => import('@/pages/CustomerSuccessManagement'));
 const MobileServiceApp = React.lazy(() => import('@/pages/MobileServiceApp'));
-const AdvancedAnalyticsDashboard = React.lazy(() => import('@/pages/AdvancedAnalyticsDashboard'));
 const AIAnalyticsDashboard = React.lazy(() => import('@/pages/AIAnalyticsDashboard'));
 const IntegrationHub = React.lazy(() => import('@/pages/IntegrationHub'));
 const WorkflowAutomation = React.lazy(() => import('@/pages/WorkflowAutomation'));
@@ -1082,17 +1081,18 @@ function Router() {
                 <Route path="/sales-pipeline" component={SalesPipelineWorkflow} />
                 <Route path="/esignature-integration" component={ESignatureIntegration} />
                 <Route path="/service-hub" component={ServiceHub} />
-                <Route path="/apollo-leads" component={ApolloLeadEnrichment} />
+                <Route path="/apollo-leads">
+                  <ApolloLeadEnrichment />
+                </Route>
                 <Route
                   path="/preventive-maintenance-automation"
                   component={PreventiveMaintenanceAutomation}
                 />
                 <Route path="/customer-success" component={CustomerSuccessManagement} />
                 <Route path="/mobile-service-app" component={MobileServiceApp} />
-                <Route
-                  path="/advanced-analytics-dashboard"
-                  component={AdvancedAnalyticsDashboard}
-                />
+                <Route path="/advanced-analytics-dashboard">
+                  {() => <LegacyRedirect to="/advanced-analytics" />}
+                </Route>
                 <Route path="/customer-self-service-portal" component={CustomerSelfServicePortal} />
                 <Route path="/ai-analytics-dashboard" component={AIAnalyticsDashboard} />
                 <Route path="/predictive-analytics">
@@ -1324,8 +1324,11 @@ function Router() {
                 <Route path="/admin/system-settings">
                   {() => <AdminRouteGuard component={Settings} />}
                 </Route>
+                {/* Round 209: this rendered AdvancedAnalyticsDashboard, a tenant
+                    fixture page reading eleven sections no endpoint sends. The
+                    platform analytics page is PlatformAnalytics (also level 7). */}
                 <Route path="/admin/platform-analytics">
-                  {() => <AdminRouteGuard component={AdvancedAnalyticsDashboard} />}
+                  {() => <AdminRouteGuard component={PlatformAnalytics} />}
                 </Route>
                 <Route path="/admin/knowledge-base">
                   {() => <AdminRouteGuard component={KnowledgeBaseAdmin} />}

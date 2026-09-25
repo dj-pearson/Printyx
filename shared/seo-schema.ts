@@ -1086,13 +1086,10 @@ export const seoMobileAnalysis = pgTable(
     mobileLcp: integer('mobile_lcp'), // Largest Contentful Paint
 
     // Issues
-    issues: jsonb('issues').$type<
-      Array<{
-        type: string;
-        severity: string;
-        message: string;
-      }>
-    >(),
+    // Both hosts store the mobile check's issue STRINGS (shared/seo-page-facts
+    // evaluateMobile) and the dashboard reads string[]; the object shape this
+    // was declared with was never written by anything (round 247).
+    issues: jsonb('issues').$type<string[]>(),
 
     // Timestamp
     analyzedAt: timestamp('analyzed_at').defaultNow().notNull(),

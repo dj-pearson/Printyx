@@ -182,6 +182,22 @@ export class DatabaseUpdaterManager {
   }
 
   /**
+   * Enable or disable one registered updater. Returns false when no updater
+   * has that name.
+   *
+   * The enable/disable routes used to push the name into a top-level
+   * `enabledUpdaters` array on the config and call updateConfiguration - a
+   * key the config does not have and nothing reads - so both answered "has
+   * been enabled" and changed nothing (round 241). The flag an updater
+   * actually checks before running is its own, set through the registry.
+   */
+  setUpdaterEnabled(name: string, enabled: boolean): boolean {
+    if (!this.registry.getAll().some((u) => u.name === name)) return false;
+    this.registry.setMultipleEnabled([name], enabled);
+    return true;
+  }
+
+  /**
    * Update configuration and restart if needed
    */
   async updateConfiguration(newConfig: Partial<UpdaterConfig>): Promise<void> {

@@ -4,6 +4,8 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { ROLE_LEVEL, RbacError, requireRoleLevel } from '../_shared/rbac.ts';
+import type { AuthContext } from '../_shared/auth.ts';
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -13,7 +15,7 @@ export default async function handler(req: Request) {
   try {
     // Extract and validate JWT
     const authHeader = req.headers.get('Authorization');
-    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
 
     const supabase = createSupabaseClient(req);
     const {
@@ -32,6 +34,34 @@ export default async function handler(req: Request) {
 
     if (!tenantId) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
+    }
+
+    // SEC-EDGE-001, round 200. This function had no caller when triage filed
+    // it "headless"; WorkflowAutomation.tsx now creates workflows through it,
+    // and a workflow decides what the tenant's automation does - so writes need
+    // a manager, mirroring /workflow-automation's minLevel 4. Reads stay open.
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      try {
+        requireRoleLevel(
+          {
+            userId: user.id,
+            tenantId,
+            email: user.email,
+            jwt: jwt ?? '',
+            supabaseUser: user,
+          } as AuthContext,
+          ROLE_LEVEL.MANAGER,
+        );
+      } catch (err) {
+        if (err instanceof RbacError) {
+          return createCorsResponse(
+            { error: 'Requires a manager', code: 'INSUFFICIENT_ROLE', details: err.details },
+            403,
+            req,
+          );
+        }
+        throw err;
+      }
     }
 
     const url = new URL(req.url);

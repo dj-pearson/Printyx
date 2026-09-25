@@ -6,6 +6,7 @@ import { normalizePath } from '../_shared/path.ts';
 import { importCatalogCsv, readUploadedCsv } from '../_shared/catalog-import-runner.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 import { denyWithoutPermission } from '../_shared/rbac.ts';
+import { ilikeAnyFilter } from '../_shared/postgrest-or.ts';
 /** The seeded capability for changing the product and inventory catalogue. */
 const WRITE_PERMISSION = 'operations.inventory.manage';
 
@@ -175,10 +176,13 @@ export default async function handler(req: Request) {
       }
 
       if (search) {
-        const safe = search.replace(/[,()]/g, ' ').trim();
+        const safe = search.trim();
         if (safe) {
           query = query.or(
-            `accessory_code.ilike.%${safe}%,accessory_name.ilike.%${safe}%,description.ilike.%${safe}%,manufacturer.ilike.%${safe}%`,
+            ilikeAnyFilter(
+              ['accessory_code', 'accessory_name', 'description', 'manufacturer'],
+              safe,
+            ),
           );
         }
       }

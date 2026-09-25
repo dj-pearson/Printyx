@@ -83,24 +83,15 @@ beforeEach(() => {
 
 describe('QUALITY-002: root-admin queries name real columns', () => {
   it('never emits an empty operand, which is what an undefined column compiles to', async () => {
-    for (const path of ['/overview', '/tenants', '/security-alerts', '/users', '/audit-logs']) {
+    // Round 178: /overview, /tenants, /security-alerts and /audit-logs are
+    // proxied to the edge function and their Express copies deleted; /users is
+    // what this router still serves.
+    for (const path of ['/users']) {
       state.queries = [];
       const res = await request(buildApp()).get(`/api/root-admin${path}`);
       expect(res.status, `${path} responded ${res.status}`).toBe(200);
       expect(handlerSql(), path).not.toMatch(/(and|or|where)\s{2,}=/);
     }
-  });
-
-  it('reads the audit trail, not the sales activity_reports table', async () => {
-    await request(buildApp()).get('/api/root-admin/security-alerts');
-    const sql = handlerSql();
-    expect(sql).toContain('from "audit_logs"');
-    expect(sql).not.toContain('activity_reports');
-  });
-
-  it('/overview counts critical alerts out of audit_logs', async () => {
-    await request(buildApp()).get('/api/root-admin/overview');
-    expect(handlerSql()).not.toContain('activity_reports');
   });
 
   it('/users filters on is_active and the split name columns', async () => {
@@ -110,22 +101,12 @@ describe('QUALITY-002: root-admin queries name real columns', () => {
     expect(sql).toContain('"users"."first_name"');
     expect(sql).not.toMatch(/"users"\."(name|status)"/);
   });
-
-  it('/audit-logs selects resource / resource_id', async () => {
-    await request(buildApp()).get('/api/root-admin/audit-logs');
-    const sql = handlerSql();
-    expect(sql).toContain('"resource"');
-    expect(sql).toContain('"resource_id"');
-  });
 });
 
 describe('QUALITY-002: root-admin keeps the keys the dashboards read', () => {
   // The pages read these off each row; a missing one renders blank or throws.
   const CONTRACTS: Record<string, string[]> = {
-    '/tenants': ['id', 'name', 'userCount', 'status', 'subscription', 'lastActivity'],
-    '/security-alerts': ['id', 'type', 'severity', 'tenant', 'message', 'timestamp', 'status'],
     '/users': ['id', 'name', 'email', 'status', 'role', 'tenant'],
-    '/audit-logs': ['id', 'action', 'tableName', 'recordId', 'timestamp', 'userName'],
   };
 
   it.each(Object.entries(CONTRACTS))('%s keeps its keys', async (path, keys) => {
@@ -137,21 +118,73 @@ describe('QUALITY-002: root-admin keeps the keys the dashboards read', () => {
       expect(res.body[0], `${path} dropped ${key}`).toHaveProperty(key);
     }
   });
+});
 
-  it('/overview returns the summary keys the dashboard reads', async () => {
-    const res = await request(buildApp()).get('/api/root-admin/overview');
-    expect(res.status).toBe(200);
-    expect(Object.keys(res.body).sort()).toEqual(
-      [
-        'activeTenants',
-        'activeUsers',
-        'criticalAlerts',
-        'pendingActions',
-        'systemHealth',
-        'systemUptime',
-        'totalTenants',
-        'totalUsers',
-      ].sort(),
-    );
+/**
+ * Round 178: the other four contracts now bind to the EDGE function, which is
+ * what serves them on both hosts. Each branch's response object must carry
+ * every key the dashboards read - the edge copies used to answer raw snake
+ * rows (tenants, audit-logs) and constants (overview), which is why this
+ * moved rather than being deleted.
+ */
+describe('round 178: the root-admin edge function keeps the keys the dashboards read', () => {
+  const { readFileSync } = require('node:fs') as typeof import('node:fs');
+  // Comments stripped: the round 178 note above the overview branch quotes the
+  // constants it replaced, and an absence check would read that as the defect.
+  const EDGE = readFileSync('supabase/functions/root-admin/index.ts', 'utf8')
+    .replace(/(?<![:/])\/\/.*$/gm, '')
+    .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '));
+
+  function branch(marker: string): string {
+    const at = EDGE.indexOf(marker);
+    expect(at, marker).toBeGreaterThan(-1);
+    const next = EDGE.indexOf('if (req.method ===', at + marker.length);
+    return EDGE.slice(at, next === -1 ? undefined : next);
+  }
+
+  const EDGE_CONTRACTS: Record<string, string[]> = {
+    "endpoint === 'tenants' && !resourceId": [
+      'id',
+      'name',
+      'userCount',
+      'status',
+      'subscription',
+      'lastActivity',
+    ],
+    "endpoint === 'security-alerts'": [
+      'id',
+      'type',
+      'severity',
+      'tenant',
+      'message',
+      'timestamp',
+      'status',
+    ],
+    "endpoint === 'audit-logs'": ['id', 'action', 'tableName', 'recordId', 'timestamp', 'userName'],
+    "endpoint === 'overview'": [
+      'activeTenants',
+      'activeUsers',
+      'criticalAlerts',
+      'pendingActions',
+      'systemHealth',
+      'systemUptime',
+      'totalTenants',
+      'totalUsers',
+    ],
+  };
+
+  it.each(Object.entries(EDGE_CONTRACTS))('%s', (marker, keys) => {
+    const body = branch(marker);
+    for (const key of keys) {
+      expect(body, `${marker} dropped ${key}`).toMatch(new RegExp(`\\b${key}:`));
+    }
+  });
+
+  it('overview no longer hardcodes a health it did not measure', () => {
+    const body = branch("endpoint === 'overview'");
+    expect(body).not.toMatch(/99\.97/);
+    expect(body).not.toMatch(/criticalAlerts:\s*0\b/);
+    expect(body).toMatch(/\.from\('audit_logs'\)[\s\S]*?\.eq\('severity', 'critical'\)/);
+    expect(body).toMatch(/systemUptime: null/);
   });
 });

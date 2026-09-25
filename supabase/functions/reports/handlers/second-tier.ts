@@ -18,6 +18,7 @@ import { errorResponse, jsonResponse } from '../../_shared/http.ts';
 import type { HandlerCtx } from '../_context.ts';
 import { cached, paramKey } from '../_cache.ts';
 import { fetchAllRows } from '../../_shared/paged-select.ts';
+import { OPEN_TICKET_STATUSES } from '../_ticket-buckets.ts';
 
 const TTL_SECONDS = 300; // 5 min
 
@@ -171,7 +172,7 @@ async function breaches(ctx: HandlerCtx): Promise<Breach[]> {
 
   // 4. Service SLA — tickets aging > 5 days that are still open or in-progress
   const serviceSla = await safeCount(db, 'service_tickets', (q) =>
-    q.eq('tenant_id', auth.tenantId).in('status', ['open', 'in-progress']).lt('created_at', t5d),
+    q.eq('tenant_id', auth.tenantId).in('status', OPEN_TICKET_STATUSES).lt('created_at', t5d),
   );
   if (serviceSla > 0) {
     out.push({

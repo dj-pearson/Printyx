@@ -79,7 +79,7 @@ export async function handleRules(req: Request, ctx: HandlerCtx): Promise<Respon
 
   // POST /rules (admin|manager)
   if (method === 'POST' && !first) {
-    if (!isAdminOrManager(auth)) {
+    if (!(await isAdminOrManager(auth))) {
       return errorResponse(403, 'Admin or manager role required', req, {
         code: 'FORBIDDEN',
         requestId,
@@ -111,7 +111,7 @@ export async function handleRules(req: Request, ctx: HandlerCtx): Promise<Respon
 
   // PUT /rules/:id (admin|manager)
   if ((method === 'PUT' || method === 'PATCH') && first) {
-    if (!isAdminOrManager(auth)) {
+    if (!(await isAdminOrManager(auth))) {
       return errorResponse(403, 'Admin or manager role required', req, {
         code: 'FORBIDDEN',
         requestId,
@@ -143,7 +143,7 @@ export async function handleRules(req: Request, ctx: HandlerCtx): Promise<Respon
 
   // DELETE /rules/:id (admin|manager)
   if (method === 'DELETE' && first) {
-    if (!isAdminOrManager(auth)) {
+    if (!(await isAdminOrManager(auth))) {
       return errorResponse(403, 'Admin or manager role required', req, {
         code: 'FORBIDDEN',
         requestId,

@@ -1,5 +1,8 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
+import { describeApiError } from '@/lib/api-error';
+import { useToast } from '@/hooks/use-toast';
 import { MainLayout } from '@/components/layout/main-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -37,7 +40,6 @@ import {
   Eye,
   RefreshCw,
   Plus,
-  Copy,
   Edit,
   Trash2,
   Activity,
@@ -79,7 +81,7 @@ interface WorkflowAutomationData {
     errorRate: number;
     averageExecutionTime: number;
     automationCoverage: number;
-    lastExecution: Date;
+    lastExecution: Date | null;
   };
   activeWorkflows: Array<{
     id: string;
@@ -91,7 +93,7 @@ interface WorkflowAutomationData {
     version: string;
     createdAt: Date;
     lastModified: Date;
-    lastExecution: Date;
+    lastExecution: Date | null;
     executionCount: number;
     successRate: number;
     averageExecutionTime: number;
@@ -292,6 +294,40 @@ export default function WorkflowAutomation() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showTemplatesDialog, setShowTemplatesDialog] = useState(false);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const emptyDraft = { name: '', description: '', category: '', triggerType: 'manual' };
+  const [draft, setDraft] = useState(emptyDraft);
+  // Round 200: the create dialog's fields were unbound and "Create &
+  // Configure" had no handler. A new workflow is created as a DRAFT - it has
+  // no steps yet, so activating it here would enrol records into nothing.
+  const createWorkflow = useMutation({
+    mutationFn: () =>
+      apiRequest('/api/workflows', 'POST', {
+        name: draft.name.trim(),
+        description: draft.description.trim() || undefined,
+        category: draft.category || undefined,
+        triggerType: draft.triggerType,
+        status: 'draft',
+      }),
+    onSuccess: (created: { warnings?: string[] }) => {
+      queryClient.invalidateQueries({
+        predicate: (q) => String(q.queryKey[0]).startsWith('/api/workflow-automation/dashboard'),
+      });
+      toast({
+        title: 'Workflow created as a draft',
+        description: created?.warnings?.length ? created.warnings.join('; ') : undefined,
+      });
+      setDraft(emptyDraft);
+      setShowCreateDialog(false);
+    },
+    onError: (err) =>
+      toast({
+        title: 'Could not create workflow',
+        description: describeApiError(err).message,
+        variant: 'destructive',
+      }),
+  });
 
   // Fetch workflow automation data with optimized caching
   const {
@@ -310,14 +346,18 @@ export default function WorkflowAutomation() {
       ...data,
       automationOverview: {
         ...data.automationOverview,
-        lastExecution: new Date(data.automationOverview.lastExecution),
+        lastExecution: data.automationOverview?.lastExecution
+          ? new Date(data.automationOverview.lastExecution)
+          : null,
       },
       activeWorkflows:
         data.activeWorkflows?.map((workflow: any) => ({
           ...workflow,
           createdAt: new Date(workflow.createdAt),
           lastModified: new Date(workflow.lastModified),
-          lastExecution: new Date(workflow.lastExecution),
+          // A workflow that has never run sends null, and new Date(null) is
+          // 1 January 1970 - which rendered as a real last-run time.
+          lastExecution: workflow.lastExecution ? new Date(workflow.lastExecution) : null,
         })) || [],
       rulesEngine: {
         ...data.rulesEngine,
@@ -329,7 +369,7 @@ export default function WorkflowAutomation() {
       },
     }),
     staleTime: 2 * 60 * 1000, // 2 minutes - workflows don't change that frequently
-    cacheTime: 5 * 60 * 1000, // 5 minutes cache
+    gcTime: 5 * 60 * 1000, // 5 minutes cache (v5 name; cacheTime was ignored)
     refetchInterval: 60 * 1000, // Standardized to 1 minute polling
     refetchIntervalInBackground: false, // Save resources when tab not active
     refetchOnWindowFocus: false, // Prevent excessive refetches
@@ -481,20 +521,30 @@ export default function WorkflowAutomation() {
                 <div className="space-y-4 pt-4">
                   <div>
                     <Label htmlFor="workflow-name">Workflow Name</Label>
-                    <Input id="workflow-name" placeholder="Enter workflow name" />
+                    <Input
+                      id="workflow-name"
+                      placeholder="Enter workflow name"
+                      value={draft.name}
+                      onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+                    />
                   </div>
                   <div>
                     <Label htmlFor="workflow-description">Description</Label>
                     <Textarea
                       id="workflow-description"
                       placeholder="Describe what this workflow does"
+                      value={draft.description}
+                      onChange={(e) => setDraft({ ...draft, description: e.target.value })}
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="workflow-category">Category</Label>
-                      <Select>
-                        <SelectTrigger>
+                      <Select
+                        value={draft.category}
+                        onValueChange={(category) => setDraft({ ...draft, category })}
+                      >
+                        <SelectTrigger id="workflow-category">
                           <SelectValue placeholder="Select category" />
                         </SelectTrigger>
                         <SelectContent>
@@ -507,8 +557,11 @@ export default function WorkflowAutomation() {
                     </div>
                     <div>
                       <Label htmlFor="workflow-trigger">Trigger Type</Label>
-                      <Select>
-                        <SelectTrigger>
+                      <Select
+                        value={draft.triggerType}
+                        onValueChange={(triggerType) => setDraft({ ...draft, triggerType })}
+                      >
+                        <SelectTrigger id="workflow-trigger">
                           <SelectValue placeholder="Select trigger" />
                         </SelectTrigger>
                         <SelectContent>
@@ -524,8 +577,12 @@ export default function WorkflowAutomation() {
                     <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
                       Cancel
                     </Button>
-                    <Button className="bg-purple-600 hover:bg-purple-700">
-                      Create & Configure
+                    <Button
+                      className="bg-purple-600 hover:bg-purple-700"
+                      disabled={!draft.name.trim() || createWorkflow.isPending}
+                      onClick={() => createWorkflow.mutate()}
+                    >
+                      {createWorkflow.isPending ? 'Creating...' : 'Create as Draft'}
                     </Button>
                   </div>
                 </div>
@@ -805,7 +862,9 @@ export default function WorkflowAutomation() {
                               <div>
                                 <span className="text-gray-500">Last Execution:</span>
                                 <span className="ml-2">
-                                  {format(workflow.lastExecution, 'MMM dd, HH:mm')}
+                                  {workflow.lastExecution
+                                    ? format(workflow.lastExecution, 'MMM dd, HH:mm')
+                                    : 'Never'}
                                 </span>
                               </div>
                               <div>
@@ -815,16 +874,11 @@ export default function WorkflowAutomation() {
                                 </span>
                               </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <Button size="sm" variant="outline">
-                                <Copy className="h-4 w-4 mr-2" />
-                                Duplicate
-                              </Button>
-                              <Button size="sm">
-                                <PlayCircle className="h-4 w-4 mr-2" />
-                                Run Now
-                              </Button>
-                            </div>
+                            {/* Round 200: Duplicate and Run Now had no handlers.
+                                A workflow runs when its trigger fires through the
+                                durable runtime - POST /workflows/:id/execute
+                                answers 501 on purpose - and a copy made here
+                                would carry none of the steps. */}
                           </div>
                         </div>
                       </CardContent>

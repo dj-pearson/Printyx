@@ -13,5 +13,9 @@ export { registerLeadMapRoutes } from '../routes-lead-map';
 // registerAutoLeadRoutingRoutes - DELETED (SEC-EDGE-001 batch 15), shadowed by
 // the /api/auto-lead-routing proxy entry.
 // registerSalesHandoffRoutes - DELETED (WF-P-07, implementation_projects retired)
-export { registerRenewalManagementRoutes } from '../routes-renewal-management';
-export { default as contractRenewalRoutes } from '../routes-contract-renewal';
+// Round 182: registerRenewalManagementRoutes retired with the unwired renewal
+// model (docs/renewal-model-decision.md).
+// Round 165: contractRenewalRoutes retired. The edge function serves every
+// path the web page and iOS call (including /upcoming and /:id/renew, which the
+// Express router never had) and shares the analysis through
+// _shared/renewal-analysis.ts. /api/contract-renewal is proxied.

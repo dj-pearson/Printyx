@@ -12,7 +12,8 @@ import { priceChangeApprovals, enhancedQuotePricing } from '@shared/schema';
 
 const read = (p: string) => readFileSync(join(process.cwd(), p), 'utf-8');
 const edge = read('supabase/functions/pricing/index.ts');
-const express = read('server/routes-product-pricing.ts');
+// Round 175: the Express copy (server/routes-product-pricing.ts) is deleted and
+// /api/pricing is proxied, so this file asserts the edge function alone.
 // WF-C-04 deleted the two consumers. `price_change_approvals` is read here and
 // written NOWHERE in the tree, so the badge and the widget rendered a queue that
 // could never have a row - and both were already orphans with no importer. What
@@ -47,9 +48,8 @@ describe('the endpoints exist', () => {
     ["resource === 'approvals' && resourceId === 'pending'", '/api/pricing/approvals/pending'],
     ["resource === 'approval' && resourceId", '/api/pricing/approval/'],
     ["resource === 'margin-report'", '/api/pricing/margin-report'],
-  ])('%s', (marker, expressPath) => {
+  ])('%s', (marker) => {
     expect(edge).toContain(marker);
-    expect(express).toContain(expressPath);
   });
 });
 
@@ -61,24 +61,15 @@ describe('the role gate is not lost in the port', () => {
   ])('%s refuses a caller who may not see dealer cost', (marker) => {
     const at = edge.indexOf(marker);
     const body = edge.slice(at, at + 700);
-    expect(body).toContain('canSeeDealerCost(userRole)');
+    // Round 155: the gate reads the numeric level (mayViewMargins), because the
+    // legacy name map canSeeDealerCost consults cannot place a role code.
+    expect(body).toContain('if (!mayViewMargins)');
     expect(body).toContain('403');
   });
 
   it('takes the gate from the shared copy rather than reimplementing it', () => {
     expect(edge).toContain("from '../_shared/pricing-math.ts'");
     expect(edge).not.toMatch(/roleLevel\s*<=\s*4/);
-  });
-
-  it('Express gates the same three the same way', () => {
-    for (const path of [
-      '/api/pricing/approvals/pending',
-      '/api/pricing/approval/:id',
-      '/api/pricing/margin-report',
-    ]) {
-      const at = express.indexOf(path);
-      expect(express.slice(at, at + 1400)).toContain('canSeeDealerCost(userRole)');
-    }
   });
 });
 

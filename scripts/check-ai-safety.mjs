@@ -37,7 +37,9 @@ const AUTH_REQUIRED_ROUTES = [{ file: 'server/routes-chatbot.ts', route: '/api/c
 const CONVERSATIONAL = [
   'server/services/gpt5-service.ts',
   'server/services/ai-employee-service.ts',
-  'server/routes-deal-desk-copilot.ts',
+  // Round 172: the Express router was retired and /api/deal-desk-copilot is
+  // proxied, so the edge function is the one conversational surface here.
+  'supabase/functions/deal-desk-copilot/index.ts',
 ];
 
 /** The module every conversational surface must route through. */

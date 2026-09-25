@@ -1,6 +1,6 @@
 {
-  "note": "Express /api domains no client tree calls. A WORKLIST, not settled debt: some are features nobody wired, some are deletable, and this guard cannot tell them apart. Shrink-only — see scripts/check-uncalled-express-routes.mjs for why five other guards miss these.",
-  "count": 72,
+  "note": "Express /api domains no client tree calls. A WORKLIST, not settled debt: some are features nobody wired, some are deletable, and this guard cannot tell them apart. Shrink-only — see scripts/check-uncalled-express-routes.mjs for why five other guards miss these. Round 238: 66 -> 73 because the guard IMPROVED, not because debt grew. route-parity now reads the registry's tuple mounts (['/api/x', './routes/x-routes']), which it never saw, and seven domains mounted that way have no caller in any client tree: advanced-scheduling, automated-billing, geofence-alerts, gps, lead-intelligence, mileage, route-optimization. automated-billing also calls billingEngine.generateBulkInvoices, a method that does not exist, and every handler reads req.session.user (SEC-SESSION-001).",
+  "count": 73,
   "domains": [
     {
       "domain": "accessibility",
@@ -11,11 +11,19 @@
       "class": "no-edge"
     },
     {
+      "domain": "advanced-scheduling",
+      "class": "no-edge"
+    },
+    {
       "domain": "approvals",
       "class": "no-edge"
     },
     {
       "domain": "assignment-groups",
+      "class": "no-edge"
+    },
+    {
+      "domain": "automated-billing",
       "class": "no-edge"
     },
     {
@@ -37,10 +45,6 @@
     {
       "domain": "client-metrics",
       "class": "no-edge"
-    },
-    {
-      "domain": "contract-renewals",
-      "class": "edge-too"
     },
     {
       "domain": "csrf-token",
@@ -87,10 +91,6 @@
       "class": "no-edge"
     },
     {
-      "domain": "document-types",
-      "class": "no-edge"
-    },
-    {
       "domain": "email-campaigns",
       "class": "no-edge"
     },
@@ -131,11 +131,15 @@
       "class": "no-edge"
     },
     {
-      "domain": "expansion-opportunities",
-      "class": "edge-too"
+      "domain": "geofence-alerts",
+      "class": "no-edge"
     },
     {
       "domain": "google-indexing",
+      "class": "no-edge"
+    },
+    {
+      "domain": "gps",
       "class": "no-edge"
     },
     {
@@ -159,8 +163,16 @@
       "class": "no-edge"
     },
     {
+      "domain": "lead-intelligence",
+      "class": "no-edge"
+    },
+    {
       "domain": "me",
       "class": "edge-too"
+    },
+    {
+      "domain": "mileage",
+      "class": "no-edge"
     },
     {
       "domain": "models",
@@ -183,15 +195,11 @@
       "class": "no-edge"
     },
     {
-      "domain": "renewal-activities",
-      "class": "edge-too"
-    },
-    {
-      "domain": "renewal-playbooks",
-      "class": "edge-too"
-    },
-    {
       "domain": "resource",
+      "class": "no-edge"
+    },
+    {
+      "domain": "route-optimization",
       "class": "no-edge"
     },
     {
@@ -285,10 +293,6 @@
     {
       "domain": "workflow-templates",
       "class": "no-edge"
-    },
-    {
-      "domain": "workflows",
-      "class": "edge-too"
     }
   ]
 }

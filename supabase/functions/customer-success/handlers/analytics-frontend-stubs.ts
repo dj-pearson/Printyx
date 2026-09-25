@@ -23,7 +23,9 @@
 //   GET  /customer-success/satisfaction          — NPS + survey aggregates
 //   POST /customer-success/calculate-health      — trigger health score recalc
 
-import { jsonResponse } from '../../_shared/http.ts';
+import { jsonResponse, errorResponse } from '../../_shared/http.ts';
+import { fetchAllRows } from '../../_shared/paged-select.ts';
+import { npsCategory, summariseSatisfaction } from '../../../../shared/csat-survey.ts';
 import type { HandlerCtx } from '../_context.ts';
 
 export async function handleUsageAnalytics(
@@ -54,26 +56,107 @@ export async function handleUsageAnalytics(
   );
 }
 
+/**
+ * GET /customer-success/satisfaction (CSAT-PRODUCER-001, round 181).
+ *
+ * This was a stub answering null with a reason saying no survey could be
+ * created. Round 180 built the producer - a completed service ticket now
+ * creates one - so this aggregates the real rows: the mean overall score,
+ * NPS, the response rate, and the most recent completed surveys with the
+ * customer's written feedback. Every figure is null when nothing supports it
+ * (summariseSatisfaction), so a tenant whose customers have not answered yet
+ * still sees an honest empty state. categoryTrends stays empty: nothing
+ * stores per-category history or targets, and a trend drawn from one window
+ * is not a trend.
+ */
 export async function handleSatisfaction(req: Request, ctx: HandlerCtx): Promise<Response | null> {
   if (ctx.method !== 'GET') return null;
+  const { db, auth, requestId } = ctx;
+
+  let surveys: Array<Record<string, unknown>>;
+  try {
+    surveys = await fetchAllRows<Record<string, unknown>>(() =>
+      db
+        .from('customer_satisfaction_surveys')
+        .select('id, customer_id, status, overall_score, nps_score, completed_at')
+        .eq('tenant_id', auth.tenantId)
+        .order('created_at', { ascending: false }),
+    );
+  } catch (err) {
+    console.error('Error reading satisfaction surveys:', err);
+    return errorResponse(500, 'Failed to load satisfaction data', req, {
+      code: 'SATISFACTION_READ_FAILED',
+      requestId,
+    });
+  }
+
+  const summary = summariseSatisfaction(surveys as never);
+
+  const recent = surveys
+    .filter((s) => s.status === 'completed' && s.completed_at)
+    .sort((a, b) => String(b.completed_at).localeCompare(String(a.completed_at)))
+    .slice(0, 10);
+
+  // Written feedback and customer names, one read each for the page of ten.
+  const feedback = new Map<string, string>();
+  const names = new Map<string, string>();
+  if (recent.length > 0) {
+    const { data: responses } = await db
+      .from('customer_satisfaction_survey_responses')
+      .select('survey_id, text_value')
+      .in(
+        'survey_id',
+        recent.map((s) => s.id),
+      )
+      .not('text_value', 'is', null);
+    for (const r of responses ?? []) {
+      const text = String(r.text_value ?? '').trim();
+      if (text && !feedback.has(r.survey_id)) feedback.set(r.survey_id, text);
+    }
+    const customerIds = [...new Set(recent.map((s) => s.customer_id as string))];
+    const { data: customers } = await db
+      .from('business_records')
+      .select('id, company_name')
+      .eq('tenant_id', auth.tenantId)
+      .in('id', customerIds);
+    for (const c of customers ?? []) if (c.company_name) names.set(c.id, c.company_name);
+  }
+
   return jsonResponse(
     {
       summary: {
-        npsScore: null,
-        overallSatisfaction: null,
-        responseRate: null,
+        npsScore: summary.npsScore,
+        overallSatisfaction: summary.overallSatisfaction,
+        responseRate: summary.responseRate,
       },
+      counts: { sent: summary.sentCount, completed: summary.completedCount },
       categoryTrends: {},
-      recentSurveys: [],
-      degraded: {
-        satisfaction: true,
-        reason:
-          'No satisfaction data exists to aggregate. customer_satisfaction_surveys, its templates and its questions are read in three places and written by nothing at all - no survey can be created, so none can be answered.',
-      },
+      recentSurveys: recent.map((s) => {
+        const nps = s.nps_score === null || s.nps_score === undefined ? null : Number(s.nps_score);
+        return {
+          surveyId: s.id,
+          customerName: names.get(s.customer_id as string) ?? 'Unknown customer',
+          submittedDate: s.completed_at,
+          scores: { overall: Number(s.overall_score ?? 0), nps },
+          category: npsCategory(nps) ?? 'unrated',
+          feedback: feedback.get(s.id as string) ?? '',
+          actionItems: [],
+        };
+      }),
+      degraded:
+        summary.completedCount === 0
+          ? {
+              satisfaction: true,
+              reason:
+                summary.sentCount === 0
+                  ? 'No satisfaction surveys have been sent yet. One is created when a service ticket is completed.'
+                  : 'Surveys have been sent, but no customer has completed one yet.',
+            }
+          : undefined,
     },
     200,
     req,
-    ctx.requestId,
+    requestId,
   );
 }
 

@@ -830,7 +830,7 @@ export function CustomerEquipment({ customerId, customerName }: CustomerEquipmen
                 ? 'No equipment matches your search criteria.'
                 : 'No equipment has been registered for this customer yet.'}
             </p>
-            <Button>
+            <Button onClick={() => setAddOpen(true)}>
               <Plus className="w-4 h-4 mr-2" />
               Add First Equipment
             </Button>

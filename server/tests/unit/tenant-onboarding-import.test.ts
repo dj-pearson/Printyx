@@ -145,3 +145,13 @@ describe('PA-042: tenant-onboarding execute import', () => {
     expect(state.inserted).toBeNull();
   });
 });
+
+describe('round 256: tenant cloning no longer reports a clone it never made', () => {
+  it('answers 501 instead of 201 success', async () => {
+    const res = await request(buildApp())
+      .post('/api/tenants/T1/clone')
+      .send({ cloneSettings: { branding: true }, initiatedBy: 'U1' });
+    expect(res.status).toBe(501);
+    expect(res.body.code).toBe('CLONE_NOT_IMPLEMENTED');
+  });
+});

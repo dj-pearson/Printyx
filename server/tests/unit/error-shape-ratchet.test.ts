@@ -36,52 +36,10 @@ describe('the guard actually runs', () => {
   });
 });
 
-describe('routes-renewal-management answers in contract', () => {
-  const RAW = read('server/routes-renewal-management.ts');
-  /**
-   * Comments blanked. The file's header QUOTES the broken tenant read that
-   * WF-S-11 removed, in prose explaining the fix, so an absence assertion over
-   * the raw source reports its own explanation as the defect. Sixth time this
-   * session, and the first in a test I wrote knowing the rule.
-   */
-  const SRC = RAW.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
-
-  it('has no `res.json({ error })` left', () => {
-    // The guard's own pattern, so this cannot drift from what it counts.
-    const ERROR_SHAPE = /\.json\(\s*\{\s*(?:\/\/[^\n]*\n\s*)*error\s*:/g;
-    expect(SRC.match(ERROR_SHAPE) ?? []).toEqual([]);
-  });
-
-  it('uses the shared helpers rather than hand-built bodies', () => {
-    expect(SRC).toMatch(
-      /import \{ badRequest, notFound, serverError \} from '\.\/lib\/error-response'/,
-    );
-    // A floor: a file that stopped answering errors at all would pass the
-    // absence check above while having lost its refusals.
-    expect((SRC.match(/\bbadRequest\(res,/g) ?? []).length).toBeGreaterThanOrEqual(18);
-    expect((SRC.match(/\bnotFound\(res,/g) ?? []).length).toBeGreaterThanOrEqual(9);
-    expect((SRC.match(/\bserverError\(res,/g) ?? []).length).toBeGreaterThanOrEqual(18);
-  });
-
-  it('kept the authentication WF-S-11 added, which is what grew the count', () => {
-    // The regression came from a correct security fix. Converting its
-    // responses must not quietly undo it.
-    const handlers = SRC.match(/app\.(get|post|put|patch|delete)\(/g) ?? [];
-    const guarded = SRC.match(/requireAuth/g) ?? [];
-    expect(handlers.length).toBeGreaterThanOrEqual(18);
-    // One import plus one per handler.
-    expect(guarded.length).toBeGreaterThanOrEqual(handlers.length);
-    expect(SRC).toContain('getTenantId(req)');
-    expect(SRC).not.toMatch(/req\.headers\['x-tenant-id'\]/);
-  });
-
-  it('is still annotated as held rather than deleted', () => {
-    // AUDIT-026 owns whether this feature lives. Converting its error bodies
-    // is not a vote on that, and the header must keep saying so - asserted
-    // against RAW, because the header is exactly what this one is about.
-    expect(RAW).toContain('DO NOT "FIX" THIS FILE WITHOUT READING AUDIT-026');
-  });
-});
+// Round 182: the 'routes-renewal-management answers in contract' block that
+// stood here is gone with the file itself (AUDIT-026 retired the unwired
+// renewal model; docs/renewal-model-decision.md). The ratchet it demonstrated
+// is still enforced for every other file by check:error-shape, above.
 
 describe('the baseline writer only shrinks, per file', () => {
   const GUARD = read('scripts/check-error-shape.mjs');
@@ -132,10 +90,14 @@ describe('the baseline names only files that exist', () => {
   });
 
   it('is a real baseline, not an empty one passing vacuously', () => {
+    // A floor on the DEBT fails every time the debt shrinks, which is the
+    // outcome this ratchet exists to produce (round 162: deleting one router
+    // took it 50 -> 49 files). The vacuous case it guards against is an empty
+    // or truncated file, so the floor sits far below today's count.
     const files = Object.keys(baseline.counts);
-    expect(files.length).toBeGreaterThanOrEqual(50);
+    expect(files.length).toBeGreaterThanOrEqual(10);
     const total = Object.values(baseline.counts).reduce((a: number, b) => a + (b as number), 0);
-    expect(total).toBeGreaterThan(1000);
+    expect(total).toBeGreaterThan(100);
   });
 
   it('keeps the note that says what the entries mean', () => {

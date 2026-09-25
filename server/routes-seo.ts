@@ -1,6 +1,6 @@
 import express from 'express';
-import { desc, eq, and, sql, asc, gte, lte, inArray } from 'drizzle-orm';
-import { z } from 'zod';
+import { storableVitals } from '@shared/seo-checks';
+import { desc, eq, and, asc, gte, lte, inArray } from 'drizzle-orm';
 import crypto from 'crypto';
 import { db } from './db';
 import { createModuleLogger } from './lib/logger';
@@ -16,7 +16,6 @@ import {
 const log = createModuleLogger('routes-seo');
 
 import {
-  seoSettings,
   seoAuditHistory,
   seoFixesApplied,
   seoKeywords,
@@ -24,110 +23,25 @@ import {
   seoCompetitorAnalysis,
   seoPageScores,
   seoMonitoringLog,
-  gscOauthCredentials,
-  gscProperties,
-  gscKeywordPerformance,
-  gscPagePerformance,
-  seoNotificationPreferences,
-  seoAlertRules,
   seoAlerts,
-  seoMonitoringSchedules,
   seoCoreWebVitals,
   seoCrawlResults,
   seoImageAnalysis,
   seoRedirectAnalysis,
-  seoDuplicateContent,
   seoSecurityAnalysis,
   seoLinkAnalysis,
   seoStructuredData,
   seoMobileAnalysis,
-  seoPerformanceBudget,
   seoContentOptimization,
-  seoSemanticAnalysis,
 } from '@shared/schema';
 import { seoService } from './services/seo-service';
 
-import { getUserId, getTenantId } from './utils/auth-helpers';
 const router = express.Router();
 
-// ============= SETTINGS =============
-
-// Get SEO settings
-router.get('/api/seo/settings', async (req: any, res) => {
-  try {
-    const tenantId = req.user?.tenantId;
-    if (!tenantId) {
-      return res.status(400).json({ message: 'Tenant ID is required' });
-    }
-
-    const [settings] = await db
-      .select()
-      .from(seoSettings)
-      .where(eq(seoSettings.tenantId, tenantId))
-      .limit(1);
-
-    res.json(settings || {});
-  } catch (error: any) {
-    log.error('Error fetching SEO settings:', error);
-    res.status(500).json({ message: 'An internal error occurred' });
-  }
-});
-
-// Update SEO settings
-router.post('/api/seo/settings', async (req: any, res) => {
-  try {
-    const tenantId = req.user?.tenantId;
-    if (!tenantId) {
-      return res.status(400).json({ message: 'Tenant ID is required' });
-    }
-
-    const [existing] = await db
-      .select()
-      .from(seoSettings)
-      .where(eq(seoSettings.tenantId, tenantId))
-      .limit(1);
-
-    // SECURITY FIX: Add validation schema to prevent mass assignment
-    const seoSettingsSchema = z
-      .object({
-        metaTitle: z.string().max(255).optional(),
-        metaDescription: z.string().max(500).optional(),
-        metaKeywords: z.string().optional(),
-        ogTitle: z.string().max(255).optional(),
-        ogDescription: z.string().max(500).optional(),
-        ogImage: z.string().url().optional(),
-        twitterCard: z.string().optional(),
-        canonicalUrl: z.string().url().optional(),
-        structuredData: z.any().optional(), // JSON field
-        robots: z.string().optional(),
-      })
-      .strict();
-
-    const validatedData = seoSettingsSchema.parse(req.body);
-
-    let result;
-    if (existing) {
-      [result] = await db
-        .update(seoSettings)
-        .set({ ...validatedData, updatedAt: new Date() })
-        .where(eq(seoSettings.id, existing.id))
-        .returning();
-    } else {
-      [result] = await db
-        .insert(seoSettings)
-        .values({ ...validatedData, tenantId })
-        .returning();
-    }
-
-    res.json(result);
-  } catch (error: any) {
-    log.error('Error updating SEO settings:', error);
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({ error: 'Invalid input', details: error.errors });
-    }
-    res.status(500).json({ message: 'An internal error occurred' });
-  }
-});
+// Round 169: GET and POST /api/seo/settings used to be defined here as well.
+// routes-seo-core.ts registers the same two paths at routes-registry:320 and
+// this router mounts at :774, so these never ran - and a duplicate that never
+// runs is one registration reorder from silently replacing the live one.
 
 // ============= AUDIT =============
 
@@ -615,11 +529,21 @@ router.post('/api/seo/core-web-vitals', async (req: any, res) => {
     // Store results
     const [stored] = await db
       .insert(seoCoreWebVitals)
+      // Named columns, not a spread: the integer columns need rounding (see
+      // storableVitals) and drizzle's decimal columns take strings (round 247).
       .values({
         tenantId,
         url,
         device,
-        ...vitals,
+        ...(() => {
+          const row = storableVitals(vitals);
+          return {
+            ...row,
+            cls: row.cls === null ? null : String(row.cls),
+            si: row.si === null ? null : String(row.si),
+          };
+        })(),
+        diagnostics: vitals.diagnostics,
         measuredAt: new Date(),
       })
       .returning();
@@ -1329,316 +1253,13 @@ async function checkKeywordPosition(keyword: string, targetUrl: string | null, t
   return null;
 }
 
-// ============= SITEMAP GENERATION =============
-
-// Generate dynamic sitemap.xml
-router.get('/sitemap.xml', async (req: any, res) => {
-  try {
-    const baseUrl = 'https://printyx.com';
-
-    // Define all marketing pages with SEO priorities and change frequencies
-    const staticPages = [
-      // Core pages
-      { url: '', priority: 1.0, changefreq: 'daily', lastmod: new Date() },
-      { url: 'copier-dealer-crm', priority: 0.9, changefreq: 'weekly' },
-      { url: 'print-service-dispatch-mobile', priority: 0.9, changefreq: 'weekly' },
-      { url: 'canon-master-product-catalog', priority: 0.8, changefreq: 'monthly' },
-
-      // Strategic landing pages
-      { url: 'predictive-intelligence', priority: 0.9, changefreq: 'weekly' },
-      { url: 'modern-architecture', priority: 0.9, changefreq: 'weekly' },
-      { url: 'integration-marketplace', priority: 0.8, changefreq: 'weekly' },
-      { url: 'dealer-expertise', priority: 0.8, changefreq: 'monthly' },
-
-      // Conversion pages
-      { url: 'roi-calculator', priority: 0.8, changefreq: 'monthly' },
-      { url: 'case-studies', priority: 0.7, changefreq: 'monthly' },
-      { url: 'competitive-battle-card', priority: 0.7, changefreq: 'monthly' },
-
-      // Blog index
-      { url: 'blog', priority: 0.8, changefreq: 'daily' },
-
-      // Feature pages
-      { url: 'autopilot-dashboard', priority: 0.7, changefreq: 'monthly' },
-      { url: 'connect-dashboard', priority: 0.7, changefreq: 'monthly' },
-      { url: 'compare-e-automate', priority: 0.8, changefreq: 'monthly' },
-      { url: 'integration-marketplace-dashboard', priority: 0.7, changefreq: 'monthly' },
-      { url: 'scheduled-reports-dashboard', priority: 0.7, changefreq: 'monthly' },
-      { url: 'meeting-to-proposal-dashboard', priority: 0.7, changefreq: 'monthly' },
-      { url: 'auto-lead-routing-dashboard', priority: 0.7, changefreq: 'monthly' },
-      { url: 'predictive-service-dispatch-dashboard', priority: 0.8, changefreq: 'monthly' },
-      { url: 'white-label-dashboard', priority: 0.7, changefreq: 'monthly' },
-      { url: 'auto-supply-replenishment-dashboard', priority: 0.7, changefreq: 'monthly' },
-
-      // Auth pages (lower priority)
-      { url: 'login', priority: 0.3, changefreq: 'yearly' },
-      { url: 'signup', priority: 0.5, changefreq: 'yearly' },
-    ];
-
-    // Fetch blog posts from database if content_marketing table exists
-    let blogPosts: Array<{ slug: string; updatedAt: Date }> = [];
-    try {
-      // Query would go here - for now using empty array
-      // const posts = await db.select().from(contentMarketingPosts).where(eq(status, 'published'));
-      // blogPosts = posts.map(p => ({ slug: p.slug, updatedAt: p.updatedAt }));
-    } catch (error) {
-      log.info('Blog posts table not available for sitemap');
-    }
-
-    // Build XML sitemap
-    let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
-    xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
-
-    // Add static pages
-    for (const page of staticPages) {
-      xml += '  <url>\n';
-      xml += `    <loc>${baseUrl}/${page.url}</loc>\n`;
-      if (page.lastmod) {
-        xml += `    <lastmod>${page.lastmod.toISOString().split('T')[0]}</lastmod>\n`;
-      }
-      xml += `    <changefreq>${page.changefreq}</changefreq>\n`;
-      xml += `    <priority>${page.priority}</priority>\n`;
-      xml += '  </url>\n';
-    }
-
-    // Add blog posts
-    for (const post of blogPosts) {
-      xml += '  <url>\n';
-      xml += `    <loc>${baseUrl}/blog/${post.slug}</loc>\n`;
-      xml += `    <lastmod>${post.updatedAt.toISOString().split('T')[0]}</lastmod>\n`;
-      xml += `    <changefreq>monthly</changefreq>\n`;
-      xml += `    <priority>0.7</priority>\n`;
-      xml += '  </url>\n';
-    }
-
-    xml += '</urlset>';
-
-    // Set proper headers
-    res.header('Content-Type', 'application/xml');
-    res.header('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
-    res.send(xml);
-  } catch (error: any) {
-    log.error('Error generating sitemap:', error);
-    res.status(500).json({ message: 'Error generating sitemap' });
-  }
-});
-
-// Generate image sitemap.xml
-router.get('/image-sitemap.xml', async (req: any, res) => {
-  try {
-    const baseUrl = process.env.BASE_URL || 'https://printyx.com';
-
-    // Import schemas for images
-    // AUDIT-037: `blogPosts` now resolves to the US-BLOG declaration, which has
-    // no featured_image column - the featured image is a uuid into blog_assets.
-    // This query wants the content-marketing table, which is
-    // `content_marketing_posts` since that story.
-    const { contentMarketingPosts, guides, caseStudies, landingPages, knowledgeArticles } =
-      await import('@shared/schema');
-
-    let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
-    xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"\n';
-    xml += '        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n';
-
-    // Helper function to add image entry
-    const addImageUrl = (
-      pageUrl: string,
-      imageUrl: string,
-      title?: string,
-      caption?: string,
-      geoLocation?: string,
-      license?: string,
-    ) => {
-      if (!imageUrl) return;
-
-      // Ensure absolute URL
-      const absoluteImageUrl = imageUrl.startsWith('http') ? imageUrl : `${baseUrl}${imageUrl}`;
-
-      xml += `  <url>\n`;
-      xml += `    <loc>${pageUrl}</loc>\n`;
-      xml += `    <image:image>\n`;
-      xml += `      <image:loc>${absoluteImageUrl}</image:loc>\n`;
-      if (title) {
-        xml += `      <image:title><![CDATA[${title}]]></image:title>\n`;
-      }
-      if (caption) {
-        xml += `      <image:caption><![CDATA[${caption}]]></image:caption>\n`;
-      }
-      if (geoLocation) {
-        xml += `      <image:geo_location>${geoLocation}</image:geo_location>\n`;
-      }
-      if (license) {
-        xml += `      <image:license>${license}</image:license>\n`;
-      }
-      xml += `    </image:image>\n`;
-      xml += `  </url>\n`;
-    };
-
-    // 1. Blog post featured images
-    const posts = await db
-      .select({
-        slug: contentMarketingPosts.slug,
-        featuredImage: contentMarketingPosts.featuredImage,
-        featuredImageAlt: contentMarketingPosts.featuredImageAlt,
-        title: contentMarketingPosts.title,
-      })
-      .from(contentMarketingPosts)
-      .where(eq(contentMarketingPosts.status, 'published'))
-      .limit(500);
-
-    posts.forEach((post) => {
-      if (post.featuredImage) {
-        addImageUrl(
-          `${baseUrl}/blog/${post.slug}`,
-          post.featuredImage,
-          post.featuredImageAlt || post.title,
-          `Featured image for ${post.title}`,
-        );
-      }
-    });
-
-    // 2. Guide cover images
-    const guideDocs = await db
-      .select({
-        slug: guides.slug,
-        coverImage: guides.coverImage,
-        coverImageAlt: guides.coverImageAlt,
-        title: guides.title,
-      })
-      .from(guides)
-      .where(eq(guides.status, 'published'))
-      .limit(200);
-
-    guideDocs.forEach((guide) => {
-      if (guide.coverImage) {
-        addImageUrl(
-          `${baseUrl}/guides/${guide.slug}`,
-          guide.coverImage,
-          guide.coverImageAlt || guide.title,
-          `Cover image for ${guide.title}`,
-        );
-      }
-    });
-
-    // 3. Case study featured images
-    const studies = await db
-      .select({
-        slug: caseStudies.slug,
-        featuredImage: caseStudies.featuredImage,
-        featuredImageAlt: caseStudies.featuredImageAlt,
-        title: caseStudies.title,
-      })
-      .from(caseStudies)
-      .where(eq(caseStudies.status, 'published'))
-      .limit(200);
-
-    studies.forEach((study) => {
-      if (study.featuredImage) {
-        addImageUrl(
-          `${baseUrl}/case-studies/${study.slug}`,
-          study.featuredImage,
-          study.featuredImageAlt || study.title,
-          `Featured image for ${study.title}`,
-        );
-      }
-    });
-
-    // 4. Landing page hero images
-    const pages = await db
-      .select({
-        slug: landingPages.slug,
-        heroImage: landingPages.heroImage,
-        title: landingPages.title,
-      })
-      .from(landingPages)
-      .where(eq(landingPages.status, 'published'))
-      .limit(100);
-
-    pages.forEach((page) => {
-      if (page.heroImage) {
-        addImageUrl(
-          `${baseUrl}/${page.slug}`,
-          page.heroImage,
-          page.title,
-          `Hero image for ${page.title}`,
-        );
-      }
-    });
-
-    // 5. Knowledge base article images
-    const articles = await db
-      .select({
-        slug: knowledgeArticles.slug,
-        featuredImage: knowledgeArticles.featuredImage,
-        title: knowledgeArticles.title,
-      })
-      .from(knowledgeArticles)
-      .where(eq(knowledgeArticles.status, 'published'))
-      .limit(300);
-
-    articles.forEach((article) => {
-      if (article.featuredImage) {
-        addImageUrl(
-          `${baseUrl}/kb/${article.slug}`,
-          article.featuredImage,
-          article.title,
-          `Featured image for ${article.title}`,
-        );
-      }
-    });
-
-    xml += '</urlset>';
-
-    // Set proper headers
-    res.header('Content-Type', 'application/xml');
-    res.header('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
-    res.send(xml);
-  } catch (error: any) {
-    log.error('Error generating image sitemap:', error);
-    res.status(500).json({ message: 'Error generating image sitemap' });
-  }
-});
-
-// Generate robots.txt
-router.get('/robots.txt', async (req: any, res) => {
-  try {
-    const baseUrl = 'https://printyx.com';
-
-    let robotsTxt = `# Printyx robots.txt
-User-agent: *
-Allow: /
-Disallow: /api/
-Disallow: /dashboard
-Disallow: /admin
-Disallow: /settings
-Disallow: /login
-Disallow: /signup
-Disallow: /reset-password
-Disallow: /verify-email
-
-# Sitemaps
-Sitemap: ${baseUrl}/sitemap.xml
-Sitemap: ${baseUrl}/image-sitemap.xml
-
-# Crawl-delay for politeness
-User-agent: *
-Crawl-delay: 1
-
-# Block aggressive bots
-User-agent: AhrefsBot
-Crawl-delay: 10
-
-User-agent: SemrushBot
-Crawl-delay: 10
-`;
-
-    res.header('Content-Type', 'text/plain');
-    res.header('Cache-Control', 'public, max-age=86400'); // Cache for 24 hours
-    res.send(robotsTxt);
-  } catch (error: any) {
-    log.error('Error generating robots.txt:', error);
-    res.status(500).send('Error generating robots.txt');
-  }
-});
+// Round 169: /sitemap.xml, /robots.txt and /image-sitemap.xml used to be
+// generated per request here, all three on the hardcoded or defaulted domain
+// https://printyx.com. SEO-006 made the committed files in client/public the
+// ONE source for sitemap.xml and robots.txt (served from disk by
+// routes-seo-core.ts, which mounts first and so shadowed the first two). The
+// image sitemap was live wherever Express served the app, on the wrong domain,
+// with nothing linking to it - robots.txt names only sitemap.xml. A per-request
+// SEO artifact is the exact defect SEO-006 retired; do not add one back.
 
 export default router;

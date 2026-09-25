@@ -34,16 +34,18 @@ const page = read('client/src/pages/CustomerSuccessManagement.tsx');
 
 describe('the degraded endpoints', () => {
   it('report null for every figure they cannot measure', () => {
-    for (const key of [
-      'averageUtilization',
-      'totalMonthlyVolume',
-      'utilizationTrend',
-      'npsScore',
-      'overallSatisfaction',
-      'responseRate',
-    ]) {
+    for (const key of ['averageUtilization', 'totalMonthlyVolume', 'utilizationTrend']) {
       expect(stubs).toContain(`${key}: null`);
       expect(stubs).not.toMatch(new RegExp(`${key}:\\s*0\\b`));
+    }
+    // CSAT-PRODUCER-001 (round 181): the three satisfaction figures are
+    // measured now. They come from summariseSatisfaction, which answers null -
+    // never 0 - when nothing supports a figure (csat-producer.test.ts proves
+    // that with real inputs), so the property this test exists for still
+    // holds; it is enforced by the aggregator rather than by a literal.
+    for (const key of ['npsScore', 'overallSatisfaction', 'responseRate']) {
+      expect(stubs).not.toMatch(new RegExp(`${key}:\\s*0\\b`));
+      expect(stubs).toContain(`${key}: summary.${key}`);
     }
   });
 

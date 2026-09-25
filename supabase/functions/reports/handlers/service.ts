@@ -31,6 +31,7 @@ import {
   fetchCustomerNames,
   type TicketRow,
 } from '../_queries/service.ts';
+import { ticketBucket } from '../_ticket-buckets.ts';
 
 const TTL_SECONDS = 300;
 
@@ -270,16 +271,17 @@ async function cachedTeamQuickStats(req: Request, ctx: HandlerCtx): Promise<Resp
       const tickets = await fetchTeamTickets(db, auth.tenantId, ids, range.start, range.end);
 
       const total = tickets.length;
-      const completed = tickets.filter((t) => t.status === 'completed').length;
-      const inProgress = tickets.filter((t) => t.status === 'in-progress').length;
-      const open = tickets.filter((t) => t.status === 'open' || t.status === 'assigned').length;
+      const completed = tickets.filter((t) => ticketBucket(t.status) === 'completed').length;
+      const inProgress = tickets.filter((t) => ticketBucket(t.status) === 'inProgress').length;
+      const open = tickets.filter((t) => ticketBucket(t.status) === 'open').length;
 
       const technicians = new Set<string>();
       const activeTechs = new Set<string>();
       for (const t of tickets) {
         if (!t.assigned_technician_id) continue;
         technicians.add(t.assigned_technician_id);
-        if (t.status === 'in-progress' || t.status === 'completed') {
+        const bucket = ticketBucket(t.status);
+        if (bucket === 'inProgress' || bucket === 'completed') {
           activeTechs.add(t.assigned_technician_id);
         }
       }
@@ -409,9 +411,9 @@ function ticketsToCalls(tickets: TicketRow[], customerNames: Map<string, string>
 }
 
 function summarize(calls: CallRow[]): CallSummary['summary'] {
-  const completed = calls.filter((c) => c.status === 'completed').length;
-  const inProgress = calls.filter((c) => c.status === 'in-progress').length;
-  const scheduled = calls.filter((c) => c.status === 'scheduled' || c.status === 'assigned').length;
+  const completed = calls.filter((c) => ticketBucket(c.status) === 'completed').length;
+  const inProgress = calls.filter((c) => ticketBucket(c.status) === 'inProgress').length;
+  const scheduled = calls.filter((c) => ticketBucket(c.status) === 'open').length;
 
   const completedWithDuration = calls.filter((c) => c.status === 'completed' && c.duration > 0);
   const averageDuration =

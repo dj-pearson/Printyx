@@ -5,6 +5,7 @@ import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 import { denyWithoutPermission } from '../_shared/rbac.ts';
+import { ilikeAnyFilter } from '../_shared/postgrest-or.ts';
 /** The seeded capability for changing the product and inventory catalogue. */
 const WRITE_PERMISSION = 'operations.inventory.manage';
 
@@ -105,7 +106,10 @@ export default async function handler(req: Request) {
 
       if (search) {
         query = query.or(
-          `name.ilike.%${search}%,part_number.ilike.%${search}%,manufacturer_part_number.ilike.%${search}%,item_description.ilike.%${search}%`,
+          ilikeAnyFilter(
+            ['name', 'part_number', 'manufacturer_part_number', 'item_description'],
+            search,
+          ),
         );
       }
 
@@ -148,10 +152,13 @@ export default async function handler(req: Request) {
     // POST /inventory/:id/adjust - Adjust inventory quantity
     if (req.method === 'POST' && itemId && action === 'adjust') {
       const body = await req.json();
-      const { quantity, reason, notes } = body;
-
-      if (quantity === undefined || quantity === null) {
-        return createCorsResponse({ error: 'quantity is required' }, 400, req);
+      const { reason, notes } = body;
+      // Round 195: `quantity` came off the body unchecked, so a string "5"
+      // made `on_hand + quantity` a string concatenation ("125") rather than
+      // a sum. It must be a whole number now.
+      const quantity = Number(body.quantity);
+      if (body.quantity === undefined || body.quantity === null || !Number.isInteger(quantity)) {
+        return createCorsResponse({ error: 'quantity must be a whole number' }, 400, req);
       }
 
       // Get current inventory item
@@ -167,8 +174,15 @@ export default async function handler(req: Request) {
       }
 
       // Calculate new quantities
-      const newOnHand = (item.quantity_on_hand || 0) + quantity;
-      const newAvailable = (item.quantity_available || 0) + quantity;
+      const newOnHand = (Number(item.quantity_on_hand) || 0) + quantity;
+      const newAvailable = (Number(item.quantity_available) || 0) + quantity;
+      if (newOnHand < 0) {
+        return createCorsResponse(
+          { error: `That would leave ${newOnHand} on hand; stock cannot go below zero` },
+          400,
+          req,
+        );
+      }
 
       // Update inventory
       const { data: updated, error } = await admin

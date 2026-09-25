@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { exportToCSV, type ExportColumn } from '@/lib/export-utils';
 import { MainLayout } from '@/components/layout/main-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,14 +15,12 @@ import {
 } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
 import {
-  Zap,
   TrendingUp,
   AlertTriangle,
   CheckCircle,
   Clock,
   Package,
   Wrench,
-  Users,
   MapPin,
   Calendar,
   Target,
@@ -56,6 +55,16 @@ import {
   type Technician,
   type BusinessRecord,
 } from '@shared/schema';
+import { useRefreshQueries } from '@/hooks/use-refresh-queries';
+
+/** Every endpoint this page reads; its Refresh button refetches these. */
+const REFRESH_PATHS = [
+  '/api/reports/service-forecasts',
+  '/api/reports/customer-health',
+  '/api/reports/technician-capacity',
+  '/api/reports/inventory-forecast',
+  '/api/reports/service-summary',
+] as const;
 
 // Service forecasting data types
 interface ServiceForecast {
@@ -103,10 +112,12 @@ interface ContractRenewal {
 interface TechnicianCapacity {
   technicianId: string;
   name: string;
+  /** Open tickets against a 10-ticket load (reports/frontend-stubs.ts). */
   currentUtilization: number;
-  forecastedUtilization: number;
+  /** Nothing forecasts utilisation: always null. */
+  forecastedUtilization: number | null;
   skills: string[];
-  territory: string;
+  territory: string | null;
   upcomingAssignments: number;
   recommendedActions: string[];
 }
@@ -124,6 +135,41 @@ interface InventoryForecast {
 
 const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7c7c', '#8dd1e1'];
 
+/** The summary endpoint's own keys (reports/frontend-stubs.ts serviceSummary). */
+interface ServiceSummary {
+  totalTickets: number;
+  openTickets: number;
+  completedTickets: number;
+  avgResolutionHours: number | null;
+  criticalTickets: number;
+}
+
+const SUMMARY_CARDS: { key: keyof ServiceSummary; title: string; note: string; unit?: string }[] = [
+  { key: 'openTickets', title: 'Open Tickets', note: 'Raised in this window, not finished' },
+  { key: 'completedTickets', title: 'Completed', note: 'Raised in this window' },
+  { key: 'avgResolutionHours', title: 'Avg Resolution', note: 'Completed tickets', unit: 'h' },
+  { key: 'criticalTickets', title: 'Urgent', note: 'Urgent or critical priority' },
+];
+
+/** A missing or null figure is a dash; a real 0 stays 0. */
+export function summaryValue(
+  summary: Partial<ServiceSummary> | undefined,
+  key: keyof ServiceSummary,
+  unit?: string,
+): string {
+  const v = summary?.[key];
+  if (v === null || v === undefined) return '—';
+  return unit ? `${v} ${unit}` : String(v);
+}
+
+/** Export: the technician load rows, measured columns only. */
+export const TECH_CAPACITY_EXPORT_COLUMNS: ExportColumn<TechnicianCapacity>[] = [
+  { key: 'name', label: 'Technician' },
+  { key: 'upcomingAssignments', label: 'Open tickets' },
+  { key: 'currentUtilization', label: 'Load % (of 10 open tickets)' },
+  { key: 'skills', label: 'Skills', format: (v: string[]) => (v ?? []).join('; ') },
+];
+
 export default function ServiceForecastingAnalytics() {
   const [timeHorizon, setTimeHorizon] = useState<'7d' | '30d' | '90d'>('30d');
   const [selectedTerritory, setSelectedTerritory] = useState<string>('all');
@@ -132,6 +178,8 @@ export default function ServiceForecastingAnalytics() {
   );
 
   // Fetch service forecasts
+  // UI-DEAD-BUTTONS-001: the Refresh button had no handler.
+  const { refresh: refreshPage, refreshing } = useRefreshQueries(REFRESH_PATHS);
   const { data: forecasts = [], isLoading: forecastsLoading } = useQuery<ServiceForecast[]>({
     queryKey: ['/api/reports/service-forecasts', timeHorizon, selectedTerritory, forecastType],
     queryFn: () =>
@@ -162,7 +210,7 @@ export default function ServiceForecastingAnalytics() {
   });
 
   // Fetch summary metrics
-  const { data: summaryMetrics } = useQuery({
+  const { data: summaryMetrics } = useQuery<ServiceSummary>({
     queryKey: ['/api/reports/service-summary', timeHorizon, selectedTerritory],
     queryFn: () =>
       apiRequest(
@@ -250,12 +298,26 @@ export default function ServiceForecastingAnalytics() {
               </div>
 
               <div className="hidden sm:flex gap-2">
-                <Button variant="outline" size="sm">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={techCapacity.length === 0}
+                  onClick={() =>
+                    exportToCSV(techCapacity, TECH_CAPACITY_EXPORT_COLUMNS, {
+                      filename: `technician-load-${timeHorizon}`,
+                    })
+                  }
+                >
                   <Download className="h-4 w-4 mr-2" />
                   Export
                 </Button>
-                <Button variant="outline" size="sm">
-                  <RefreshCw className="h-4 w-4 mr-2" />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void refreshPage()}
+                  disabled={refreshing}
+                >
+                  <RefreshCw className={`${refreshing ? 'animate-spin ' : ''}h-4 w-4 mr-2`} />
                   Refresh
                 </Button>
               </div>
@@ -263,53 +325,25 @@ export default function ServiceForecastingAnalytics() {
           </CardContent>
         </Card>
 
-        {/* Summary Metrics */}
+        {/* Summary Metrics. Round 206: these four cards read predictedCalls,
+            callsIncrease, highRiskCustomers, avgUtilization and inventoryAlerts,
+            none of which /reports/service-summary sends, so every card showed
+            0 ("0% increase expected") through `|| 0`. They show the ticket
+            counts the endpoint does return, with a dash while it has none. */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Predicted Calls</CardTitle>
-              <Zap className="h-4 w-4 text-blue-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{summaryMetrics?.predictedCalls || 0}</div>
-              <p className="text-xs text-muted-foreground">
-                {summaryMetrics?.callsIncrease || 0}% increase expected
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">High Risk</CardTitle>
-              <AlertTriangle className="h-4 w-4 text-red-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{summaryMetrics?.highRiskCustomers || 0}</div>
-              <p className="text-xs text-muted-foreground">Require immediate attention</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Utilization</CardTitle>
-              <Users className="h-4 w-4 text-purple-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{summaryMetrics?.avgUtilization || 0}%</div>
-              <p className="text-xs text-muted-foreground">Avg technician utilization</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Inventory Alerts</CardTitle>
-              <Package className="h-4 w-4 text-amber-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{summaryMetrics?.inventoryAlerts || 0}</div>
-              <p className="text-xs text-muted-foreground">Items need reordering</p>
-            </CardContent>
-          </Card>
+          {SUMMARY_CARDS.map((card) => (
+            <Card key={card.key}>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {summaryValue(summaryMetrics, card.key, card.unit)}
+                </div>
+                <p className="text-xs text-muted-foreground">{card.note}</p>
+              </CardContent>
+            </Card>
+          ))}
         </div>
 
         <Tabs defaultValue="forecasts" className="w-full">
@@ -547,44 +581,28 @@ export default function ServiceForecastingAnalytics() {
                       <div className="flex items-center justify-between mb-3">
                         <div>
                           <h4 className="font-medium">{tech.name}</h4>
-                          <p className="text-sm text-muted-foreground">
-                            {tech.territory} Territory
-                          </p>
+                          {tech.territory && (
+                            <p className="text-sm text-muted-foreground">
+                              {tech.territory} Territory
+                            </p>
+                          )}
                         </div>
                         <div className="text-right">
-                          <p className="text-sm">
-                            Current: {tech.currentUtilization}% | Forecast:{' '}
-                            {tech.forecastedUtilization}%
-                          </p>
+                          <p className="text-sm">{tech.upcomingAssignments} open tickets</p>
                         </div>
                       </div>
 
                       <div className="space-y-2">
                         <div>
                           <div className="flex justify-between text-sm mb-1">
-                            <span>Current Utilization</span>
+                            <span>Load (open tickets of 10)</span>
                             <span>{tech.currentUtilization}%</span>
                           </div>
                           <Progress value={tech.currentUtilization} />
                         </div>
 
-                        <div>
-                          <div className="flex justify-between text-sm mb-1">
-                            <span>Forecasted Utilization</span>
-                            <span
-                              className={
-                                tech.forecastedUtilization > 90
-                                  ? 'text-red-600'
-                                  : tech.forecastedUtilization > 80
-                                    ? 'text-yellow-600'
-                                    : 'text-green-600'
-                              }
-                            >
-                              {tech.forecastedUtilization}%
-                            </span>
-                          </div>
-                          <Progress value={tech.forecastedUtilization} />
-                        </div>
+                        {/* The forecast bar repeated the current figure: nothing
+                            forecasts utilisation, so it is not drawn. */}
                       </div>
 
                       {tech.recommendedActions.length > 0 && (

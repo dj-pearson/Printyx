@@ -1,0 +1,635 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`supply analysis parity (Express service vs edge _shared) > buildSupplyAnalysisPrompt > renders identical prompt text with no history: critical - nearly empty, heavy usage 1`] = `
+"Analyze this copier/printer supply status and provide predictions:
+
+Supply Information:
+- Type: toner
+- Name: Cyan Toner
+- Current Level: 4%
+- Capacity: 6000 pages
+- Model: VersaLink C7000
+- Location: Unknown
+
+Usage Data:
+- Daily Average: 300 pages
+- Weekly Average: N/A pages
+- Monthly Average: N/A pages
+- Usage Trend: increasing
+
+Historical Data Points: 0 readings over 0 days
+
+Please analyze and provide:
+1. Predicted depletion date (YYYY-MM-DD format or "Unable to predict")
+2. Confidence score (0-100)
+3. Usage pattern classification (stable/increasing/decreasing/erratic)
+4. Risk level (low/medium/high/critical)
+5. Specific recommendation (monitor/order_soon/order_now/urgent)
+6. Key factors affecting prediction
+
+Format your response as JSON:
+{
+  "depletionDate": "YYYY-MM-DD or null",
+  "confidenceScore": 85,
+  "usagePattern": "stable",
+  "riskLevel": "medium",
+  "recommendation": "order_soon",
+  "summary": "Brief analysis summary",
+  "factors": ["factor1", "factor2", "factor3"]
+}"
+`;
+
+exports[`supply analysis parity (Express service vs edge _shared) > buildSupplyAnalysisPrompt > renders identical prompt text with no history: empty object - every field absent 1`] = `
+"Analyze this copier/printer supply status and provide predictions:
+
+Supply Information:
+- Type: undefined
+- Name: undefined
+- Current Level: undefined%
+- Capacity: Unknown pages
+- Model: undefined
+- Location: Unknown
+
+Usage Data:
+- Daily Average: N/A pages
+- Weekly Average: N/A pages
+- Monthly Average: N/A pages
+- Usage Trend: Unknown
+
+Historical Data Points: 0 readings over 0 days
+
+Please analyze and provide:
+1. Predicted depletion date (YYYY-MM-DD format or "Unable to predict")
+2. Confidence score (0-100)
+3. Usage pattern classification (stable/increasing/decreasing/erratic)
+4. Risk level (low/medium/high/critical)
+5. Specific recommendation (monitor/order_soon/order_now/urgent)
+6. Key factors affecting prediction
+
+Format your response as JSON:
+{
+  "depletionDate": "YYYY-MM-DD or null",
+  "confidenceScore": 85,
+  "usagePattern": "stable",
+  "riskLevel": "medium",
+  "recommendation": "order_soon",
+  "summary": "Brief analysis summary",
+  "factors": ["factor1", "factor2", "factor3"]
+}"
+`;
+
+exports[`supply analysis parity (Express service vs edge _shared) > buildSupplyAnalysisPrompt > renders identical prompt text with no history: exactly on the reorder threshold 1`] = `
+"Analyze this copier/printer supply status and provide predictions:
+
+Supply Information:
+- Type: toner
+- Name: Yellow Toner
+- Current Level: 20%
+- Capacity: 8000 pages
+- Model: bizhub C360i
+- Location: Unknown
+
+Usage Data:
+- Daily Average: N/A pages
+- Weekly Average: N/A pages
+- Monthly Average: N/A pages
+- Usage Trend: Unknown
+
+Historical Data Points: 0 readings over 0 days
+
+Please analyze and provide:
+1. Predicted depletion date (YYYY-MM-DD format or "Unable to predict")
+2. Confidence score (0-100)
+3. Usage pattern classification (stable/increasing/decreasing/erratic)
+4. Risk level (low/medium/high/critical)
+5. Specific recommendation (monitor/order_soon/order_now/urgent)
+6. Key factors affecting prediction
+
+Format your response as JSON:
+{
+  "depletionDate": "YYYY-MM-DD or null",
+  "confidenceScore": 85,
+  "usagePattern": "stable",
+  "riskLevel": "medium",
+  "recommendation": "order_soon",
+  "summary": "Brief analysis summary",
+  "factors": ["factor1", "factor2", "factor3"]
+}"
+`;
+
+exports[`supply analysis parity (Express service vs edge _shared) > buildSupplyAnalysisPrompt > renders identical prompt text with no history: healthy - full toner, light usage 1`] = `
+"Analyze this copier/printer supply status and provide predictions:
+
+Supply Information:
+- Type: toner
+- Name: Black Toner TK-8store
+- Current Level: 82%
+- Capacity: 20000 pages
+- Model: TASKalfa 3554ci
+- Location: Floor 2 copy room
+
+Usage Data:
+- Daily Average: 120 pages
+- Weekly Average: 840 pages
+- Monthly Average: 3600 pages
+- Usage Trend: stable
+
+Historical Data Points: 0 readings over 0 days
+
+Please analyze and provide:
+1. Predicted depletion date (YYYY-MM-DD format or "Unable to predict")
+2. Confidence score (0-100)
+3. Usage pattern classification (stable/increasing/decreasing/erratic)
+4. Risk level (low/medium/high/critical)
+5. Specific recommendation (monitor/order_soon/order_now/urgent)
+6. Key factors affecting prediction
+
+Format your response as JSON:
+{
+  "depletionDate": "YYYY-MM-DD or null",
+  "confidenceScore": 85,
+  "usagePattern": "stable",
+  "riskLevel": "medium",
+  "recommendation": "order_soon",
+  "summary": "Brief analysis summary",
+  "factors": ["factor1", "factor2", "factor3"]
+}"
+`;
+
+exports[`supply analysis parity (Express service vs edge _shared) > buildSupplyAnalysisPrompt > renders identical prompt text with no history: no capacity recorded - depletion unknown but order still triggers 1`] = `
+"Analyze this copier/printer supply status and provide predictions:
+
+Supply Information:
+- Type: toner
+- Name: Magenta Toner
+- Current Level: 8%
+- Capacity: Unknown pages
+- Model: bizhub C360i
+- Location: Unknown
+
+Usage Data:
+- Daily Average: N/A pages
+- Weekly Average: N/A pages
+- Monthly Average: N/A pages
+- Usage Trend: Unknown
+
+Historical Data Points: 0 readings over 0 days
+
+Please analyze and provide:
+1. Predicted depletion date (YYYY-MM-DD format or "Unable to predict")
+2. Confidence score (0-100)
+3. Usage pattern classification (stable/increasing/decreasing/erratic)
+4. Risk level (low/medium/high/critical)
+5. Specific recommendation (monitor/order_soon/order_now/urgent)
+6. Key factors affecting prediction
+
+Format your response as JSON:
+{
+  "depletionDate": "YYYY-MM-DD or null",
+  "confidenceScore": 85,
+  "usagePattern": "stable",
+  "riskLevel": "medium",
+  "recommendation": "order_soon",
+  "summary": "Brief analysis summary",
+  "factors": ["factor1", "factor2", "factor3"]
+}"
+`;
+
+exports[`supply analysis parity (Express service vs edge _shared) > buildSupplyAnalysisPrompt > renders identical prompt text with no history: no usage data - cannot predict depletion 1`] = `
+"Analyze this copier/printer supply status and provide predictions:
+
+Supply Information:
+- Type: drum
+- Name: Drum Unit
+- Current Level: 55%
+- Capacity: 100000 pages
+- Model: iR-ADV C5535
+- Location: Unknown
+
+Usage Data:
+- Daily Average: N/A pages
+- Weekly Average: N/A pages
+- Monthly Average: N/A pages
+- Usage Trend: Unknown
+
+Historical Data Points: 0 readings over 0 days
+
+Please analyze and provide:
+1. Predicted depletion date (YYYY-MM-DD format or "Unable to predict")
+2. Confidence score (0-100)
+3. Usage pattern classification (stable/increasing/decreasing/erratic)
+4. Risk level (low/medium/high/critical)
+5. Specific recommendation (monitor/order_soon/order_now/urgent)
+6. Key factors affecting prediction
+
+Format your response as JSON:
+{
+  "depletionDate": "YYYY-MM-DD or null",
+  "confidenceScore": 85,
+  "usagePattern": "stable",
+  "riskLevel": "medium",
+  "recommendation": "order_soon",
+  "summary": "Brief analysis summary",
+  "factors": ["factor1", "factor2", "factor3"]
+}"
+`;
+
+exports[`supply analysis parity (Express service vs edge _shared) > buildSupplyAnalysisPrompt > renders identical prompt text: critical - nearly empty, heavy usage 1`] = `
+"Analyze this copier/printer supply status and provide predictions:
+
+Supply Information:
+- Type: toner
+- Name: Cyan Toner
+- Current Level: 4%
+- Capacity: 6000 pages
+- Model: VersaLink C7000
+- Location: Unknown
+
+Usage Data:
+- Daily Average: 300 pages
+- Weekly Average: N/A pages
+- Monthly Average: N/A pages
+- Usage Trend: increasing
+
+Historical Data Points: 4 readings over 31 days
+
+Please analyze and provide:
+1. Predicted depletion date (YYYY-MM-DD format or "Unable to predict")
+2. Confidence score (0-100)
+3. Usage pattern classification (stable/increasing/decreasing/erratic)
+4. Risk level (low/medium/high/critical)
+5. Specific recommendation (monitor/order_soon/order_now/urgent)
+6. Key factors affecting prediction
+
+Format your response as JSON:
+{
+  "depletionDate": "YYYY-MM-DD or null",
+  "confidenceScore": 85,
+  "usagePattern": "stable",
+  "riskLevel": "medium",
+  "recommendation": "order_soon",
+  "summary": "Brief analysis summary",
+  "factors": ["factor1", "factor2", "factor3"]
+}"
+`;
+
+exports[`supply analysis parity (Express service vs edge _shared) > buildSupplyAnalysisPrompt > renders identical prompt text: empty object - every field absent 1`] = `
+"Analyze this copier/printer supply status and provide predictions:
+
+Supply Information:
+- Type: undefined
+- Name: undefined
+- Current Level: undefined%
+- Capacity: Unknown pages
+- Model: undefined
+- Location: Unknown
+
+Usage Data:
+- Daily Average: N/A pages
+- Weekly Average: N/A pages
+- Monthly Average: N/A pages
+- Usage Trend: Unknown
+
+Historical Data Points: 4 readings over 31 days
+
+Please analyze and provide:
+1. Predicted depletion date (YYYY-MM-DD format or "Unable to predict")
+2. Confidence score (0-100)
+3. Usage pattern classification (stable/increasing/decreasing/erratic)
+4. Risk level (low/medium/high/critical)
+5. Specific recommendation (monitor/order_soon/order_now/urgent)
+6. Key factors affecting prediction
+
+Format your response as JSON:
+{
+  "depletionDate": "YYYY-MM-DD or null",
+  "confidenceScore": 85,
+  "usagePattern": "stable",
+  "riskLevel": "medium",
+  "recommendation": "order_soon",
+  "summary": "Brief analysis summary",
+  "factors": ["factor1", "factor2", "factor3"]
+}"
+`;
+
+exports[`supply analysis parity (Express service vs edge _shared) > buildSupplyAnalysisPrompt > renders identical prompt text: exactly on the reorder threshold 1`] = `
+"Analyze this copier/printer supply status and provide predictions:
+
+Supply Information:
+- Type: toner
+- Name: Yellow Toner
+- Current Level: 20%
+- Capacity: 8000 pages
+- Model: bizhub C360i
+- Location: Unknown
+
+Usage Data:
+- Daily Average: N/A pages
+- Weekly Average: N/A pages
+- Monthly Average: N/A pages
+- Usage Trend: Unknown
+
+Historical Data Points: 4 readings over 31 days
+
+Please analyze and provide:
+1. Predicted depletion date (YYYY-MM-DD format or "Unable to predict")
+2. Confidence score (0-100)
+3. Usage pattern classification (stable/increasing/decreasing/erratic)
+4. Risk level (low/medium/high/critical)
+5. Specific recommendation (monitor/order_soon/order_now/urgent)
+6. Key factors affecting prediction
+
+Format your response as JSON:
+{
+  "depletionDate": "YYYY-MM-DD or null",
+  "confidenceScore": 85,
+  "usagePattern": "stable",
+  "riskLevel": "medium",
+  "recommendation": "order_soon",
+  "summary": "Brief analysis summary",
+  "factors": ["factor1", "factor2", "factor3"]
+}"
+`;
+
+exports[`supply analysis parity (Express service vs edge _shared) > buildSupplyAnalysisPrompt > renders identical prompt text: healthy - full toner, light usage 1`] = `
+"Analyze this copier/printer supply status and provide predictions:
+
+Supply Information:
+- Type: toner
+- Name: Black Toner TK-8store
+- Current Level: 82%
+- Capacity: 20000 pages
+- Model: TASKalfa 3554ci
+- Location: Floor 2 copy room
+
+Usage Data:
+- Daily Average: 120 pages
+- Weekly Average: 840 pages
+- Monthly Average: 3600 pages
+- Usage Trend: stable
+
+Historical Data Points: 4 readings over 31 days
+
+Please analyze and provide:
+1. Predicted depletion date (YYYY-MM-DD format or "Unable to predict")
+2. Confidence score (0-100)
+3. Usage pattern classification (stable/increasing/decreasing/erratic)
+4. Risk level (low/medium/high/critical)
+5. Specific recommendation (monitor/order_soon/order_now/urgent)
+6. Key factors affecting prediction
+
+Format your response as JSON:
+{
+  "depletionDate": "YYYY-MM-DD or null",
+  "confidenceScore": 85,
+  "usagePattern": "stable",
+  "riskLevel": "medium",
+  "recommendation": "order_soon",
+  "summary": "Brief analysis summary",
+  "factors": ["factor1", "factor2", "factor3"]
+}"
+`;
+
+exports[`supply analysis parity (Express service vs edge _shared) > buildSupplyAnalysisPrompt > renders identical prompt text: no capacity recorded - depletion unknown but order still triggers 1`] = `
+"Analyze this copier/printer supply status and provide predictions:
+
+Supply Information:
+- Type: toner
+- Name: Magenta Toner
+- Current Level: 8%
+- Capacity: Unknown pages
+- Model: bizhub C360i
+- Location: Unknown
+
+Usage Data:
+- Daily Average: N/A pages
+- Weekly Average: N/A pages
+- Monthly Average: N/A pages
+- Usage Trend: Unknown
+
+Historical Data Points: 4 readings over 31 days
+
+Please analyze and provide:
+1. Predicted depletion date (YYYY-MM-DD format or "Unable to predict")
+2. Confidence score (0-100)
+3. Usage pattern classification (stable/increasing/decreasing/erratic)
+4. Risk level (low/medium/high/critical)
+5. Specific recommendation (monitor/order_soon/order_now/urgent)
+6. Key factors affecting prediction
+
+Format your response as JSON:
+{
+  "depletionDate": "YYYY-MM-DD or null",
+  "confidenceScore": 85,
+  "usagePattern": "stable",
+  "riskLevel": "medium",
+  "recommendation": "order_soon",
+  "summary": "Brief analysis summary",
+  "factors": ["factor1", "factor2", "factor3"]
+}"
+`;
+
+exports[`supply analysis parity (Express service vs edge _shared) > buildSupplyAnalysisPrompt > renders identical prompt text: no usage data - cannot predict depletion 1`] = `
+"Analyze this copier/printer supply status and provide predictions:
+
+Supply Information:
+- Type: drum
+- Name: Drum Unit
+- Current Level: 55%
+- Capacity: 100000 pages
+- Model: iR-ADV C5535
+- Location: Unknown
+
+Usage Data:
+- Daily Average: N/A pages
+- Weekly Average: N/A pages
+- Monthly Average: N/A pages
+- Usage Trend: Unknown
+
+Historical Data Points: 4 readings over 31 days
+
+Please analyze and provide:
+1. Predicted depletion date (YYYY-MM-DD format or "Unable to predict")
+2. Confidence score (0-100)
+3. Usage pattern classification (stable/increasing/decreasing/erratic)
+4. Risk level (low/medium/high/critical)
+5. Specific recommendation (monitor/order_soon/order_now/urgent)
+6. Key factors affecting prediction
+
+Format your response as JSON:
+{
+  "depletionDate": "YYYY-MM-DD or null",
+  "confidenceScore": 85,
+  "usagePattern": "stable",
+  "riskLevel": "medium",
+  "recommendation": "order_soon",
+  "summary": "Brief analysis summary",
+  "factors": ["factor1", "factor2", "factor3"]
+}"
+`;
+
+exports[`supply analysis parity (Express service vs edge _shared) > calculateAverageUsage > agrees: all zero readings 1`] = `0`;
+
+exports[`supply analysis parity (Express service vs edge _shared) > calculateAverageUsage > agrees: empty 1`] = `0`;
+
+exports[`supply analysis parity (Express service vs edge _shared) > calculateAverageUsage > agrees: same-day readings - zero days covered 1`] = `0`;
+
+exports[`supply analysis parity (Express service vs edge _shared) > calculateAverageUsage > agrees: single reading 1`] = `0`;
+
+exports[`supply analysis parity (Express service vs edge _shared) > calculateAverageUsage > agrees: typical history 1`] = `80.6896551724138`;
+
+exports[`supply analysis parity (Express service vs edge _shared) > heuristicSupplyAnalysis > returns an identical result: critical - nearly empty, heavy usage 1`] = `
+{
+  "aiAnalysis": {
+    "factors": [
+      "Current level",
+      "Usage trend",
+      "Historical data",
+    ],
+    "recommendation": "order_now",
+    "riskLevel": "high",
+    "summary": "Automatic analysis based on usage patterns",
+    "usagePattern": "increasing",
+  },
+  "confidenceScore": 60,
+  "currentLevel": 4,
+  "daysUntilDepletion": 1,
+  "predictedDepletionDate": 2026-08-21T12:00:00.000Z,
+  "priority": "critical",
+  "shouldOrder": true,
+}
+`;
+
+exports[`supply analysis parity (Express service vs edge _shared) > heuristicSupplyAnalysis > returns an identical result: empty object - every field absent 1`] = `
+{
+  "aiAnalysis": {
+    "factors": [
+      "Current level",
+      "Usage trend",
+      "Historical data",
+    ],
+    "recommendation": "order_now",
+    "riskLevel": "medium",
+    "summary": "Automatic analysis based on usage patterns",
+    "usagePattern": "stable",
+  },
+  "confidenceScore": 60,
+  "currentLevel": 0,
+  "daysUntilDepletion": null,
+  "predictedDepletionDate": null,
+  "priority": "low",
+  "shouldOrder": true,
+}
+`;
+
+exports[`supply analysis parity (Express service vs edge _shared) > heuristicSupplyAnalysis > returns an identical result: exactly on the reorder threshold 1`] = `
+{
+  "aiAnalysis": {
+    "factors": [
+      "Current level",
+      "Usage trend",
+      "Historical data",
+    ],
+    "recommendation": "order_now",
+    "riskLevel": "medium",
+    "summary": "Automatic analysis based on usage patterns",
+    "usagePattern": "stable",
+  },
+  "confidenceScore": 60,
+  "currentLevel": 20,
+  "daysUntilDepletion": 32,
+  "predictedDepletionDate": 2026-09-21T12:00:00.000Z,
+  "priority": "low",
+  "shouldOrder": true,
+}
+`;
+
+exports[`supply analysis parity (Express service vs edge _shared) > heuristicSupplyAnalysis > returns an identical result: healthy - full toner, light usage 1`] = `
+{
+  "aiAnalysis": {
+    "factors": [
+      "Current level",
+      "Usage trend",
+      "Historical data",
+    ],
+    "recommendation": "monitor",
+    "riskLevel": "medium",
+    "summary": "Automatic analysis based on usage patterns",
+    "usagePattern": "stable",
+  },
+  "confidenceScore": 60,
+  "currentLevel": 82,
+  "daysUntilDepletion": 137,
+  "predictedDepletionDate": 2027-01-04T12:00:00.000Z,
+  "priority": "low",
+  "shouldOrder": false,
+}
+`;
+
+exports[`supply analysis parity (Express service vs edge _shared) > heuristicSupplyAnalysis > returns an identical result: no capacity recorded - depletion unknown but order still triggers 1`] = `
+{
+  "aiAnalysis": {
+    "factors": [
+      "Current level",
+      "Usage trend",
+      "Historical data",
+    ],
+    "recommendation": "order_now",
+    "riskLevel": "medium",
+    "summary": "Automatic analysis based on usage patterns",
+    "usagePattern": "stable",
+  },
+  "confidenceScore": 60,
+  "currentLevel": 8,
+  "daysUntilDepletion": null,
+  "predictedDepletionDate": null,
+  "priority": "low",
+  "shouldOrder": true,
+}
+`;
+
+exports[`supply analysis parity (Express service vs edge _shared) > heuristicSupplyAnalysis > returns an identical result: no usage data - cannot predict depletion 1`] = `
+{
+  "aiAnalysis": {
+    "factors": [
+      "Current level",
+      "Usage trend",
+      "Historical data",
+    ],
+    "recommendation": "monitor",
+    "riskLevel": "medium",
+    "summary": "Automatic analysis based on usage patterns",
+    "usagePattern": "stable",
+  },
+  "confidenceScore": 60,
+  "currentLevel": 55,
+  "daysUntilDepletion": null,
+  "predictedDepletionDate": null,
+  "priority": "low",
+  "shouldOrder": false,
+}
+`;
+
+exports[`supply analysis parity (Express service vs edge _shared) > priority banding > agrees on the band at 0 days 1`] = `"critical"`;
+
+exports[`supply analysis parity (Express service vs edge _shared) > priority banding > agrees on the band at 1 days 1`] = `"critical"`;
+
+exports[`supply analysis parity (Express service vs edge _shared) > priority banding > agrees on the band at 3 days 1`] = `"critical"`;
+
+exports[`supply analysis parity (Express service vs edge _shared) > priority banding > agrees on the band at 4 days 1`] = `"urgent"`;
+
+exports[`supply analysis parity (Express service vs edge _shared) > priority banding > agrees on the band at 7 days 1`] = `"urgent"`;
+
+exports[`supply analysis parity (Express service vs edge _shared) > priority banding > agrees on the band at 8 days 1`] = `"high"`;
+
+exports[`supply analysis parity (Express service vs edge _shared) > priority banding > agrees on the band at 14 days 1`] = `"high"`;
+
+exports[`supply analysis parity (Express service vs edge _shared) > priority banding > agrees on the band at 15 days 1`] = `"medium"`;
+
+exports[`supply analysis parity (Express service vs edge _shared) > priority banding > agrees on the band at 30 days 1`] = `"medium"`;
+
+exports[`supply analysis parity (Express service vs edge _shared) > priority banding > agrees on the band at 31 days 1`] = `"low"`;
+
+exports[`supply analysis parity (Express service vs edge _shared) > priority banding > agrees on the band at 400 days 1`] = `"low"`;
+
+exports[`supply analysis parity (Express service vs edge _shared) > priority banding > agrees on the band at null days 1`] = `"low"`;

@@ -20,8 +20,18 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { generateCompletion } from '../_shared/anthropic.ts';
+import { withCrisisGuardrail } from '../_shared/crisis-response.ts';
 import { fetchAllRows } from '../_shared/paged-select.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { resolveScope, rowInScope } from '../_shared/scope.ts';
+import {
+  computeMargin,
+  computeQuoteCost,
+  dealMatches,
+  headcountBand,
+  machineClassOf,
+  type DealProfile,
+} from '../../../shared/deal-desk-margin.ts';
 import { ROLE_LEVEL, RbacError, requireRoleLevel } from '../_shared/rbac.ts';
 
 type SB = ReturnType<typeof createSupabaseServiceClient>;
@@ -98,8 +108,8 @@ interface SimilarDealsResult {
     proposalType: string | null;
     sizeBandLow: number;
     sizeBandHigh: number;
-    headcountMatch: 'stub';
-    machineClassMatch: 'stub';
+    machineClass: string;
+    headcountBand: string;
   };
 }
 
@@ -193,6 +203,18 @@ async function handleSnapshot(admin: SB, tenantId: string, quoteId: string, req:
   );
 }
 
+/**
+ * Round 172. The cohort used to be territory plus size band only, with
+ * `headcountMatch: 'stub'` and `machineClassMatch: 'stub'` in the response,
+ * while Express - what dev ran - also matched on the machine class of the
+ * quote's equipment lines and the customer's headcount band through
+ * shared/deal-desk-margin.ts's dealMatches. So the two hosts showed a rep a
+ * different close rate, discount and comparable deals for the same quote,
+ * and production's cohort was the looser one, mixing a production press into
+ * a desktop-MFP quote's comparables. Both hosts now run the same predicate.
+ */
+const LINE_ID_CHUNK = 200;
+
 async function handleSimilarDeals(admin: SB, tenantId: string, quoteId: string, req: Request) {
   const proposal = await resolveProposal(admin, tenantId, quoteId);
   if (!proposal) return createCorsResponse({ message: 'Quote not found' }, 404, req);
@@ -200,11 +222,11 @@ async function handleSimilarDeals(admin: SB, tenantId: string, quoteId: string, 
 
   const customer = await admin
     .from('business_records')
-    .select('territory')
+    .select('territory,employee_count')
     .eq('id', customerId)
     .eq('tenant_id', tenantId)
     .maybeSingle();
-  const territory = customer.data?.territory ?? null;
+  const territory = (customer.data?.territory as string | null) ?? null;
   const proposalType = proposal.proposal_type ?? null;
   const thisSize = num(proposal.total_amount) || num(proposal.subtotal);
   const sizeBandLow = thisSize * 0.5;
@@ -212,7 +234,28 @@ async function handleSimilarDeals(admin: SB, tenantId: string, quoteId: string, 
   const sizeBandKey =
     thisSize > 0 ? `${Math.round(sizeBandLow)}-${Math.round(sizeBandHigh)}` : 'any';
 
-  const cacheKey = `${tenantId}:${territory ?? '-'}:${sizeBandKey}:${proposalType ?? '-'}`;
+  const thisLines = await fetchAllRows<Record<string, unknown>>(() =>
+    admin
+      .from('proposal_line_items')
+      .select('item_type,product_name')
+      .eq('tenant_id', tenantId)
+      .eq('proposal_id', proposal.id),
+  );
+  const quoteMachineClass = machineClassOf(
+    thisLines.map((l) => ({
+      itemType: l.item_type as string | null,
+      productName: l.product_name as string | null,
+    })),
+    proposalType,
+  );
+  const quoteHeadcountBand = headcountBand(customer.data?.employee_count as number | null);
+  const quoteProfile: DealProfile = {
+    machineClass: quoteMachineClass,
+    headcountBand: quoteHeadcountBand,
+    territory,
+  };
+
+  const cacheKey = `${tenantId}:${territory ?? '-'}:${sizeBandKey}:${proposalType ?? '-'}:${quoteMachineClass}:${quoteHeadcountBand}`;
   const cached = similarDealsCache.get(cacheKey);
   if (cached && cached.expires > Date.now()) {
     return createCorsResponse(cached.value, 200, req);
@@ -221,35 +264,65 @@ async function handleSimilarDeals(admin: SB, tenantId: string, quoteId: string, 
   let candidateQuery = admin
     .from('proposals')
     .select(
-      'id,proposal_number,status,total_amount,discount_percentage,updated_at,business_record_id',
+      'id,proposal_number,status,total_amount,discount_percentage,updated_at,business_record_id,proposal_type',
     )
     .eq('tenant_id', tenantId);
   if (proposalType) candidateQuery = candidateQuery.eq('proposal_type', proposalType);
   const candidates = await candidateQuery.limit(2000);
   const candidateRows = (candidates.data ?? []) as Array<Record<string, unknown>>;
 
-  // Resolve territories for the candidate customers (best-effort region match).
-  let territoryMatchIds: Set<string> | null = null;
-  if (territory) {
-    const custIds = Array.from(new Set(candidateRows.map((c) => c.business_record_id as string)));
-    const custRows: Array<Record<string, unknown>> = custIds.length
-      ? await fetchAllRows<Record<string, unknown>>(() =>
-          admin
-            .from('business_records')
-            .select('id,territory')
-            .eq('tenant_id', tenantId)
-            .in('id', custIds),
-        )
-      : [];
-    territoryMatchIds = new Set(
-      custRows
-        .filter((r: Record<string, unknown>) => r.territory === territory)
-        .map((r: Record<string, unknown>) => r.id as string),
+  const custIds = Array.from(
+    new Set(candidateRows.map((c) => c.business_record_id as string).filter(Boolean)),
+  );
+  const custRows: Array<Record<string, unknown>> = custIds.length
+    ? await fetchAllRows<Record<string, unknown>>(() =>
+        admin
+          .from('business_records')
+          .select('id,territory,employee_count')
+          .eq('tenant_id', tenantId)
+          .in('id', custIds),
+      )
+    : [];
+  const custById = new Map(custRows.map((r) => [r.id as string, r]));
+
+  // Candidate equipment lines, fetched in chunks so the id list stays a
+  // reasonable URL. One read per chunk, not per candidate.
+  const candidateIds = candidateRows.map((c) => c.id as string);
+  const linesByProposal = new Map<
+    string,
+    Array<{ itemType: string | null; productName: string | null }>
+  >();
+  for (let i = 0; i < candidateIds.length; i += LINE_ID_CHUNK) {
+    const chunk = candidateIds.slice(i, i + LINE_ID_CHUNK);
+    const rows = await fetchAllRows<Record<string, unknown>>(() =>
+      admin
+        .from('proposal_line_items')
+        .select('proposal_id,item_type,product_name')
+        .eq('tenant_id', tenantId)
+        .in('proposal_id', chunk),
     );
+    for (const l of rows) {
+      const key = l.proposal_id as string;
+      const arr = linesByProposal.get(key) ?? [];
+      arr.push({
+        itemType: l.item_type as string | null,
+        productName: l.product_name as string | null,
+      });
+      linesByProposal.set(key, arr);
+    }
   }
 
   const cohort = candidateRows.filter((c) => {
-    if (territoryMatchIds && !territoryMatchIds.has(c.business_record_id as string)) return false;
+    const cust = custById.get(c.business_record_id as string);
+    const candProfile: DealProfile = {
+      machineClass: machineClassOf(
+        linesByProposal.get(c.id as string) ?? [],
+        c.proposal_type as string | null,
+      ),
+      headcountBand: headcountBand(cust?.employee_count as number | null),
+      territory: (cust?.territory as string | null) ?? null,
+    };
+    if (!dealMatches(quoteProfile, candProfile)) return false;
     const amt = num(c.total_amount);
     if (thisSize > 0 && (amt < sizeBandLow || amt > sizeBandHigh)) return false;
     return true;
@@ -294,13 +367,28 @@ async function handleSimilarDeals(admin: SB, tenantId: string, quoteId: string, 
       proposalType,
       sizeBandLow,
       sizeBandHigh: Number.isFinite(sizeBandHigh) ? sizeBandHigh : 0,
-      headcountMatch: 'stub',
-      machineClassMatch: 'stub',
+      machineClass: quoteMachineClass,
+      headcountBand: quoteHeadcountBand,
     },
   };
 
   similarDealsCache.set(cacheKey, { value: result, expires: Date.now() + SIMILAR_DEALS_TTL_MS });
   return createCorsResponse(result, 200, req);
+}
+
+/**
+ * Round 150. This was a labelled STUB that counted parts cost only and said so
+ * in `financingNote`/`serviceCostNote`, while the Express handler - what dev
+ * ran - costed the same quote through shared/deal-desk-margin.ts: parts, plus
+ * projected service delivery on service lines, plus financing carry on a
+ * leased deal. So production reported a HIGHER GP% than dev for any quote with
+ * a service line or a lease, and `belowFloor` - the copilot's warning that a
+ * quote needs the deal desk - fired less often on the host people use. The
+ * model is dependency-free, so both hosts now run the one module.
+ */
+const FINANCED_PROPOSAL_TYPES = new Set(['equipment_lease', 'lease', 'financed', 'fmv_lease']);
+export function isFinancedDeal(proposalType: unknown): boolean {
+  return FINANCED_PROPOSAL_TYPES.has(String(proposalType ?? '').toLowerCase());
 }
 
 async function handleMargin(admin: SB, tenantId: string, quoteId: string, req: Request) {
@@ -309,34 +397,43 @@ async function handleMargin(admin: SB, tenantId: string, quoteId: string, req: R
 
   const revenue = num(proposal.total_amount) || num(proposal.subtotal);
 
-  const lines = await admin
+  const { data: lineRows, error: linesError } = await admin
     .from('proposal_line_items')
-    .select('unit_cost,quantity')
+    .select('item_type,unit_cost,unit_price,quantity')
     .eq('tenant_id', tenantId)
     .eq('proposal_id', proposal.id);
-  const cost = (lines.data ?? []).reduce(
-    (a: number, l: Record<string, unknown>) => a + num(l.unit_cost) * (num(l.quantity) || 1),
-    0,
-  );
-
-  const grossProfit = revenue - cost;
-  const gpPercent = revenue > 0 ? Math.round((grossProfit / revenue) * 1000) / 10 : 0;
+  // A margin computed over lines that failed to load is a zero-cost quote,
+  // which reads as 100% GP - the most flattering wrong answer available.
+  if (linesError) {
+    return createCorsResponse({ message: 'Failed to load quote lines' }, 500, req);
+  }
+  const costLines = (lineRows ?? []).map((l: Record<string, unknown>) => ({
+    itemType: (l.item_type as string | null) ?? null,
+    unitCost: num(l.unit_cost),
+    unitPrice: num(l.unit_price),
+    quantity: num(l.quantity) || 1,
+  }));
 
   const settings = await getOrCreateSettings(admin, tenantId);
   const gpFloorPct = num(settings.gp_floor_pct) || 30;
-  const belowFloor = revenue > 0 && gpPercent < gpFloorPct;
+  const financed = isFinancedDeal(proposal.proposal_type);
+  const cost = computeQuoteCost(costLines, { revenue, financed });
+  const margin = computeMargin({ revenue, cost, gpFloorPct });
 
   return createCorsResponse(
     {
-      revenue,
-      cost,
-      grossProfit,
-      gpPercent,
-      gpFloorPct,
-      belowFloor,
-      financingNote: 'STUB: financing/lease terms are not yet modeled into cost or GP.',
-      serviceCostNote:
-        'STUB: cost = parts/line unitCost only; projected service/labor cost not yet modeled.',
+      revenue: margin.revenue,
+      cost: margin.totalCost,
+      grossProfit: margin.grossProfit,
+      gpPercent: margin.gpPercent,
+      gpFloorPct: margin.gpFloorPct,
+      belowFloor: margin.belowFloor,
+      financed,
+      costBreakdown: {
+        partsCost: margin.partsCost,
+        serviceCost: margin.serviceCost,
+        financingCost: margin.financingCost,
+      },
     },
     200,
     req,
@@ -459,7 +556,10 @@ async function handleObjections(admin: SB, tenantId: string, quoteId: string, re
       .map((l) => `- ${l.product_name ?? 'item'} x${num(l.quantity) || 1}`)
       .join('\n');
     const prompt =
-      `You are a deal-desk advisor for a copier/MFP dealer. Predict the buyer's likely ` +
+      // Round 172: Express has always wrapped this prompt in withCrisisGuardrail
+      // (LEGAL-012); this copy, which production runs, did not.
+      withCrisisGuardrail('You are a deal-desk advisor for a copier/MFP dealer.') +
+      `\n\nPredict the buyer's likely ` +
       `objections to this quote and give a concise suggested rep response for each.\n\n` +
       `Customer: ${customer.data?.company_name ?? 'Unknown'} (industry: ${customer.data?.industry ?? 'n/a'}, territory: ${customer.data?.territory ?? 'n/a'}).\n` +
       `Open service tickets: ${openTickets}. Past-due AR: $${Math.round(pastDue)}.\n` +
@@ -609,6 +709,29 @@ export default async function handler(req: Request) {
 
     // -------- PER-QUOTE endpoints --------
     if (first && action && req.method === 'GET') {
+      // Round 150. Every per-quote branch loaded the proposal by id and tenant
+      // alone, while the proposals function scopes the same rows to their
+      // owners (WF-R-04/05) because a quote carries dealer cost and margin.
+      // So a rep who could not list a colleague's quote could still read its
+      // gross profit, GP%, the customer's AR aging and open tickets here by id
+      // - the list scoped and the item open (COP-B04's half-measure). The
+      // check runs before any handler, on the same two owner columns, and
+      // not-yours answers the same 404 as not-found so an id on somebody
+      // else's quote is never confirmed.
+      const { data: owned } = await admin
+        .from('proposals')
+        .select('id, assigned_to, created_by')
+        .eq('id', first)
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+      const scope = await resolveScope(admin, {
+        userId: user.id,
+        tenantId,
+        appMetadata: user.app_metadata,
+      });
+      if (!owned || !rowInScope(owned, ['assigned_to', 'created_by'], scope)) {
+        return createCorsResponse({ message: 'Quote not found' }, 404, req);
+      }
       switch (action) {
         case 'snapshot':
           return await handleSnapshot(admin, tenantId, first, req);

@@ -6,6 +6,7 @@ import { parseBulkIds } from '../_shared/bulk-ops.ts';
 import { importCatalogCsv, readUploadedCsv } from '../_shared/catalog-import-runner.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 import { denyWithoutPermission } from '../_shared/rbac.ts';
+import { ilikeAnyFilter } from '../_shared/postgrest-or.ts';
 
 // SEC-EDGE-001: the same permission its sibling catalogue functions use.
 const WRITE_PERMISSION = 'operations.inventory.manage';
@@ -131,9 +132,7 @@ export default async function handler(req: Request) {
         // Strip chars that break PostgREST's .or() filter grammar.
         const safe = search.replace(/[,()]/g, ' ').trim();
         if (safe) {
-          query = query.or(
-            `product_name.ilike.%${safe}%,product_code.ilike.%${safe}%,description.ilike.%${safe}%`,
-          );
+          query = query.or(ilikeAnyFilter(['product_name', 'product_code', 'description'], safe));
         }
       }
       if (category && category !== 'all') {

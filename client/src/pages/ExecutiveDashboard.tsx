@@ -1,14 +1,29 @@
-import { formatPercent, percentBar, percentOf } from '@/lib/utils';
-import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+/**
+ * Executive Dashboard - rebuilt in round 202.
+ *
+ * The previous page was written against shapes no endpoint sends: every tab
+ * read typed arrays (KPIScorecard[], BusinessInsight[], CompetitiveMetric[],
+ * TerritoryPerformance[]) while the reports function answers objects, so each
+ * tab threw on `.map` the moment it opened; the overview read revenue targets,
+ * attainment, gross margin, collection rate, customer satisfaction, churn,
+ * industry averages, competitor rankings, market share and territory
+ * profitability, none of which anything computes. Its period selector sent
+ * 30d/90d/ytd/12m, which the server does not recognise, so every period was a
+ * month. Export Report and Schedule had no handlers.
+ *
+ * This version renders exactly what supabase/functions/reports/handlers/
+ * dashboards.ts returns, names what it does not measure, and says plainly that
+ * revenue is read from the `quotes` table - quotes built in the Quote Builder
+ * are stored as proposals and are not counted here.
+ */
+
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { QueryStates } from '@/components/ui/query-state';
-import { DashboardSkeleton } from '@/components/ui/skeletons';
+import { Link } from 'wouter';
+import { Calendar, Download, RefreshCw } from 'lucide-react';
 import { MainLayout } from '@/components/layout/main-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
   SelectContent,
@@ -16,907 +31,395 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Progress } from '@/components/ui/progress';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import {
-  BarChart3,
-  TrendingUp,
-  TrendingDown,
-  Target,
-  DollarSign,
-  Users,
-  Award,
-  AlertTriangle,
-  CheckCircle,
-  Clock,
-  Activity,
-  PieChart,
-  MapPin,
-  Calendar,
-  Filter,
-  Download,
-  RefreshCw,
-  ArrowUp,
-  ArrowDown,
-  Building,
-  Zap,
-  Star,
-} from 'lucide-react';
-import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
+import { QueryStates } from '@/components/ui/query-state';
+import { DashboardSkeleton } from '@/components/ui/skeletons';
 import { apiRequest } from '@/lib/queryClient';
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  PieChart as RechartsPieChart,
-  Pie,
-  Cell,
-  AreaChart,
-  Area,
-  ComposedChart,
-} from 'recharts';
+import { formatCurrency } from '@/lib/utils';
+import { exportToCSV, type ExportColumn } from '@/lib/export-utils';
+import { useRefreshQueries } from '@/hooks/use-refresh-queries';
 
-// Executive data types
-interface ExecutiveSummary {
-  revenue: {
-    total: number;
-    growth: number;
-    target: number;
-    attainment: number;
-  };
-  sales: {
-    pipelineValue: number;
-    dealsWon: number;
-    avgDealSize: number;
-    closeRate: number;
-    salesCycleTime: number;
-  };
-  service: {
-    activeTickets: number;
-    avgResponseTime: number;
-    customerSatisfaction: number;
-    firstCallResolution: number;
-    technicianUtilization: number;
-  };
-  financial: {
-    grossMargin: number;
-    arBalance: number;
-    collectionRate: number;
-    daysOutstanding: number;
-    cashFlow: number;
-  };
-  customers: {
-    totalActive: number;
-    newAcquisitions: number;
-    churnRate: number;
-    lifetimeValue: number;
-    healthScore: number;
+/** Every endpoint this page reads; its Refresh button refetches these. */
+const REFRESH_PATHS = [
+  '/api/reports/executive-summary',
+  '/api/reports/kpi-scorecards',
+  '/api/reports/business-insights',
+  '/api/reports/competitive-metrics',
+  '/api/reports/territory-performance',
+  '/api/reports/revenue-attribution',
+] as const;
+
+/** The server's period vocabulary (reports/_date.ts). */
+const PERIODS = [
+  { value: 'week', label: 'Last 7 days' },
+  { value: 'month', label: 'Last month' },
+  { value: 'quarter', label: 'Last 3 months' },
+  { value: 'year', label: 'Last 12 months' },
+] as const;
+type Period = (typeof PERIODS)[number]['value'];
+
+export const UNMEASURED_EXECUTIVE = [
+  'Revenue targets and attainment: no revenue target is stored.',
+  'Gross margin, collection rate and days outstanding: not computed for this view.',
+  'Customer satisfaction and churn: not part of these reports.',
+  'Industry averages, competitor rankings and market share: no external benchmark is collected.',
+  'Territory revenue and profitability: nothing attributes won revenue to a territory yet.',
+];
+
+interface SummaryResponse {
+  metrics: {
+    totalCustomers: number;
+    totalQuotes: number;
+    activeQuotes: number;
+    wonQuotes: number;
+    totalRevenue: number;
+    openTickets: number;
+    totalTickets: number;
   };
 }
-
-interface KPIScorecard {
-  category: string;
-  kpis: KPI[];
+interface KpiResponse {
+  kpis: {
+    sales: { winRate: number; totalQuotes: number; wonQuotes: number; avgDealSize: number };
+    service: {
+      totalTickets: number;
+      resolvedTickets: number;
+      avgResolutionHours: number;
+      openTickets: number;
+    };
+    customers: { newCustomers: number; newLeads: number; conversionRate: number };
+  };
+}
+interface InsightsResponse {
+  topCustomers: { name: string; revenue: number }[];
+  territoryDistribution: { name: string; count: number }[];
+  totalProducts: number | null;
+}
+interface CompetitiveResponse {
+  metrics: {
+    avgQuoteResponseHours: number;
+    avgTicketResolutionHours: number;
+    quoteWinRate: number;
+    ticketCompletionRate: number;
+  };
+}
+interface TerritoryResponse {
+  territories: { territoryId: string; territoryName: string; customerCount: number }[];
+}
+interface AttributionResponse {
+  attribution: { name: string; revenue: number; deals: number }[];
+  totalRevenue: number;
 }
 
-interface KPI {
-  name: string;
-  current: number;
-  target: number;
-  benchmark: number;
-  trend: number;
+export interface KpiRow {
+  area: string;
+  measure: string;
+  value: number;
   unit: string;
-  status: 'above' | 'at' | 'below';
-  criticalSuccess: boolean;
 }
 
-interface BusinessInsight {
-  id: string;
-  title: string;
-  description: string;
-  impact: 'high' | 'medium' | 'low';
-  category: 'opportunity' | 'risk' | 'performance';
-  recommendation: string;
-  expectedOutcome: string;
-  priority: number;
-}
-
-interface CompetitiveMetric {
-  metric: string;
-  ourValue: number;
-  industryAverage: number;
-  topPerformer: number;
-  ranking: number;
-  totalCompetitors: number;
-}
-
-interface TerritoryPerformance {
-  territory: string;
-  manager: string;
-  revenue: number;
-  revenueGrowth: number;
-  customerCount: number;
-  marketShare: number;
-  profitability: number;
-  customerSatisfaction: number;
-  reps: number;
-  avgProductivity: number;
-}
-
-const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7c7c', '#8dd1e1', '#d084d0'];
-
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
+/** Flattens the KPI response into the rows the page shows and exports. */
+export function kpiRows(k: KpiResponse['kpis'] | undefined): KpiRow[] {
+  if (!k) return [];
+  return [
+    { area: 'Sales', measure: 'Quote win rate', value: k.sales.winRate, unit: '%' },
+    { area: 'Sales', measure: 'Quotes created', value: k.sales.totalQuotes, unit: '' },
+    { area: 'Sales', measure: 'Quotes won', value: k.sales.wonQuotes, unit: '' },
+    { area: 'Sales', measure: 'Average deal size', value: k.sales.avgDealSize, unit: '$' },
+    { area: 'Service', measure: 'Tickets opened', value: k.service.totalTickets, unit: '' },
+    { area: 'Service', measure: 'Tickets completed', value: k.service.resolvedTickets, unit: '' },
+    { area: 'Service', measure: 'Tickets still open', value: k.service.openTickets, unit: '' },
+    {
+      area: 'Service',
+      measure: 'Average resolution',
+      value: k.service.avgResolutionHours,
+      unit: 'h',
     },
-  },
-};
-
-const itemVariants = {
-  hidden: { y: 20, opacity: 0 },
-  visible: {
-    y: 0,
-    opacity: 1,
-    transition: {
-      type: 'spring',
-      stiffness: 100,
+    { area: 'Customers', measure: 'New customers', value: k.customers.newCustomers, unit: '' },
+    { area: 'Customers', measure: 'New leads', value: k.customers.newLeads, unit: '' },
+    {
+      area: 'Customers',
+      measure: 'New customers per new lead',
+      value: k.customers.conversionRate,
+      unit: '%',
     },
-  },
-};
+  ];
+}
+
+const KPI_EXPORT_COLUMNS: ExportColumn<KpiRow>[] = [
+  { key: 'area', label: 'Area' },
+  { key: 'measure', label: 'Measure' },
+  { key: 'value', label: 'Value' },
+  { key: 'unit', label: 'Unit' },
+];
+
+const show = (row: KpiRow) =>
+  row.unit === '$'
+    ? formatCurrency(row.value)
+    : `${row.value.toLocaleString()}${row.unit === '%' ? '%' : row.unit === 'h' ? ' h' : ''}`;
+
+function Stat({ label, value, note }: { label: string; value: string; note?: string }) {
+  return (
+    <Card>
+      <CardContent className="p-5">
+        <p className="text-sm text-muted-foreground">{label}</p>
+        <p className="text-2xl font-bold mt-1">{value}</p>
+        {note && <p className="text-xs text-muted-foreground mt-1">{note}</p>}
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function ExecutiveDashboard() {
-  const [selectedPeriod, setSelectedPeriod] = useState<'30d' | '90d' | 'ytd' | '12m'>('ytd');
-  const [selectedView, setSelectedView] = useState<'overview' | 'detailed'>('overview');
+  const [period, setPeriod] = useState<Period>('quarter');
+  const { refresh: refreshPage, refreshing } = useRefreshQueries(REFRESH_PATHS);
+  const q = `?period=${period}`;
 
-  // Fetch executive summary
-  const summaryQuery = useQuery<ExecutiveSummary>({
-    queryKey: ['/api/reports/executive-summary', selectedPeriod],
-    queryFn: () => apiRequest(`/api/reports/executive-summary?period=${selectedPeriod}`),
+  const summaryQuery = useQuery<SummaryResponse>({
+    queryKey: [`/api/reports/executive-summary${q}`],
+    queryFn: () => apiRequest(`/api/reports/executive-summary${q}`),
+  });
+  const kpiQuery = useQuery<KpiResponse>({
+    queryKey: [`/api/reports/kpi-scorecards${q}`],
+    queryFn: () => apiRequest(`/api/reports/kpi-scorecards${q}`),
+  });
+  const insightsQuery = useQuery<InsightsResponse>({
+    queryKey: [`/api/reports/business-insights${q}`],
+    queryFn: () => apiRequest(`/api/reports/business-insights${q}`),
+  });
+  const competitiveQuery = useQuery<CompetitiveResponse>({
+    queryKey: [`/api/reports/competitive-metrics${q}`],
+    queryFn: () => apiRequest(`/api/reports/competitive-metrics${q}`),
+  });
+  const territoryQuery = useQuery<TerritoryResponse>({
+    queryKey: [`/api/reports/territory-performance${q}`],
+    queryFn: () => apiRequest(`/api/reports/territory-performance${q}`),
+  });
+  const attributionQuery = useQuery<AttributionResponse>({
+    queryKey: [`/api/reports/revenue-attribution${q}`],
+    queryFn: () => apiRequest(`/api/reports/revenue-attribution${q}`),
   });
 
-  // Fetch KPI scorecards
-  const kpiQuery = useQuery<KPIScorecard[]>({
-    queryKey: ['/api/reports/kpi-scorecards', selectedPeriod],
-    queryFn: () => apiRequest(`/api/reports/kpi-scorecards?period=${selectedPeriod}`),
-  });
-
-  // Fetch business insights
-  const insightsQuery = useQuery<BusinessInsight[]>({
-    queryKey: ['/api/reports/business-insights'],
-    queryFn: () => apiRequest('/api/reports/business-insights'),
-  });
-
-  // Fetch competitive metrics
-  const competitiveQuery = useQuery<CompetitiveMetric[]>({
-    queryKey: ['/api/reports/competitive-metrics'],
-    queryFn: () => apiRequest('/api/reports/competitive-metrics'),
-  });
-
-  // Fetch territory performance
-  const territoryQuery = useQuery<TerritoryPerformance[]>({
-    queryKey: ['/api/reports/territory-performance', selectedPeriod],
-    queryFn: () => apiRequest(`/api/reports/territory-performance?period=${selectedPeriod}`),
-  });
-
-  // Fetch revenue attribution data
-  const attributionQuery = useQuery({
-    queryKey: ['/api/reports/revenue-attribution', selectedPeriod],
-    queryFn: () => apiRequest(`/api/reports/revenue-attribution?period=${selectedPeriod}`),
-  });
-
-  // CR-033: all six kept only `.data`, so a failed request rendered the whole
-  // executive layout with zeroed cards and empty charts — indistinguishable from
-  // a quiet quarter. The results are held whole so QueryStates can tell an
-  // outage from a slow month.
-  const executiveSummary = summaryQuery.data;
-  const kpiScorecards = kpiQuery.data ?? [];
-  const businessInsights = insightsQuery.data ?? [];
-  const competitiveMetrics = competitiveQuery.data ?? [];
-  const territoryPerformance = territoryQuery.data ?? [];
-  const revenueAttribution = attributionQuery.data ?? [];
-
-  // Helper functions
-  const getKPIStatusColor = (status: string) => {
-    switch (status) {
-      case 'above':
-        return 'text-green-600';
-      case 'at':
-        return 'text-blue-600';
-      default:
-        return 'text-red-600';
-    }
-  };
-
-  const getKPIStatusIcon = (status: string) => {
-    switch (status) {
-      case 'above':
-        return ArrowUp;
-      case 'at':
-        return Target;
-      default:
-        return ArrowDown;
-    }
-  };
-
-  const getInsightIcon = (category: string) => {
-    switch (category) {
-      case 'opportunity':
-        return TrendingUp;
-      case 'risk':
-        return AlertTriangle;
-      default:
-        return Activity;
-    }
-  };
-
-  const getInsightColor = (impact: string) => {
-    switch (impact) {
-      case 'high':
-        return 'border-red-200 bg-red-50';
-      case 'medium':
-        return 'border-yellow-200 bg-yellow-50';
-      default:
-        return 'border-blue-200 bg-blue-50';
-    }
-  };
+  const m = summaryQuery.data?.metrics;
+  const rows = kpiRows(kpiQuery.data?.kpis);
+  const insights = insightsQuery.data;
+  const comp = competitiveQuery.data?.metrics;
+  const territories = territoryQuery.data?.territories ?? [];
+  const attribution = attributionQuery.data?.attribution ?? [];
 
   return (
     <MainLayout
       title="Executive Dashboard"
-      description="Strategic insights and cross-functional performance metrics"
+      description="Cross-functional figures computed from this tenant's records"
     >
-      <motion.div
-        className="space-y-6"
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-      >
-        {/* Filters and Controls */}
-        <motion.div variants={itemVariants}>
+      <div className="space-y-6">
+        <div className="flex flex-col md:flex-row gap-3 md:items-center justify-between">
+          <Select value={period} onValueChange={(v) => setPeriod(v as Period)}>
+            <SelectTrigger className="w-[180px]" aria-label="Period">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PERIODS.map((p) => (
+                <SelectItem key={p.value} value={p.value}>
+                  {p.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={rows.length === 0}
+              onClick={() =>
+                exportToCSV(rows, KPI_EXPORT_COLUMNS, { filename: `executive-kpis-${period}` })
+              }
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Export Report
+            </Button>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/scheduled-reports">
+                <Calendar className="h-4 w-4 mr-2" />
+                Schedule
+              </Link>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void refreshPage()}
+              disabled={refreshing}
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          </div>
+        </div>
+
+        <QueryStates
+          queries={[summaryQuery, kpiQuery]}
+          loading={<DashboardSkeleton />}
+          errorTitle="Could not load the executive summary"
+        >
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <Stat
+              label="Won revenue"
+              value={m ? formatCurrency(m.totalRevenue) : '—'}
+              note="Accepted rows in the quotes table"
+            />
+            <Stat
+              label="Quotes won"
+              value={m ? `${m.wonQuotes} of ${m.totalQuotes}` : '—'}
+              note={m ? `${m.activeQuotes} sent and awaiting an answer` : undefined}
+            />
+            <Stat label="Customers" value={m ? m.totalCustomers.toLocaleString() : '—'} />
+            <Stat
+              label="Open service tickets"
+              value={m ? m.openTickets.toLocaleString() : '—'}
+              note={m ? `${m.totalTickets} opened in the period` : undefined}
+            />
+          </div>
+
           <Card>
-            <CardContent className="p-6">
-              <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-                <div className="flex flex-col md:flex-row gap-4">
-                  <Select
-                    value={selectedPeriod}
-                    onValueChange={(value: any) => setSelectedPeriod(value)}
-                  >
-                    <SelectTrigger className="w-[150px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="30d">Last 30 days</SelectItem>
-                      <SelectItem value="90d">Last 90 days</SelectItem>
-                      <SelectItem value="ytd">Year to date</SelectItem>
-                      <SelectItem value="12m">Last 12 months</SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  <Select
-                    value={selectedView}
-                    onValueChange={(value: any) => setSelectedView(value)}
-                  >
-                    <SelectTrigger className="w-[150px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="overview">Overview</SelectItem>
-                      <SelectItem value="detailed">Detailed</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm">
-                    <Download className="h-4 w-4 mr-2" />
-                    Export Report
-                  </Button>
-                  <Button variant="outline" size="sm">
-                    <Calendar className="h-4 w-4 mr-2" />
-                    Schedule
-                  </Button>
-                  <Button variant="outline" size="sm">
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Refresh
-                  </Button>
-                </div>
+            <CardHeader>
+              <CardTitle>Key figures</CardTitle>
+              <CardDescription>For the selected period</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid md:grid-cols-3 gap-6">
+                {['Sales', 'Service', 'Customers'].map((area) => (
+                  <div key={area}>
+                    <h4 className="font-medium mb-2">{area}</h4>
+                    <dl className="space-y-1 text-sm">
+                      {rows
+                        .filter((r) => r.area === area)
+                        .map((r) => (
+                          <div key={r.measure} className="flex justify-between">
+                            <dt className="text-muted-foreground">{r.measure}</dt>
+                            <dd className="font-medium">{show(r)}</dd>
+                          </div>
+                        ))}
+                    </dl>
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>
-        </motion.div>
-
-        {/* CR-033: the period and view selectors above stay usable on a
-            failure — re-picking a period is the retry — so the wrapper starts
-            here, at the first section that is actually derived from the data. */}
-        <QueryStates
-          queries={[
-            summaryQuery,
-            kpiQuery,
-            insightsQuery,
-            competitiveQuery,
-            territoryQuery,
-            attributionQuery,
-          ]}
-          loading={<DashboardSkeleton />}
-          errorTitle="Could not load the executive dashboard"
-          className="py-6"
-        >
-          {/* Critical Business Alerts */}
-          {businessInsights.filter((insight) => insight.impact === 'high').length > 0 && (
-            <motion.div variants={itemVariants}>
-              <Alert className="border-orange-200 bg-orange-50 animate-pulse">
-                <AlertTriangle className="h-4 w-4 text-orange-600" />
-                <AlertDescription className="text-orange-800">
-                  <strong>Strategic Attention Required:</strong>{' '}
-                  {businessInsights.filter((insight) => insight.impact === 'high').length}{' '}
-                  high-impact insights require executive review.
-                </AlertDescription>
-              </Alert>
-            </motion.div>
-          )}
-
-          {/* Executive Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-            {/* Revenue */}
-            <motion.div
-              variants={itemVariants}
-              whileHover={{ y: -5, transition: { duration: 0.2 } }}
-            >
-              <Card className="h-full hover:shadow-lg transition-shadow duration-200">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <DollarSign className="h-8 w-8 text-green-600" />
-                    <Badge
-                      variant={
-                        (executiveSummary?.revenue.attainment || 0) >= 100
-                          ? 'default'
-                          : (executiveSummary?.revenue.attainment || 0) >= 85
-                            ? 'secondary'
-                            : 'destructive'
-                      }
-                    >
-                      {executiveSummary?.revenue.attainment.toFixed(0) || 0}%
-                    </Badge>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total Revenue</p>
-                    <p className="text-2xl font-bold">
-                      ${executiveSummary?.revenue.total?.toLocaleString() || '0'}
-                    </p>
-                    <div className="flex items-center text-xs mt-1">
-                      {(executiveSummary?.revenue.growth || 0) >= 0 ? (
-                        <ArrowUp className="h-3 w-3 mr-1 text-green-600" />
-                      ) : (
-                        <ArrowDown className="h-3 w-3 mr-1 text-red-600" />
-                      )}
-                      <span
-                        className={
-                          (executiveSummary?.revenue.growth || 0) >= 0
-                            ? 'text-green-600'
-                            : 'text-red-600'
-                        }
-                      >
-                        {(executiveSummary?.revenue.growth || 0) >= 0 ? '+' : ''}
-                        {executiveSummary?.revenue.growth?.toFixed(1) || 0}%
-                      </span>
-                    </div>
-                    <Progress value={executiveSummary?.revenue.attainment || 0} className="mt-2" />
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-
-            {/* Sales Performance */}
-            <motion.div
-              variants={itemVariants}
-              whileHover={{ y: -5, transition: { duration: 0.2 } }}
-            >
-              <Card className="h-full hover:shadow-lg transition-shadow duration-200">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <Target className="h-8 w-8 text-blue-600" />
-                    <Badge variant="outline">
-                      {executiveSummary?.sales.closeRate.toFixed(1) || 0}%
-                    </Badge>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Sales Pipeline</p>
-                    <p className="text-2xl font-bold">
-                      ${executiveSummary?.sales.pipelineValue?.toLocaleString() || '0'}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {executiveSummary?.sales.dealsWon || 0} deals won this period
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Avg cycle: {executiveSummary?.sales.salesCycleTime || 0} days
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-
-            {/* Service Excellence */}
-            <motion.div
-              variants={itemVariants}
-              whileHover={{ y: -5, transition: { duration: 0.2 } }}
-            >
-              <Card className="h-full hover:shadow-lg transition-shadow duration-200">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <Users className="h-8 w-8 text-purple-600" />
-                    <Badge
-                      variant={
-                        (executiveSummary?.service.customerSatisfaction || 0) >= 4.5
-                          ? 'default'
-                          : (executiveSummary?.service.customerSatisfaction || 0) >= 4.0
-                            ? 'secondary'
-                            : 'destructive'
-                      }
-                    >
-                      {executiveSummary?.service.customerSatisfaction.toFixed(1) || 0}/5
-                    </Badge>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Customer Satisfaction</p>
-                    <p className="text-2xl font-bold">
-                      {executiveSummary?.service.firstCallResolution.toFixed(0) || 0}%
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">First call resolution rate</p>
-                    <p className="text-xs text-muted-foreground">
-                      Avg response: {executiveSummary?.service.avgResponseTime.toFixed(1) || 0}h
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-
-            {/* Financial Health */}
-            <motion.div
-              variants={itemVariants}
-              whileHover={{ y: -5, transition: { duration: 0.2 } }}
-            >
-              <Card className="h-full hover:shadow-lg transition-shadow duration-200">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <BarChart3 className="h-8 w-8 text-orange-600" />
-                    <Badge
-                      variant={
-                        (executiveSummary?.financial.grossMargin || 0) >= 35
-                          ? 'default'
-                          : (executiveSummary?.financial.grossMargin || 0) >= 25
-                            ? 'secondary'
-                            : 'destructive'
-                      }
-                    >
-                      {executiveSummary?.financial.grossMargin.toFixed(1) || 0}%
-                    </Badge>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Gross Margin</p>
-                    <p className="text-2xl font-bold">
-                      {executiveSummary?.financial.collectionRate.toFixed(0) || 0}%
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">Collection rate</p>
-                    <p className="text-xs text-muted-foreground">
-                      DSO: {executiveSummary?.financial.daysOutstanding || 0} days
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-
-            {/* Customer Growth */}
-            <motion.div
-              variants={itemVariants}
-              whileHover={{ y: -5, transition: { duration: 0.2 } }}
-            >
-              <Card className="h-full hover:shadow-lg transition-shadow duration-200">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <Activity className="h-8 w-8 text-indigo-600" />
-                    <Badge
-                      variant={
-                        (executiveSummary?.customers.churnRate || 0) <= 5
-                          ? 'default'
-                          : (executiveSummary?.customers.churnRate || 0) <= 10
-                            ? 'secondary'
-                            : 'destructive'
-                      }
-                    >
-                      {executiveSummary?.customers.churnRate.toFixed(1) || 0}%
-                    </Badge>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Customer Churn</p>
-                    <p className="text-2xl font-bold">
-                      {executiveSummary?.customers.totalActive?.toLocaleString() || '0'}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">Active customers</p>
-                    <p className="text-xs text-green-600">
-                      +{executiveSummary?.customers.newAcquisitions || 0} new this period
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          </div>
-
-          <Tabs defaultValue="insights" className="w-full">
-            <TabsList>
-              <TabsTrigger value="insights">Business Insights</TabsTrigger>
-              <TabsTrigger value="scorecards">KPI Scorecards</TabsTrigger>
-              <TabsTrigger value="competitive">Competitive Position</TabsTrigger>
-              <TabsTrigger value="territories">Territory Performance</TabsTrigger>
-              <TabsTrigger value="attribution">Revenue Attribution</TabsTrigger>
-            </TabsList>
-
-            {/* Business Insights */}
-            <TabsContent value="insights" className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Strategic Insights</CardTitle>
-                    <CardDescription>
-                      AI-powered business intelligence and recommendations
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4 max-h-96 overflow-y-auto">
-                      {businessInsights
-                        .sort((a, b) => b.priority - a.priority)
-                        .map((insight, index) => {
-                          const InsightIcon = getInsightIcon(insight.category);
-                          return (
-                            <div
-                              key={index}
-                              className={`p-4 rounded-lg border ${getInsightColor(insight.impact)}`}
-                            >
-                              <div className="flex items-start space-x-3">
-                                <div className="p-1 rounded">
-                                  <InsightIcon className="h-4 w-4" />
-                                </div>
-                                <div className="flex-1">
-                                  <div className="flex items-center justify-between mb-1">
-                                    <h4 className="font-medium">{insight.title}</h4>
-                                    <Badge
-                                      variant={
-                                        insight.impact === 'high'
-                                          ? 'destructive'
-                                          : insight.impact === 'medium'
-                                            ? 'secondary'
-                                            : 'outline'
-                                      }
-                                    >
-                                      {insight.impact} impact
-                                    </Badge>
-                                  </div>
-                                  <p className="text-sm text-muted-foreground mb-2">
-                                    {insight.description}
-                                  </p>
-                                  <div className="text-sm">
-                                    <p className="font-medium text-blue-700">Recommendation:</p>
-                                    <p className="text-blue-600 mb-2">{insight.recommendation}</p>
-                                    <p className="font-medium text-green-700">Expected Outcome:</p>
-                                    <p className="text-green-600">{insight.expectedOutcome}</p>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Performance Trends</CardTitle>
-                    <CardDescription>Key metrics over time</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <ResponsiveContainer width="100%" height={350}>
-                      <ComposedChart data={revenueAttribution}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="month" />
-                        <YAxis />
-                        <Tooltip />
-                        <Area
-                          type="monotone"
-                          dataKey="revenue"
-                          stackId="1"
-                          stroke="#8884d8"
-                          fill="#8884d8"
-                          opacity={0.6}
-                        />
-                        <Line
-                          type="monotone"
-                          dataKey="customerSatisfaction"
-                          stroke="#82ca9d"
-                          strokeWidth={2}
-                        />
-                      </ComposedChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
-
-            {/* KPI Scorecards */}
-            <TabsContent value="scorecards" className="space-y-6">
-              {kpiScorecards.map((scorecard, index) => (
-                <Card key={index}>
-                  <CardHeader>
-                    <CardTitle>{scorecard.category} Performance</CardTitle>
-                    <CardDescription>
-                      Key performance indicators vs targets and benchmarks
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {scorecard.kpis.map((kpi, kpiIndex) => {
-                        const StatusIcon = getKPIStatusIcon(kpi.status);
-                        return (
-                          <div key={kpiIndex} className="p-4 border rounded-lg">
-                            <div className="flex items-center justify-between mb-3">
-                              <h4 className="font-medium">{kpi.name}</h4>
-                              <div className="flex items-center">
-                                <StatusIcon
-                                  className={`h-4 w-4 mr-1 ${getKPIStatusColor(kpi.status)}`}
-                                />
-                                {kpi.criticalSuccess && (
-                                  <Star className="h-4 w-4 text-yellow-500" />
-                                )}
-                              </div>
-                            </div>
-                            <div className="space-y-2">
-                              <div className="flex justify-between text-sm">
-                                <span>Current:</span>
-                                <span className="font-medium">
-                                  {kpi.current}
-                                  {kpi.unit}
-                                </span>
-                              </div>
-                              <div className="flex justify-between text-sm">
-                                <span>Target:</span>
-                                <span>
-                                  {kpi.target}
-                                  {kpi.unit}
-                                </span>
-                              </div>
-                              <div className="flex justify-between text-sm">
-                                <span>Benchmark:</span>
-                                <span>
-                                  {kpi.benchmark}
-                                  {kpi.unit}
-                                </span>
-                              </div>
-                              <div className="flex justify-between text-sm">
-                                <span>Trend:</span>
-                                <span
-                                  className={kpi.trend >= 0 ? 'text-green-600' : 'text-red-600'}
-                                >
-                                  {kpi.trend >= 0 ? '+' : ''}
-                                  {kpi.trend.toFixed(1)}%
-                                </span>
-                              </div>
-                              <Progress value={percentBar(kpi.current, kpi.target)} />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </TabsContent>
-
-            {/* Competitive Position */}
-            <TabsContent value="competitive" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Market Position Analysis</CardTitle>
-                  <CardDescription>
-                    Performance vs industry benchmarks and competitors
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-6">
-                    {competitiveMetrics.map((metric, index) => (
-                      <div key={index} className="p-4 border rounded-lg">
-                        <div className="flex items-center justify-between mb-3">
-                          <h4 className="font-medium">{metric.metric}</h4>
-                          <Badge
-                            variant={
-                              metric.ranking <= metric.totalCompetitors * 0.3
-                                ? 'default'
-                                : metric.ranking <= metric.totalCompetitors * 0.7
-                                  ? 'secondary'
-                                  : 'destructive'
-                            }
-                          >
-                            #{metric.ranking} of {metric.totalCompetitors}
-                          </Badge>
-                        </div>
-                        <div className="grid grid-cols-3 gap-4 text-sm">
-                          <div className="text-center">
-                            <p className="text-muted-foreground">Our Performance</p>
-                            <p className="text-lg font-bold text-blue-600">{metric.ourValue}</p>
-                          </div>
-                          <div className="text-center">
-                            <p className="text-muted-foreground">Industry Average</p>
-                            <p className="text-lg font-semibold">{metric.industryAverage}</p>
-                          </div>
-                          <div className="text-center">
-                            <p className="text-muted-foreground">Top Performer</p>
-                            <p className="text-lg font-semibold text-green-600">
-                              {metric.topPerformer}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="mt-3">
-                          <div className="flex justify-between text-xs mb-1">
-                            <span>Gap to Leader</span>
-                            <span>
-                              {formatPercent(
-                                percentOf(
-                                  metric.topPerformer - metric.ourValue,
-                                  metric.topPerformer,
-                                ),
-                                { digits: 1 },
-                              )}
-                            </span>
-                          </div>
-                          <Progress
-                            value={percentBar(metric.ourValue, metric.topPerformer)}
-                            className="h-2"
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {/* Territory Performance */}
-            <TabsContent value="territories" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Territory Performance Matrix</CardTitle>
-                  <CardDescription>
-                    Regional performance and market penetration analysis
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {territoryPerformance.map((territory, index) => (
-                      <div key={index} className="p-4 border rounded-lg">
-                        <div className="flex items-center justify-between mb-4">
-                          <div>
-                            <h4 className="font-medium">{territory.territory} Territory</h4>
-                            <p className="text-sm text-muted-foreground">
-                              Manager: {territory.manager}
-                            </p>
-                          </div>
-                          <Badge
-                            variant={
-                              territory.revenueGrowth >= 15
-                                ? 'default'
-                                : territory.revenueGrowth >= 5
-                                  ? 'secondary'
-                                  : 'destructive'
-                            }
-                          >
-                            {territory.revenueGrowth >= 0 ? '+' : ''}
-                            {territory.revenueGrowth.toFixed(1)}% growth
-                          </Badge>
-                        </div>
-                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 text-sm">
-                          <div>
-                            <p className="text-muted-foreground">Revenue</p>
-                            <p className="font-semibold text-lg">
-                              ${territory.revenue.toLocaleString()}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Customers</p>
-                            <p className="font-semibold">{territory.customerCount}</p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Market Share</p>
-                            <p className="font-semibold">{territory.marketShare.toFixed(1)}%</p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Profitability</p>
-                            <p className="font-semibold">{territory.profitability.toFixed(1)}%</p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">CSAT</p>
-                            <p className="font-semibold">
-                              {territory.customerSatisfaction.toFixed(1)}/5
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Rep Productivity</p>
-                            <p className="font-semibold">{territory.avgProductivity.toFixed(0)}%</p>
-                          </div>
-                        </div>
-                        <div className="mt-3 grid grid-cols-3 gap-2">
-                          <div>
-                            <p className="text-xs text-muted-foreground">Revenue Progress</p>
-                            <Progress
-                              value={Math.min(territory.revenueGrowth + 100, 100)}
-                              className="h-2"
-                            />
-                          </div>
-                          <div>
-                            <p className="text-xs text-muted-foreground">Profitability</p>
-                            <Progress value={territory.profitability} className="h-2" />
-                          </div>
-                          <div>
-                            <p className="text-xs text-muted-foreground">Satisfaction</p>
-                            <Progress value={territory.customerSatisfaction * 20} className="h-2" />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {/* Revenue Attribution */}
-            <TabsContent value="attribution" className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Revenue Attribution</CardTitle>
-                    <CardDescription>Revenue sources and contribution analysis</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <ResponsiveContainer width="100%" height={350}>
-                      <RechartsPieChart>
-                        <Pie
-                          data={revenueAttribution}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={false}
-                          label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(1)}%`}
-                          outerRadius={120}
-                          fill="#8884d8"
-                          dataKey="value"
-                        >
-                          {revenueAttribution.map((entry: any, index: number) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip />
-                      </RechartsPieChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
-
-                {/* AUDIT-019. A "Cross-Functional Impact" card claiming sales
-                    drove 78% of revenue growth, service quality correlated 85%
-                    with retention and marketing generated 62% of pipeline -
-                    three typed-in percentages sitting beside six real queries,
-                    which is what made them credible. None is derivable: there is
-                    no attribution model, no retention correlation and no
-                    marketing source on a pipeline row. */}
-              </div>
-            </TabsContent>
-          </Tabs>
         </QueryStates>
-      </motion.div>
+
+        <div className="grid lg:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Top customers by won revenue</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <QueryStates queries={[insightsQuery]} errorTitle="Could not load customers">
+                {(insights?.topCustomers ?? []).length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No won quotes in this period.</p>
+                ) : (
+                  <ul className="space-y-1 text-sm">
+                    {insights!.topCustomers.map((c) => (
+                      <li key={c.name} className="flex justify-between">
+                        <span>{c.name}</span>
+                        <span className="font-medium">{formatCurrency(c.revenue)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </QueryStates>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Won revenue by rep</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <QueryStates queries={[attributionQuery]} errorTitle="Could not load attribution">
+                {attribution.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No won quotes in this period.</p>
+                ) : (
+                  <ul className="space-y-1 text-sm">
+                    {attribution.map((a) => (
+                      <li key={a.name} className="flex justify-between">
+                        <span>
+                          {a.name} ({a.deals} won)
+                        </span>
+                        <span className="font-medium">{formatCurrency(a.revenue)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </QueryStates>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Responsiveness</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <QueryStates queries={[competitiveQuery]} errorTitle="Could not load these figures">
+                <dl className="space-y-1 text-sm">
+                  <div className="flex justify-between">
+                    <dt className="text-muted-foreground">Quote created to sent</dt>
+                    <dd className="font-medium">
+                      {comp ? `${comp.avgQuoteResponseHours} h average` : '—'}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-muted-foreground">Ticket opened to resolved</dt>
+                    <dd className="font-medium">
+                      {comp ? `${comp.avgTicketResolutionHours} h average` : '—'}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-muted-foreground">Tickets completed</dt>
+                    <dd className="font-medium">{comp ? `${comp.ticketCompletionRate}%` : '—'}</dd>
+                  </div>
+                </dl>
+              </QueryStates>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Customers by territory</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <QueryStates queries={[territoryQuery]} errorTitle="Could not load territories">
+                {territories.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No active territories.</p>
+                ) : (
+                  <ul className="space-y-1 text-sm">
+                    {territories.map((t) => (
+                      <li key={t.territoryId} className="flex justify-between">
+                        <span>{t.territoryName}</span>
+                        <span className="font-medium">{t.customerCount} customers</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </QueryStates>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Not measured here</CardTitle>
+            <CardDescription>
+              Revenue on this page counts accepted rows in the quotes table. Quotes built in the
+              Quote Builder are stored as proposals and are not included.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul className="list-disc pl-5 text-sm text-muted-foreground space-y-1">
+              {UNMEASURED_EXECUTIVE.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      </div>
     </MainLayout>
   );
 }

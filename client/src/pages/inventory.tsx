@@ -42,7 +42,24 @@ import {
 } from 'lucide-react';
 import { CsvImportWizard } from '@/components/import';
 import { VirtualizedDataTable } from '@/components/ui/virtualized-data-table';
-import { type InventoryItem } from '@shared/schema';
+import {
+  adjustmentFor,
+  toInventoryView,
+  type InventoryRow,
+  type InventoryView,
+} from '@/lib/inventory-item';
+import { bulkDelete, bulkDeleteToast } from '@/lib/bulk-delete';
+import { describeApiError } from '@/lib/api-error';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+
+type InventoryItem = InventoryView;
 import WarehouseTeamStatsWidget from '@/components/stats/WarehouseTeamStatsWidget';
 
 export default function Inventory() {
@@ -65,15 +82,11 @@ export default function Inventory() {
     queryKey: ['/api/inventory'],
     queryFn: async () => {
       const response = await apiRequest('/api/inventory', 'GET');
-      return extractRecords(response).map((item: any) => ({
-        ...item,
-        id: item.id,
-        // AUDIT-011a: the inventory edge function returns { data, total, page,
-        // limit } with RAW PostgREST rows, so created_at / updated_at are what
-        // arrive and these read undefined.
-        createdAt: item.created_at || item.createdAt || '',
-        updatedAt: item.updated_at || item.updatedAt || '',
-      }));
+      // AUDIT-011a / round 195: the edge function answers RAW PostgREST rows.
+      // Only the timestamps used to be mapped, so partNumber, quantityOnHand,
+      // reorderPoint, unitCost and binLocation were all undefined and every
+      // item read as zero stock needing a reorder.
+      return (extractRecords(response) as InventoryRow[]).map(toInventoryView);
     },
   });
 
@@ -81,7 +94,9 @@ export default function Inventory() {
     currentStock: number | null | undefined,
     reorderPoint: number | null | undefined,
   ) => {
-    const stock = currentStock ?? 0;
+    // A quantity nobody recorded is not zero stock.
+    if (currentStock === null || currentStock === undefined) return 'unknown';
+    const stock = currentStock;
     const reorder = reorderPoint ?? 0;
     if (stock <= reorder) return 'low';
     if (stock <= reorder * 1.5) return 'medium';
@@ -125,26 +140,81 @@ export default function Inventory() {
   const bulkSelection = useBulkSelection(filteredInventory);
 
   // Bulk delete mutation
+  // Round 195: was Promise.all, which rejected on the first failure and
+  // toasted "Failed to delete some items" without saying which - or, when every
+  // call succeeded, counted the selection rather than the deletions.
   const bulkDeleteMutation = useMutation({
-    mutationFn: async (itemIds: string[]) => {
-      await Promise.all(itemIds.map((id) => apiRequest(`/api/inventory/${id}`, 'DELETE')));
-    },
-    onSuccess: () => {
+    mutationFn: (itemIds: string[]) =>
+      bulkDelete(itemIds, (id) => apiRequest(`/api/inventory/${id}`, 'DELETE')),
+    onSuccess: (outcome) => {
       queryClient.invalidateQueries({ queryKey: ['/api/inventory'] });
       bulkSelection.clearSelection();
-      toast({
-        title: 'Success',
-        description: `${bulkSelection.selectedCount} item(s) deleted successfully`,
-      });
-    },
-    onError: () => {
-      toast({
-        title: 'Error',
-        description: 'Failed to delete some items',
-        variant: 'destructive',
-      });
+      // Failures stay selected so a retry does not mean finding them again.
+      outcome.failed.forEach((id) => bulkSelection.toggleSelection(id));
+      toast(bulkDeleteToast(outcome, 'items'));
     },
   });
+
+  // Add item (POST /inventory) and stock count (POST /inventory/:id/adjust).
+  const emptyItem = {
+    name: '',
+    partNumber: '',
+    category: '',
+    quantityOnHand: '',
+    reorderPoint: '',
+    unitCost: '',
+    binLocation: '',
+  };
+  const [addOpen, setAddOpen] = useState(false);
+  const [newItem, setNewItem] = useState(emptyItem);
+  const [stockTarget, setStockTarget] = useState<InventoryItem | null>(null);
+  const [counted, setCounted] = useState('');
+  const [countReason, setCountReason] = useState('');
+
+  const failure = (title: string) => (err: unknown) =>
+    toast({ title, description: describeApiError(err).message, variant: 'destructive' });
+  const optionalNumber = (v: string) => (v.trim() === '' ? undefined : Number(v));
+
+  const createItemMutation = useMutation({
+    mutationFn: () =>
+      apiRequest('/api/inventory', 'POST', {
+        name: newItem.name.trim(),
+        partNumber: newItem.partNumber.trim() || undefined,
+        category: newItem.category.trim() || undefined,
+        quantityOnHand: optionalNumber(newItem.quantityOnHand),
+        reorderPoint: optionalNumber(newItem.reorderPoint),
+        unitCost: optionalNumber(newItem.unitCost),
+        binLocation: newItem.binLocation.trim() || undefined,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/inventory'] });
+      toast({ title: 'Item added', description: newItem.name.trim() });
+      setNewItem(emptyItem);
+      setAddOpen(false);
+    },
+    onError: failure('Could not add item'),
+  });
+
+  const adjustMutation = useMutation({
+    mutationFn: ({ item, quantity }: { item: InventoryItem; quantity: number }) =>
+      apiRequest(`/api/inventory/${item.id}/adjust`, 'POST', {
+        quantity,
+        reason: countReason.trim() || 'Stock count',
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/inventory'] });
+      toast({ title: 'Stock updated', description: stockTarget?.name });
+      setStockTarget(null);
+    },
+    onError: failure('Could not update stock'),
+  });
+
+  const openStockCount = (item: InventoryItem) => {
+    setStockTarget(item);
+    setCounted(item.quantityOnHand === null ? '' : String(item.quantityOnHand));
+    setCountReason('');
+  };
+  const countDelta = stockTarget ? adjustmentFor(stockTarget.quantityOnHand, counted) : null;
 
   // Bulk export function
   const handleBulkExport = (format: 'csv' | 'json') => {
@@ -320,7 +390,7 @@ export default function Inventory() {
               <Upload className="h-4 w-4" />
               <span className="hidden sm:inline">Import</span>
             </Button>
-            <Button className="flex items-center gap-2">
+            <Button className="flex items-center gap-2" onClick={() => setAddOpen(true)}>
               <Plus className="h-4 w-4" />
               <span className="hidden sm:inline">Add Item</span>
             </Button>
@@ -379,13 +449,13 @@ export default function Inventory() {
                             Current Stock
                           </p>
                           <p className="text-lg font-semibold text-gray-900">
-                            {item.quantityOnHand}
+                            {item.quantityOnHand ?? '—'}
                           </p>
                         </div>
                         <div>
                           <p className="text-xs text-gray-500 uppercase tracking-wide">Unit Cost</p>
                           <p className="text-lg font-semibold text-gray-900">
-                            ${Number(item.unitCost || 0).toFixed(2)}
+                            {item.unitCost === null ? '—' : `$${item.unitCost.toFixed(2)}`}
                           </p>
                         </div>
                       </div>
@@ -398,10 +468,9 @@ export default function Inventory() {
                       )}
 
                       <div className="mt-4 flex gap-2">
-                        <Button variant="outline" size="sm">
-                          View Details
-                        </Button>
-                        <Button variant="outline" size="sm">
+                        {/* View Details removed: the card already shows every
+                            field the list returns, and there is no item page. */}
+                        <Button variant="outline" size="sm" onClick={() => openStockCount(item)}>
                           Update Stock
                         </Button>
                       </div>
@@ -433,19 +502,19 @@ export default function Inventory() {
                 {
                   id: 'currentStock',
                   header: 'Current Stock',
-                  cell: (item) => item.quantityOnHand,
+                  cell: (item) => item.quantityOnHand ?? '—',
                   align: 'right',
                 },
                 {
                   id: 'reorderPoint',
                   header: 'Reorder Point',
-                  cell: (item) => item.reorderPoint,
+                  cell: (item) => item.reorderPoint ?? '—',
                   align: 'right',
                 },
                 {
                   id: 'unitCost',
                   header: 'Unit Cost',
-                  cell: (item) => `$${Number(item.unitCost || 0).toFixed(2)}`,
+                  cell: (item) => (item.unitCost === null ? '—' : `$${item.unitCost.toFixed(2)}`),
                   align: 'right',
                 },
                 { id: 'location', header: 'Location', cell: (item) => item.binLocation || '—' },
@@ -461,8 +530,13 @@ export default function Inventory() {
                 });
               }}
               actions={(item) => (
-                <Button variant="outline" size="sm" className="h-8">
-                  View
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8"
+                  onClick={() => openStockCount(item)}
+                >
+                  Update Stock
                 </Button>
               )}
               maxHeight={700}
@@ -486,8 +560,7 @@ export default function Inventory() {
                 type={searchTerm || stockStatus !== 'all' ? 'filter' : 'default'}
                 action={{
                   label: 'Add First Item',
-                  onClick: () =>
-                    toast({ title: 'Add Item', description: 'Add item dialog would open here' }),
+                  onClick: () => setAddOpen(true),
                   icon: Plus,
                 }}
                 secondaryAction={
@@ -527,6 +600,108 @@ export default function Inventory() {
           }}
         />
       </div>
+      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add inventory item</DialogTitle>
+            <DialogDescription>
+              Starting stock can be left blank and counted later.
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            className="space-y-3"
+            onSubmit={(e) => {
+              e.preventDefault();
+              createItemMutation.mutate();
+            }}
+          >
+            {(
+              [
+                ['name', 'Name', 'text'],
+                ['partNumber', 'SKU / part number', 'text'],
+                ['category', 'Category', 'text'],
+                ['quantityOnHand', 'Quantity on hand', 'number'],
+                ['reorderPoint', 'Reorder point', 'number'],
+                ['unitCost', 'Unit cost', 'number'],
+                ['binLocation', 'Bin location', 'text'],
+              ] as const
+            ).map(([key, label, type]) => (
+              <div key={key}>
+                <Label htmlFor={`new-item-${key}`}>{label}</Label>
+                <Input
+                  id={`new-item-${key}`}
+                  type={type}
+                  min={type === 'number' ? 0 : undefined}
+                  step={key === 'unitCost' ? '0.01' : undefined}
+                  required={key === 'name'}
+                  value={newItem[key]}
+                  onChange={(e) => setNewItem({ ...newItem, [key]: e.target.value })}
+                />
+              </div>
+            ))}
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={!newItem.name.trim() || createItemMutation.isPending}
+            >
+              {createItemMutation.isPending ? 'Adding...' : 'Add item'}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={stockTarget !== null} onOpenChange={(open) => !open && setStockTarget(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Update stock</DialogTitle>
+            <DialogDescription>
+              {stockTarget?.name}: enter the quantity you counted. The difference is recorded as an
+              adjustment.
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            className="space-y-3"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (stockTarget && countDelta !== null) {
+                adjustMutation.mutate({ item: stockTarget, quantity: countDelta });
+              }
+            }}
+          >
+            <div>
+              <Label htmlFor="stock-counted">Counted quantity</Label>
+              <Input
+                id="stock-counted"
+                type="number"
+                min={0}
+                step={1}
+                value={counted}
+                onChange={(e) => setCounted(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Currently {stockTarget?.quantityOnHand ?? 'not recorded'}
+                {countDelta !== null && ` · change ${countDelta > 0 ? '+' : ''}${countDelta}`}
+              </p>
+            </div>
+            <div>
+              <Label htmlFor="stock-reason">Reason</Label>
+              <Input
+                id="stock-reason"
+                placeholder="Stock count"
+                value={countReason}
+                onChange={(e) => setCountReason(e.target.value)}
+              />
+            </div>
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={countDelta === null || adjustMutation.isPending}
+            >
+              {adjustMutation.isPending ? 'Saving...' : 'Save count'}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
     </MainLayout>
   );
 }

@@ -82,6 +82,8 @@ import PageAlerts from '@/components/contextual/PageAlerts';
 import KpiSummaryBar from '@/components/dashboard/KpiSummaryBar';
 import MobileFAB from '@/components/layout/MobileFAB';
 import { PlaceManufacturerOrderDialog } from '@/components/purchasing/PlaceManufacturerOrderDialog';
+import { downloadAuthedFile } from '@/lib/authed-download';
+import { describeApiError } from '@/lib/api-error';
 
 // WF-P-02: the receive dialog's view of a line, normalized from whichever host
 // answered - Express returns snake_case Drizzle rows under `items`, the edge
@@ -1863,7 +1865,24 @@ export default function PurchaseOrders() {
                   <Button variant="outline" onClick={() => setShowDetailsDialog(false)}>
                     Close
                   </Button>
-                  <Button variant="outline">
+                  <Button
+                    variant="outline"
+                    onClick={async () => {
+                      if (!selectedPO) return;
+                      try {
+                        await downloadAuthedFile(
+                          `/api/purchase-orders/${selectedPO.id}/pdf`,
+                          `PO-${selectedPO.poNumber ?? selectedPO.id}.pdf`,
+                        );
+                      } catch (err) {
+                        toast({
+                          title: 'Could not export the PDF',
+                          description: describeApiError(err).message,
+                          variant: 'destructive',
+                        });
+                      }
+                    }}
+                  >
                     <Download className="h-4 w-4 mr-2" />
                     Export PDF
                   </Button>

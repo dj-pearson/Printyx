@@ -76,8 +76,25 @@ export function decryptCanonPwd(blob: string, password: string): string {
   try {
     const decipher = createDecipheriv('aes-256-cbc', key, iv);
     const plaintext = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
-    return plaintext.toString('utf-8');
+    return plausiblePassword(plaintext);
   } catch {
     throw new CanonCryptoError('Canon pwd decryption failed (wrong password or unsupported KDF)');
   }
+}
+
+/**
+ * CBC has no authentication, so a WRONG key still yields valid padding about
+ * one time in 256 (measured: 11 of 3,000) and "decrypts" to garbage - which
+ * the importer then stored as the SMB credential, and which made the
+ * wrong-password test fail at random. Canon's blobs carry no MAC to check, so
+ * the plaintext itself is the evidence: a device password is valid UTF-8 with
+ * no control characters, and 16 random bytes almost never are.
+ */
+export function plausiblePassword(plaintext: Buffer): string {
+  const text = new TextDecoder('utf-8', { fatal: true }).decode(plaintext);
+  // eslint-disable-next-line no-control-regex
+  if (/[\u0000-\u001f\u007f]/.test(text)) {
+    throw new CanonCryptoError('decrypted pwd is not a plausible password');
+  }
+  return text;
 }

@@ -9,7 +9,7 @@
 // here — see the branch at the bottom for why.
 //
 // Row projections come from _shared/chatbot-projection.ts, which
-// server/lib/chatbot-projection.ts mirrors: the page reads camelCase keys off
+// (once mirrored in server/lib/chatbot-projection.ts, deleted round 153): the page reads camelCase keys off
 // each row, and the workspace bot token must never appear in a response.
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';

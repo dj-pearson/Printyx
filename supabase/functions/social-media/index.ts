@@ -9,6 +9,7 @@ import { safeFetch, SSRFError } from '../_shared/safe-fetch.ts';
 import { validateUrl } from '../_shared/ssrf.ts';
 import { generateCompletion } from '../_shared/anthropic.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { toCamelShallow } from '../_shared/case.ts';
 
 /**
  * Deliver a post to a tenant-supplied webhook (Make.com and friends).
@@ -184,7 +185,7 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to fetch posts' }, 500, req);
       }
 
-      return createCorsResponse(posts || [], 200, req);
+      return createCorsResponse((posts || []).map(toCamelShallow), 200, req);
     }
 
     // GET /social-media/posts/:id - Get single post
@@ -200,7 +201,7 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Post not found' }, 404, req);
       }
 
-      return createCorsResponse(post, 200, req);
+      return createCorsResponse(toCamelShallow(post), 200, req);
     }
 
     // POST /social-media/posts - Create social media post
@@ -238,7 +239,7 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to create post' }, 500, req);
       }
 
-      return createCorsResponse(post, 201, req);
+      return createCorsResponse(toCamelShallow(post), 201, req);
     }
 
     // POST /social-media/generate - Generate content
@@ -322,7 +323,7 @@ export default async function handler(req: Request) {
           .eq('tenant_id', tenantId);
       }
 
-      return createCorsResponse(newPost, 201, req);
+      return createCorsResponse(toCamelShallow(newPost), 201, req);
     }
 
     // PUT /social-media/posts/:id - Update post
@@ -345,7 +346,7 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to update post' }, 500, req);
       }
 
-      return createCorsResponse(post, 200, req);
+      return createCorsResponse(toCamelShallow(post), 200, req);
     }
 
     // POST /social-media/posts/:id/publish - Publish post
@@ -377,7 +378,7 @@ export default async function handler(req: Request) {
 
       return createCorsResponse(
         {
-          ...post,
+          ...toCamelShallow(post),
           unpersisted: [
             'publishedAt: social_media_posts has no published_at column (webhook_sent_at ' +
               'belongs to the webhook delivery path, which this endpoint does not use)',
@@ -413,7 +414,7 @@ export default async function handler(req: Request) {
         // scheduled-jobs list 42703'd.
         .order('next_execution', { ascending: true });
 
-      return createCorsResponse(jobs || [], 200, req);
+      return createCorsResponse((jobs || []).map(toCamelShallow), 200, req);
     }
 
     // POST /social-media/posts/:id/broadcast - Deliver a post to its webhook
@@ -422,6 +423,15 @@ export default async function handler(req: Request) {
     // 404'd in production while Express served it. Note the verb: the existing
     // /publish branch only moves `status`, it sends nothing.
     if (req.method === 'POST' && endpoint === 'posts' && postId && parts[2] === 'broadcast') {
+      // Round 152. SEC-EDGE-001 gated /publish as "the privileged act" - and
+      // /publish only moves a status column. THIS is the branch that sends the
+      // post to an external webhook in the tenant's name, and it was open to
+      // any member. Same manager line as /publish.
+      try {
+        requireManager();
+      } catch (err) {
+        return denyManager(err);
+      }
       const body = await req.json().catch(() => ({}));
       const webhookUrl = body.webhookUrl ?? body.webhook_url;
 
@@ -473,6 +483,13 @@ export default async function handler(req: Request) {
 
     // POST /social-media/cron-jobs - Create a scheduled job
     if (req.method === 'POST' && endpoint === 'cron-jobs' && !postId) {
+      // Round 152: a cron job publishes on a schedule with nobody reviewing
+      // each post, so creating one is at least as privileged as /broadcast.
+      try {
+        requireManager();
+      } catch (err) {
+        return denyManager(err);
+      }
       const body = await req.json().catch(() => ({}));
 
       // name, cron_expression, prompt_template, target_platforms and webhook_url
@@ -524,11 +541,16 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to create cron job' }, 500, req);
       }
 
-      return createCorsResponse(job, 201, req);
+      return createCorsResponse(toCamelShallow(job), 201, req);
     }
 
     // PUT /social-media/cron-jobs/:id - Update a scheduled job
     if (req.method === 'PUT' && endpoint === 'cron-jobs' && postId) {
+      try {
+        requireManager();
+      } catch (err) {
+        return denyManager(err);
+      }
       const body = await req.json().catch(() => ({}));
 
       const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
@@ -568,11 +590,16 @@ export default async function handler(req: Request) {
 
       if (!job) return createCorsResponse({ error: 'Cron job not found' }, 404, req);
 
-      return createCorsResponse(job, 200, req);
+      return createCorsResponse(toCamelShallow(job), 200, req);
     }
 
     // DELETE /social-media/cron-jobs/:id
     if (req.method === 'DELETE' && endpoint === 'cron-jobs' && postId) {
+      try {
+        requireManager();
+      } catch (err) {
+        return denyManager(err);
+      }
       const { error } = await admin
         .from('social_media_cron_jobs')
         .delete()
@@ -592,6 +619,12 @@ export default async function handler(req: Request) {
     // PA-052: no branch existed, so Run Now 404'd in production. Generates from
     // the job's template, records the post, delivers it, and counts the run.
     if (req.method === 'POST' && endpoint === 'cron-jobs' && postId && parts[2] === 'execute') {
+      // Round 152: Run Now generates AND delivers to the job's webhook.
+      try {
+        requireManager();
+      } catch (err) {
+        return denyManager(err);
+      }
       const { data: job, error: findError } = await admin
         .from('social_media_cron_jobs')
         .select('*')
@@ -689,7 +722,7 @@ export default async function handler(req: Request) {
       return createCorsResponse(
         {
           success: delivery.success,
-          post: newPost,
+          post: toCamelShallow(newPost),
           webhookError: delivery.error ?? null,
           message: delivery.success
             ? 'Cron job executed and post broadcast'

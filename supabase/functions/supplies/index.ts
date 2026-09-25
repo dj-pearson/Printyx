@@ -5,6 +5,7 @@ import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { importCatalogCsv, readUploadedCsv } from '../_shared/catalog-import-runner.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 import { denyWithoutPermission } from '../_shared/rbac.ts';
+import { ilikeAnyFilter } from '../_shared/postgrest-or.ts';
 /** The seeded capability for changing the product and inventory catalogue. */
 const WRITE_PERMISSION = 'operations.inventory.manage';
 
@@ -106,11 +107,9 @@ export default async function handler(req: Request) {
       // 42703s — the category filter and every search took the list down.
       if (category) query = query.eq('product_type', category);
       if (search) {
-        const safe = search.replace(/[,()]/g, ' ').trim();
+        const safe = search.trim();
         if (safe) {
-          query = query.or(
-            `product_code.ilike.%${safe}%,product_name.ilike.%${safe}%,note.ilike.%${safe}%`,
-          );
+          query = query.or(ilikeAnyFilter(['product_code', 'product_name', 'note'], safe));
         }
       }
 

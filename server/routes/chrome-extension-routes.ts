@@ -203,28 +203,13 @@ async function checkDuplicateRecord(
 ) {
   const conditions = [eq(businessRecords.tenantId, tenantId)];
 
-  // Primary check: LinkedIn URL (most reliable)
-  if (params.linkedinUrl) {
-    const normalizedUrl = params.linkedinUrl
-      .replace(/^https?:\/\/(www\.)?/, '')
-      .replace(/\/$/, '')
-      .toLowerCase();
-
-    const [exactMatch] = await db
-      .select()
-      .from(businessRecords)
-      .where(
-        and(
-          eq(businessRecords.tenantId, tenantId),
-          sql`LOWER(REPLACE(REPLACE(${businessRecords.linkedinUrl}, 'https://', ''), 'www.', '')) = ${normalizedUrl}`,
-        ),
-      )
-      .limit(1);
-
-    if (exactMatch) {
-      return { exists: true, record: exactMatch, matchType: 'linkedinUrl' };
-    }
-  }
+  // Round 228: a LinkedIn-URL match used to run first here, against
+  // businessRecords.linkedinUrl - which is not a column, so the comparison was
+  // against nothing. business_records has no linkedin_url anywhere; the edge
+  // twin (supabase/functions/chrome-extension, AUDIT-037) dropped this match
+  // for the same reason rather than pointing it at something approximate,
+  // since matching a profile against a company would merge two different
+  // people at the same employer.
 
   // Secondary check: Email (if provided)
   if (params.email) {
@@ -372,15 +357,19 @@ router.post('/leads/quick-import', extensionAuth, async (req: any, res) => {
       recordType: 'lead' as const,
       status: 'new',
 
-      // Basic info from LinkedIn
-      firstName: firstName || '',
-      lastName: lastName || '',
-      jobTitle: data.jobTitle || enrichedData?.title || null,
+      // Round 228: firstName, lastName, jobTitle, linkedinUrl, email and tags
+      // are NOT columns on business_records, and Drizzle drops a key the table
+      // does not have - silently, because this is a variable rather than a
+      // literal - so every imported lead was saved with its company name and
+      // nothing else: no contact, no email, no title. A record there is a
+      // COMPANY and the person lives in primary_contact_*, which is what the
+      // edge twin writes. The LinkedIn URL and the tags have no column and are
+      // not stored, matching that function.
+      primaryContactName: [firstName, lastName].filter(Boolean).join(' ') || data.name || null,
+      primaryContactTitle: data.jobTitle || enrichedData?.title || null,
       companyName: data.company,
-      linkedinUrl: data.linkedinUrl || enrichedData?.linkedinUrl || null,
-
-      // Enriched contact info (or from LinkedIn if provided)
-      email: enrichedData?.email || data.email || null,
+      primaryContactEmail: (enrichedData?.email || data.email || null)?.toLowerCase() ?? null,
+      primaryContactPhone: enrichedData?.phone || data.phone || null,
       phone: enrichedData?.phone || data.phone || null,
 
       // Enriched company info
@@ -397,12 +386,6 @@ router.post('/leads/quick-import', extensionAuth, async (req: any, res) => {
       leadSource: `Chrome Extension - ${data.source === 'linkedin' ? 'LinkedIn' : 'Salesforce'}`,
       createdBy: userId,
       ownerId: userId,
-
-      // Tags for tracking
-      tags:
-        enrichmentSource === 'apollo'
-          ? ['Apollo.io Enriched', 'Chrome Extension']
-          : ['Chrome Extension'],
     };
 
     const [businessRecord] = await db.insert(businessRecords).values(recordData).returning();
@@ -514,10 +497,10 @@ router.get('/leads/check-duplicate', extensionAuth, async (req: any, res) => {
       record: duplicateCheck.record
         ? {
             id: duplicateCheck.record.id,
-            name: `${duplicateCheck.record.firstName} ${duplicateCheck.record.lastName}`.trim(),
-            email: duplicateCheck.record.email,
+            name: duplicateCheck.record.primaryContactName ?? '',
+            email: duplicateCheck.record.primaryContactEmail,
             company: duplicateCheck.record.companyName,
-            jobTitle: duplicateCheck.record.jobTitle,
+            jobTitle: duplicateCheck.record.primaryContactTitle,
             status: duplicateCheck.record.status,
             createdAt: duplicateCheck.record.createdAt,
           }

@@ -282,16 +282,6 @@ describe('both hosts run it, and US-050 is corrected', () => {
       })
       .join('\n');
 
-  it('the Express state machine no longer has an empty try/catch for monitoring', () => {
-    const src = readFileSync('server/services/equipment-lifecycle-state-machine.ts', 'utf8');
-    const code = strip(src);
-    expect(code).toContain('runLifecycleActivation(tx, tenantId, equipmentId)');
-    expect(code).toContain('runLifecycleRetirement(tx, tenantId, equipmentId)');
-    // The exact line this story exists to remove.
-    expect(code).not.toContain('Equipment monitoring activated');
-    expect(code).not.toContain('Equipment monitoring deactivated');
-  });
-
   it('the edge transition handler runs the same module', () => {
     const code = strip(readFileSync('supabase/functions/equipment-lifecycle/index.ts', 'utf8'));
     expect(code).toContain("from '../_shared/lifecycle-activation.ts'");
@@ -301,11 +291,10 @@ describe('both hosts run it, and US-050 is corrected', () => {
     expect(code).toContain('activation,');
   });
 
-  it('the Node driver imports the shared module rather than copying it', () => {
-    const code = readFileSync('server/services/lifecycle-activation-effects.ts', 'utf8');
-    expect(code).toContain("from '../../supabase/functions/_shared/lifecycle-activation'");
-    expect(code).toContain('planActivation(');
-    expect(code).toContain('planRetirement(');
+  it('the edge transition never claims monitoring was activated (round 158, moved from the deleted Express state machine)', () => {
+    const code = strip(readFileSync('supabase/functions/equipment-lifecycle/index.ts', 'utf8'));
+    expect(code).not.toContain('Equipment monitoring activated');
+    expect(code).not.toContain('Equipment monitoring deactivated');
   });
 
   it('the stage names both hosts key off are the same two strings', () => {

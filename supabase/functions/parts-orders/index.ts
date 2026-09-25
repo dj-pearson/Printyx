@@ -3,6 +3,7 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { toCamelShallow } from '../_shared/case.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 
 export default async function handler(req: Request) {
@@ -200,7 +201,14 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to fetch order items' }, 500, req);
       }
 
-      return createCorsResponse(items || [], 200, req);
+      // Round 174: camelCase, which is what Express's Drizzle rows answered.
+      // Nothing reads this yet on either host; the day a caller is wired it
+      // would otherwise render blank cells in production only.
+      return createCorsResponse(
+        (items || []).map((r: Record<string, unknown>) => toCamelShallow(r)),
+        200,
+        req,
+      );
     }
 
     // POST /parts-orders/:id/items - Add order item

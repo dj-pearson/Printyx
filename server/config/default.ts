@@ -67,7 +67,9 @@ export const defaultConfig = {
 
   /** Logging */
   logging: {
-    level: 'info' as const,
+    // The union, not `as const`: a literal type made every environment's override
+    // ('debug' in development and staging, 'warn' in test) a type error.
+    level: 'info' as 'debug' | 'info' | 'warn' | 'error',
     transport: 'console' as const,
     batchSize: 100,
     flushIntervalMs: 5000,

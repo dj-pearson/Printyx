@@ -876,7 +876,7 @@ export class SsoService {
         tenantId: provider.tenantId,
         role: provider.defaultRole || 'user',
         isActive: true,
-        emailVerified: true, // Verified by SSO provider
+        // users has no email_verified column; an SSO login is the proof.
         createdAt: new Date(),
         updatedAt: new Date(),
       })

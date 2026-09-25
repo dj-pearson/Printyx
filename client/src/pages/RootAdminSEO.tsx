@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { apiRequest } from '@/lib/queryClient';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -22,7 +22,9 @@ interface SeoSettings {
 export default function RootAdminSEO() {
   const qc = useQueryClient();
   const { toast } = useToast();
-  const { data: settings } = useQuery<SeoSettings>({ queryKey: ['/api/seo/settings'] });
+  const { data: settings, isLoading: settingsLoading } = useQuery<SeoSettings | null>({
+    queryKey: ['/api/seo/settings'],
+  });
 
   const [siteName, setSiteName] = useState(settings?.siteName || '');
   const [siteUrl, setSiteUrl] = useState(settings?.siteUrl || '');
@@ -30,6 +32,23 @@ export default function RootAdminSEO() {
   const [defaultDescription, setDefaultDescription] = useState(settings?.defaultDescription || '');
   const [defaultOgImage, setDefaultOgImage] = useState(settings?.defaultOgImage || '');
   const [twitterHandle, setTwitterHandle] = useState(settings?.twitterHandle || '');
+
+  // Round 177: the six useState initialisers above read `settings` on the
+  // first render, before the query resolves, so they always started blank and
+  // Save then posted those blanks over whatever was stored. Hydrate once, from
+  // the first row that arrives, so a background refetch never overwrites what
+  // the admin is typing (the WhiteLabelDashboard fix, same shape).
+  const hydrated = useRef(false);
+  useEffect(() => {
+    if (hydrated.current || !settings) return;
+    hydrated.current = true;
+    setSiteName(settings.siteName || '');
+    setSiteUrl(settings.siteUrl || '');
+    setDefaultTitle(settings.defaultTitle || '');
+    setDefaultDescription(settings.defaultDescription || '');
+    setDefaultOgImage(settings.defaultOgImage || '');
+    setTwitterHandle(settings.twitterHandle || '');
+  }, [settings]);
 
   const upsertSettings = useMutation({
     mutationFn: async (payload: any) => {
@@ -166,7 +185,9 @@ export default function RootAdminSEO() {
                     twitterHandle,
                   })
                 }
-                disabled={upsertSettings.isPending}
+                // Not before the stored settings have loaded: saving then would
+                // post the blank initial values over them.
+                disabled={upsertSettings.isPending || settingsLoading}
               >
                 {upsertSettings.isPending ? 'Saving...' : 'Save Settings'}
               </Button>

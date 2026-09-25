@@ -4,6 +4,7 @@
  */
 
 import { Router, type Response } from 'express';
+import { GDPR_EXPORT_FORMATS, parseExportFormat } from './lib/gdpr-export-format';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { db } from './db';
 import { resolveTenant, requireTenant, TenantRequest } from './middleware/tenancy';
@@ -59,9 +60,21 @@ router.post(
   auditLogMiddleware('CREATE_DATA_EXPORT', 'personal_data_exports', 'high', 'data_access'),
   async (req: TenantRequest, res: Response) => {
     try {
+      const format = parseExportFormat(req.body?.format);
+      if (!format) {
+        return res.status(400).json({
+          message: `Unsupported export format. Supported: ${GDPR_EXPORT_FORMATS.join(', ')}.`,
+          code: 'UNSUPPORTED_FORMAT',
+        });
+      }
       const exportRequest = await gdprDataExportService.createExportRequest(req.tenantId!, {
         ...req.body,
+        format,
         requestedBy: req.user!.id,
+        // NOT NULL with no default and never set (round 240). This route is the
+        // compliance console, so the requester is staff; set after the body
+        // spread so a caller cannot choose what the audit trail records.
+        requestedByType: 'admin',
         ipAddress: req.ip || req.connection.remoteAddress,
         userAgent: req.get('User-Agent'),
       });

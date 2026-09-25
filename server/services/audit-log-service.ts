@@ -1,5 +1,15 @@
 import { db } from '../db';
-import { auditLogs } from '@shared/security-schema';
+import { auditLogs, auditCategoryEnum, auditSeverityEnum } from '@shared/security-schema';
+
+type AuditSeverity = (typeof auditSeverityEnum.enumValues)[number];
+type AuditCategory = (typeof auditCategoryEnum.enumValues)[number];
+
+/** A category the enum column can hold, or null: filtering on anything else is a 22P02. */
+export function asAuditCategory(v: unknown): AuditCategory | null {
+  return typeof v === 'string' && (auditCategoryEnum.enumValues as readonly string[]).includes(v)
+    ? (v as AuditCategory)
+    : null;
+}
 import { eq, and, desc, gte, lte, sql } from 'drizzle-orm';
 import { createModuleLogger } from '../lib/logger';
 import { Request } from 'express';
@@ -14,8 +24,8 @@ interface LogActionParams {
   tenantId: string;
   details?: any;
   req?: Request;
-  severity?: string;
-  category?: string;
+  severity?: AuditSeverity;
+  category?: AuditCategory;
 }
 
 export async function logAction(params: LogActionParams): Promise<void> {
@@ -136,8 +146,10 @@ export async function queryAuditLogs(params: QueryAuditLogsParams) {
     conditions.push(eq(auditLogs.userId, userId));
   }
 
-  if (category) {
-    conditions.push(eq(auditLogs.category, category));
+  // An unknown category would fail the enum cast; it filters nothing instead.
+  const knownCategory = asAuditCategory(category);
+  if (knownCategory) {
+    conditions.push(eq(auditLogs.category, knownCategory));
   }
 
   if (startDate) {

@@ -10,13 +10,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
   Table,
   TableBody,
   TableCell,
@@ -26,6 +19,8 @@ import {
 } from '@/components/ui/table';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
+import { describeApiError } from '@/lib/api-error';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   ArrowLeft,
   Building2,
@@ -58,6 +53,7 @@ import {
 import { format, formatDistanceToNow } from 'date-fns';
 import MainLayout from '@/components/layout/main-layout';
 import { formatCurrency } from '@/lib/utils';
+import { LogPlatformActivityDialog } from '@/components/platform-crm/LogPlatformActivityDialog';
 
 interface BusinessRecord {
   id: string;
@@ -170,6 +166,29 @@ export default function PlatformBusinessRecordDetail() {
     enabled: !!id && record?.recordType === 'tenant',
   });
   const healthScore = healthResponse?.healthScores?.[0];
+
+  // Round 198: Add Contact and Log Activity had no handlers. They post to
+  // POST /platform-crm/business-records/:id/contacts (added this round) and
+  // POST /platform-activities, which records the caller as the author.
+  const contactsKey = `/api/platform-crm/business-records/${id}/contacts`;
+  const activitiesKey = `/api/platform-activities?businessRecordId=${id}&limit=50`;
+  const emptyContact = { firstName: '', lastName: '', email: '', phone: '', title: '' };
+  const [contactOpen, setContactOpen] = useState(false);
+  const [newContact, setNewContact] = useState(emptyContact);
+  const [activityOpen, setActivityOpen] = useState(false);
+  const failure = (title: string) => (err: unknown) =>
+    toast({ title, description: describeApiError(err).message, variant: 'destructive' });
+
+  const addContactMutation = useMutation({
+    mutationFn: () => apiRequest(contactsKey, 'POST', newContact),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [contactsKey] });
+      toast({ title: 'Contact added' });
+      setNewContact(emptyContact);
+      setContactOpen(false);
+    },
+    onError: failure('Could not add contact'),
+  });
 
   // Update mutation
   const updateMutation = useMutation({
@@ -696,7 +715,7 @@ export default function PlatformBusinessRecordDetail() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle>Contacts</CardTitle>
-                  <Button size="sm">
+                  <Button size="sm" onClick={() => setContactOpen(true)}>
                     <Plus className="w-4 h-4 mr-2" />
                     Add Contact
                   </Button>
@@ -815,7 +834,7 @@ export default function PlatformBusinessRecordDetail() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle>Activity Timeline</CardTitle>
-                  <Button size="sm">
+                  <Button size="sm" onClick={() => setActivityOpen(true)}>
                     <Plus className="w-4 h-4 mr-2" />
                     Log Activity
                   </Button>
@@ -890,6 +909,51 @@ export default function PlatformBusinessRecordDetail() {
           )}
         </Tabs>
       </div>
+      <Dialog open={contactOpen} onOpenChange={setContactOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add contact</DialogTitle>
+          </DialogHeader>
+          <form
+            className="space-y-3"
+            onSubmit={(e) => {
+              e.preventDefault();
+              addContactMutation.mutate();
+            }}
+          >
+            {(
+              [
+                ['firstName', 'First name', true],
+                ['lastName', 'Last name', true],
+                ['email', 'Email', true],
+                ['phone', 'Phone', false],
+                ['title', 'Title', false],
+              ] as const
+            ).map(([key, label, required]) => (
+              <div key={key}>
+                <Label htmlFor={`contact-${key}`}>{label}</Label>
+                <Input
+                  id={`contact-${key}`}
+                  type={key === 'email' ? 'email' : 'text'}
+                  required={required}
+                  value={newContact[key]}
+                  onChange={(e) => setNewContact({ ...newContact, [key]: e.target.value })}
+                />
+              </div>
+            ))}
+            <Button type="submit" className="w-full" disabled={addContactMutation.isPending}>
+              {addContactMutation.isPending ? 'Adding...' : 'Add contact'}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <LogPlatformActivityDialog
+        open={activityOpen}
+        onOpenChange={setActivityOpen}
+        businessRecordId={id}
+        invalidate={[activitiesKey, `/api/platform-crm/business-records/${id}`]}
+      />
     </MainLayout>
   );
 }

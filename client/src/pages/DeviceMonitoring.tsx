@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { exportToCSV, type ExportColumn } from '@/lib/export-utils';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
@@ -90,6 +91,30 @@ interface TonerAlert {
   createdAt: string;
   triggeredOrderId?: string | null;
 }
+
+// One row per device: its most recent reading. A toner level the device did
+// not report stays blank rather than reading as empty.
+const DEVICE_EXPORT_COLUMNS: ExportColumn<DeviceMetric>[] = [
+  { key: 'serialNumber', label: 'Serial Number' },
+  { key: 'deviceName', label: 'Device' },
+  { key: 'manufacturer', label: 'Manufacturer' },
+  { key: 'model', label: 'Model' },
+  { key: 'ipAddress', label: 'IP Address' },
+  { key: 'deviceStatus', label: 'Status' },
+  { key: 'tonerBlack', label: 'Black %' },
+  { key: 'tonerCyan', label: 'Cyan %' },
+  { key: 'tonerMagenta', label: 'Magenta %' },
+  { key: 'tonerYellow', label: 'Yellow %' },
+  { key: 'totalImpressions', label: 'Total Impressions' },
+  { key: 'bwImpressions', label: 'B&W Impressions' },
+  { key: 'colorImpressions', label: 'Colour Impressions' },
+  {
+    key: 'errorCodes',
+    label: 'Error Codes',
+    format: (v) => (Array.isArray(v) ? v.join('; ') : ''),
+  },
+  { key: 'collectionTimestamp', label: 'Collected At' },
+];
 
 export default function DeviceMonitoring() {
   const { toast } = useToast();
@@ -359,7 +384,15 @@ export default function DeviceMonitoring() {
           <p className="text-gray-500 mt-1">Real-time printer status and supply levels</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline">
+          <Button
+            variant="outline"
+            disabled={filteredDevices.length === 0}
+            onClick={() =>
+              exportToCSV(filteredDevices, DEVICE_EXPORT_COLUMNS, {
+                filename: 'device-monitoring-report',
+              })
+            }
+          >
             <Download className="h-4 w-4 mr-2" />
             Export Report
           </Button>

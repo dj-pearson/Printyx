@@ -33,6 +33,8 @@ import { useActionParam } from '@/hooks/use-action-param';
 export default function TaskHub() {
   const [activeTab, setActiveTab] = useState<string>('my-tasks');
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
+  // The board column a task is being added to, if any; null for the header button.
+  const [newTaskStatus, setNewTaskStatus] = useState<string | null>(null);
 
   /**
    * UI-DEAD-BUTTONS-001: TodayDashboard's "Add Task" links here with
@@ -154,7 +156,7 @@ export default function TaskHub() {
     >
       <ErrorBoundary level="page">
         <div className="space-y-6">
-          <ContextualHelp page="task-hub" />
+          <ContextualHelp page="task-management" />
           <KpiSummaryBar className="mb-4" />
           <PageAlerts
             categories={['business', 'performance']}
@@ -249,6 +251,10 @@ export default function TaskHub() {
                     isLoading={tasksLoading}
                     teamMembers={teamMembers}
                     projects={projects}
+                    onAddTask={(status) => {
+                      setNewTaskStatus(status);
+                      setIsCreateTaskOpen(true);
+                    }}
                   />
                 </TabsContent>
 
@@ -277,7 +283,11 @@ export default function TaskHub() {
           {/* Create Task Dialog */}
           <CreateTaskDialog
             open={isCreateTaskOpen}
-            onOpenChange={setIsCreateTaskOpen}
+            onOpenChange={(open) => {
+              setIsCreateTaskOpen(open);
+              if (!open) setNewTaskStatus(null);
+            }}
+            initialStatus={newTaskStatus ?? undefined}
             projects={projects}
             teamMembers={teamMembers}
             onSubmit={(data) => createTaskMutation.mutate(data)}

@@ -16,21 +16,27 @@ interface EmailConfig {
   tlsOptions?: { rejectUnauthorized: boolean };
 }
 
-// Try to load IMAP and mailparser packages - they may not be installed
+// IMAP and mailparser are loaded LAZILY on first use rather than with a
+// top-level await: tsc's module setting refuses TLA, and loading them when a
+// monitor actually connects keeps the fallback (a missing package disables
+// monitoring rather than failing the import of this module). Round 251.
 let Imap: any = null;
 let simpleParser: any = null;
-let imapAvailable = false;
+let imapLoad: Promise<boolean> | null = null;
 
-try {
-  const imapModule = await import('imap');
-  Imap = imapModule.default;
-  const mailparserModule = await import('mailparser');
-  simpleParser = mailparserModule.simpleParser;
-  imapAvailable = true;
-  log.info('[EmailMonitor] IMAP and mailparser packages are available');
-} catch (error) {
-  log.info('[EmailMonitor] IMAP packages not installed - email monitoring will be unavailable');
-  log.info('[EmailMonitor] To enable: npm install --legacy-peer-deps imap mailparser');
+function loadImap(): Promise<boolean> {
+  imapLoad ??= (async () => {
+    try {
+      Imap = (await import('imap')).default;
+      simpleParser = (await import('mailparser')).simpleParser;
+      log.info('[EmailMonitor] IMAP and mailparser packages are available');
+      return true;
+    } catch {
+      log.info('[EmailMonitor] IMAP packages not installed - email monitoring will be unavailable');
+      return false;
+    }
+  })();
+  return imapLoad;
 }
 
 /**
@@ -59,7 +65,7 @@ export class EmailMonitorService {
       return;
     }
 
-    if (!imapAvailable || !Imap) {
+    if (!(await loadImap()) || !Imap) {
       throw new Error('IMAP packages not installed');
     }
 
@@ -70,7 +76,10 @@ export class EmailMonitorService {
         host: this.config.host,
         port: this.config.port,
         tls: this.config.tls,
-        tlsOptions: this.config.tlsOptions || { rejectUnauthorized: false },
+        // Certificate verification ON unless the monitor's config opts out
+        // explicitly. The default used to be { rejectUnauthorized: false },
+        // so a mailbox password went to whichever server answered (round 251).
+        tlsOptions: this.config.tlsOptions ?? {},
         authTimeout: 10000,
         connTimeout: 10000,
       });
@@ -100,7 +109,7 @@ export class EmailMonitorService {
    * Check inbox for new unread emails
    */
   async checkForNewEmails(): Promise<void> {
-    if (!imapAvailable) {
+    if (!(await loadImap())) {
       log.info('[EmailMonitor] IMAP packages not available - skipping email check');
       return;
     }

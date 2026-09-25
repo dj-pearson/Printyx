@@ -268,12 +268,10 @@ export function registerEdgeFunctionProxy(app: any) {
     // showed a blank machine and a blank technician on every ticket. AUDIT-013
     // fixed the dev half only.
     //
-    // ORDERING MATTERS HERE, not un-proxying: routes-service-analysis.ts owns
-    // /api/service-tickets/:id/analysis, which this function does not serve, so
-    // that router is registered BEFORE the proxy in routes-registry.ts. The proxy
-    // forwards the whole prefix and falls through only on a network error, never
-    // a 404, so without that ordering the analysis panel would go from
-    // working-in-dev to 404-in-dev.
+    // CORRECTED round 174: /api/service-tickets/:id/analysis used to be served
+    // by routes-service-analysis.ts, registered ahead of this proxy. Round 163
+    // gave the service-tickets function that branch and the Express router is
+    // now deleted, so nothing here depends on registration order any more.
     '/api/service-tickets': 'service-tickets',
     // WF-L-03. The board's three calls - the bare list, POST and
     // PATCH /:id/status - fell to the edge function's terminal 404, so
@@ -374,43 +372,22 @@ export function registerEdgeFunctionProxy(app: any) {
     // caller in any of the seven client trees until this story.
     '/api/field-service': 'field-service',
 
-    // WF-L-06. /api/equipment-lifecycle is SCOPED PER PATH for the same reason
-    // /api/dashboard below is: server/routes-equipment-lifecycle-state-machine.ts
-    // mounts at the /api ROOT and owns /:equipmentId/transition,
-    // /:equipmentId/transitions, /:equipmentId/available-transitions,
-    // /:equipmentId/can-transition/:toStage and the two rollback paths. A bare
-    // entry would take a working dev router off Express for paths this story has
-    // no business touching.
-    //
-    // These seven are the ones WF-L-02 and WF-L-06 own, and NONE of them has an
-    // Express handler at all - they existed only on the edge function, so dev
-    // got a 404 where production worked. That is the rarer direction of the
-    // split and the reason the Delivery tab had nothing to render even after
-    // WF-L-02 built its backend.
-    '/api/equipment-lifecycle/deliveries': {
-      fn: 'equipment-lifecycle',
-      pathPrefix: '/deliveries',
-    },
-    '/api/equipment-lifecycle/installations': {
-      fn: 'equipment-lifecycle',
-      pathPrefix: '/installations',
-    },
-    '/api/equipment-lifecycle/crew': { fn: 'equipment-lifecycle', pathPrefix: '/crew' },
-    '/api/equipment-lifecycle/metrics': { fn: 'equipment-lifecycle', pathPrefix: '/metrics' },
-    '/api/equipment-lifecycle/lifecycle': { fn: 'equipment-lifecycle', pathPrefix: '/lifecycle' },
-    '/api/equipment-lifecycle/assets': { fn: 'equipment-lifecycle', pathPrefix: '/assets' },
-    '/api/equipment-lifecycle/purchase-orders': {
-      fn: 'equipment-lifecycle',
-      pathPrefix: '/purchase-orders',
-    },
+    // WF-L-06 scoped /api/equipment-lifecycle per path, because
+    // routes-equipment-lifecycle-state-machine.ts still owned the transition
+    // paths on Express. Round 158: the edge function serves every one of them
+    // now (/:id/transition, /available-transitions, /can-transition/:toStage,
+    // /transitions/history, /stages), and the Express router was the reason dev
+    // 404'd /transitions/history - it only knew /:id/transitions. The router is
+    // deleted and the prefix proxied whole. Its two rollback paths had no
+    // caller in any client tree and are not ported.
+    '/api/equipment-lifecycle': 'equipment-lifecycle',
 
-    // DASH-METRICS-001. /api/dashboard is SCOPED PER PATH, not proxied whole,
-    // and that is deliberate: server/routes-dashboard-customization.ts mounts at
-    // the /api/dashboard ROOT and owns /layout, /preferences and /snapshot(s),
-    // which no edge function serves. A bare '/api/dashboard' entry would take
-    // that router off Express and give dev a 404 where it has working handlers -
-    // the exact failure the header above warns about. Same reasoning as the
-    // per-path /api/sales-pipeline entries.
+    // DASH-METRICS-001. /api/dashboard is SCOPED PER PATH, not proxied whole.
+    // The original reason - routes-dashboard-customization.ts owning /layout,
+    // /preferences and /snapshot(s) on Express - is gone: round 243 deleted
+    // that router, because none of those paths had a caller. The per-path
+    // entries stay because each was checked against its function; a bare entry
+    // would send any path not listed here to `dashboard` unexamined.
     //
     // Order is load-bearing twice over. Express matches app.use prefixes in
     // registration order, so /api/dashboard/widgets and /api/dashboard/user-layout
@@ -735,6 +712,11 @@ export function registerEdgeFunctionProxy(app: any) {
     // registered runtime router lives at /api/workflows, /api/executions and
     // /api/workflow-events and is untouched.
     '/api/workflow-automation': 'workflow-automation',
+    // Round 200. WorkflowAutomation.tsx creates workflows through the
+    // workflows function. Without this, dev reached routes/workflow-automation-
+    // routes.ts, whose handlers all read req.session.user and answer 401
+    // (SEC-SESSION-001) - no client called /api/workflows before now.
+    '/api/workflows': 'workflows',
 
     // PROD-008: journal-entries. Dev ran the Express handlers in
     // routes-financial.ts while prod ran the edge fn, and the two disagreed on
@@ -984,6 +966,102 @@ export function registerEdgeFunctionProxy(app: any) {
     // keeps its own function. normalizePath is anchored the same way.
     '/api/service': 'service',
 
+    // Round 146. Express served this prefix from routes-misc-stubs.ts, a
+    // "TODO: Implement actual service analytics" router answering zeros for
+    // every count and [] for every list, so on a developer machine the Service
+    // Analytics page reported a tenant with no tickets at all while production
+    // counted real ones. The edge function covers both paths the page calls
+    // (GET / and GET /trends); the stub is deleted, so dev now runs the handler
+    // production runs.
+    '/api/service-analytics': 'service-analytics',
+
+    // Round 147. The Express router for this prefix gated on req.session.userId,
+    // which the product's login never sets, so it answered 401 to everyone, and
+    // its tenant fallback was the zero uuid. The edge function is the port of
+    // the same engine and serves every path it did (/, /summary, /priorities,
+    // /category/:slug, POST /refresh).
+    '/api/content-gap-analysis': 'content-gap-analysis',
+
+    // Round 152. Express served this prefix from routes-social-media.ts with no
+    // role check on broadcast or the scheduled jobs, and answered camelCase rows
+    // while the edge function answered snake_case, so the page rendered on one
+    // host and not the other. The edge function covers all ten paths the page
+    // calls and now camelises; dev runs it too.
+    '/api/social-media': 'social-media',
+
+    // Round 153. Scoped, not the whole prefix: POST /api/chatbot/query stays on
+    // Express because the edge function answers it with a deliberate 501. The
+    // other six paths ran on an Express copy with no role gate while production
+    // requires a manager to change a workspace install or a user mapping.
+    '/api/chatbot/connections': { fn: 'chatbot', pathPrefix: '/connections' },
+    '/api/chatbot/connect': { fn: 'chatbot', pathPrefix: '/connect' },
+    '/api/chatbot/links': { fn: 'chatbot', pathPrefix: '/links' },
+    '/api/chatbot/query-log': { fn: 'chatbot', pathPrefix: '/query-log' },
+
+    // Round 154. Express served this from routes-audit-logs.ts: the same
+    // { logs, pagination } shape, but with no cap on `limit` and a tenant read
+    // from an x-tenant-id header when the user carried none. The edge function
+    // is what production runs and covers the one path the viewer calls.
+    '/api/audit-logs': 'audit-logs',
+
+    // Round 154. Express served this prefix from routes-software-products.ts:
+    // no role check on writes (the edge function requires
+    // operations.inventory.manage, SEC-EDGE-001 round 74), and no /import or
+    // /dedupe branch although the page calls both, so dev 404'd on them.
+    '/api/software-products': 'software-products',
+
+    // Round 156. No Express router serves this prefix, so on a developer
+    // machine usePricingVisibility() 404'd - and in production it received a
+    // stored row instead of a per-caller answer. The edge function now answers
+    // per caller; dev runs it too.
+    '/api/pricing-settings': 'pricing-settings',
+
+    // Round 157. Express served /api/dashboards/today from
+    // routes-today-dashboard.ts, which answered neither awaitingSignature nor
+    // meetingsNeedingFollowUp nor the scope fields COP-B01 round 105 added, so
+    // on a developer machine those My Day cards were always empty. The edge
+    // function's /today is a strict superset; dev runs it too.
+    '/api/dashboards': 'dashboards',
+
+    // Round 159. Express served this from routes-templates.ts over
+    // project_templates while production read `templates`, a table that does
+    // not exist, so the Templates view worked only in dev. The edge function
+    // reads project_templates now and the Express router is deleted.
+    '/api/templates': 'templates',
+
+    // Round 160. routes-tasks.ts kept /api/projects off the proxy because
+    // /api/projects/:id/create-template lived on Express; round 159 deleted that
+    // (no caller). Express also had no PATCH /:id, which HandoffProject uses
+    // for milestones, so dev 404'd it. The edge function serves every path.
+    '/api/projects': 'projects',
+
+    // Round 161. routes-manufacturer-integration.ts served dev with no role
+    // gate on creating, editing, deleting, testing or discovering through a
+    // dealer's manufacturer API credentials; the edge function requires a
+    // manager and serves every path the page calls.
+    '/api/manufacturer-integrations': 'manufacturer-integrations',
+
+    // Round 162. Nothing on Express serves /api/analytics any more (the only
+    // registrant was a mock /analytics/writing on a root-mounted router, deleted),
+    // so without this AdvancedAnalyticsDashboard's /dashboard 404'd in dev.
+    '/api/analytics': 'analytics',
+
+    // Round 163. routes-service-analysis.ts served this prefix in dev; the
+    // service-analysis edge function read a phantom `service_analyses` table in
+    // production. Both now read service_call_analysis through the edge.
+    '/api/service-analysis': 'service-analysis',
+
+    // Round 164. routes-auto-supply-replenishment.ts ran the same analysis in
+    // dev through a Node copy of _shared/supply-analysis.ts; the edge function
+    // covers every path the page calls (dashboard, low-supplies, orders,
+    // analyze-all). Router and Node service deleted.
+    '/api/auto-supply-replenishment': 'auto-supply-replenishment',
+
+    // Round 165. routes-contract-renewal.ts had no /upcoming, /dashboard or
+    // /:id/renew, which the page and the iOS renew action call, so those 404'd
+    // in dev. The edge function serves all of them.
+    '/api/contract-renewal': 'contract-renewal',
+
     // PROD-011. Full parity: all EIGHT Express endpoints (inbound, submit,
     // submissions list/:id/approve/reject, GET/PUT settings), which is also
     // everything MeterReadReview.tsx calls. This pipeline writes billing rows,
@@ -1055,6 +1133,12 @@ export function registerEdgeFunctionProxy(app: any) {
     '/api/admin/locations': { fn: 'admin', pathPrefix: '/locations' },
     '/api/admin/regions': { fn: 'admin', pathPrefix: '/regions' },
     '/api/admin/teams': { fn: 'admin', pathPrefix: '/teams' },
+    // Round 187. user-stats was Express-only (so the user-management page
+    // 404'd in production) and /roles had no dev handler at all (so the role
+    // list and OrgStructure's role picker 404'd in dev). Both are the admin
+    // function's now, on both hosts.
+    '/api/admin/user-stats': { fn: 'admin', pathPrefix: '/user-stats' },
+    '/api/admin/roles': { fn: 'admin', pathPrefix: '/roles' },
 
     // AUDIT-019. MeetingTranscription.tsx now calls this instead of rendering
     // three hardcoded recordings. The meeting-transcription edge fn was fully
@@ -1128,6 +1212,46 @@ export function registerEdgeFunctionProxy(app: any) {
     // entry would take those from working-in-dev to 404-in-dev. The note in
     // server/routes-registry.ts that set that condition is the reason these two
     // are here and a third is not.
+    // ROUND 167. The signups CRM and the command centre's pending-tasks read
+    // five /api/root-admin paths that ONLY the edge function serves: the
+    // Express signups router is mounted at /api/root-admin/crm, which nothing
+    // calls, and routes-root-admin.ts has none of the five. So all five 404'd
+    // on every developer machine while working in production. Scoped rather
+    // than the whole prefix, because Express still owns system-resources,
+    // database-tables and execute-query, which the edge function refuses with
+    // REQUIRES_DIRECT_SQL on purpose.
+    '/api/root-admin/signups': { fn: 'root-admin', pathPrefix: '/signups' },
+    '/api/root-admin/signups-analytics': { fn: 'root-admin', pathPrefix: '/signups-analytics' },
+    '/api/root-admin/trial-funnel': { fn: 'root-admin', pathPrefix: '/trial-funnel' },
+    '/api/root-admin/high-value-signups': { fn: 'root-admin', pathPrefix: '/high-value-signups' },
+    '/api/root-admin/pending-tasks': { fn: 'root-admin', pathPrefix: '/pending-tasks' },
+    // Round 178. The four paths both hosts served and nobody had compared
+    // (round 167's open item): proxying them makes dev run what production
+    // runs, and the Express copies are deleted. /tenants covers the list,
+    // /tenants/:id and the suspend/activate actions.
+    '/api/root-admin/overview': { fn: 'root-admin', pathPrefix: '/overview' },
+    '/api/root-admin/tenants': { fn: 'root-admin', pathPrefix: '/tenants' },
+    '/api/root-admin/security-alerts': { fn: 'root-admin', pathPrefix: '/security-alerts' },
+    '/api/root-admin/audit-logs': { fn: 'root-admin', pathPrefix: '/audit-logs' },
+    // Round 172. The whole prefix: the edge function serves settings GET/PUT
+    // and the four per-quote reads (snapshot, similar-deals, margin,
+    // objections), which is every path the Express router had. Proxying
+    // takes the ownership-free Express copy out of dev.
+    '/api/deal-desk-copilot': 'deal-desk-copilot',
+    // Round 173. Express registered only the two bulk POSTs under this prefix,
+    // so GET /api/invoices (MeterBilling, AdvancedReporting) 404'd in dev
+    // while the edge function served it in production. The bulk handlers on
+    // both hosts answered the same shape; the Express pair is deleted.
+    '/api/invoices': 'invoices',
+    // Round 174. The edge function serves every path routes-service-analysis.ts
+    // had left (PATCH /:id, GET and POST /:id/items), scoped through
+    // ownedOrder(); the Express router is deleted.
+    '/api/parts-orders': 'parts-orders',
+    // Round 175. Every /api/pricing path a client calls is served by the edge
+    // function, including products/bulk-update, which Express never had and
+    // so 404'd in dev. The Express half gated on the legacy role-name map no
+    // role code matches; it is deleted along with services/pricing-service.ts.
+    '/api/pricing': 'pricing',
     '/api/mobile/time-tracking': { fn: 'mobile', pathPrefix: '/time-tracking' },
     '/api/mobile/service-tickets': { fn: 'mobile', pathPrefix: '/service-tickets' },
     //

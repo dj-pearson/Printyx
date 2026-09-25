@@ -77,7 +77,11 @@ describe('the subscriptions edge function', () => {
     // Was `{ data: plans }`, which the hook does not read - so correcting the
     // URL alone would still have rendered no plans and no feature comparison.
     // The URL and the shape were two separate breakages on the same call.
-    expect(fn).toContain('plans: plans || [], features: features || []');
+    // Round 168 camelised both lists, so the property is the two KEYS, not
+    // one spelling of the values (subscription-plans-shape.test.ts covers the
+    // row shape).
+    expect(fn).toMatch(/\bplans:\s*\(?plans \|\| \[\]/);
+    expect(fn).toMatch(/\bfeatures:\s*\(?features \|\| \[\]/);
     expect(fn).not.toContain('{ data: plans || [] }');
   });
 

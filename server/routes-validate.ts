@@ -68,7 +68,9 @@ router.get('/validate/quote-to-proposal/:quoteId', async (req, res) => {
       });
     }
 
-    if (!quote.totalAmount || quote.totalAmount <= 0) {
+    // Round 228: a decimal column arrives as a string from Drizzle, so this
+    // compared '0.00' <= 0 as text. Coerce before comparing.
+    if (!(Number(quote.totalAmount) > 0)) {
       errors.push({
         field: 'amount',
         message: 'Quote amount must be greater than zero',
@@ -97,8 +99,11 @@ router.get('/validate/quote-to-proposal/:quoteId', async (req, res) => {
 
     // Check if customer exists and is valid
     if (quote.businessRecordId) {
+      // Round 228: this selected businessRecords.name, which is not a column
+      // (it is company_name). Drizzle throws on an undefined select field, so
+      // validating any quote WITH a customer answered 500 in dev.
       const [customer] = await db
-        .select({ id: businessRecords.id, name: businessRecords.name })
+        .select({ id: businessRecords.id, companyName: businessRecords.companyName })
         .from(businessRecords)
         .where(
           and(
@@ -234,7 +239,8 @@ router.get('/validate/po-to-warehouse/:poId', async (req, res) => {
         id: purchaseOrders.id,
         poNumber: purchaseOrders.poNumber,
         status: purchaseOrders.status,
-        supplierId: purchaseOrders.supplierId,
+        // Round 228: was purchaseOrders.supplierId, which does not exist.
+        vendorId: purchaseOrders.vendorId,
         expectedDate: purchaseOrders.expectedDate,
         approvedDate: purchaseOrders.approvedDate,
         totalAmount: purchaseOrders.totalAmount,
@@ -343,7 +349,7 @@ router.get('/validate/service-completion/:ticketId', async (req, res) => {
       });
     }
 
-    if (!ticket.timeSpent || ticket.timeSpent <= 0) {
+    if (!(Number(ticket.timeSpent) > 0)) {
       errors.push({
         field: 'time_spent',
         message: 'Time spent must be recorded',

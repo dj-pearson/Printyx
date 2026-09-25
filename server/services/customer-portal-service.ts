@@ -475,15 +475,19 @@ export class CustomerPortalService {
         });
       }
 
-      // Log the activity within transaction
+      // Log the activity within transaction. This named activityType and
+      // relatedEntity* - columns the table does not have, which drizzle drops -
+      // so the NOT NULL `action` went in empty and the insert failed, rolling
+      // back the status update it was logging (round 245). The real columns
+      // are the ones logActivity below writes.
       await tx.insert(customerPortalActivityLog).values({
         tenantId,
         customerId: currentRequest.customerId,
         customerPortalUserId: currentRequest.customerPortalUserId,
-        activityType: 'update_service_request_status',
+        action: 'update_service_request_status',
         description: `Status updated from ${previousStatus} to ${newStatus}`,
-        relatedEntityType: 'service_request',
-        relatedEntityId: requestId,
+        relatedRecordType: 'service_request',
+        relatedRecordId: requestId,
       });
 
       return { serviceRequest: updatedRequest, statusHistory };

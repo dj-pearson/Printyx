@@ -44,6 +44,9 @@ import {
   ValidationError,
 } from '../_shared/http.ts';
 import { createLogger } from '../_shared/logger.ts';
+import { fetchAllRows } from '../_shared/paged-select.ts';
+
+import { numberOrNull } from '../../../shared/number-or-null.ts';
 
 const log = createLogger('sales-pipeline');
 
@@ -125,38 +128,45 @@ export default async function handler(req: Request) {
       const stage = url.searchParams.get('stage');
       const rep = url.searchParams.get('rep');
 
-      let query = db
-        .from('business_records')
-        .select(
-          [
-            'id',
-            'company_name',
-            'primary_contact_name',
-            'primary_contact_email',
-            'primary_contact_phone',
-            'status',
-            'estimated_deal_value',
-            'probability',
-            'close_date',
-            'source',
-            'notes',
-            'owner_id',
-            'last_contact_date',
-            'next_follow_up_date',
-            'created_at',
-            'updated_at',
-          ].join(','),
-        )
-        .eq('tenant_id', ctx.tenantId)
-        .eq('record_type', 'lead')
-        .not('status', 'in', '(closed_won,closed_lost)')
-        .order('updated_at', { ascending: false });
+      // Paged: a bare select stops at PostgREST's row cap with no marker, so a
+      // tenant past it saw a board - and an export - missing its oldest leads.
+      const build = () => {
+        let query = db
+          .from('business_records')
+          .select(
+            [
+              'id',
+              'company_name',
+              'primary_contact_name',
+              'primary_contact_email',
+              'primary_contact_phone',
+              'status',
+              'estimated_deal_value',
+              'probability',
+              'close_date',
+              'source',
+              'notes',
+              'owner_id',
+              'last_contact_date',
+              'next_follow_up_date',
+              'created_at',
+              'updated_at',
+            ].join(','),
+          )
+          .eq('tenant_id', ctx.tenantId)
+          .eq('record_type', 'lead')
+          .not('status', 'in', '(closed_won,closed_lost)')
+          .order('updated_at', { ascending: false })
+          .order('id', { ascending: true });
+        if (stage && stage !== 'all') query = query.eq('status', stage);
+        if (rep && rep !== 'all') query = query.eq('owner_id', rep);
+        return query;
+      };
 
-      if (stage && stage !== 'all') query = query.eq('status', stage);
-      if (rep && rep !== 'all') query = query.eq('owner_id', rep);
-
-      const { data, error } = await query;
-      if (error) {
+      let data: Record<string, unknown>[];
+      try {
+        data = await fetchAllRows<Record<string, unknown>>(build);
+      } catch (error) {
         return errorResponse(500, 'Failed to fetch pipeline opportunities', req, {
           code: 'DB_ERROR',
           details: error,
@@ -165,7 +175,7 @@ export default async function handler(req: Request) {
       }
 
       const now = Date.now();
-      const opportunities = (data ?? []).map((row: Record<string, unknown>) => {
+      const opportunities = data.map((row: Record<string, unknown>) => {
         const updatedAt = row.updated_at ? new Date(row.updated_at as string).getTime() : now;
         const daysInStage = Math.max(0, Math.floor((now - updatedAt) / 86400000));
         const nextFollowUp = row.next_follow_up_date as string | null;
@@ -176,12 +186,15 @@ export default async function handler(req: Request) {
           contact_email: row.primary_contact_email,
           contact_phone: row.primary_contact_phone,
           stage: row.status || 'lead',
-          estimated_value: parseFloat(String(row.estimated_deal_value ?? 0)) || 0,
-          probability: parseInt(String(row.probability ?? 50)) || 50,
-          expected_close_date:
-            (row.close_date as string | null) ?? new Date(now + 30 * 86400000).toISOString(),
+          // Round 189: a missing value, probability or close date stays null.
+          // These were 0, 50 and "30 days from now" - and `|| 50` also turned a
+          // real 0% probability into 50%. A board, and an export of it, cannot
+          // tell an invented default from something a rep entered.
+          estimated_value: numberOrNull(row.estimated_deal_value),
+          probability: numberOrNull(row.probability),
+          expected_close_date: (row.close_date as string | null) ?? null,
           assigned_rep: row.owner_id,
-          last_activity: (row.last_contact_date as string | null) ?? row.created_at,
+          last_activity: (row.last_contact_date as string | null) ?? null,
           next_action: nextFollowUp
             ? `Follow up on ${new Date(nextFollowUp).toLocaleDateString('en-US', {
                 month: 'short',
@@ -191,7 +204,7 @@ export default async function handler(req: Request) {
           days_in_stage: daysInStage,
           created_at: row.created_at,
           notes: row.notes || '',
-          lead_source: row.source || 'Unknown',
+          lead_source: (row.source as string | null) ?? null,
         };
       });
 

@@ -44,6 +44,22 @@ export async function handleReporting(req: Request, ctx: HandlerCtx): Promise<Re
   }
   if (method === 'GET' && sub === 'charts' && !sub2) return await dashboardCharts(req, ctx);
 
+  // Round 232: ReportViewer asks for /reporting/reports/:id/data and nothing
+  // routed it, so opening any report from the hub failed with a bare 404.
+  // Running a stored report is unbuilt on purpose - report_definitions hold
+  // SQL the edge runtime will not execute (see handlers/reporting-engine.ts) -
+  // so the honest answer is 501 naming that, not a route that looks missing.
+  if (method === 'GET' && sub === 'reports' && sub2 && sub3 === 'data') {
+    return errorResponse(501, 'Running a saved report is not available yet', req, {
+      code: 'REPORT_EXECUTION_NOT_AVAILABLE',
+      details: {
+        reason:
+          'Report definitions are stored SQL, which this runtime does not execute. The role dashboards under Reports show live data.',
+      },
+      requestId: ctx.requestId,
+    });
+  }
+
   if (method === 'POST' && sub === 'reports' && sub2 === 'export') {
     return await exportReportDegraded(req, ctx);
   }

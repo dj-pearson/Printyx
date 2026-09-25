@@ -65,8 +65,8 @@ function getTenantIdForHeaders(): string | undefined {
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
-    // The `<status>: <body>` message shape is LOAD-BEARING - this file and
-    // rbacQueryClient branch on `message.includes('403')` and
+    // The `<status>: <body>` message shape is LOAD-BEARING - this file
+    // branches on `message.includes('403')` and
     // `startsWith('404')` for retry and returnNull behaviour - so it is kept
     // verbatim and the parsed response is ATTACHED alongside it. Pages should
     // read it with describeApiError rather than toasting the raw blob; see

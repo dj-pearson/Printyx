@@ -70,7 +70,11 @@ describe('the walk agrees with what is known to be live', () => {
     'server/storage.ts',
     'server/middleware/tenancy.ts',
     'server/middleware/supabase-auth.ts',
-    'server/services/customer-portal-service.ts',
+    // customer-portal-service.ts was here until round 248: its only importer
+    // was routes-enhanced-service.ts, retired that round, and /api/customer-portal
+    // is served by its edge function. The workflow runtime is live via the
+    // boot-started sweeper.
+    'server/services/workflow-execution-service.ts',
   ])('does not call %s an orphan', (file) => {
     expect(bare.has(file)).toBe(false);
   });

@@ -2,8 +2,6 @@
  * Admin Stats Routes
  *
  * Provides platform-wide statistics endpoints for the admin dashboard:
- * - GET /api/admin/tenant-stats - Tenant counts, user totals, revenue, conversion
- * - GET /api/admin/user-stats - User breakdown (active, suspended, admin)
  * - GET /api/admin/security/metrics - Security score, sessions, failed logins, MFA adoption
  *
  * SECURITY: All routes require authentication and platform admin authorization.
@@ -11,201 +9,22 @@
 
 import type { Express, Request, Response } from 'express';
 import { db } from './db';
-import { users, tenants, userSettings, tenantSubscriptions } from '@shared/schema';
+import { users, userSettings } from '@shared/schema';
 import { securitySessions, auditLogs } from '@shared/security-schema';
 import { loginAttempts } from '@shared/auth-schema';
-import { eq, count, and, sql, gte, sum } from 'drizzle-orm';
+import { eq, count, sql, gte, sum } from 'drizzle-orm';
 import { requireSupabaseAuth as requireAuth } from './middleware/supabase-auth';
 import { isPlatformAdmin } from './utils/auth-helpers';
 import { createModuleLogger } from './lib/logger';
-import { subtractMonths } from '@shared/date-months';
 
 const log = createModuleLogger('routes-admin-stats');
 
 export function registerAdminStatsRoutes(app: Express) {
-  // ──────────────────────────────────────────────────────────────────────
-  // GET /api/admin/tenant-stats
-  // Returns aggregate tenant, user, revenue, and conversion stats
-  // ──────────────────────────────────────────────────────────────────────
-  app.get('/api/admin/tenant-stats', requireAuth, async (req: Request, res: Response) => {
-    try {
-      if (!isPlatformAdmin(req)) {
-        return res.status(403).json({ message: 'Forbidden: platform admin access required' });
-      }
+  // GET /api/admin/tenant-stats deleted (round 196): its only caller,
+  // TenantManagement, reads /api/root-admin/overview, which production serves.
 
-      // Total tenants
-      const [totalTenantsResult] = await db.select({ count: count() }).from(tenants);
-      const totalTenants = totalTenantsResult?.count ?? 0;
-
-      // Tenants created this month
-      const startOfMonth = new Date();
-      startOfMonth.setDate(1);
-      startOfMonth.setHours(0, 0, 0, 0);
-
-      const [newTenantsResult] = await db
-        .select({ count: count() })
-        .from(tenants)
-        .where(gte(tenants.createdAt, startOfMonth));
-      const newTenantsThisMonth = newTenantsResult?.count ?? 0;
-
-      // Total users (across all tenants)
-      const [totalUsersResult] = await db.select({ count: count() }).from(users);
-      const totalUsers = totalUsersResult?.count ?? 0;
-
-      // Active users
-      const [activeUsersResult] = await db
-        .select({ count: count() })
-        .from(users)
-        .where(eq(users.isActive, true));
-      const activeUsers = activeUsersResult?.count ?? 0;
-
-      // Users created this month
-      const [newUsersResult] = await db
-        .select({ count: count() })
-        .from(users)
-        .where(gte(users.createdAt, startOfMonth));
-      const newUsersThisMonth = newUsersResult?.count ?? 0;
-
-      // Total revenue from active subscriptions
-      const [revenueResult] = await db
-        .select({ total: sum(tenantSubscriptions.amount) })
-        .from(tenantSubscriptions)
-        .where(eq(tenantSubscriptions.status, 'active'));
-      const totalRevenue = parseFloat(revenueResult?.total ?? '0');
-
-      // Previous month revenue for growth comparison
-      // startOfMonth is day 1, so this particular subtraction could not
-      // overflow - but a reader has to re-derive that every time, and the
-      // anchor is one edit away from moving. The helper is unconditional
-      // (DATE-SETMONTH-001).
-      const startOfLastMonth = subtractMonths(startOfMonth, 1);
-      const endOfLastMonth = new Date(startOfMonth);
-      endOfLastMonth.setMilliseconds(-1);
-
-      const [lastMonthRevenueResult] = await db
-        .select({ total: sum(tenantSubscriptions.amount) })
-        .from(tenantSubscriptions)
-        .where(
-          and(
-            eq(tenantSubscriptions.status, 'active'),
-            gte(tenantSubscriptions.createdAt, startOfLastMonth),
-          ),
-        );
-      const lastMonthRevenue = parseFloat(lastMonthRevenueResult?.total ?? '0');
-      const revenueGrowthPct =
-        lastMonthRevenue > 0
-          ? (((totalRevenue - lastMonthRevenue) / lastMonthRevenue) * 100).toFixed(1)
-          : '0.0';
-
-      // Conversion rate: leads that became customers (closed_won / total leads)
-      const totalLeadsResult = (
-        await db.execute(
-          sql`SELECT COUNT(*) as count FROM business_records WHERE record_type = 'lead'`,
-        )
-      ).rows[0];
-      const totalLeads = Number((totalLeadsResult as any)?.count ?? 0);
-
-      const convertedLeadsResult = (
-        await db.execute(
-          sql`SELECT COUNT(*) as count FROM business_records WHERE record_type = 'customer' OR status = 'closed_won'`,
-        )
-      ).rows[0];
-      const convertedLeads = Number((convertedLeadsResult as any)?.count ?? 0);
-
-      const conversionRate =
-        totalLeads + convertedLeads > 0
-          ? ((convertedLeads / (totalLeads + convertedLeads)) * 100).toFixed(0)
-          : '0';
-
-      // Format revenue as currency string
-      const formattedRevenue = `$${totalRevenue.toLocaleString('en-US', {
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-      })}`;
-
-      res.json({
-        totalTenants,
-        tenantGrowth: `+${newTenantsThisMonth} this month`,
-        activeUsers,
-        userGrowth: `+${newUsersThisMonth} this month`,
-        totalRevenue: formattedRevenue,
-        revenueGrowth: `+${revenueGrowthPct}% vs last month`,
-        conversionRate: `${conversionRate}%`,
-        conversionTrend: `+0% vs last month`, // Placeholder until historical tracking is implemented
-      });
-    } catch (error) {
-      log.error('Failed to fetch tenant stats:', error);
-      res.status(500).json({ message: 'Failed to fetch tenant stats' });
-    }
-  });
-
-  // ──────────────────────────────────────────────────────────────────────
-  // GET /api/admin/user-stats
-  // Returns detailed user breakdown stats
-  // ──────────────────────────────────────────────────────────────────────
-  app.get('/api/admin/user-stats', requireAuth, async (req: Request, res: Response) => {
-    try {
-      if (!isPlatformAdmin(req)) {
-        return res.status(403).json({ message: 'Forbidden: platform admin access required' });
-      }
-
-      // Total users
-      const [totalResult] = await db.select({ count: count() }).from(users);
-      const totalUsers = totalResult?.count ?? 0;
-
-      // Users created this month
-      const startOfMonth = new Date();
-      startOfMonth.setDate(1);
-      startOfMonth.setHours(0, 0, 0, 0);
-
-      const [newUsersResult] = await db
-        .select({ count: count() })
-        .from(users)
-        .where(gte(users.createdAt, startOfMonth));
-      const newUsersThisMonth = newUsersResult?.count ?? 0;
-
-      // Active users (isActive = true)
-      const [activeResult] = await db
-        .select({ count: count() })
-        .from(users)
-        .where(eq(users.isActive, true));
-      const activeUsers = activeResult?.count ?? 0;
-
-      // Suspended users (isActive = false)
-      const [suspendedResult] = await db
-        .select({ count: count() })
-        .from(users)
-        .where(eq(users.isActive, false));
-      const suspendedUsers = suspendedResult?.count ?? 0;
-
-      // Admin users (role contains 'admin' or isPlatformUser = true)
-      const [adminResult] = await db
-        .select({ count: count() })
-        .from(users)
-        .where(sql`(${users.role} ILIKE '%admin%' OR ${users.isPlatformUser} = true)`);
-      const adminUsers = adminResult?.count ?? 0;
-
-      // Calculate rates
-      const activeRate = totalUsers > 0 ? ((activeUsers / totalUsers) * 100).toFixed(1) : '0.0';
-      const suspendedRate =
-        totalUsers > 0 ? ((suspendedUsers / totalUsers) * 100).toFixed(1) : '0.0';
-      const adminPercentage = totalUsers > 0 ? ((adminUsers / totalUsers) * 100).toFixed(1) : '0.0';
-
-      res.json({
-        totalUsers,
-        userGrowth: `+${newUsersThisMonth} this month`,
-        activeUsers,
-        activeRate: `${activeRate}% active`,
-        suspendedUsers,
-        suspendedRate: `${suspendedRate}% of total`,
-        adminUsers,
-        adminPercentage: `${adminPercentage}% of total`,
-      });
-    } catch (error) {
-      log.error('Failed to fetch user stats:', error);
-      res.status(500).json({ message: 'Failed to fetch user stats' });
-    }
-  });
+  // GET /api/admin/user-stats moved to supabase/functions/admin (round 187):
+  // /api/admin/user-stats is proxied now, so a handler here would never run.
 
   // ──────────────────────────────────────────────────────────────────────
   // GET /api/admin/security/metrics

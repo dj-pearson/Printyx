@@ -104,8 +104,24 @@ export async function decryptCanonPwd(blob: string, password: string): Promise<s
   try {
     const key = await deriveKey(password, salt);
     const plaintext = await crypto.subtle.decrypt({ name: 'AES-CBC', iv }, key, ciphertext);
-    return new TextDecoder().decode(plaintext);
+    return plausiblePassword(new Uint8Array(plaintext));
   } catch {
     throw new CanonCryptoError('Canon pwd decryption failed (wrong password or unsupported KDF)');
   }
+}
+
+/**
+ * CBC has no authentication, so a WRONG key still yields valid padding about
+ * one time in 256 (measured on the Node twin: 11 of 3,000) and "decrypts" to
+ * garbage that was then stored as the SMB credential. Canon's blobs carry no
+ * MAC, so the plaintext is the evidence: a device password is valid UTF-8 with
+ * no control characters. Kept identical to the Node copy's plausiblePassword.
+ */
+export function plausiblePassword(plaintext: Uint8Array): string {
+  const text = new TextDecoder('utf-8', { fatal: true }).decode(plaintext);
+  // eslint-disable-next-line no-control-regex
+  if (/[\u0000-\u001f\u007f]/.test(text)) {
+    throw new CanonCryptoError('decrypted pwd is not a plausible password');
+  }
+  return text;
 }

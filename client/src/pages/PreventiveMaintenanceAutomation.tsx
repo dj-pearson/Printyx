@@ -1,187 +1,353 @@
+/**
+ * Maintenance Automation (round 225).
+ *
+ * Three defects stood behind this page's dead "Schedule Now" button. The
+ * schedule list read a fixture shape the endpoint never sends (and its select
+ * threw on the first real row), so no stored schedule ever rendered. The New
+ * Schedule dialog said "Schedule creation form would be implemented here".
+ * And POST /maintenance/schedules/:id/complete could never run: the create
+ * branch above it matched any POST under /schedules, so completing a schedule
+ * tried to create one from the completion body and failed on NOT NULL columns.
+ *
+ * The list now maps the real maintenance_schedules columns
+ * (lib/maintenance-schedules.ts), New Schedule creates one, "Mark complete"
+ * records the work and rolls the due date forward, and "View history" lists
+ * the maintenance_records for that machine. The edge function's create branch
+ * now requires no resource id.
+ */
 import { useMemo, useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { MainLayout } from '@/components/layout/main-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Progress } from '@/components/ui/progress';
-import {
-  Calendar,
-  Clock,
-  AlertTriangle,
-  TrendingUp,
-  CheckCircle,
-  Plus,
-  Settings,
-  Zap,
-} from 'lucide-react';
-import { format, differenceInDays } from 'date-fns';
-import { apiRequest } from '@/lib/queryClient';
+import { Calendar, Clock, AlertTriangle, TrendingUp, CheckCircle, Plus, Zap } from 'lucide-react';
+import { format } from 'date-fns';
+import { apiRequest, invalidateApiPath } from '@/lib/queryClient';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {} from '@/components/ui/select';
-import { useForm } from 'react-hook-form';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { InlineQueryError } from '@/components/ui/inline-query-error';
 import { toast } from '@/hooks/use-toast';
-import {} from 'recharts';
+import { describeApiError } from '@/lib/api-error';
+import {
+  createScheduleBody,
+  dueState,
+  equipmentLabel,
+  frequencyLabel,
+  FREQUENCIES,
+  scheduleFromRow,
+  type MaintenanceScheduleView,
+} from '@/lib/maintenance-schedules';
 
-interface MaintenanceSchedule {
-  id: string;
-  equipmentId: string;
-  equipmentModel: string;
-  customerName: string;
-  customerLocation: string;
-  maintenanceType: string;
-  serviceName: string;
-  frequency: string;
-  frequencyValue: number;
-  nextDueDate: Date;
-  lastServiceDate: Date;
-  meterBasedScheduling: boolean;
-  currentMeterReading: number;
-  meterAtLastService: number;
-  nextServiceMeter: number | null;
-  meterThreshold: number | null;
-  estimatedDuration: number;
-  requiredSkills: string[];
-  requiredParts: string[];
-  status: string;
-  priority: string;
-  urgencyScore: number;
-  assignedTechnicianId: string | null;
-  assignedTechnicianName: string | null;
-  scheduledDate: Date | null;
-  scheduledTimeSlot: string | null;
-  autoScheduleEnabled: boolean;
-  reminderDaysBefore: number;
-  escalationDays: number;
-  serviceHistory: Array<{
-    date: Date;
-    technician: string;
-    duration: number;
-    partsUsed: string[];
-    issues: string[];
-    meterReading: number;
-  }>;
-  predictiveInsights: {
-    riskLevel: string;
-    failurePrediction: number;
-    recommendedActions: string[];
-    costSavings: number;
+type Row = Record<string, unknown>;
+
+const DUE_BADGE: Record<ReturnType<typeof dueState>, { label: string; className: string }> = {
+  overdue: { label: 'Overdue', className: 'bg-red-100 text-red-800' },
+  'due-soon': { label: 'Due this week', className: 'bg-yellow-100 text-yellow-800' },
+  scheduled: { label: 'Scheduled', className: 'bg-green-100 text-green-800' },
+  undated: { label: 'No due date', className: 'bg-gray-100 text-gray-800' },
+};
+
+const dayOf = (d: Date | null) => (d ? format(d, 'MMM dd, yyyy') : 'Not recorded');
+
+function refreshMaintenance() {
+  invalidateApiPath('/api/maintenance');
+}
+
+function CreateScheduleDialog({
+  open,
+  onOpenChange,
+  equipment,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  equipment: Row[];
+}) {
+  const empty = {
+    equipmentId: '',
+    name: '',
+    frequency: 'monthly',
+    frequencyValue: '1',
+    nextDueDate: '',
+    estimatedDuration: '',
   };
-  createdAt: Date;
-  updatedAt: Date;
+  const [form, setForm] = useState(empty);
+  const body = createScheduleBody(form);
+  const set = (k: keyof typeof empty) => (v: string) => setForm((f) => ({ ...f, [k]: v }));
+
+  const create = useMutation({
+    mutationFn: () => apiRequest('/api/maintenance/schedules', 'POST', body),
+    onSuccess: () => {
+      toast({ title: 'Schedule created', description: body?.name });
+      refreshMaintenance();
+      setForm(empty);
+      onOpenChange(false);
+    },
+    onError: (err) =>
+      toast({
+        title: 'Could not create the schedule',
+        description: describeApiError(err).message,
+        variant: 'destructive',
+      }),
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Create maintenance schedule</DialogTitle>
+          <DialogDescription>Recurring preventive maintenance for one machine.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <label className="block space-y-1 text-sm">
+            <span className="font-medium">Equipment</span>
+            <Select value={form.equipmentId} onValueChange={set('equipmentId')}>
+              <SelectTrigger>
+                <SelectValue
+                  placeholder={equipment.length ? 'Choose a machine' : 'No equipment recorded'}
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {equipment.map((e) => (
+                  <SelectItem key={String(e.id)} value={String(e.id)}>
+                    {equipmentLabel(e)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </label>
+          <label className="block space-y-1 text-sm">
+            <span className="font-medium">Name</span>
+            <Input
+              value={form.name}
+              onChange={(e) => set('name')(e.target.value)}
+              placeholder="Quarterly PM"
+            />
+          </label>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block space-y-1 text-sm">
+              <span className="font-medium">Every</span>
+              <Input
+                type="number"
+                min={1}
+                value={form.frequencyValue}
+                onChange={(e) => set('frequencyValue')(e.target.value)}
+              />
+            </label>
+            <label className="block space-y-1 text-sm">
+              <span className="font-medium">Unit</span>
+              <Select value={form.frequency} onValueChange={set('frequency')}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {FREQUENCIES.map((f) => (
+                    <SelectItem key={f} value={f}>
+                      {f}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </label>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block space-y-1 text-sm">
+              <span className="font-medium">First due</span>
+              <Input
+                type="date"
+                value={form.nextDueDate}
+                onChange={(e) => set('nextDueDate')(e.target.value)}
+              />
+            </label>
+            <label className="block space-y-1 text-sm">
+              <span className="font-medium">Duration (minutes)</span>
+              <Input
+                type="number"
+                min={1}
+                value={form.estimatedDuration}
+                onChange={(e) => set('estimatedDuration')(e.target.value)}
+              />
+            </label>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button disabled={!body || create.isPending} onClick={() => create.mutate()}>
+            {create.isPending ? 'Creating...' : 'Create'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
-interface MaintenanceTemplate {
-  id: string;
-  templateName: string;
-  description: string;
-  equipmentTypes: string[];
-  estimatedDuration: number;
-  frequency: string;
-  checklist: Array<{
-    item: string;
-    required: boolean;
-    estimatedTime: number;
-  }>;
-  requiredParts: Array<{
-    partName: string;
-    quantity: number;
-    optional: boolean;
-  }>;
-  requiredSkills: string[];
-  safetyRequirements: string[];
-  isActive: boolean;
-  usageCount: number;
-  lastUsed: Date;
-  createdAt: Date;
+function CompleteDialog({
+  schedule,
+  onClose,
+}: {
+  schedule: MaintenanceScheduleView | null;
+  onClose: () => void;
+}) {
+  const [notes, setNotes] = useState('');
+  const [hours, setHours] = useState('');
+  const laborHours = hours === '' ? undefined : Number(hours);
+  const valid = laborHours === undefined || (Number.isFinite(laborHours) && laborHours >= 0);
+
+  const complete = useMutation({
+    mutationFn: () =>
+      apiRequest<{ nextDueDate?: string | null; scheduleUpdated?: boolean }>(
+        `/api/maintenance/schedules/${schedule?.id}/complete`,
+        'POST',
+        { notes: notes.trim() || undefined, laborHours },
+      ),
+    onSuccess: (res) => {
+      toast({
+        title: 'Maintenance recorded',
+        description:
+          res?.scheduleUpdated === false
+            ? 'The next due date could not be updated; the schedule still shows the old one.'
+            : res?.nextDueDate
+              ? `Next due ${format(new Date(res.nextDueDate), 'MMM dd, yyyy')}`
+              : undefined,
+      });
+      refreshMaintenance();
+      setNotes('');
+      setHours('');
+      onClose();
+    },
+    onError: (err) =>
+      toast({
+        title: 'Could not record the maintenance',
+        description: describeApiError(err).message,
+        variant: 'destructive',
+      }),
+  });
+
+  return (
+    <Dialog open={schedule !== null} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Mark maintenance complete</DialogTitle>
+          <DialogDescription>
+            {schedule?.name}. Records the work and moves the next due date forward.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <label className="block space-y-1 text-sm">
+            <span className="font-medium">Labour hours</span>
+            <Input
+              type="number"
+              min={0}
+              step="0.25"
+              value={hours}
+              onChange={(e) => setHours(e.target.value)}
+            />
+          </label>
+          <label className="block space-y-1 text-sm">
+            <span className="font-medium">Notes</span>
+            <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} />
+          </label>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button disabled={!valid || complete.isPending} onClick={() => complete.mutate()}>
+            {complete.isPending ? 'Saving...' : 'Mark complete'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'scheduled':
-      return 'bg-blue-100 text-blue-800';
-    case 'overdue':
-      return 'bg-red-100 text-red-800';
-    case 'pending':
-      return 'bg-yellow-100 text-yellow-800';
-    case 'completed':
-      return 'bg-green-100 text-green-800';
-    default:
-      return 'bg-gray-100 text-gray-800';
-  }
-};
-
-const getPriorityColor = (priority: string) => {
-  switch (priority) {
-    case 'urgent':
-      return 'bg-red-100 text-red-800';
-    case 'high':
-      return 'bg-orange-100 text-orange-800';
-    case 'medium':
-      return 'bg-yellow-100 text-yellow-800';
-    case 'low':
-      return 'bg-green-100 text-green-800';
-    default:
-      return 'bg-gray-100 text-gray-800';
-  }
-};
-
-const getRiskColor = (risk: string) => {
-  switch (risk) {
-    case 'high':
-      return 'bg-red-100 text-red-800';
-    case 'medium':
-      return 'bg-yellow-100 text-yellow-800';
-    case 'low':
-      return 'bg-green-100 text-green-800';
-    default:
-      return 'bg-gray-100 text-gray-800';
-  }
-};
-
-const HEALTH_COLORS = ['#82ca9d', '#ffc658', '#ff7c7c'];
+function HistoryDialog({
+  schedule,
+  onClose,
+}: {
+  schedule: MaintenanceScheduleView | null;
+  onClose: () => void;
+}) {
+  const url = schedule?.equipmentId
+    ? `/api/maintenance/history?equipmentId=${encodeURIComponent(schedule.equipmentId)}`
+    : null;
+  const q = useQuery<Row[]>({ queryKey: [url], enabled: url !== null });
+  const rows = q.data ?? [];
+  return (
+    <Dialog open={schedule !== null} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Maintenance history</DialogTitle>
+          <DialogDescription>Completed maintenance on this machine</DialogDescription>
+        </DialogHeader>
+        {q.isError ? (
+          <InlineQueryError label="maintenance history" onRetry={() => q.refetch()} />
+        ) : q.isLoading ? (
+          <p className="text-sm text-muted-foreground">Loading...</p>
+        ) : rows.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No completed maintenance recorded.</p>
+        ) : (
+          <ul className="space-y-2 text-sm">
+            {rows.map((r) => {
+              const at = r.completed_at ?? r.completedAt;
+              const hrs = r.labor_hours ?? r.laborHours;
+              return (
+                <li key={String(r.id)} className="border rounded-md p-3">
+                  <div className="flex justify-between">
+                    <span className="font-medium">
+                      {at ? format(new Date(String(at)), 'MMM dd, yyyy') : 'Undated'}
+                    </span>
+                    {hrs != null && <span className="text-muted-foreground">{String(hrs)} h</span>}
+                  </div>
+                  {r.notes ? <p className="mt-1">{String(r.notes)}</p> : null}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 export default function PreventiveMaintenanceAutomation() {
   const [isCreateScheduleOpen, setIsCreateScheduleOpen] = useState(false);
-  const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(null);
-  const queryClient = useQueryClient();
-  const { register, handleSubmit, reset, setValue } = useForm();
+  const [completing, setCompleting] = useState<MaintenanceScheduleView | null>(null);
+  const [historyFor, setHistoryFor] = useState<MaintenanceScheduleView | null>(null);
 
-  // Fetch maintenance schedules
-  const { data: schedules = [], isLoading: schedulesLoading } = useQuery<any[]>({
+  const schedulesQuery = useQuery<MaintenanceScheduleView[]>({
     queryKey: ['/api/maintenance/schedules'],
-    select: (data: any[]) =>
-      data.map((schedule) => ({
-        ...schedule,
-        nextDueDate: new Date(schedule.nextDueDate),
-        lastServiceDate: new Date(schedule.lastServiceDate),
-        scheduledDate: schedule.scheduledDate ? new Date(schedule.scheduledDate) : null,
-        serviceHistory: schedule.serviceHistory.map((h: any) => ({
-          ...h,
-          date: new Date(h.date),
-        })),
-        createdAt: new Date(schedule.createdAt),
-        updatedAt: new Date(schedule.updatedAt),
-      })),
+    select: (data: unknown) => (Array.isArray(data) ? (data as Row[]).map(scheduleFromRow) : []),
   });
+  const schedules = useMemo(() => schedulesQuery.data ?? [], [schedulesQuery.data]);
 
-  // The tenant's equipment, so auto-generate targets real machines instead of the
-  // five hard-coded ids it used to submit.
-  const { data: equipment = [] } = useQuery<Array<{ id: string }>>({
+  const { data: equipment = [] } = useQuery<Row[]>({
     queryKey: ['/api/equipment'],
     select: (data: unknown) =>
-      Array.isArray(data) ? data : ((data as { data?: Array<{ id: string }> })?.data ?? []),
+      Array.isArray(data) ? (data as Row[]) : ((data as { data?: Row[] })?.data ?? []),
   });
+  const equipmentById = useMemo(
+    () => new Map(equipment.map((e) => [String(e.id), e])),
+    [equipment],
+  );
 
   // WF-V-04: the shape supabase/functions/maintenance/ actually returns. The old
   // type named efficiency, equipment_health, cost_analysis and performance_trends
@@ -209,8 +375,7 @@ export default function PreventiveMaintenanceAutomation() {
         body: JSON.stringify(data),
       }),
     onSuccess: (result: { createdCount?: number; unknownEquipmentIds?: string[] }) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/maintenance/schedules'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/maintenance/analytics'] });
+      refreshMaintenance();
       // The count comes from the rows the server actually wrote. The old toast
       // said "Schedules Generated" against an endpoint that persisted nothing.
       const skipped = result?.unknownEquipmentIds?.length ?? 0;
@@ -237,7 +402,7 @@ export default function PreventiveMaintenanceAutomation() {
     [schedules],
   );
   const unscheduledEquipment = useMemo(
-    () => equipment.filter((e) => !scheduledEquipmentIds.has(e.id)),
+    () => equipment.filter((e) => !scheduledEquipmentIds.has(String(e.id))),
     [equipment, scheduledEquipmentIds],
   );
 
@@ -256,29 +421,16 @@ export default function PreventiveMaintenanceAutomation() {
     });
   };
 
-  if (schedulesLoading) {
+  if (schedulesQuery.isLoading) {
     return (
       <MainLayout
         title="Maintenance Automation"
         description="Automated scheduling and predictive maintenance management"
       >
-        <div className="space-y-4 sm:space-y-6">
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-              <p className="mt-4 text-gray-600">Loading maintenance data...</p>
-            </div>
-          </div>
-        </div>
+        <p className="text-sm text-muted-foreground">Loading maintenance data...</p>
       </MainLayout>
     );
   }
-
-  const overdueSchedules = schedules.filter((s) => s.status === 'overdue').length;
-  const dueSoon = schedules.filter((s) => {
-    const daysUntilDue = differenceInDays(s.nextDueDate, new Date());
-    return daysUntilDue <= 7 && daysUntilDue >= 0;
-  }).length;
 
   return (
     <MainLayout
@@ -287,38 +439,19 @@ export default function PreventiveMaintenanceAutomation() {
     >
       <div className="space-y-4 sm:space-y-6">
         <div className="flex justify-end items-center gap-3">
-          <div className="hidden sm:flex items-center gap-3">
-            <Button
-              onClick={handleAutoGenerate}
-              disabled={autoGenerateMutation.isPending}
-              variant="outline"
-              className="flex items-center gap-2"
-            >
-              <Zap className="h-4 w-4" />
-              Auto-Generate
-            </Button>
-
-            <Dialog open={isCreateScheduleOpen} onOpenChange={setIsCreateScheduleOpen}>
-              <DialogTrigger asChild>
-                <Button className="flex items-center gap-2">
-                  <Plus className="h-4 w-4" />
-                  New Schedule
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Create Maintenance Schedule</DialogTitle>
-                  <DialogDescription>
-                    Set up automated preventive maintenance for equipment.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="text-sm text-gray-600">
-                  Schedule creation form would be implemented here with equipment selection,
-                  template choice, and frequency settings.
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
+          <Button
+            onClick={handleAutoGenerate}
+            disabled={autoGenerateMutation.isPending}
+            variant="outline"
+            className="hidden sm:flex items-center gap-2"
+          >
+            <Zap className="h-4 w-4" />
+            Auto-Generate
+          </Button>
+          <Button onClick={() => setIsCreateScheduleOpen(true)} className="flex items-center gap-2">
+            <Plus className="h-4 w-4" />
+            New Schedule
+          </Button>
         </div>
 
         {/* WF-V-04: four cards, four fabrications. Compliance, Cost Savings,
@@ -393,17 +526,19 @@ export default function PreventiveMaintenanceAutomation() {
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="schedules" className="space-y-6">
-            {schedules.length === 0 ? (
+          <TabsContent value="schedules" className="space-y-4">
+            {schedulesQuery.isError ? (
+              <InlineQueryError
+                label="maintenance schedules"
+                onRetry={() => schedulesQuery.refetch()}
+              />
+            ) : schedules.length === 0 ? (
               <Card>
                 <CardContent className="text-center py-12">
                   <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                   <h3 className="text-lg font-medium text-gray-900 mb-2">
-                    No Maintenance Schedules
+                    No maintenance schedules
                   </h3>
-                  <p className="text-gray-600 mb-4">
-                    Create your first automated maintenance schedule.
-                  </p>
                   <Button onClick={() => setIsCreateScheduleOpen(true)}>
                     <Plus className="h-4 w-4 mr-2" />
                     Create Schedule
@@ -411,176 +546,56 @@ export default function PreventiveMaintenanceAutomation() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="space-y-4">
-                {schedules.map((schedule) => (
-                  <Card key={schedule.id} className="hover:shadow-md transition-shadow">
-                    <CardContent className="py-4">
-                      <div className="flex justify-between items-start mb-4">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <h3 className="font-medium">{schedule.equipmentModel}</h3>
-                            <Badge className={getStatusColor(schedule.status)}>
-                              {schedule.status}
-                            </Badge>
-                            <Badge className={getPriorityColor(schedule.priority)}>
-                              {schedule.priority}
-                            </Badge>
-                          </div>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 text-xs sm:text-sm text-gray-600 mb-3">
-                            <div>
-                              <span className="font-medium">Customer:</span>
-                              <br />
-                              {schedule.customerName}
-                            </div>
-                            <div>
-                              <span className="font-medium">Service Type:</span>
-                              <br />
-                              {schedule.serviceName}
-                            </div>
-                            <div>
-                              <span className="font-medium">Next Due:</span>
-                              <br />
-                              {format(schedule.nextDueDate, 'MMM dd, yyyy')}
-                            </div>
-                            <div>
-                              <span className="font-medium">Frequency:</span>
-                              <br />
-                              {schedule.frequency}
-                            </div>
-                          </div>
-
-                          {schedule.meterBasedScheduling && (
-                            <div className="bg-blue-50 rounded-lg p-3 mb-3">
-                              <h5 className="font-medium text-blue-800 mb-2">
-                                Meter-Based Scheduling
-                              </h5>
-                              <div className="grid grid-cols-2 gap-4 text-sm">
-                                <div>
-                                  <span className="text-gray-600">Current Reading:</span>
-                                  <span className="ml-2 font-medium">
-                                    {schedule.currentMeterReading.toLocaleString()}
-                                  </span>
-                                </div>
-                                <div>
-                                  <span className="text-gray-600">Next Service:</span>
-                                  <span className="ml-2 font-medium">
-                                    {schedule.nextServiceMeter?.toLocaleString() || 'N/A'}
-                                  </span>
-                                </div>
-                              </div>
-                              <div className="mt-2">
-                                <div className="flex justify-between text-xs mb-1">
-                                  <span>Progress to next service</span>
-                                  <span>
-                                    {schedule.nextServiceMeter
-                                      ? Math.round(
-                                          ((schedule.currentMeterReading -
-                                            schedule.meterAtLastService) /
-                                            (schedule.nextServiceMeter -
-                                              schedule.meterAtLastService)) *
-                                            100,
-                                        )
-                                      : 0}
-                                    %
-                                  </span>
-                                </div>
-                                {schedule.nextServiceMeter && (
-                                  <Progress
-                                    value={
-                                      ((schedule.currentMeterReading -
-                                        schedule.meterAtLastService) /
-                                        (schedule.nextServiceMeter - schedule.meterAtLastService)) *
-                                      100
-                                    }
-                                  />
-                                )}
-                              </div>
-                            </div>
-                          )}
-
-                          <div className="grid grid-cols-2 gap-4 text-sm mb-3">
-                            <div>
-                              <span className="text-gray-600">Duration:</span>
-                              <span className="ml-2 font-medium">
-                                {schedule.estimatedDuration} min
-                              </span>
-                            </div>
-                            <div>
-                              <span className="text-gray-600">Skills Required:</span>
-                              <span className="ml-2 font-medium">
-                                {schedule.requiredSkills.join(', ')}
-                              </span>
-                            </div>
-                          </div>
-
-                          {schedule.assignedTechnicianName && (
-                            <div className="text-sm">
-                              <span className="text-gray-600">Assigned:</span>
-                              <span className="ml-2 font-medium">
-                                {schedule.assignedTechnicianName}
-                              </span>
-                              {schedule.scheduledTimeSlot && (
-                                <span className="ml-2 text-gray-500">
-                                  • {schedule.scheduledTimeSlot}
-                                </span>
-                              )}
-                            </div>
-                          )}
+              schedules.map((s) => {
+                const due = DUE_BADGE[dueState(s.nextDueDate)];
+                const machine = s.equipmentId ? equipmentById.get(s.equipmentId) : undefined;
+                return (
+                  <Card key={s.id}>
+                    <CardContent className="py-4 space-y-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="font-medium">{s.name}</h3>
+                        <Badge className={due.className}>{due.label}</Badge>
+                        {s.status !== 'active' && <Badge variant="outline">{s.status}</Badge>}
+                      </div>
+                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 text-sm text-gray-600">
+                        <div>
+                          <span className="font-medium">Machine</span>
+                          <br />
+                          {machine ? equipmentLabel(machine) : 'Not in the equipment list'}
                         </div>
-
-                        <div className="text-right">
-                          <div className="text-lg font-bold text-blue-600">
-                            {schedule.urgencyScore}
-                          </div>
-                          <div className="text-xs text-gray-500">Urgency Score</div>
-
-                          <div className="mt-2 text-xs">
-                            <div className="text-green-600 font-medium">
-                              ${schedule.predictiveInsights.costSavings} savings
-                            </div>
-                            <Badge
-                              className={getRiskColor(schedule.predictiveInsights.riskLevel)}
-                              variant="outline"
-                            >
-                              {schedule.predictiveInsights.riskLevel} risk
-                            </Badge>
-                          </div>
+                        <div>
+                          <span className="font-medium">Frequency</span>
+                          <br />
+                          {frequencyLabel(s.frequency, s.frequencyValue)}
+                        </div>
+                        <div>
+                          <span className="font-medium">Next due</span>
+                          <br />
+                          {dayOf(s.nextDueDate)}
+                        </div>
+                        <div>
+                          <span className="font-medium">Last completed</span>
+                          <br />
+                          {dayOf(s.lastCompletedDate)}
                         </div>
                       </div>
-
-                      {schedule.predictiveInsights.recommendedActions.length > 0 && (
-                        <div className="border-t pt-3">
-                          <h6 className="text-sm font-medium text-gray-700 mb-2">
-                            Recommended Actions:
-                          </h6>
-                          <ul className="text-xs text-gray-600 space-y-1">
-                            {schedule.predictiveInsights.recommendedActions.map(
-                              (action: any, idx: number) => (
-                                <li key={idx} className="flex items-start gap-1">
-                                  <span className="text-blue-600 mt-0.5">•</span>
-                                  <span>{action}</span>
-                                </li>
-                              ),
-                            )}
-                          </ul>
-                        </div>
+                      {s.estimatedDuration != null && (
+                        <p className="text-sm text-gray-600">
+                          Estimated {s.estimatedDuration} minutes
+                        </p>
                       )}
-
-                      <div className="flex justify-end gap-2 mt-4">
-                        <Button size="sm" variant="outline">
-                          View History
+                      <div className="flex justify-end gap-2">
+                        <Button size="sm" variant="outline" onClick={() => setHistoryFor(s)}>
+                          View history
                         </Button>
-                        <Button size="sm" variant="outline">
-                          <Settings className="h-4 w-4 mr-2" />
-                          Configure
+                        <Button size="sm" onClick={() => setCompleting(s)}>
+                          Mark complete
                         </Button>
-                        <Button size="sm">Schedule Now</Button>
                       </div>
                     </CardContent>
                   </Card>
-                ))}
-              </div>
+                );
+              })
             )}
           </TabsContent>
 
@@ -654,6 +669,14 @@ export default function PreventiveMaintenanceAutomation() {
           </TabsContent>
         </Tabs>
       </div>
+
+      <CreateScheduleDialog
+        open={isCreateScheduleOpen}
+        onOpenChange={setIsCreateScheduleOpen}
+        equipment={equipment}
+      />
+      <CompleteDialog schedule={completing} onClose={() => setCompleting(null)} />
+      <HistoryDialog schedule={historyFor} onClose={() => setHistoryFor(null)} />
 
       {/* Mobile FAB */}
       <Button

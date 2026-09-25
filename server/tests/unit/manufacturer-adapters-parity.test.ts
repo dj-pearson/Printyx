@@ -16,7 +16,45 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const repo = join(__dirname, '../../..');
-const nodeSrc = readFileSync(join(repo, 'server/manufacturer-integration-service.ts'), 'utf8');
+/**
+ * Round 161: server/manufacturer-integration-service.ts - the Node copy this
+ * compared against - was deleted with the Express router that was its only
+ * caller. Its vendor contract is frozen here as it stood, so the edge adapters
+ * are still locked to the same endpoints and the same status mapping rather
+ * than being free to drift now that there is nothing to drift from.
+ */
+const NODE_ENDPOINTS: string[] = [
+  '${}/api/devices',
+  '${}/api/devices/${}/meters',
+  '${}/api/login',
+  '${}/auth',
+  '${}/auth/validate',
+  '${}/devices',
+  '${}/devices',
+  '${}/devices',
+  '${}/devices/${}/metrics',
+  '${}/devices/${}/usage',
+  '${}/devices/${}/usage',
+  '${}/oauth/token',
+];
+const NODE_STATUS_MAPS: string[] = [
+  "case 'ready':\n        return 'online'",
+  "case 'offline':\n        return 'offline'",
+  "case 'fault':\n        return 'error'",
+  "case 'maintenance':\n        return 'maintenance'",
+  "case 'idle':\n        return 'online'",
+  "case 'unreachable':\n        return 'offline'",
+  "case 'fault':\n        return 'error'",
+  "case 'maintenance':\n        return 'maintenance'",
+  "case 'idle':\n        return 'online'",
+  "case 'offline':\n        return 'offline'",
+  "case 'fault':\n        return 'error'",
+  "case 'maintenance':\n        return 'maintenance'",
+  "case 'ready':\n        return 'online'",
+  "case 'offline':\n        return 'offline'",
+  "case 'error':\n        return 'error'",
+  "case 'maintenance':\n        return 'maintenance'",
+];
 const edgeSrc = readFileSync(
   join(repo, 'supabase/functions/_shared/manufacturer-adapters.ts'),
   'utf8',
@@ -43,15 +81,13 @@ function endpoints(src: string): string[] {
 
 describe('the two adapter copies agree', () => {
   it('call the same vendor endpoints', () => {
-    const node = endpoints(nodeSrc);
     // Four adapters, each with connect + discover + collect at minimum.
-    expect(node.length).toBeGreaterThanOrEqual(8);
-    expect(endpoints(edgeSrc)).toEqual(node);
+    expect(NODE_ENDPOINTS.length).toBeGreaterThanOrEqual(8);
+    expect(endpoints(edgeSrc)).toEqual(NODE_ENDPOINTS);
   });
 
   it('define the same four adapters and the same factory', () => {
     for (const name of ['CanonAdapter', 'XeroxAdapter', 'HPAdapter', 'FMAuditAdapter']) {
-      expect(nodeSrc).toContain(`class ${name}`);
       expect(edgeSrc).toContain(`class ${name}`);
     }
     for (const key of ['canon', 'xerox', 'hp', 'fmaudit']) {
@@ -65,15 +101,13 @@ describe('the two adapter copies agree', () => {
     for (const status of ['online', 'offline', 'error', 'maintenance', 'unknown']) {
       expect(edgeSrc).toContain(`'${status}'`);
     }
-    const nodeMaps = adapterSection(nodeSrc).match(/case '[a-z]+':\n\s+return '(\w+)'/g) ?? [];
     const edgeMaps = adapterSection(edgeSrc).match(/case '[a-z]+':\n\s+return '(\w+)'/g) ?? [];
-    expect(edgeMaps).toEqual(nodeMaps);
+    expect(edgeMaps).toEqual(NODE_STATUS_MAPS);
   });
 
   it('shape a discovered device from the same fields', () => {
     for (const field of ['serialNumber', 'macAddress', 'ipAddress', 'capabilities']) {
       expect(edgeSrc).toContain(field);
-      expect(nodeSrc).toContain(field);
     }
   });
 });

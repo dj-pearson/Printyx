@@ -414,11 +414,7 @@ async function createTaskAction(config: Record<string, any>, context: StepContex
       assignedTo,
       createdBy: context.userId || 'system',
       dueDate,
-      customFields: {
-        workflowExecutionId: context.executionId,
-        workflowContext: context.workflowContext,
-        ...config.customFields,
-      },
+      ...taskLinksFromContext(context.executionId, context.workflowContext),
     })
     .returning();
 
@@ -599,4 +595,30 @@ export async function processApprovalResponse(
         ),
       );
   }
+}
+
+/**
+ * What a workflow-created task is about, on columns `tasks` actually has.
+ *
+ * The create_task action wrote a `customFields` object carrying the execution
+ * id and the whole workflow context. `tasks` has no such column and drizzle
+ * drops unknown keys, so every task a workflow created arrived with no link to
+ * the workflow, the deal or the account that triggered it - a floating to-do
+ * (round 246). The event payloads name their subject: deal.stage_changed sends
+ * dealId, record.created/updated send businessRecordId. The execution id goes
+ * in `tags`, the one free-form column, so "which workflow made this" survives.
+ */
+export function taskLinksFromContext(
+  executionId: string | undefined,
+  workflowContext: Record<string, unknown> | undefined,
+): { dealId?: string; customerId?: string; tags?: string[] } {
+  const ctx = workflowContext ?? {};
+  const str = (v: unknown) => (typeof v === 'string' && v.trim() ? v : undefined);
+  const out: { dealId?: string; customerId?: string; tags?: string[] } = {};
+  const dealId = str(ctx.dealId);
+  const customerId = str(ctx.businessRecordId) ?? str(ctx.customerId);
+  if (dealId) out.dealId = dealId;
+  if (customerId) out.customerId = customerId;
+  if (executionId) out.tags = [`workflow-execution:${executionId}`];
+  return out;
 }

@@ -5,6 +5,7 @@ import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { removeStorageObjects } from '../_shared/storage-delete.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { ilikeAnyFilter } from '../_shared/postgrest-or.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -80,7 +81,7 @@ export default async function handler(req: Request) {
       }
 
       if (search) {
-        query = query.or(`file_name.ilike.%${search}%,original_name.ilike.%${search}%`);
+        query = query.or(ilikeAnyFilter(['file_name', 'original_name'], search));
       }
 
       const { data: files, error, count } = await query;

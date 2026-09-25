@@ -112,10 +112,15 @@ describe('the migration renames rather than rewrites', () => {
 });
 
 describe('the one content-marketing consumer follows the rename', () => {
-  it('the image sitemap reads content_marketing_posts', () => {
-    const seo = read('server/routes-seo.ts');
-    expect(seo).toContain('contentMarketingPosts.featuredImage');
-    expect(seo).toContain('.from(contentMarketingPosts)');
+  it('the image sitemap that was that consumer is gone, not left on the old name', () => {
+    // Round 169 deleted server/routes-seo.ts's per-request /image-sitemap.xml
+    // (SEO-006: one committed sitemap, no per-request artifacts). What this
+    // test protected - the consumer reading the renamed table rather than the
+    // US-BLOG blog_posts - holds vacuously now, so assert the stronger thing:
+    // nothing reintroduces it on either name.
+    const seo = read('server/routes-seo.ts').replace(/(?<![:/])\/\/.*$/gm, '');
+    expect(seo).not.toMatch(/router\.get\(\s*'\/image-sitemap\.xml'/);
+    expect(seo).not.toContain('blogPosts.featuredImage');
   });
 });
 

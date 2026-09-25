@@ -131,29 +131,39 @@ router.post('/api/equipment-disposal', async (req: TenantRequest, res: Response)
         disposalType: data.disposalType,
         disposalVendor: data.disposalVendor,
         disposalDate: new Date(data.disposalDate),
-        estimatedCost: data.estimatedCost ? data.estimatedCost.toString() : null,
+        // Round 228: this insert named estimatedCost, notes, disposalStatus,
+        // initiatedBy, initiatedAt and metadata - none is a column on
+        // equipment_disposal - so the record was stored with no cost, no
+        // notes, no status and no author. Rebound to the real columns below.
+        disposalCost: data.estimatedCost ? data.estimatedCost.toString() : null,
         dataWipedConfirmation: data.dataWipedConfirmation,
         certificateOfDestruction: data.certificateOfDestruction || null,
         environmentalCompliance: data.environmentalCompliance,
-        notes: data.notes || null,
-        disposalStatus: 'scheduled',
-        initiatedBy: userId,
-        initiatedAt: new Date(),
-        metadata: {
-          dataWipeMethod: data.dataWipeMethod,
-          dataWipeVerifiedBy: data.dataWipeVerifiedBy,
-          dataWipeStandard: data.dataWipeStandard,
-          vendorContactName: data.vendorContactName,
-          vendorContactEmail: data.vendorContactEmail,
-          vendorContactPhone: data.vendorContactPhone,
-        },
+        disposalNotes: data.notes || null,
+        status: 'scheduled',
+        createdBy: userId,
       })
       .returning();
+
+    // The wipe method, wipe standard, who verified it and the vendor contact
+    // have no column. They are named rather than dropped in silence, because
+    // a certificate of destruction is exactly where a missing detail matters.
+    const ignoredFields = (
+      [
+        'dataWipeMethod',
+        'dataWipeVerifiedBy',
+        'dataWipeStandard',
+        'vendorContactName',
+        'vendorContactEmail',
+        'vendorContactPhone',
+      ] as const
+    ).filter((k) => (data as Record<string, unknown>)[k] != null);
 
     return res.json({
       success: true,
       message: 'Disposal record created successfully',
       data: disposal,
+      ignoredFields,
     });
   } catch (error: any) {
     log.error('Create disposal error:', error);
@@ -187,7 +197,7 @@ router.get('/api/equipment-disposal', async (req: TenantRequest, res: Response) 
     const conditions = [eq(equipmentDisposal.tenantId, tenantId)];
 
     if (status && typeof status === 'string') {
-      conditions.push(eq(equipmentDisposal.disposalStatus, status as any));
+      conditions.push(eq(equipmentDisposal.status, status));
     }
 
     if (equipmentId && typeof equipmentId === 'string') {
@@ -198,7 +208,7 @@ router.get('/api/equipment-disposal', async (req: TenantRequest, res: Response) 
       .select()
       .from(equipmentDisposal)
       .where(and(...conditions))
-      .orderBy(desc(equipmentDisposal.initiatedAt));
+      .orderBy(desc(equipmentDisposal.createdAt));
 
     return res.json({
       success: true,
@@ -284,16 +294,23 @@ router.patch(
         });
       }
 
-      const updateData: any = {
-        disposalStatus: status,
+      // Round 228: this was an `any` naming disposalStatus, completedDate and
+      // actualCost - none a column - and Drizzle drops unknown keys, so the
+      // status never changed while the endpoint reported success. completedDate
+      // has no column and is refused out loud rather than ignored.
+      const updateData: Partial<typeof equipmentDisposal.$inferInsert> = {
+        status,
       };
 
       if (completedDate) {
-        updateData.completedDate = new Date(completedDate);
+        return res.status(400).json({
+          success: false,
+          message: 'equipment_disposal has no completion-date column; set disposalDate instead',
+        });
       }
 
       if (actualCost !== undefined) {
-        updateData.actualCost = actualCost.toString();
+        updateData.disposalCost = actualCost.toString();
       }
 
       if (certificateUrl) {
@@ -358,7 +375,7 @@ router.delete('/api/equipment-disposal/:disposalId', async (req: TenantRequest, 
       });
     }
 
-    if (disposal.disposalStatus === 'completed') {
+    if (disposal.status === 'completed') {
       return res.status(400).json({
         success: false,
         message: 'Cannot delete completed disposal records',

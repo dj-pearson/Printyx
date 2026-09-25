@@ -215,6 +215,9 @@ describe('nothing called it', () => {
     // The two /projects handlers a live page depends on were never this
     // router's: routes-tasks.ts registers them first over the real table.
     expect(sources.filter((s) => s.includes('/api/projects')).length).toBeGreaterThan(2);
-    expect(read('server/routes-tasks.ts')).toMatch(/app\.get\('\/api\/projects'/);
+    // Round 160: the one owner is the edge function, reached through the proxy.
+    expect(read('server/middleware/edge-function-proxy.ts')).toMatch(
+      /'\/api\/projects': 'projects'/,
+    );
   });
 });

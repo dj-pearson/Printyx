@@ -7,6 +7,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { SERVICE_TICKET_STATUSES } from '../../../supabase/functions/_shared/service-ticket-vocabulary';
 import {
   STEP_TICKET_STATUS,
   WORKFLOW_STEP_NAMES,
@@ -21,26 +23,41 @@ import {
 } from '../../../supabase/functions/technician-sessions/sessions';
 
 describe('ticketStatusForStep', () => {
-  it('maps every guided step to the status the Express handler used', () => {
-    expect(ticketStatusForStep('initial_assessment')).toBe('in-progress');
-    expect(ticketStatusForStep('diagnosis')).toBe('in-progress');
-    expect(ticketStatusForStep('customer_approval')).toBe('customer_approval');
-    expect(ticketStatusForStep('work_execution')).toBe('in-progress');
-    expect(ticketStatusForStep('testing')).toBe('testing');
-    expect(ticketStatusForStep('completion')).toBe('completed');
+  // Round 206: this used to pin the Express mapping verbatim - 'in-progress',
+  // 'customer_approval', 'testing' - which migration 0078's CHECK rejects on
+  // every UPDATE, so each step completion answered 500. The property is that
+  // every status a step writes is one the column accepts.
+  it('maps every guided step into the WF-V-05 vocabulary', () => {
+    for (const step of WORKFLOW_STEP_NAMES) {
+      expect(SERVICE_TICKET_STATUSES).toContain(ticketStatusForStep(step));
+    }
+    expect(ticketStatusForStep('initial_assessment')).toBe('in_progress');
+    expect(ticketStatusForStep('customer_approval')).toBe('on_hold');
+    expect(ticketStatusForStep('testing')).toBe('in_progress');
+  });
+
+  it('every mapped value is in the CHECK constraint migration 0078 installs', () => {
+    const mig = readFileSync('drizzle/migrations/0078_wf_v05_ticket_vocabulary.sql', 'utf8');
+    const m = mig.match(/service_tickets_status_check\s+CHECK \(status IN \(([^)]*)\)\)/);
+    expect(m).not.toBeNull();
+    const allowed = [...m![1].matchAll(/'([a-z_]+)'/g)].map((x) => x[1]);
+    expect(allowed.length).toBe(9);
+    for (const v of [...Object.values(STEP_TICKET_STATUS), ticketStatusForStep(null)]) {
+      expect(allowed).toContain(v);
+    }
   });
 
   it('completing the final step resolves the ticket, not just advances it', () => {
-    // The whole point of the last step: if this regressed to 'in-progress',
+    // The whole point of the last step: if this regressed to 'in_progress',
     // finished visits would sit open forever and never reach billing.
     expect(ticketStatusForStep('completion')).toBe('completed');
   });
 
-  it('falls back to in-progress for an unknown or missing step', () => {
-    expect(ticketStatusForStep('nonsense')).toBe('in-progress');
-    expect(ticketStatusForStep(null)).toBe('in-progress');
-    expect(ticketStatusForStep(undefined)).toBe('in-progress');
-    expect(ticketStatusForStep('')).toBe('in-progress');
+  it('falls back to in_progress for an unknown or missing step', () => {
+    expect(ticketStatusForStep('nonsense')).toBe('in_progress');
+    expect(ticketStatusForStep(null)).toBe('in_progress');
+    expect(ticketStatusForStep(undefined)).toBe('in_progress');
+    expect(ticketStatusForStep('')).toBe('in_progress');
   });
 
   it('does not know check_in — check-in is its own endpoint and sets on_site', () => {
